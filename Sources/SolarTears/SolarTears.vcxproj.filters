@@ -1,0 +1,310 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Исходные файлы">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Файлы заголовков">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Файлы ресурсов">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Platform">
+      <UniqueIdentifier>{a85132b1-47cd-4144-b558-cc9a8d9aab35}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Platform\Win32">
+      <UniqueIdentifier>{ffb36eeb-1525-4f45-8d98-ffda9bdd9b34}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Core">
+      <UniqueIdentifier>{d8cc2613-c130-45bf-ac0a-3956ec0e1d24}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Rendering">
+      <UniqueIdentifier>{5b178db5-d8d0-4aed-846b-7f8299fa62fc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Logging">
+      <UniqueIdentifier>{782137f5-c58a-474a-9b0f-1da0dc4b74ed}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Core\Allocators">
+      <UniqueIdentifier>{6c76991b-9098-4be2-ad34-afde609010e7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Core\Scene">
+      <UniqueIdentifier>{00b68438-2c0c-4987-910e-cf36b55c6c76}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Rendering\VulkanC">
+      <UniqueIdentifier>{29f306f9-2995-4efb-80d2-c36dfd88cf8d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Rendering\VulkanC\FrameGraph">
+      <UniqueIdentifier>{2e204e23-0eea-43d2-8c41-c6275f0b7a31}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Core\DataStructures">
+      <UniqueIdentifier>{b24293cf-14ce-4c91-b00f-b05ef05b0435}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Rendering\VulkanC\FrameGraph\Passes">
+      <UniqueIdentifier>{54f7c0de-05d2-443b-a13b-661f4442d518}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders">
+      <UniqueIdentifier>{cdd2a9be-cf43-4274-ad24-069df544e357}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders\Vulkan">
+      <UniqueIdentifier>{a0b040b3-392e-41ac-967d-30e5b66bc3ff}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders\Vulkan\GBuffer">
+      <UniqueIdentifier>{05875a98-8a54-4bec-aaae-6d781e036a6e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Rendering\VulkanC\Scene">
+      <UniqueIdentifier>{c333e294-6c60-41cc-9227-20168a7588c4}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Platform\Win32\Win32Application.hpp">
+      <Filter>Platform\Win32</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Application.hpp">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Platform\Win32\Win32Window.hpp">
+      <Filter>Platform\Win32</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Window.hpp">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Engine.hpp">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Logging\Logger.hpp">
+      <Filter>Logging</Filter>
+    </ClInclude>
+    <ClInclude Include="Logging\LoggerQueue.hpp">
+      <Filter>Logging</Filter>
+    </ClInclude>
+    <ClInclude Include="Logging\VisualStudioDebugLogger.hpp">
+      <Filter>Logging</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Util.hpp">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Renderer.hpp">
+      <Filter>Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Allocators\StackAllocator.hpp">
+      <Filter>Core\Allocators</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\ThreadPool.hpp">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Timer.hpp">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Scene\SceneDescription.hpp">
+      <Filter>Core\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\VulkanC\VulkanCDeviceParameters.hpp">
+      <Filter>Rendering\VulkanC</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\VulkanC\VulkanCFunctions.hpp">
+      <Filter>Rendering\VulkanC</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\VulkanC\VulkanCFunctionsLibrary.hpp">
+      <Filter>Rendering\VulkanC</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\VulkanC\VulkanCInstanceParameters.hpp">
+      <Filter>Rendering\VulkanC</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\VulkanC\VulkanCMemory.hpp">
+      <Filter>Rendering\VulkanC</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\VulkanC\VulkanCRenderer.hpp">
+      <Filter>Rendering\VulkanC</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\VulkanC\VulkanCSwapChain.hpp">
+      <Filter>Rendering\VulkanC</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\VulkanC\VulkanCUtils.hpp">
+      <Filter>Rendering\VulkanC</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\VulkanC\VulkanCWorkerCommandBuffers.hpp">
+      <Filter>Rendering\VulkanC</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\VulkanC\FrameGraph\VulkanCRenderPass.hpp">
+      <Filter>Rendering\VulkanC\FrameGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\VulkanC\FrameGraph\VulkanCFrameGraph.hpp">
+      <Filter>Rendering\VulkanC\FrameGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\DataStructures\SmallVector.h">
+      <Filter>Core\DataStructures</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\VulkanC\FrameGraph\Passes\VulkanCCopyImagePass.hpp">
+      <Filter>Rendering\VulkanC\FrameGraph\Passes</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\VulkanC\FrameGraph\VulkanCFrameGraphConfig.hpp">
+      <Filter>Rendering\VulkanC\FrameGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\VulkanC\FrameGraph\Passes\VulkanCGBufferRenderPass.hpp">
+      <Filter>Rendering\VulkanC\FrameGraph\Passes</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\VulkanC\VulkanCShaders.hpp">
+      <Filter>Rendering\VulkanC</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\RenderableSceneBuilderBase.hpp">
+      <Filter>Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\RenderableSceneBase.hpp">
+      <Filter>Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Scene\Scene.hpp">
+      <Filter>Core\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Scene\SceneDescriptionObject.hpp">
+      <Filter>Core\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Scene\Camera.hpp">
+      <Filter>Core\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\RenderableSceneMisc.hpp">
+      <Filter>Rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\VulkanC\Scene\VulkanCSceneBuilder.hpp">
+      <Filter>Rendering\VulkanC\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\VulkanC\Scene\VulkanCScene.hpp">
+      <Filter>Rendering\VulkanC\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\VulkanC\FrameGraph\VulkanCFrameGraphBuilder.hpp">
+      <Filter>Rendering\VulkanC\FrameGraph</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Platform\Win32\Win32Application.cpp">
+      <Filter>Platform\Win32</Filter>
+    </ClCompile>
+    <ClCompile Include="main.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="Platform\Win32\Win32Window.cpp">
+      <Filter>Platform\Win32</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Engine.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Logging\Logger.cpp">
+      <Filter>Logging</Filter>
+    </ClCompile>
+    <ClCompile Include="Logging\LoggerQueue.cpp">
+      <Filter>Logging</Filter>
+    </ClCompile>
+    <ClCompile Include="Logging\VisualStudioDebugLogger.cpp">
+      <Filter>Logging</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Renderer.cpp">
+      <Filter>Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Util.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Allocators\StackAllocator.cpp">
+      <Filter>Core\Allocators</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\ThreadPool.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Timer.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Scene\SceneDescription.cpp">
+      <Filter>Core\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\VulkanC\VulkanCDeviceParameters.cpp">
+      <Filter>Rendering\VulkanC</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\VulkanC\VulkanCFunctions.cpp">
+      <Filter>Rendering\VulkanC</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\VulkanC\VulkanCFunctionsLibrary.cpp">
+      <Filter>Rendering\VulkanC</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\VulkanC\VulkanCInstanceParameters.cpp">
+      <Filter>Rendering\VulkanC</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\VulkanC\VulkanCMemory.cpp">
+      <Filter>Rendering\VulkanC</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\VulkanC\VulkanCRenderer.cpp">
+      <Filter>Rendering\VulkanC</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\VulkanC\VulkanCSwapChain.cpp">
+      <Filter>Rendering\VulkanC</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\VulkanC\VulkanCUtils.cpp">
+      <Filter>Rendering\VulkanC</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\VulkanC\VulkanCWorkerCommandBuffers.cpp">
+      <Filter>Rendering\VulkanC</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\VulkanC\FrameGraph\VulkanCRenderPass.cpp">
+      <Filter>Rendering\VulkanC\FrameGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\VulkanC\FrameGraph\VulkanCFrameGraph.cpp">
+      <Filter>Rendering\VulkanC\FrameGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\VulkanC\FrameGraph\Passes\VulkanCCopyImagePass.cpp">
+      <Filter>Rendering\VulkanC\FrameGraph\Passes</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\VulkanC\FrameGraph\Passes\VulkanCGBufferRenderPass.cpp">
+      <Filter>Rendering\VulkanC\FrameGraph\Passes</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\VulkanC\VulkanCShaders.cpp">
+      <Filter>Rendering\VulkanC</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\RenderableSceneBuilderBase.cpp">
+      <Filter>Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Scene\SceneDescriptionObject.cpp">
+      <Filter>Core\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Scene\Camera.cpp">
+      <Filter>Core\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Scene\Scene.cpp">
+      <Filter>Core\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\RenderableSceneBase.cpp">
+      <Filter>Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\VulkanC\FrameGraph\VulkanCFrameGraphConfig.cpp">
+      <Filter>Rendering\VulkanC\FrameGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\VulkanC\Scene\VulkanCSceneBuilder.cpp">
+      <Filter>Rendering\VulkanC\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\VulkanC\Scene\VulkanCScene.cpp">
+      <Filter>Rendering\VulkanC\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\VulkanC\FrameGraph\VulkanCFrameGraphBuilder.cpp">
+      <Filter>Rendering\VulkanC\FrameGraph</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Platform\Win32\Win32Util.inl">
+      <Filter>Platform\Win32</Filter>
+    </None>
+    <None Include="Core\Allocators\StackAllocator.inl">
+      <Filter>Core\Allocators</Filter>
+    </None>
+    <None Include="Rendering\VulkanC\Scene\VulkanCSceneBuilder.inl">
+      <Filter>Rendering\VulkanC\Scene</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="Shaders\Vulkan\GBuffer\GBufferDraw.frag">
+      <Filter>Shaders\Vulkan\GBuffer</Filter>
+    </CustomBuild>
+    <CustomBuild Include="Shaders\Vulkan\GBuffer\GBufferDraw.vert">
+      <Filter>Shaders\Vulkan\GBuffer</Filter>
+    </CustomBuild>
+  </ItemGroup>
+</Project>

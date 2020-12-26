@@ -1,0 +1,24 @@
+- AFTER FIXING TEXTURES, READ BEST PRACTICES AND WRITE NOTES!
+
+- Scene subobjects
+- String views and vector ranges
+- Dedicated allocation (VkMemoryDedicatedRequirements::prefersDedicatedAllocation)
+- Try to compress vertices and compare compressed + uncompressed performance.
+- Depth prepass
+- BATCH pipeline creation calls (maybe something like pipeline allocator will help? Instead of calling vkCreateGraphicsPipelines, schedule it to creation in allocator)
+- Pipeline cache (allocator again)
+- Try to do VERTEX PULLING
+- Uint16 or Uint32 indices?
+- Separate descriptor sets
+- INSTANCING
+- VulkanSH.h и VulkanSH.cpp
+- Compare HOST_VISIBLE-only memory with cached DEVICE_LOCAL copy (yes, it influences descriptor sets too!)
+- Anisotropic filtering
+- Object data updating: memcpy() data for eah object or batch updates for sequentional objects (harder because of alignment)
+- VECTORCALL functions in user code
+- Scene controls abstraction: the perfect way would be to use a class that has std::function bound to each user input event. This way Scene could use it instead of ugly member functions to control camera.
+- Reverse depth
+- Profile cache usage
+- #include <system_error>
+
+- DX12: Dedicated present queue is good (https://gpuopen.com/performance/)

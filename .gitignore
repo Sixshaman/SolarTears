@@ -30,3 +30,11 @@
 *.exe
 *.out
 *.app
+/Other/Private
+/Compiled/Shaders/Vulkan/GBuffer/GBufferDraw.vert.spv
+/Compiled/Shaders/Vulkan/GBuffer/GBufferDraw.frag.spv
+/Compiled/Test1.dds
+/Compiled/Test.cso
+/Compiled/SolarTearsd.pdb
+/Sources/.vs/SolarTears/v16
+/Sources/SolarTears/x64/Debug

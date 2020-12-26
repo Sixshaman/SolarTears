@@ -1,0 +1,637 @@
+#include "VulkanCFunctions.hpp"
+
+#ifdef VK_NO_PROTOTYPES
+
+#define DEFINE_VULKAN_FUNCTION(funcName) PFN_##funcName funcName;
+
+extern "C"
+{
+DEFINE_VULKAN_FUNCTION(vkCreateInstance)
+DEFINE_VULKAN_FUNCTION(vkDestroyInstance)
+DEFINE_VULKAN_FUNCTION(vkEnumeratePhysicalDevices)
+DEFINE_VULKAN_FUNCTION(vkGetDeviceProcAddr)
+DEFINE_VULKAN_FUNCTION(vkGetInstanceProcAddr)
+DEFINE_VULKAN_FUNCTION(vkGetPhysicalDeviceProperties)
+DEFINE_VULKAN_FUNCTION(vkGetPhysicalDeviceQueueFamilyProperties)
+DEFINE_VULKAN_FUNCTION(vkGetPhysicalDeviceMemoryProperties)
+DEFINE_VULKAN_FUNCTION(vkGetPhysicalDeviceFeatures)
+DEFINE_VULKAN_FUNCTION(vkGetPhysicalDeviceFormatProperties)
+DEFINE_VULKAN_FUNCTION(vkGetPhysicalDeviceImageFormatProperties)
+DEFINE_VULKAN_FUNCTION(vkCreateDevice)
+DEFINE_VULKAN_FUNCTION(vkDestroyDevice)
+DEFINE_VULKAN_FUNCTION(vkEnumerateInstanceVersion)
+DEFINE_VULKAN_FUNCTION(vkEnumerateInstanceLayerProperties)
+DEFINE_VULKAN_FUNCTION(vkEnumerateInstanceExtensionProperties)
+DEFINE_VULKAN_FUNCTION(vkEnumerateDeviceLayerProperties)
+DEFINE_VULKAN_FUNCTION(vkEnumerateDeviceExtensionProperties)
+DEFINE_VULKAN_FUNCTION(vkGetDeviceQueue)
+DEFINE_VULKAN_FUNCTION(vkQueueSubmit)
+DEFINE_VULKAN_FUNCTION(vkQueueWaitIdle)
+DEFINE_VULKAN_FUNCTION(vkDeviceWaitIdle)
+DEFINE_VULKAN_FUNCTION(vkAllocateMemory)
+DEFINE_VULKAN_FUNCTION(vkFreeMemory)
+DEFINE_VULKAN_FUNCTION(vkMapMemory)
+DEFINE_VULKAN_FUNCTION(vkUnmapMemory)
+DEFINE_VULKAN_FUNCTION(vkFlushMappedMemoryRanges)
+DEFINE_VULKAN_FUNCTION(vkInvalidateMappedMemoryRanges)
+DEFINE_VULKAN_FUNCTION(vkGetDeviceMemoryCommitment)
+DEFINE_VULKAN_FUNCTION(vkGetBufferMemoryRequirements)
+DEFINE_VULKAN_FUNCTION(vkBindBufferMemory)
+DEFINE_VULKAN_FUNCTION(vkGetImageMemoryRequirements)
+DEFINE_VULKAN_FUNCTION(vkBindImageMemory)
+DEFINE_VULKAN_FUNCTION(vkGetImageSparseMemoryRequirements)
+DEFINE_VULKAN_FUNCTION(vkGetPhysicalDeviceSparseImageFormatProperties)
+DEFINE_VULKAN_FUNCTION(vkQueueBindSparse)
+DEFINE_VULKAN_FUNCTION(vkCreateFence)
+DEFINE_VULKAN_FUNCTION(vkDestroyFence)
+DEFINE_VULKAN_FUNCTION(vkResetFences)
+DEFINE_VULKAN_FUNCTION(vkGetFenceStatus)
+DEFINE_VULKAN_FUNCTION(vkWaitForFences)
+DEFINE_VULKAN_FUNCTION(vkCreateSemaphore)
+DEFINE_VULKAN_FUNCTION(vkDestroySemaphore)
+DEFINE_VULKAN_FUNCTION(vkCreateEvent)
+DEFINE_VULKAN_FUNCTION(vkDestroyEvent)
+DEFINE_VULKAN_FUNCTION(vkGetEventStatus)
+DEFINE_VULKAN_FUNCTION(vkSetEvent)
+DEFINE_VULKAN_FUNCTION(vkResetEvent)
+DEFINE_VULKAN_FUNCTION(vkCreateQueryPool)
+DEFINE_VULKAN_FUNCTION(vkDestroyQueryPool)
+DEFINE_VULKAN_FUNCTION(vkGetQueryPoolResults)
+DEFINE_VULKAN_FUNCTION(vkResetQueryPool)
+DEFINE_VULKAN_FUNCTION(vkCreateBuffer)
+DEFINE_VULKAN_FUNCTION(vkDestroyBuffer)
+DEFINE_VULKAN_FUNCTION(vkCreateBufferView)
+DEFINE_VULKAN_FUNCTION(vkDestroyBufferView)
+DEFINE_VULKAN_FUNCTION(vkCreateImage)
+DEFINE_VULKAN_FUNCTION(vkDestroyImage)
+DEFINE_VULKAN_FUNCTION(vkGetImageSubresourceLayout)
+DEFINE_VULKAN_FUNCTION(vkCreateImageView)
+DEFINE_VULKAN_FUNCTION(vkDestroyImageView)
+DEFINE_VULKAN_FUNCTION(vkCreateShaderModule)
+DEFINE_VULKAN_FUNCTION(vkDestroyShaderModule)
+DEFINE_VULKAN_FUNCTION(vkCreatePipelineCache)
+DEFINE_VULKAN_FUNCTION(vkDestroyPipelineCache)
+DEFINE_VULKAN_FUNCTION(vkGetPipelineCacheData)
+DEFINE_VULKAN_FUNCTION(vkMergePipelineCaches)
+DEFINE_VULKAN_FUNCTION(vkCreateGraphicsPipelines)
+DEFINE_VULKAN_FUNCTION(vkCreateComputePipelines)
+DEFINE_VULKAN_FUNCTION(vkDestroyPipeline)
+DEFINE_VULKAN_FUNCTION(vkCreatePipelineLayout)
+DEFINE_VULKAN_FUNCTION(vkDestroyPipelineLayout)
+DEFINE_VULKAN_FUNCTION(vkCreateSampler)
+DEFINE_VULKAN_FUNCTION(vkDestroySampler)
+DEFINE_VULKAN_FUNCTION(vkCreateDescriptorSetLayout)
+DEFINE_VULKAN_FUNCTION(vkDestroyDescriptorSetLayout)
+DEFINE_VULKAN_FUNCTION(vkCreateDescriptorPool)
+DEFINE_VULKAN_FUNCTION(vkDestroyDescriptorPool)
+DEFINE_VULKAN_FUNCTION(vkResetDescriptorPool)
+DEFINE_VULKAN_FUNCTION(vkAllocateDescriptorSets)
+DEFINE_VULKAN_FUNCTION(vkFreeDescriptorSets)
+DEFINE_VULKAN_FUNCTION(vkUpdateDescriptorSets)
+DEFINE_VULKAN_FUNCTION(vkCreateFramebuffer)
+DEFINE_VULKAN_FUNCTION(vkDestroyFramebuffer)
+DEFINE_VULKAN_FUNCTION(vkCreateRenderPass)
+DEFINE_VULKAN_FUNCTION(vkDestroyRenderPass)
+DEFINE_VULKAN_FUNCTION(vkGetRenderAreaGranularity)
+DEFINE_VULKAN_FUNCTION(vkCreateCommandPool)
+DEFINE_VULKAN_FUNCTION(vkDestroyCommandPool)
+DEFINE_VULKAN_FUNCTION(vkResetCommandPool)
+DEFINE_VULKAN_FUNCTION(vkAllocateCommandBuffers)
+DEFINE_VULKAN_FUNCTION(vkFreeCommandBuffers)
+DEFINE_VULKAN_FUNCTION(vkBeginCommandBuffer)
+DEFINE_VULKAN_FUNCTION(vkEndCommandBuffer)
+DEFINE_VULKAN_FUNCTION(vkResetCommandBuffer)
+DEFINE_VULKAN_FUNCTION(vkCmdBindPipeline)
+DEFINE_VULKAN_FUNCTION(vkCmdSetViewport)
+DEFINE_VULKAN_FUNCTION(vkCmdSetScissor)
+DEFINE_VULKAN_FUNCTION(vkCmdSetLineWidth)
+DEFINE_VULKAN_FUNCTION(vkCmdSetDepthBias)
+DEFINE_VULKAN_FUNCTION(vkCmdSetBlendConstants)
+DEFINE_VULKAN_FUNCTION(vkCmdSetDepthBounds)
+DEFINE_VULKAN_FUNCTION(vkCmdSetStencilCompareMask)
+DEFINE_VULKAN_FUNCTION(vkCmdSetStencilWriteMask)
+DEFINE_VULKAN_FUNCTION(vkCmdSetStencilReference)
+DEFINE_VULKAN_FUNCTION(vkCmdBindDescriptorSets)
+DEFINE_VULKAN_FUNCTION(vkCmdBindIndexBuffer)
+DEFINE_VULKAN_FUNCTION(vkCmdBindVertexBuffers)
+DEFINE_VULKAN_FUNCTION(vkCmdDraw)
+DEFINE_VULKAN_FUNCTION(vkCmdDrawIndexed)
+DEFINE_VULKAN_FUNCTION(vkCmdDrawIndirect)
+DEFINE_VULKAN_FUNCTION(vkCmdDrawIndexedIndirect)
+DEFINE_VULKAN_FUNCTION(vkCmdDispatch)
+DEFINE_VULKAN_FUNCTION(vkCmdDispatchIndirect)
+DEFINE_VULKAN_FUNCTION(vkCmdCopyBuffer)
+DEFINE_VULKAN_FUNCTION(vkCmdCopyImage)
+DEFINE_VULKAN_FUNCTION(vkCmdBlitImage)
+DEFINE_VULKAN_FUNCTION(vkCmdCopyBufferToImage)
+DEFINE_VULKAN_FUNCTION(vkCmdCopyImageToBuffer)
+DEFINE_VULKAN_FUNCTION(vkCmdUpdateBuffer)
+DEFINE_VULKAN_FUNCTION(vkCmdFillBuffer)
+DEFINE_VULKAN_FUNCTION(vkCmdClearColorImage)
+DEFINE_VULKAN_FUNCTION(vkCmdClearDepthStencilImage)
+DEFINE_VULKAN_FUNCTION(vkCmdClearAttachments)
+DEFINE_VULKAN_FUNCTION(vkCmdResolveImage)
+DEFINE_VULKAN_FUNCTION(vkCmdSetEvent)
+DEFINE_VULKAN_FUNCTION(vkCmdResetEvent)
+DEFINE_VULKAN_FUNCTION(vkCmdWaitEvents)
+DEFINE_VULKAN_FUNCTION(vkCmdPipelineBarrier)
+DEFINE_VULKAN_FUNCTION(vkCmdBeginQuery)
+DEFINE_VULKAN_FUNCTION(vkCmdEndQuery)
+DEFINE_VULKAN_FUNCTION(vkCmdResetQueryPool)
+DEFINE_VULKAN_FUNCTION(vkCmdWriteTimestamp)
+DEFINE_VULKAN_FUNCTION(vkCmdCopyQueryPoolResults)
+DEFINE_VULKAN_FUNCTION(vkCmdPushConstants)
+DEFINE_VULKAN_FUNCTION(vkCmdBeginRenderPass)
+DEFINE_VULKAN_FUNCTION(vkCmdNextSubpass)
+DEFINE_VULKAN_FUNCTION(vkCmdEndRenderPass)
+DEFINE_VULKAN_FUNCTION(vkCmdExecuteCommands)
+DEFINE_VULKAN_FUNCTION(vkGetPhysicalDeviceFeatures2)
+DEFINE_VULKAN_FUNCTION(vkGetPhysicalDeviceProperties2)
+DEFINE_VULKAN_FUNCTION(vkGetPhysicalDeviceFormatProperties2)
+DEFINE_VULKAN_FUNCTION(vkGetPhysicalDeviceImageFormatProperties2)
+DEFINE_VULKAN_FUNCTION(vkGetPhysicalDeviceQueueFamilyProperties2)
+DEFINE_VULKAN_FUNCTION(vkGetPhysicalDeviceMemoryProperties2)
+DEFINE_VULKAN_FUNCTION(vkGetPhysicalDeviceSparseImageFormatProperties2)
+DEFINE_VULKAN_FUNCTION(vkTrimCommandPool)
+DEFINE_VULKAN_FUNCTION(vkGetPhysicalDeviceExternalBufferProperties)
+DEFINE_VULKAN_FUNCTION(vkGetPhysicalDeviceExternalSemaphoreProperties)
+DEFINE_VULKAN_FUNCTION(vkGetPhysicalDeviceExternalFenceProperties)
+DEFINE_VULKAN_FUNCTION(vkEnumeratePhysicalDeviceGroups)
+DEFINE_VULKAN_FUNCTION(vkGetDeviceGroupPeerMemoryFeatures)
+DEFINE_VULKAN_FUNCTION(vkBindBufferMemory2)
+DEFINE_VULKAN_FUNCTION(vkBindImageMemory2)
+DEFINE_VULKAN_FUNCTION(vkCmdSetDeviceMask)
+DEFINE_VULKAN_FUNCTION(vkCmdDispatchBase)
+DEFINE_VULKAN_FUNCTION(vkCreateDescriptorUpdateTemplate)
+DEFINE_VULKAN_FUNCTION(vkDestroyDescriptorUpdateTemplate)
+DEFINE_VULKAN_FUNCTION(vkUpdateDescriptorSetWithTemplate)
+DEFINE_VULKAN_FUNCTION(vkGetBufferMemoryRequirements2)
+DEFINE_VULKAN_FUNCTION(vkGetImageMemoryRequirements2)
+DEFINE_VULKAN_FUNCTION(vkGetImageSparseMemoryRequirements2)
+DEFINE_VULKAN_FUNCTION(vkCreateSamplerYcbcrConversion)
+DEFINE_VULKAN_FUNCTION(vkDestroySamplerYcbcrConversion)
+DEFINE_VULKAN_FUNCTION(vkGetDeviceQueue2)
+DEFINE_VULKAN_FUNCTION(vkGetDescriptorSetLayoutSupport)
+DEFINE_VULKAN_FUNCTION(vkCreateRenderPass2)
+DEFINE_VULKAN_FUNCTION(vkCmdBeginRenderPass2)
+DEFINE_VULKAN_FUNCTION(vkCmdNextSubpass2)
+DEFINE_VULKAN_FUNCTION(vkCmdEndRenderPass2)
+DEFINE_VULKAN_FUNCTION(vkGetSemaphoreCounterValue)
+DEFINE_VULKAN_FUNCTION(vkWaitSemaphores)
+DEFINE_VULKAN_FUNCTION(vkSignalSemaphore)
+DEFINE_VULKAN_FUNCTION(vkCmdDrawIndirectCount)
+DEFINE_VULKAN_FUNCTION(vkCmdDrawIndexedIndirectCount)
+DEFINE_VULKAN_FUNCTION(vkGetBufferOpaqueCaptureAddress)
+DEFINE_VULKAN_FUNCTION(vkGetBufferDeviceAddress)
+DEFINE_VULKAN_FUNCTION(vkGetDeviceMemoryOpaqueCaptureAddress)
+
+#if defined(VK_AMD_BUFFER_MARKER_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkCmdWriteBufferMarkerAMD)
+#endif
+
+#if defined(VK_AMD_DISPLAY_NATIVE_HDR_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkSetLocalDimmingAMD)
+#endif
+
+#if defined(VK_AMD_SHADER_INFO_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkGetShaderInfoAMD)
+#endif
+
+#if defined(VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkGetPhysicalDeviceCalibrateableTimeDomainsEXT)
+	DEFINE_VULKAN_FUNCTION(vkGetCalibratedTimestampsEXT)
+#endif
+
+#if defined(VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkCmdBeginConditionalRenderingEXT)
+	DEFINE_VULKAN_FUNCTION(vkCmdEndConditionalRenderingEXT)
+#endif
+
+#if defined(VK_EXT_DEBUG_MARKER_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkDebugMarkerSetObjectNameEXT)
+	DEFINE_VULKAN_FUNCTION(vkDebugMarkerSetObjectTagEXT)
+	DEFINE_VULKAN_FUNCTION(vkCmdDebugMarkerBeginEXT)
+	DEFINE_VULKAN_FUNCTION(vkCmdDebugMarkerEndEXT)
+	DEFINE_VULKAN_FUNCTION(vkCmdDebugMarkerInsertEXT)
+#endif
+
+#if defined(VK_EXT_DEBUG_REPORT_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkCreateDebugReportCallbackEXT)
+	DEFINE_VULKAN_FUNCTION(vkDestroyDebugReportCallbackEXT)
+	DEFINE_VULKAN_FUNCTION(vkDebugReportMessageEXT)
+#endif
+
+#if defined(VK_EXT_DEBUG_UTILS_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkSetDebugUtilsObjectNameEXT)
+	DEFINE_VULKAN_FUNCTION(vkSetDebugUtilsObjectTagEXT)
+	DEFINE_VULKAN_FUNCTION(vkQueueBeginDebugUtilsLabelEXT)
+	DEFINE_VULKAN_FUNCTION(vkQueueEndDebugUtilsLabelEXT)
+	DEFINE_VULKAN_FUNCTION(vkQueueInsertDebugUtilsLabelEXT)
+	DEFINE_VULKAN_FUNCTION(vkCmdBeginDebugUtilsLabelEXT)
+	DEFINE_VULKAN_FUNCTION(vkCmdEndDebugUtilsLabelEXT)
+	DEFINE_VULKAN_FUNCTION(vkCmdInsertDebugUtilsLabelEXT)
+	DEFINE_VULKAN_FUNCTION(vkCreateDebugUtilsMessengerEXT)
+	DEFINE_VULKAN_FUNCTION(vkDestroyDebugUtilsMessengerEXT)
+	DEFINE_VULKAN_FUNCTION(vkSubmitDebugUtilsMessageEXT)
+#endif
+
+#if defined(VK_EXT_DIRECT_MODE_DISPLAY_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkReleaseDisplayEXT)
+#endif
+
+#if defined(VK_EXT_DISCARD_RECTANGLES_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkCmdSetDiscardRectangleEXT)
+#endif
+
+#if defined(VK_EXT_DISPLAY_CONTROL_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkDisplayPowerControlEXT)
+	DEFINE_VULKAN_FUNCTION(vkRegisterDeviceEventEXT)
+	DEFINE_VULKAN_FUNCTION(vkRegisterDisplayEventEXT)
+	DEFINE_VULKAN_FUNCTION(vkGetSwapchainCounterEXT)
+#endif
+
+#if defined(VK_EXT_DISPLAY_SURFACE_COUNTER_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkGetPhysicalDeviceSurfaceCapabilities2EXT)
+#endif
+
+#if defined(VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkCmdSetCullModeEXT)
+	DEFINE_VULKAN_FUNCTION(vkCmdSetFrontFaceEXT)
+	DEFINE_VULKAN_FUNCTION(vkCmdSetPrimitiveTopologyEXT)
+	DEFINE_VULKAN_FUNCTION(vkCmdSetViewportWithCountEXT)
+	DEFINE_VULKAN_FUNCTION(vkCmdSetScissorWithCountEXT)
+	DEFINE_VULKAN_FUNCTION(vkCmdBindVertexBuffers2EXT)
+	DEFINE_VULKAN_FUNCTION(vkCmdSetDepthTestEnableEXT)
+	DEFINE_VULKAN_FUNCTION(vkCmdSetDepthWriteEnableEXT)
+	DEFINE_VULKAN_FUNCTION(vkCmdSetDepthCompareOpEXT)
+	DEFINE_VULKAN_FUNCTION(vkCmdSetDepthBoundsTestEnableEXT)
+	DEFINE_VULKAN_FUNCTION(vkCmdSetStencilTestEnableEXT)
+	DEFINE_VULKAN_FUNCTION(vkCmdSetStencilOpEXT)
+#endif
+
+#if defined(VK_EXT_EXTERNAL_MEMORY_HOST_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkGetMemoryHostPointerPropertiesEXT)
+#endif
+
+#if defined(VK_EXT_HDR_METADATA_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkSetHdrMetadataEXT)
+#endif
+
+#if defined(VK_EXT_HEADLESS_SURFACE_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkCreateHeadlessSurfaceEXT)
+#endif
+
+#if defined(VK_EXT_IMAGE_DRM_FORMAT_MODIFIER_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkGetImageDrmFormatModifierPropertiesEXT)
+#endif
+
+#if defined(VK_EXT_LINE_RASTERIZATION_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkCmdSetLineStippleEXT)
+#endif
+
+#if defined(VK_EXT_PRIVATE_DATA_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkCreatePrivateDataSlotEXT)
+	DEFINE_VULKAN_FUNCTION(vkDestroyPrivateDataSlotEXT)
+	DEFINE_VULKAN_FUNCTION(vkSetPrivateDataEXT)
+	DEFINE_VULKAN_FUNCTION(vkGetPrivateDataEXT)
+#endif
+
+#if defined(VK_EXT_SAMPLE_LOCATIONS_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkCmdSetSampleLocationsEXT)
+	DEFINE_VULKAN_FUNCTION(vkGetPhysicalDeviceMultisamplePropertiesEXT)
+#endif
+
+#if defined(VK_EXT_TOOLING_INFO_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkGetPhysicalDeviceToolPropertiesEXT)
+#endif
+
+#if defined(VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkCmdBindTransformFeedbackBuffersEXT)
+	DEFINE_VULKAN_FUNCTION(vkCmdBeginTransformFeedbackEXT)
+	DEFINE_VULKAN_FUNCTION(vkCmdEndTransformFeedbackEXT)
+	DEFINE_VULKAN_FUNCTION(vkCmdBeginQueryIndexedEXT)
+	DEFINE_VULKAN_FUNCTION(vkCmdEndQueryIndexedEXT)
+	DEFINE_VULKAN_FUNCTION(vkCmdDrawIndirectByteCountEXT)
+#endif
+
+#if defined(VK_EXT_VALIDATION_CACHE_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkCreateValidationCacheEXT)
+	DEFINE_VULKAN_FUNCTION(vkDestroyValidationCacheEXT)
+	DEFINE_VULKAN_FUNCTION(vkGetValidationCacheDataEXT)
+	DEFINE_VULKAN_FUNCTION(vkMergeValidationCachesEXT)
+#endif
+
+#if defined(VK_GOOGLE_DISPLAY_TIMING_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkGetRefreshCycleDurationGOOGLE)
+	DEFINE_VULKAN_FUNCTION(vkGetPastPresentationTimingGOOGLE)
+#endif
+
+#if defined(VK_INTEL_PERFORMANCE_QUERY_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkInitializePerformanceApiINTEL)
+	DEFINE_VULKAN_FUNCTION(vkUninitializePerformanceApiINTEL)
+	DEFINE_VULKAN_FUNCTION(vkCmdSetPerformanceMarkerINTEL)
+	DEFINE_VULKAN_FUNCTION(vkCmdSetPerformanceStreamMarkerINTEL)
+	DEFINE_VULKAN_FUNCTION(vkCmdSetPerformanceOverrideINTEL)
+	DEFINE_VULKAN_FUNCTION(vkAcquirePerformanceConfigurationINTEL)
+	DEFINE_VULKAN_FUNCTION(vkReleasePerformanceConfigurationINTEL)
+	DEFINE_VULKAN_FUNCTION(vkQueueSetPerformanceConfigurationINTEL)
+	DEFINE_VULKAN_FUNCTION(vkGetPerformanceParameterINTEL)
+#endif
+
+#if defined(VK_KHR_COPY_COMMANDS_2_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkCmdCopyBuffer2KHR)
+	DEFINE_VULKAN_FUNCTION(vkCmdCopyImage2KHR)
+	DEFINE_VULKAN_FUNCTION(vkCmdBlitImage2KHR)
+	DEFINE_VULKAN_FUNCTION(vkCmdCopyBufferToImage2KHR)
+	DEFINE_VULKAN_FUNCTION(vkCmdCopyImageToBuffer2KHR)
+	DEFINE_VULKAN_FUNCTION(vkCmdResolveImage2KHR)
+#endif
+
+#if defined(VK_KHR_DESCRIPTOR_UPDATE_TEMPLATE_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkCmdPushDescriptorSetWithTemplateKHR)
+#endif
+
+#if defined(VK_KHR_DEVICE_GROUP_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkGetDeviceGroupPresentCapabilitiesKHR)
+	DEFINE_VULKAN_FUNCTION(vkGetDeviceGroupSurfacePresentModesKHR)
+	DEFINE_VULKAN_FUNCTION(vkAcquireNextImage2KHR)
+	DEFINE_VULKAN_FUNCTION(vkGetPhysicalDevicePresentRectanglesKHR)
+#endif
+
+#if defined(VK_KHR_DISPLAY_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkGetPhysicalDeviceDisplayPropertiesKHR)
+	DEFINE_VULKAN_FUNCTION(vkGetPhysicalDeviceDisplayPlanePropertiesKHR)
+	DEFINE_VULKAN_FUNCTION(vkGetDisplayPlaneSupportedDisplaysKHR)
+	DEFINE_VULKAN_FUNCTION(vkGetDisplayModePropertiesKHR)
+	DEFINE_VULKAN_FUNCTION(vkCreateDisplayModeKHR)
+	DEFINE_VULKAN_FUNCTION(vkGetDisplayPlaneCapabilitiesKHR)
+	DEFINE_VULKAN_FUNCTION(vkCreateDisplayPlaneSurfaceKHR)
+#endif
+
+#if defined(VK_KHR_DISPLAY_SWAPCHAIN_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkCreateSharedSwapchainsKHR)
+#endif
+
+#if defined(VK_KHR_EXTERNAL_FENCE_FD_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkGetFenceFdKHR)
+	DEFINE_VULKAN_FUNCTION(vkImportFenceFdKHR)
+#endif
+
+#if defined(VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkGetMemoryFdKHR)
+	DEFINE_VULKAN_FUNCTION(vkGetMemoryFdPropertiesKHR)
+#endif
+
+#if defined(VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkGetSemaphoreFdKHR)
+	DEFINE_VULKAN_FUNCTION(vkImportSemaphoreFdKHR)
+#endif
+
+#if defined(VK_KHR_FRAGMENT_SHADING_RATE_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkCmdSetFragmentShadingRateKHR)
+	DEFINE_VULKAN_FUNCTION(vkGetPhysicalDeviceFragmentShadingRatesKHR)
+#endif
+
+#if defined(VK_KHR_GET_DISPLAY_PROPERTIES_2_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkGetPhysicalDeviceDisplayProperties2KHR)
+	DEFINE_VULKAN_FUNCTION(vkGetPhysicalDeviceDisplayPlaneProperties2KHR)
+	DEFINE_VULKAN_FUNCTION(vkGetDisplayModeProperties2KHR)
+	DEFINE_VULKAN_FUNCTION(vkGetDisplayPlaneCapabilities2KHR)
+#endif
+
+#if defined(VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkGetPhysicalDeviceSurfaceCapabilities2KHR)
+	DEFINE_VULKAN_FUNCTION(vkGetPhysicalDeviceSurfaceFormats2KHR)
+#endif
+
+#if defined(VK_KHR_PERFORMANCE_QUERY_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR)
+	DEFINE_VULKAN_FUNCTION(vkGetPhysicalDeviceQueueFamilyPerformanceQueryPassesKHR)
+	DEFINE_VULKAN_FUNCTION(vkAcquireProfilingLockKHR)
+	DEFINE_VULKAN_FUNCTION(vkReleaseProfilingLockKHR)
+#endif
+
+#if defined(VK_KHR_PIPELINE_EXECUTABLE_PROPERTIES_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkGetPipelineExecutablePropertiesKHR)
+	DEFINE_VULKAN_FUNCTION(vkGetPipelineExecutableStatisticsKHR)
+	DEFINE_VULKAN_FUNCTION(vkGetPipelineExecutableInternalRepresentationsKHR)
+#endif
+
+#if defined(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkCmdPushDescriptorSetKHR)
+#endif
+
+#if defined(VK_KHR_SHARED_PRESENTABLE_IMAGE_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkGetSwapchainStatusKHR)
+#endif
+
+#if defined(VK_KHR_SURFACE_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkDestroySurfaceKHR)
+	DEFINE_VULKAN_FUNCTION(vkGetPhysicalDeviceSurfaceSupportKHR)
+	DEFINE_VULKAN_FUNCTION(vkGetPhysicalDeviceSurfaceCapabilitiesKHR)
+	DEFINE_VULKAN_FUNCTION(vkGetPhysicalDeviceSurfaceFormatsKHR)
+	DEFINE_VULKAN_FUNCTION(vkGetPhysicalDeviceSurfacePresentModesKHR)
+#endif
+
+#if defined(VK_KHR_SWAPCHAIN_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkCreateSwapchainKHR)
+	DEFINE_VULKAN_FUNCTION(vkDestroySwapchainKHR)
+	DEFINE_VULKAN_FUNCTION(vkGetSwapchainImagesKHR)
+	DEFINE_VULKAN_FUNCTION(vkAcquireNextImageKHR)
+	DEFINE_VULKAN_FUNCTION(vkQueuePresentKHR)
+#endif
+
+#if defined(VK_NVX_IMAGE_VIEW_HANDLE_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkGetImageViewHandleNVX)
+	DEFINE_VULKAN_FUNCTION(vkGetImageViewAddressNVX)
+#endif
+
+#if defined(VK_NV_CLIP_SPACE_W_SCALING_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkCmdSetViewportWScalingNV)
+#endif
+
+#if defined(VK_NV_COOPERATIVE_MATRIX_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkGetPhysicalDeviceCooperativeMatrixPropertiesNV)
+#endif
+
+#if defined(VK_NV_COVERAGE_REDUCTION_MODE_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkGetPhysicalDeviceSupportedFramebufferMixedSamplesCombinationsNV)
+#endif
+
+#if defined(VK_NV_DEVICE_DIAGNOSTIC_CHECKPOINTS_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkCmdSetCheckpointNV)
+	DEFINE_VULKAN_FUNCTION(vkGetQueueCheckpointDataNV)
+#endif
+
+#if defined(VK_NV_DEVICE_GENERATED_COMMANDS_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkCmdExecuteGeneratedCommandsNV)
+	DEFINE_VULKAN_FUNCTION(vkCmdPreprocessGeneratedCommandsNV)
+	DEFINE_VULKAN_FUNCTION(vkCmdBindPipelineShaderGroupNV)
+	DEFINE_VULKAN_FUNCTION(vkGetGeneratedCommandsMemoryRequirementsNV)
+	DEFINE_VULKAN_FUNCTION(vkCreateIndirectCommandsLayoutNV)
+	DEFINE_VULKAN_FUNCTION(vkDestroyIndirectCommandsLayoutNV)
+#endif
+
+#if defined(VK_NV_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkGetPhysicalDeviceExternalImageFormatPropertiesNV)
+#endif
+
+#if defined(VK_NV_MESH_SHADER_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkCmdDrawMeshTasksNV)
+	DEFINE_VULKAN_FUNCTION(vkCmdDrawMeshTasksIndirectNV)
+	DEFINE_VULKAN_FUNCTION(vkCmdDrawMeshTasksIndirectCountNV)
+#endif
+
+#if defined(VK_NV_RAY_TRACING_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkCompileDeferredNV)
+	DEFINE_VULKAN_FUNCTION(vkCreateAccelerationStructureNV)
+	DEFINE_VULKAN_FUNCTION(vkGetAccelerationStructureMemoryRequirementsNV)
+	DEFINE_VULKAN_FUNCTION(vkCmdCopyAccelerationStructureNV)
+	DEFINE_VULKAN_FUNCTION(vkCmdBuildAccelerationStructureNV)
+	DEFINE_VULKAN_FUNCTION(vkCmdTraceRaysNV)
+	DEFINE_VULKAN_FUNCTION(vkGetAccelerationStructureHandleNV)
+	DEFINE_VULKAN_FUNCTION(vkCreateRayTracingPipelinesNV)
+#endif
+
+#if defined(VK_NV_SCISSOR_EXCLUSIVE_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkCmdSetExclusiveScissorNV)
+#endif
+
+#if defined(VK_NV_SHADING_RATE_IMAGE_EXTENSION_NAME)
+	DEFINE_VULKAN_FUNCTION(vkCmdBindShadingRateImageNV)
+	DEFINE_VULKAN_FUNCTION(vkCmdSetViewportShadingRatePaletteNV)
+	DEFINE_VULKAN_FUNCTION(vkCmdSetCoarseSampleOrderNV)
+#endif
+
+#if defined(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME) && defined(VK_ENABLE_BETA_EXTENSIONS)
+	DEFINE_VULKAN_FUNCTION(vkCreateDeferredOperationKHR)
+	DEFINE_VULKAN_FUNCTION(vkDestroyDeferredOperationKHR)
+	DEFINE_VULKAN_FUNCTION(vkGetDeferredOperationMaxConcurrencyKHR)
+	DEFINE_VULKAN_FUNCTION(vkGetDeferredOperationResultKHR)
+	DEFINE_VULKAN_FUNCTION(vkDeferredOperationJoinKHR)
+#endif
+
+#if defined(VK_KHR_RAY_TRACING_EXTENSION_NAME) && defined(VK_ENABLE_BETA_EXTENSIONS)
+	DEFINE_VULKAN_FUNCTION(vkDestroyAccelerationStructureKHR)
+	DEFINE_VULKAN_FUNCTION(vkGetAccelerationStructureMemoryRequirementsKHR)
+	DEFINE_VULKAN_FUNCTION(vkBindAccelerationStructureMemoryKHR)
+	DEFINE_VULKAN_FUNCTION(vkCmdCopyAccelerationStructureKHR)
+	DEFINE_VULKAN_FUNCTION(vkCopyAccelerationStructureKHR)
+	DEFINE_VULKAN_FUNCTION(vkCmdCopyAccelerationStructureToMemoryKHR)
+	DEFINE_VULKAN_FUNCTION(vkCopyAccelerationStructureToMemoryKHR)
+	DEFINE_VULKAN_FUNCTION(vkCmdCopyMemoryToAccelerationStructureKHR)
+	DEFINE_VULKAN_FUNCTION(vkCopyMemoryToAccelerationStructureKHR)
+	DEFINE_VULKAN_FUNCTION(vkCmdWriteAccelerationStructuresPropertiesKHR)
+	DEFINE_VULKAN_FUNCTION(vkWriteAccelerationStructuresPropertiesKHR)
+	DEFINE_VULKAN_FUNCTION(vkCmdTraceRaysKHR)
+	DEFINE_VULKAN_FUNCTION(vkGetRayTracingShaderGroupHandlesKHR)
+	DEFINE_VULKAN_FUNCTION(vkGetRayTracingCaptureReplayShaderGroupHandlesKHR)
+	DEFINE_VULKAN_FUNCTION(vkCreateRayTracingPipelinesKHR)
+	DEFINE_VULKAN_FUNCTION(vkCmdTraceRaysIndirectKHR)
+	DEFINE_VULKAN_FUNCTION(vkGetDeviceAccelerationStructureCompatibilityKHR)
+	DEFINE_VULKAN_FUNCTION(vkCreateAccelerationStructureKHR)
+	DEFINE_VULKAN_FUNCTION(vkCmdBuildAccelerationStructureKHR)
+	DEFINE_VULKAN_FUNCTION(vkCmdBuildAccelerationStructureIndirectKHR)
+	DEFINE_VULKAN_FUNCTION(vkBuildAccelerationStructureKHR)
+	DEFINE_VULKAN_FUNCTION(vkGetAccelerationStructureDeviceAddressKHR)
+#endif
+
+#if defined(VK_ANDROID_EXTERNAL_MEMORY_ANDROID_HARDWARE_BUFFER_EXTENSION_NAME) && defined(VK_USE_PLATFORM_ANDROID_KHR)
+	DEFINE_VULKAN_FUNCTION(vkGetAndroidHardwareBufferPropertiesANDROID)
+	DEFINE_VULKAN_FUNCTION(vkGetMemoryAndroidHardwareBufferANDROID)
+#endif
+
+#if defined(VK_ANDROID_NATIVE_BUFFER_NAME) && defined(VK_USE_PLATFORM_ANDROID_KHR)
+	DEFINE_VULKAN_FUNCTION(vkGetSwapchainGrallocUsageANDROID)
+	DEFINE_VULKAN_FUNCTION(vkGetSwapchainGrallocUsage2ANDROID)
+	DEFINE_VULKAN_FUNCTION(vkAcquireImageANDROID)
+	DEFINE_VULKAN_FUNCTION(vkQueueSignalReleaseImageANDROID)
+#endif
+
+#if defined(VK_KHR_ANDROID_SURFACE_EXTENSION_NAME) && defined(VK_USE_PLATFORM_ANDROID_KHR)
+	DEFINE_VULKAN_FUNCTION(vkCreateAndroidSurfaceKHR)
+#endif
+
+#if defined(VK_EXT_DIRECTFB_SURFACE_EXTENSION_NAME) && defined(VK_USE_PLATFORM_DIRECTFB_EXT)
+	DEFINE_VULKAN_FUNCTION(vkCreateDirectFBSurfaceEXT)
+	DEFINE_VULKAN_FUNCTION(vkGetPhysicalDeviceDirectFBPresentationSupportEXT)
+#endif
+
+#if defined(VK_FUCHSIA_IMAGEPIPE_SURFACE_EXTENSION_NAME) && defined(VK_USE_PLATFORM_FUCHSIA)
+	DEFINE_VULKAN_FUNCTION(vkCreateImagePipeSurfaceFUCHSIA)
+#endif
+
+#if defined(VK_GGP_STREAM_DESCRIPTOR_SURFACE_EXTENSION_NAME) && defined(VK_USE_PLATFORM_GGP)
+	DEFINE_VULKAN_FUNCTION(vkCreateStreamDescriptorSurfaceGGP)
+#endif
+
+#if defined(VK_MVK_IOS_SURFACE_EXTENSION_NAME) && defined(VK_USE_PLATFORM_IOS_MVK)
+	DEFINE_VULKAN_FUNCTION(vkCreateIOSSurfaceMVK)
+#endif
+
+#if defined(VK_MVK_MACOS_SURFACE_EXTENSION_NAME) && defined(VK_USE_PLATFORM_MACOS_MVK)
+	DEFINE_VULKAN_FUNCTION(vkCreateMacOSSurfaceMVK)
+#endif
+
+#if defined(VK_EXT_METAL_SURFACE_EXTENSION_NAME) && defined(VK_USE_PLATFORM_METAL_EXT)
+	DEFINE_VULKAN_FUNCTION(vkCreateMetalSurfaceEXT)
+#endif
+
+#if defined(VK_NN_VI_SURFACE_EXTENSION_NAME) && defined(VK_USE_PLATFORM_VI_NN)
+	DEFINE_VULKAN_FUNCTION(vkCreateViSurfaceNN)
+#endif
+
+#if defined(VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME) && defined(VK_USE_PLATFORM_WAYLAND_KHR)
+	DEFINE_VULKAN_FUNCTION(vkCreateWaylandSurfaceKHR)
+	DEFINE_VULKAN_FUNCTION(vkGetPhysicalDeviceWaylandPresentationSupportKHR)
+#endif
+
+#if defined(VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME) && defined(VK_USE_PLATFORM_WIN32_KHR)
+	DEFINE_VULKAN_FUNCTION(vkGetPhysicalDeviceSurfacePresentModes2EXT)
+	DEFINE_VULKAN_FUNCTION(vkGetDeviceGroupSurfacePresentModes2EXT)
+	DEFINE_VULKAN_FUNCTION(vkAcquireFullScreenExclusiveModeEXT)
+	DEFINE_VULKAN_FUNCTION(vkReleaseFullScreenExclusiveModeEXT)
+#endif
+
+#if defined(VK_KHR_EXTERNAL_FENCE_WIN32_EXTENSION_NAME) && defined(VK_USE_PLATFORM_WIN32_KHR)
+	DEFINE_VULKAN_FUNCTION(vkGetFenceWin32HandleKHR)
+	DEFINE_VULKAN_FUNCTION(vkImportFenceWin32HandleKHR)
+#endif
+
+#if defined(VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME) && defined(VK_USE_PLATFORM_WIN32_KHR)
+	DEFINE_VULKAN_FUNCTION(vkGetMemoryWin32HandleKHR)
+	DEFINE_VULKAN_FUNCTION(vkGetMemoryWin32HandlePropertiesKHR)
+#endif
+
+#if defined(VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME) && defined(VK_USE_PLATFORM_WIN32_KHR)
+	DEFINE_VULKAN_FUNCTION(vkGetSemaphoreWin32HandleKHR)
+	DEFINE_VULKAN_FUNCTION(vkImportSemaphoreWin32HandleKHR)
+#endif
+
+#if defined(VK_KHR_WIN32_SURFACE_EXTENSION_NAME) && defined(VK_USE_PLATFORM_WIN32_KHR)
+	DEFINE_VULKAN_FUNCTION(vkCreateWin32SurfaceKHR)
+	DEFINE_VULKAN_FUNCTION(vkGetPhysicalDeviceWin32PresentationSupportKHR)
+#endif
+
+#if defined(VK_NV_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME) && defined(VK_USE_PLATFORM_WIN32_KHR)
+	DEFINE_VULKAN_FUNCTION(vkGetMemoryWin32HandleNV)
+#endif
+
+#if defined(VK_KHR_XCB_SURFACE_EXTENSION_NAME) && defined(VK_USE_PLATFORM_XCB_KHR)
+	DEFINE_VULKAN_FUNCTION(vkCreateXcbSurfaceKHR)
+	DEFINE_VULKAN_FUNCTION(vkGetPhysicalDeviceXcbPresentationSupportKHR)
+#endif
+
+#if defined(VK_KHR_XLIB_SURFACE_EXTENSION_NAME) && defined(VK_USE_PLATFORM_XLIB_KHR)
+	DEFINE_VULKAN_FUNCTION(vkCreateXlibSurfaceKHR)
+	DEFINE_VULKAN_FUNCTION(vkGetPhysicalDeviceXlibPresentationSupportKHR)
+#endif
+
+#if defined(VK_EXT_ACQUIRE_XLIB_DISPLAY_EXTENSION_NAME) && defined(VK_USE_PLATFORM_XLIB_XRANDR_EXT)
+	DEFINE_VULKAN_FUNCTION(vkAcquireXlibDisplayEXT)
+	DEFINE_VULKAN_FUNCTION(vkGetRandROutputDisplayEXT)
+#endif
+
+}
+
+#endif
