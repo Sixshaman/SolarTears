@@ -1,5 +1,5 @@
 #include "VulkanCDeviceParameters.hpp"
-#include "3rdParty/VulkanGenericStructures.h"
+#include "../../../3rd party/VulkanGenericStructures/Include/VulkanGenericStructures.h"
 #include "VulkanCFunctions.hpp"
 #include "VulkanCUtils.hpp"
 #include <unordered_set>

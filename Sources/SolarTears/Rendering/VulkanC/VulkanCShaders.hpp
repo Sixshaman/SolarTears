@@ -1,6 +1,6 @@
 #pragma once
 
-#include "3rdParty/spirv_reflect.h"
+#include "../../../3rd party/SPIRV-Reflect/spirv_reflect.h"
 #include <vulkan/vulkan.h>
 #include <unordered_map>
 #include <memory>

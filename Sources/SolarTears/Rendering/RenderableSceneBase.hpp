@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../Math/3rdParty/DirectXMath/Inc/DirectXMath.h"
+#include "../../3rd party/DirectXMath/Inc/DirectXMath.h"
 #include "../Core/Scene/Scene.hpp"
 #include "RenderableSceneMisc.hpp"
 

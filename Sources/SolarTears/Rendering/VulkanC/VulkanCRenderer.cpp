@@ -12,7 +12,7 @@
 #include "Scene/VulkanCSceneBuilder.hpp"
 #include "../../Core/Util.hpp"
 #include "../../Core/ThreadPool.hpp"
-#include "3rdParty/VulkanGenericStructures.h"
+#include "../../../3rd party/VulkanGenericStructures/Include/VulkanGenericStructures.h"
 #include <array>
 #include <unordered_set>
 
