@@ -19,6 +19,11 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\3rd party\DDSTextureLoaderVk\DDSTextureLoaderVk.h" />
+    <ClInclude Include="..\3rd party\DDSTextureLoaderVk\DDSVulkanFunctionsInclude.h" />
+    <ClInclude Include="..\3rd party\SPIRV-Reflect\include\spirv\unified1\spirv.h" />
+    <ClInclude Include="..\3rd party\SPIRV-Reflect\spirv_reflect.h" />
+    <ClInclude Include="..\3rd party\VulkanGenericStructures\Include\VulkanGenericStructures.h" />
     <ClInclude Include="Core\Allocators\StackAllocator.hpp" />
     <ClInclude Include="Core\Application.hpp" />
     <ClInclude Include="Core\DataStructures\SmallVector.h" />
@@ -60,6 +65,8 @@
     <ClInclude Include="Rendering\VulkanC\VulkanCWorkerCommandBuffers.hpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\3rd party\DDSTextureLoaderVk\DDSTextureLoaderVk.cpp" />
+    <ClCompile Include="..\3rd party\SPIRV-Reflect\spirv_reflect.c" />
     <ClCompile Include="Core\Allocators\StackAllocator.cpp" />
     <ClCompile Include="Core\Engine.cpp" />
     <ClCompile Include="Core\Scene\Camera.cpp" />
@@ -234,6 +241,7 @@
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <TreatWarningAsError>true</TreatWarningAsError>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
