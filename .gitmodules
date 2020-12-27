@@ -1,0 +1,15 @@
+[submodule "Sources/3rd party/VulkanGenericStructures"]
+	path = Sources/3rd party/VulkanGenericStructures
+	url = https://github.com/Sixshaman/VulkanGenericStructures
+[submodule "Sources/3rd party/DDSTextureLoaderVk"]
+	path = Sources/3rd party/DDSTextureLoaderVk
+	url = https://github.com/Sixshaman/DDSTextureLoaderVk
+[submodule "Sources/3rd party/DirectXMath"]
+	path = Sources/3rd party/DirectXMath
+	url = https://github.com/microsoft/DirectXMath
+[submodule "Sources/3rd party/DirectXTK12"]
+	path = Sources/3rd party/DirectXTK12
+	url = https://github.com/microsoft/DirectXTK12
+[submodule "Sources/3rd party/SPIRV-Reflect"]
+	path = Sources/3rd party/SPIRV-Reflect
+	url = https://github.com/KhronosGroup/SPIRV-Reflect
