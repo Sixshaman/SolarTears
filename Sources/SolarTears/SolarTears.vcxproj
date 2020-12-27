@@ -21,6 +21,7 @@
   <ItemGroup>
     <ClInclude Include="..\3rd party\DDSTextureLoaderVk\DDSTextureLoaderVk.h" />
     <ClInclude Include="..\3rd party\DDSTextureLoaderVk\DDSVulkanFunctionsInclude.h" />
+    <ClInclude Include="..\3rd party\DirectXMath\Inc\DirectXMath.h" />
     <ClInclude Include="..\3rd party\SPIRV-Reflect\include\spirv\unified1\spirv.h" />
     <ClInclude Include="..\3rd party\SPIRV-Reflect\spirv_reflect.h" />
     <ClInclude Include="..\3rd party\VulkanGenericStructures\Include\VulkanGenericStructures.h" />

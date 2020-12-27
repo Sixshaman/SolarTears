@@ -82,6 +82,12 @@
     <Filter Include="3rdParty\DDSTextureLoaderVk">
       <UniqueIdentifier>{5f59595e-8e1f-45b4-bac0-d71fc1609ac9}</UniqueIdentifier>
     </Filter>
+    <Filter Include="3rdParty\DirectXMath">
+      <UniqueIdentifier>{03798935-8b2c-422d-8306-a58df226ad6a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="3rdParty\DirectXMath\Inc">
+      <UniqueIdentifier>{e2962605-bbf7-48cd-8771-ba5709a77bd1}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Platform\Win32\Win32Application.hpp">
@@ -215,6 +221,9 @@
     </ClInclude>
     <ClInclude Include="..\3rd party\DDSTextureLoaderVk\DDSVulkanFunctionsInclude.h">
       <Filter>3rdParty\DDSTextureLoaderVk</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rd party\DirectXMath\Inc\DirectXMath.h">
+      <Filter>3rdParty\DirectXMath\Inc</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
