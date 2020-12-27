@@ -61,6 +61,27 @@
     <Filter Include="3rdParty">
       <UniqueIdentifier>{4527da74-7ce3-4e16-810b-48ed8f0f9fe5}</UniqueIdentifier>
     </Filter>
+    <Filter Include="3rdParty\SPIRV-Reflect">
+      <UniqueIdentifier>{d9145630-b59c-4388-9172-6950fae6373a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="3rdParty\SPIRV-Reflect\include">
+      <UniqueIdentifier>{56c7e61d-9668-420f-8b47-f24cc22175ea}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="3rdParty\SPIRV-Reflect\include\spirv">
+      <UniqueIdentifier>{b3b03f9c-ee24-4efa-a6a8-9aa1a3ec1a22}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="3rdParty\SPIRV-Reflect\include\spirv\unified1">
+      <UniqueIdentifier>{dcf891f2-8d68-4e69-9625-37e2ad6a1035}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="3rdParty\VulkanGenericStructures">
+      <UniqueIdentifier>{c698b880-ea67-4c0f-a57d-2e4c8bdbedd9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="3rdParty\VulkanGenericStructures\Include">
+      <UniqueIdentifier>{357c4dcc-c8c6-49db-a35c-782f60cc176a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="3rdParty\DDSTextureLoaderVk">
+      <UniqueIdentifier>{5f59595e-8e1f-45b4-bac0-d71fc1609ac9}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Platform\Win32\Win32Application.hpp">
@@ -180,6 +201,21 @@
     <ClInclude Include="Rendering\VulkanC\FrameGraph\VulkanCFrameGraphBuilder.hpp">
       <Filter>Rendering\VulkanC\FrameGraph</Filter>
     </ClInclude>
+    <ClInclude Include="..\3rd party\SPIRV-Reflect\spirv_reflect.h">
+      <Filter>3rdParty\SPIRV-Reflect</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rd party\SPIRV-Reflect\include\spirv\unified1\spirv.h">
+      <Filter>3rdParty\SPIRV-Reflect\include\spirv\unified1</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rd party\VulkanGenericStructures\Include\VulkanGenericStructures.h">
+      <Filter>3rdParty\VulkanGenericStructures\Include</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rd party\DDSTextureLoaderVk\DDSTextureLoaderVk.h">
+      <Filter>3rdParty\DDSTextureLoaderVk</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rd party\DDSTextureLoaderVk\DDSVulkanFunctionsInclude.h">
+      <Filter>3rdParty\DDSTextureLoaderVk</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Platform\Win32\Win32Application.cpp">
@@ -289,6 +325,12 @@
     </ClCompile>
     <ClCompile Include="Rendering\VulkanC\FrameGraph\VulkanCFrameGraphBuilder.cpp">
       <Filter>Rendering\VulkanC\FrameGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rd party\SPIRV-Reflect\spirv_reflect.c">
+      <Filter>3rdParty\SPIRV-Reflect</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rd party\DDSTextureLoaderVk\DDSTextureLoaderVk.cpp">
+      <Filter>3rdParty\DDSTextureLoaderVk</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
