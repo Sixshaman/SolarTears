@@ -3,7 +3,7 @@
 #include "../VulkanCFunctions.hpp"
 #include "../VulkanCMemory.hpp"
 #include "../VulkanCShaders.hpp"
-#include "../3rdParty/DDSTextureLoaderVk.h"
+#include "../../../../3rd party/DDSTextureLoaderVk/DDSTextureLoaderVk.h"
 #include <array>
 #include <cassert>
 

@@ -58,6 +58,9 @@
     <Filter Include="Rendering\VulkanC\Scene">
       <UniqueIdentifier>{c333e294-6c60-41cc-9227-20168a7588c4}</UniqueIdentifier>
     </Filter>
+    <Filter Include="3rdParty">
+      <UniqueIdentifier>{4527da74-7ce3-4e16-810b-48ed8f0f9fe5}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Platform\Win32\Win32Application.hpp">

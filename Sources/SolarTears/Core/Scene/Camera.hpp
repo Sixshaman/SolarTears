@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../../Math/3rdParty/DirectXMath/Inc/DirectXMath.h"
-#include "../../Math/3rdParty/DirectXMath/Inc/DirectXCollision.h"
+#include "../../../3rd party/DirectXMath/Inc/DirectXMath.h"
+#include "../../../3rd party/DirectXMath/Inc/DirectXCollision.h"
 
 class Camera
 {
