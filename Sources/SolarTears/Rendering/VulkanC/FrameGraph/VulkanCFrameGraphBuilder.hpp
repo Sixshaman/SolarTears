@@ -93,6 +93,8 @@ namespace VulkanCBindings
 		std::unordered_map<RenderPassName, std::unordered_map<SubresourceName, SubresourceId>>          mRenderPassesSubresourceNameIds;
 		std::unordered_map<RenderPassName, std::unordered_map<SubresourceId, ImageSubresourceMetadata>> mRenderPassesSubresourceMetadatas;
 
+		//Test
+
 		SubresourceName mBackbufferName;
 
 		//Several things that might be needed to create some of the passes
