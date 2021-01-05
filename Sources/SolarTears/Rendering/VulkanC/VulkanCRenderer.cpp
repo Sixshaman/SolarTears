@@ -117,7 +117,7 @@ void VulkanCBindings::Renderer::InitSceneAndFrameGraph(SceneDescription* scene)
 
 
 	//Frame graph
-	mFrameGraph = std::make_unique<VulkanCBindings::FrameGraph>(mDevice);
+	mFrameGraph = std::make_unique<VulkanCBindings::FrameGraph>(mDevice, mGraphicsQueueFamilyIndex, mComputeQueueFamilyIndex, mTransferQueueFamilyIndex);
 
 	VulkanCBindings::FrameGraphBuilder frameGraphBuilder(mFrameGraph.get(), mScene.get(), &mDeviceParameters, &shaderManager);
 
@@ -130,7 +130,7 @@ void VulkanCBindings::Renderer::InitSceneAndFrameGraph(SceneDescription* scene)
 
 	frameGraphBuilder.AssignBackbufferName("Backbuffer");
 
-	frameGraphBuilder.Build();
+	frameGraphBuilder.Build(mMemoryAllocator.get());
 
 	//Baking
 	ThrowIfFailed(vkResetCommandPool(mDevice, mMainTransferCommandPools[0], 0));

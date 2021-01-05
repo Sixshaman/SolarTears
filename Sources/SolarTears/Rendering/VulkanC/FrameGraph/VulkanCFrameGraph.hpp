@@ -16,7 +16,7 @@ namespace VulkanCBindings
 		friend class FrameGraphBuilder;
 
 	public:
-		FrameGraph(VkDevice device);
+		FrameGraph(VkDevice device, uint32_t graphicsQueueIndex, uint32_t computeQueueIndex, uint32_t transferQueueIndex);
 		~FrameGraph();
 
 		void Traverse(WorkerCommandBuffers* commandBuffers, RenderableScene* scene, ThreadPool* threadPool, uint32_t currentFrameResourceIndex);
@@ -30,9 +30,15 @@ namespace VulkanCBindings
 		uint32_t mComputePassCount;
 		uint32_t mTransferPassCount;
 
+		uint32_t mGraphicsQueueFamilyIndex;
+		uint32_t mComputeQueueFamilyIndex;
+		uint32_t mTransferQueueFamilyIndex;
+
 		std::vector<std::unique_ptr<RenderPass>> mRenderPasses;
 
 		std::vector<VkImage>     mImages;
 		std::vector<VkImageView> mImageViews;
+
+		VkDeviceMemory mImageMemory;
 	};
 }

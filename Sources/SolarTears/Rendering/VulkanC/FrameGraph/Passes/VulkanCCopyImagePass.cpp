@@ -4,7 +4,7 @@
 #include "../VulkanCFrameGraphBuilder.hpp"
 #include <array>
 
-VulkanCBindings::CopyImagePass::CopyImagePass(VkDevice device, const FrameGraphBuilder* frameGraphBuilder, const std::string& currentPassName): RenderPass(device, RenderPassType::TRANSFER)
+VulkanCBindings::CopyImagePass::CopyImagePass(VkDevice device, const FrameGraphBuilder* frameGraphBuilder, const std::string& currentPassName): RenderPass(device)
 {
 	mSrcImageRef = frameGraphBuilder->GetRegisteredResource(currentPassName, SrcImageId);
 	mDstImageRef = frameGraphBuilder->GetRegisteredResource(currentPassName, DstImageId);
@@ -21,16 +21,16 @@ void VulkanCBindings::CopyImagePass::Register(FrameGraphBuilder* frameGraphBuild
 		return std::unique_ptr<CopyImagePass>(new CopyImagePass(device, builder, name));
 	};
 
-	frameGraphBuilder->RegisterRenderPass(passName, PassCreateFunc);
+	frameGraphBuilder->RegisterRenderPass(passName, PassCreateFunc, RenderPassType::TRANSFER);
 
 	frameGraphBuilder->RegisterReadSubresource(passName, SrcImageId);
-	frameGraphBuilder->SetPassSubresourceAspectFlags(passName, SrcImageId, VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
+	frameGraphBuilder->SetPassSubresourceAspectFlags(passName, SrcImageId, 0);
 	frameGraphBuilder->SetPassSubresourceStageFlags(passName, SrcImageId, VK_PIPELINE_STAGE_TRANSFER_BIT);
 	frameGraphBuilder->SetPassSubresourceLayout(passName, SrcImageId, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 	frameGraphBuilder->SetPassSubresourceUsage(passName, SrcImageId, VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
 
 	frameGraphBuilder->RegisterWriteSubresource(passName, DstImageId);
-	frameGraphBuilder->SetPassSubresourceAspectFlags(passName, DstImageId, VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
+	frameGraphBuilder->SetPassSubresourceAspectFlags(passName, DstImageId, 0);
 	frameGraphBuilder->SetPassSubresourceStageFlags(passName, DstImageId, VK_PIPELINE_STAGE_TRANSFER_BIT);
 	frameGraphBuilder->SetPassSubresourceLayout(passName, DstImageId, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 	frameGraphBuilder->SetPassSubresourceUsage(passName, DstImageId, VK_IMAGE_USAGE_TRANSFER_DST_BIT);
