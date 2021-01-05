@@ -9,7 +9,7 @@
 #include "../VulkanCFrameGraphConfig.hpp"
 #include <array>
 
-VulkanCBindings::GBufferPass::GBufferPass(VkDevice device, const FrameGraphBuilder* frameGraphBuilder, const std::string& passName): RenderPass(device, RenderPassType::GRAPHICS)
+VulkanCBindings::GBufferPass::GBufferPass(VkDevice device, const FrameGraphBuilder* frameGraphBuilder, const std::string& passName): RenderPass(device)
 {
 	mRenderPass  = VK_NULL_HANDLE;
 	mFramebuffer = VK_NULL_HANDLE;
@@ -36,9 +36,10 @@ void VulkanCBindings::GBufferPass::Register(FrameGraphBuilder* frameGraphBuilder
 		return std::unique_ptr<GBufferPass>(new GBufferPass(device, builder, name));
 	};
 
-	frameGraphBuilder->RegisterRenderPass(passName, PassCreateFunc);
+	frameGraphBuilder->RegisterRenderPass(passName, PassCreateFunc, RenderPassType::GRAPHICS);
 
 	frameGraphBuilder->RegisterWriteSubresource(passName, ColorBufferImageId);
+	frameGraphBuilder->SetPassSubresourceFormat(passName, ColorBufferImageId, VK_FORMAT_R8G8B8A8_UNORM);
 	frameGraphBuilder->SetPassSubresourceAspectFlags(passName, ColorBufferImageId, VK_IMAGE_ASPECT_COLOR_BIT);
 	frameGraphBuilder->SetPassSubresourceStageFlags(passName, ColorBufferImageId, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
 	frameGraphBuilder->SetPassSubresourceLayout(passName, ColorBufferImageId, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
@@ -85,91 +86,72 @@ void VulkanCBindings::GBufferPass::RecordExecution(VkCommandBuffer commandBuffer
 
 void VulkanCBindings::GBufferPass::CreateRenderPass(const FrameGraphBuilder* frameGraphBuilder, const DeviceParameters* deviceParameters, const std::string& currentPassName)
 {
-	if(deviceParameters->IsCreateRenderpass2ExtensionEnabled())
-	{
-		//TODO: RenderPass 2
-		VkRenderPassCreateInfo2 renderPassCreateInfo;
-		renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2;
-		renderPassCreateInfo.pNext = nullptr;
-	}
-	else
-	{
-		//TODO: may alias?
-		//TODO: multisampling?
-		std::array<VkAttachmentDescription, 1> attachments;
-		attachments[0].flags          = 0;
-		attachments[0].format         = VK_FORMAT_R8G8B8A8_UNORM;
-		attachments[0].samples        = VK_SAMPLE_COUNT_1_BIT;
-		attachments[0].loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;
-		attachments[0].storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
-		attachments[0].stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-		attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-		attachments[0].initialLayout  = frameGraphBuilder->GetPreviousPassSubresourceLayout(currentPassName, ColorBufferImageId);
-		attachments[0].finalLayout    = frameGraphBuilder->GetNextPassSubresourceLayout(currentPassName,     ColorBufferImageId);
+	//TODO: may alias?
+	//TODO: multisampling?
+	std::array<VkAttachmentDescription, 1> attachments;
+	attachments[0].flags          = 0;
+	attachments[0].format         = VK_FORMAT_R8G8B8A8_UNORM;
+	attachments[0].samples        = VK_SAMPLE_COUNT_1_BIT;
+	attachments[0].loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	attachments[0].storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
+	attachments[0].stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	attachments[0].initialLayout  = frameGraphBuilder->GetPreviousPassSubresourceLayout(currentPassName, ColorBufferImageId);
+	attachments[0].finalLayout    = frameGraphBuilder->GetNextPassSubresourceLayout(currentPassName,     ColorBufferImageId);
 
-		VkAttachmentReference colorBufferAttachment;
-		colorBufferAttachment.attachment = 0;
-		colorBufferAttachment.layout     = frameGraphBuilder->GetRegisteredSubresourceLayout(currentPassName, ColorBufferImageId);
+	VkAttachmentReference colorBufferAttachment;
+	colorBufferAttachment.attachment = 0;
+	colorBufferAttachment.layout     = frameGraphBuilder->GetRegisteredSubresourceLayout(currentPassName, ColorBufferImageId);
 
-		std::array colorAttachments = {colorBufferAttachment};
+	std::array colorAttachments = {colorBufferAttachment};
 		
-		std::array<VkSubpassDescription, 1> subpasses;
-		subpasses[0].flags                   = 0;
-		subpasses[0].pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS;
-		subpasses[0].inputAttachmentCount    = 0;
-		subpasses[0].pInputAttachments       = nullptr;
-		subpasses[0].colorAttachmentCount    = (uint32_t)(colorAttachments.size());
-		subpasses[0].pColorAttachments       = colorAttachments.data();
-		subpasses[0].pResolveAttachments     = nullptr;
-		subpasses[0].pDepthStencilAttachment = nullptr;
-		subpasses[0].preserveAttachmentCount = 0;
-		subpasses[0].pPreserveAttachments    = 0;
+	std::array<VkSubpassDescription, 1> subpasses;
+	subpasses[0].flags                   = 0;
+	subpasses[0].pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS;
+	subpasses[0].inputAttachmentCount    = 0;
+	subpasses[0].pInputAttachments       = nullptr;
+	subpasses[0].colorAttachmentCount    = (uint32_t)(colorAttachments.size());
+	subpasses[0].pColorAttachments       = colorAttachments.data();
+	subpasses[0].pResolveAttachments     = nullptr;
+	subpasses[0].pDepthStencilAttachment = nullptr;
+	subpasses[0].preserveAttachmentCount = 0;
+	subpasses[0].pPreserveAttachments    = 0;
 
-		std::array<VkSubpassDependency, 2> dependencies;
-		dependencies[0].srcSubpass      = VK_SUBPASS_EXTERNAL;
-		dependencies[0].dstSubpass      = 0;
-		dependencies[0].srcStageMask    = frameGraphBuilder->GetPreviousPassSubresourceStageFlags(currentPassName, ColorBufferImageId);
-		dependencies[0].dstStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		dependencies[0].srcAccessMask   = frameGraphBuilder->GetPreviousPassSubresourceAccessFlags(currentPassName, ColorBufferImageId);
-		dependencies[0].dstAccessMask   = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-		dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
-		dependencies[1].srcSubpass      = 0;
-		dependencies[1].dstSubpass      = VK_SUBPASS_EXTERNAL;
-		dependencies[1].srcStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		dependencies[1].dstStageMask    = frameGraphBuilder->GetNextPassSubresourceStageFlags(currentPassName, ColorBufferImageId);
-		dependencies[1].srcAccessMask   = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-		dependencies[1].dstAccessMask   = frameGraphBuilder->GetNextPassSubresourceAccessFlags(currentPassName, ColorBufferImageId);
-		dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+	std::array<VkSubpassDependency, 2> dependencies;
+	dependencies[0].srcSubpass      = VK_SUBPASS_EXTERNAL;
+	dependencies[0].dstSubpass      = 0;
+	dependencies[0].srcStageMask    = frameGraphBuilder->GetPreviousPassSubresourceStageFlags(currentPassName, ColorBufferImageId);
+	dependencies[0].dstStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	dependencies[0].srcAccessMask   = frameGraphBuilder->GetPreviousPassSubresourceAccessFlags(currentPassName, ColorBufferImageId);
+	dependencies[0].dstAccessMask   = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+	dependencies[1].srcSubpass      = 0;
+	dependencies[1].dstSubpass      = VK_SUBPASS_EXTERNAL;
+	dependencies[1].srcStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	dependencies[1].dstStageMask    = frameGraphBuilder->GetNextPassSubresourceStageFlags(currentPassName, ColorBufferImageId);
+	dependencies[1].srcAccessMask   = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	dependencies[1].dstAccessMask   = frameGraphBuilder->GetNextPassSubresourceAccessFlags(currentPassName, ColorBufferImageId);
+	dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
-		//TODO: multiview (VR)
-		vgs::StructureChainBlob<VkRenderPassCreateInfo> renderPassCreateInfoChain;
-		if(deviceParameters->IsFragmentDensityMap2FeaturesExtensionEnabled())
-		{
-			//TODO: Fragment density map
-		}
-
-		std::array<VkInputAttachmentAspectReference, attachments.size()> aspectReferences;
-		aspectReferences[0].subpass              = 0;
-		aspectReferences[0].inputAttachmentIndex = 0;
-		aspectReferences[0].aspectMask           = frameGraphBuilder->GetRegisteredSubresourceAspectFlags(currentPassName, ColorBufferImageId);
-
-		VkRenderPassInputAttachmentAspectCreateInfo inputAttachmentAspectCreateInfo;
-		inputAttachmentAspectCreateInfo.aspectReferenceCount = (uint32_t)(aspectReferences.size());
-		inputAttachmentAspectCreateInfo.pAspectReferences    = aspectReferences.data();
-
-		renderPassCreateInfoChain.AppendToChain(inputAttachmentAspectCreateInfo);
-
-		VkRenderPassCreateInfo& renderPassCreateInfo = renderPassCreateInfoChain.GetChainHead();
-		renderPassCreateInfo.flags                   = 0;
-		renderPassCreateInfo.attachmentCount         = (uint32_t)(attachments.size());
-		renderPassCreateInfo.pAttachments            = attachments.data();
-		renderPassCreateInfo.subpassCount            = (uint32_t)(subpasses.size());
-		renderPassCreateInfo.pSubpasses              = subpasses.data();
-		renderPassCreateInfo.dependencyCount         = (uint32_t)(dependencies.size());
-		renderPassCreateInfo.pDependencies           = dependencies.data();
-
-		ThrowIfFailed(vkCreateRenderPass(mDeviceRef, &renderPassCreateInfo, nullptr, &mRenderPass));
+	//TODO: multiview (VR)
+	//TODO: RenderPass 2
+	//TODO: Input attachment aspects (when input attachments are present)
+	vgs::StructureChainBlob<VkRenderPassCreateInfo> renderPassCreateInfoChain;
+	if(deviceParameters->IsFragmentDensityMap2FeaturesExtensionEnabled())
+	{
+		//TODO: Fragment density map
 	}
+
+	VkRenderPassCreateInfo& renderPassCreateInfo = renderPassCreateInfoChain.GetChainHead();
+	renderPassCreateInfo.flags                   = 0;
+	renderPassCreateInfo.attachmentCount         = (uint32_t)(attachments.size());
+	renderPassCreateInfo.pAttachments            = attachments.data();
+	renderPassCreateInfo.subpassCount            = (uint32_t)(subpasses.size());
+	renderPassCreateInfo.pSubpasses              = subpasses.data();
+	renderPassCreateInfo.dependencyCount         = (uint32_t)(dependencies.size());
+	renderPassCreateInfo.pDependencies           = dependencies.data();
+
+	ThrowIfFailed(vkCreateRenderPass(mDeviceRef, &renderPassCreateInfo, nullptr, &mRenderPass));
 }
 
 void VulkanCBindings::GBufferPass::CreateFramebuffer(const FrameGraphBuilder* frameGraphBuilder, const FrameGraphConfig* frameGraphConfig, const std::string& currentPassName)

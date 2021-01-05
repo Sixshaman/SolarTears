@@ -14,10 +14,10 @@ namespace VulkanCBindings
 
 	enum class RenderPassType : uint32_t
 	{
-		GRAPHICS = 0, //Graphics operation on graphics queue
-		COMPUTE,      //Compute  operation on graphics queue
-		TRANSFER,     //Transfer operation on graphics queue
-		PRESENT,      //Present  operation on present  queue
+		GRAPHICS = 0,
+		COMPUTE,
+		TRANSFER,
+		PRESENT,
 
 		RENDER_PASS_TYPE_COUNT
 	};
@@ -29,7 +29,7 @@ namespace VulkanCBindings
 	class RenderPass
 	{
 	public:
-		RenderPass(VkDevice device, RenderPassType type = RenderPassType::GRAPHICS);
+		RenderPass(VkDevice device);
 		virtual ~RenderPass();
 
 		RenderPass(const RenderPass& right)            = delete;
@@ -39,14 +39,9 @@ namespace VulkanCBindings
 		RenderPass& operator=(RenderPass&& right) = default;
 
 	public:
-		RenderPassType GetRenderPassType() const;
-
-	public:
 		virtual void RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig, uint32_t currentFrameResourceIndex) = 0;
 
 	protected:
 		const VkDevice mDeviceRef;
-
-		RenderPassType mRenderPassType;
 	};
 }

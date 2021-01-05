@@ -2,8 +2,13 @@
 #include "../VulkanCWorkerCommandBuffers.hpp"
 #include "../../../Core/ThreadPool.hpp"
 
-VulkanCBindings::FrameGraph::FrameGraph(VkDevice device): mDeviceRef(device)
+VulkanCBindings::FrameGraph::FrameGraph(VkDevice device, uint32_t graphicsQueueIndex, uint32_t computeQueueIndex, uint32_t transferQueueIndex): mDeviceRef(device), mGraphicsQueueFamilyIndex(graphicsQueueIndex), mComputeQueueFamilyIndex(computeQueueIndex), mTransferQueueFamilyIndex(transferQueueIndex)
 {
+	mGraphicsPassCount = 0;
+	mComputePassCount  = 0;
+	mTransferPassCount = 0;
+
+	mImageMemory = VK_NULL_HANDLE;
 }
 
 VulkanCBindings::FrameGraph::~FrameGraph()

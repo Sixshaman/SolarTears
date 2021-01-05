@@ -48,7 +48,7 @@ const uint32_t* VulkanCBindings::ShaderManager::GetGBufferVertexShaderData() con
 
 const uint32_t* VulkanCBindings::ShaderManager::GetGBufferFragmentShaderData() const
 {
-	return mGBufferVertexShaderModule->GetCode();
+	return mGBufferFragmentShaderModule->GetCode();
 }
 
 size_t VulkanCBindings::ShaderManager::GetGBufferVertexShaderSize() const
