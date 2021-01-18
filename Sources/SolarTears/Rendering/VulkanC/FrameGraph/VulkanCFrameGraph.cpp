@@ -1,5 +1,6 @@
 #include "VulkanCFrameGraph.hpp"
 #include "../VulkanCWorkerCommandBuffers.hpp"
+#include "../VulkanCFunctions.hpp"
 #include "../../../Core/ThreadPool.hpp"
 
 VulkanCBindings::FrameGraph::FrameGraph(VkDevice device, uint32_t graphicsQueueIndex, uint32_t computeQueueIndex, uint32_t transferQueueIndex): mDeviceRef(device), mGraphicsQueueFamilyIndex(graphicsQueueIndex), mComputeQueueFamilyIndex(computeQueueIndex), mTransferQueueFamilyIndex(transferQueueIndex)

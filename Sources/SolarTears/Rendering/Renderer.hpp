@@ -25,8 +25,8 @@ public:
 	virtual void AttachToWindow(Window* window)      = 0;
 	virtual void ResizeWindowBuffers(Window* window) = 0;
 
-	virtual void InitSceneAndFrameGraph(SceneDescription* scene) = 0;
-	virtual void RenderScene()                                   = 0;
+	virtual void InitScene(SceneDescription* scene) = 0;
+	virtual void RenderScene()                      = 0;
 
 	virtual uint64_t GetFrameNumber() const = 0;
 

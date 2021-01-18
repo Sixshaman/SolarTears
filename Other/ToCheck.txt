@@ -1,7 +1,5 @@
 - AFTER FIXING TEXTURES, READ BEST PRACTICES AND WRITE NOTES!
 
-- Decouple scene and frame graph building
-
 - Scene subobjects
 - String views and vector ranges
 - Dedicated allocation (VkMemoryDedicatedRequirements::prefersDedicatedAllocation)

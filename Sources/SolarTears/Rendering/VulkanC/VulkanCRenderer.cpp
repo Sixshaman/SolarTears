@@ -47,6 +47,8 @@ VulkanCBindings::Renderer::Renderer(LoggerQueue* loggerQueue, ThreadPool* thread
 	CreateFences();
 
 	mMemoryAllocator = std::make_unique<VulkanCBindings::MemoryManager>(mLoggingBoard, mPhysicalDevice, mDeviceParameters);
+
+	mShaderManager = std::make_unique<ShaderManager>(mLoggingBoard);
 }
 
 VulkanCBindings::Renderer::~Renderer()
@@ -88,6 +90,8 @@ void VulkanCBindings::Renderer::AttachToWindow(Window* window)
 	}
 	
 	InitializeSwapchainImages();
+
+	CreateFrameGraph();
 }
 
 void VulkanCBindings::Renderer::ResizeWindowBuffers(Window* window)
@@ -99,44 +103,20 @@ void VulkanCBindings::Renderer::ResizeWindowBuffers(Window* window)
 	mSwapChain->Recreate(mPhysicalDevice, mInstanceParameters, mDeviceParameters, window);
 		
 	InitializeSwapchainImages();
+
+	CreateFrameGraph();
 }
 
-void VulkanCBindings::Renderer::InitSceneAndFrameGraph(SceneDescription* scene)
+void VulkanCBindings::Renderer::InitScene(SceneDescription* scene)
 {
 	ThrowIfFailed(vkDeviceWaitIdle(mDevice));
 
-
-	//Scene
-	ShaderManager shaderManager(mLoggingBoard);
-	mScene = std::make_unique<VulkanCBindings::RenderableScene>(mDevice, mDeviceParameters, &shaderManager);
+	mScene = std::make_unique<VulkanCBindings::RenderableScene>(mDevice, mDeviceParameters, mShaderManager.get());
 
 	VulkanCBindings::RenderableSceneBuilder sceneBuilder(mScene.get(), mTransferQueueFamilyIndex, mComputeQueueFamilyIndex, mGraphicsQueueFamilyIndex);
 	scene->BindRenderableComponent(&sceneBuilder);
 
-	sceneBuilder.BakeSceneFirstPart(mMemoryAllocator.get(), &shaderManager, mDeviceParameters);
-
-
-	//Frame graph
-	mFrameGraph = std::make_unique<VulkanCBindings::FrameGraph>(mDevice, mGraphicsQueueFamilyIndex, mComputeQueueFamilyIndex, mTransferQueueFamilyIndex);
-
-	VulkanCBindings::FrameGraphBuilder frameGraphBuilder(mFrameGraph.get(), mScene.get(), &mDeviceParameters, &shaderManager);
-
-	GBufferPass::Register(&frameGraphBuilder, "GBuffer");
-	CopyImagePass::Register(&frameGraphBuilder, "CopyImage");
-
-	frameGraphBuilder.AssignSubresourceName("GBuffer",   GBufferPass::ColorBufferImageId, "ColorBuffer");
-	frameGraphBuilder.AssignSubresourceName("CopyImage", CopyImagePass::SrcImageId,       "ColorBuffer");
-	frameGraphBuilder.AssignSubresourceName("CopyImage", CopyImagePass::DstImageId,       "Backbuffer");
-
-	frameGraphBuilder.AssignBackbufferName("Backbuffer");
-
-	std::vector<VkImage> swapchainImages(mSwapChain->SwapchainImageCount);
-	for(uint32_t i = 0; i < mSwapChain->SwapchainImageCount; i++)
-	{
-		swapchainImages[i] = mSwapChain->GetSwapchainImage(i);
-	}
-
-	frameGraphBuilder.Build(mMemoryAllocator.get(), swapchainImages, mSwapChain->GetBackbufferFormat());
+	sceneBuilder.BakeSceneFirstPart(mMemoryAllocator.get(), mShaderManager.get(), mDeviceParameters);
 
 	//Baking
 	ThrowIfFailed(vkResetCommandPool(mDevice, mMainTransferCommandPools[0], 0));
@@ -576,4 +556,30 @@ void VulkanCBindings::Renderer::InitializeSwapchainImages()
 	ThrowIfFailed(vkQueueSubmit(mGraphicsQueue, (uint32_t)submitInfos.size(), submitInfos.data(), nullptr));
 
 	ThrowIfFailed(vkQueueWaitIdle(mGraphicsQueue));
+}
+
+void VulkanCBindings::Renderer::CreateFrameGraph()
+{
+	mFrameGraph.reset();
+
+	mFrameGraph = std::make_unique<VulkanCBindings::FrameGraph>(mDevice, mGraphicsQueueFamilyIndex, mComputeQueueFamilyIndex, mTransferQueueFamilyIndex);
+
+	VulkanCBindings::FrameGraphBuilder frameGraphBuilder(mFrameGraph.get(), mScene.get(), &mDeviceParameters, mShaderManager.get());
+
+	GBufferPass::Register(&frameGraphBuilder, "GBuffer");
+	CopyImagePass::Register(&frameGraphBuilder, "CopyImage");
+
+	frameGraphBuilder.AssignSubresourceName("GBuffer",   GBufferPass::ColorBufferImageId, "ColorBuffer");
+	frameGraphBuilder.AssignSubresourceName("CopyImage", CopyImagePass::SrcImageId,       "ColorBuffer");
+	frameGraphBuilder.AssignSubresourceName("CopyImage", CopyImagePass::DstImageId,       "Backbuffer");
+
+	frameGraphBuilder.AssignBackbufferName("Backbuffer");
+
+	std::vector<VkImage> swapchainImages(mSwapChain->SwapchainImageCount);
+	for(uint32_t i = 0; i < mSwapChain->SwapchainImageCount; i++)
+	{
+		swapchainImages[i] = mSwapChain->GetSwapchainImage(i);
+	}
+
+	frameGraphBuilder.Build(mMemoryAllocator.get(), swapchainImages, mSwapChain->GetBackbufferFormat());
 }
