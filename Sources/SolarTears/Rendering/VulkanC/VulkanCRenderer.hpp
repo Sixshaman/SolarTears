@@ -16,6 +16,7 @@ namespace VulkanCBindings
 	class SwapChain;
 	class RenderableScene;
 	class FrameGraph;
+	class ShaderManager;
 
 	class Renderer: public ::Renderer
 	{
@@ -26,8 +27,8 @@ namespace VulkanCBindings
 		void AttachToWindow(Window* window)      override;
 		void ResizeWindowBuffers(Window* window) override;
 
-		void InitSceneAndFrameGraph(SceneDescription* scene) override;
-		void RenderScene()                                   override;
+		void InitScene(SceneDescription* scene) override;
+		void RenderScene()                      override;
 		
 		uint64_t GetFrameNumber() const override;
 
@@ -45,6 +46,8 @@ namespace VulkanCBindings
 
 	private:
 		void InitializeSwapchainImages();
+
+		void CreateFrameGraph();
 
 	private:
 		ThreadPool* mThreadPool;
@@ -82,6 +85,8 @@ namespace VulkanCBindings
 		std::unique_ptr<FrameGraph>      mFrameGraph;
 		
 		std::unique_ptr<FunctionsLibrary> mDynamicLibrary;
+
+		std::unique_ptr<ShaderManager> mShaderManager;
 
 		std::unique_ptr<SwapChain>            mSwapChain;
 		std::unique_ptr<WorkerCommandBuffers> mCommandBuffers;
