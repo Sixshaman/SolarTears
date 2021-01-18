@@ -237,7 +237,7 @@
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_WINDOWS;WIN32;NOMINMAX;VK_USE_PLATFORM_WIN32_KHR;VK_NO_PROTOTYPES;VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_WINDOWS;WIN32;NOMINMAX;VK_USE_PLATFORM_WIN32_KHR;VK_NO_PROTOTYPES;VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <TreatWarningAsError>true</TreatWarningAsError>
@@ -256,7 +256,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_WINDOWS;WIN32;NOMINMAX;VK_USE_PLATFORM_WIN32_KHR;VK_NO_PROTOTYPES;VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;_WINDOWS;WIN32;NOMINMAX;VK_USE_PLATFORM_WIN32_KHR;VK_NO_PROTOTYPES;VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <TreatWarningAsError>true</TreatWarningAsError>

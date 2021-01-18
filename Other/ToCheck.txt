@@ -1,6 +1,6 @@
-- Fix _CRT_SECURE_NO_WARNINGS!
-
 - AFTER FIXING TEXTURES, READ BEST PRACTICES AND WRITE NOTES!
+
+- Decouple scene and frame graph building
 
 - Scene subobjects
 - String views and vector ranges

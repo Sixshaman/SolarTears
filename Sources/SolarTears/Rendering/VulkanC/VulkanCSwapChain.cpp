@@ -49,7 +49,10 @@ void VulkanCBindings::SwapChain::BindToWindow(VkPhysicalDevice physicalDevice, c
 	SafeDestroyObject(vkDestroySwapchainKHR, mDeviceRef, mSwapchain);
 	CreateSwapChain(physicalDevice, mDeviceRef, window);
 
-	uint32_t swapchainImageCount = SwapchainImageCount;
+	uint32_t swapchainImageCount = 0;
+	ThrowIfFailed(vkGetSwapchainImagesKHR(mDeviceRef, mSwapchain, &swapchainImageCount, nullptr));
+
+	assert(swapchainImageCount == SwapchainImageCount);
 	ThrowIfFailed(vkGetSwapchainImagesKHR(mDeviceRef, mSwapchain, &swapchainImageCount, &mSwapchainImages[0]));
 }
 
@@ -135,6 +138,11 @@ VkImage VulkanCBindings::SwapChain::GetSwapchainImage(uint32_t index) const
 VkImage VulkanCBindings::SwapChain::GetCurrentImage() const
 {
 	return mSwapchainImages[mCurrentImageIndex];
+}
+
+VkFormat VulkanCBindings::SwapChain::GetBackbufferFormat() const
+{
+	return mSwapChainFormat;
 }
 
 bool VulkanCBindings::SwapChain::IsBackbufferHDR() const
