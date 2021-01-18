@@ -112,27 +112,41 @@ namespace VulkanCBindings
 		void Build(const MemoryManager* memoryAllocator, const std::vector<VkImage>& swapchainImages, VkFormat swapchainFormat);
 
 	private:
+		//Builds frame graph adjacency list
 		void BuildAdjacencyList(std::vector<std::unordered_set<size_t>>& adjacencyList);
+
+		//Sorts frame graph passes
 		void SortRenderPasses(const std::vector<std::unordered_set<size_t>>& adjacencyList);
-		void ValidateSubresourceLinks();
 		
+		//Recursively sort subtree topologically
 		void TopologicalSortNode(const std::vector<std::unordered_set<size_t>>& adjacencyList, std::vector<uint_fast8_t>& visited, std::vector<uint_fast8_t>& onStack, size_t passIndex, std::vector<size_t>& sortedPassIndices);
 
+		//Creates descriptions for resource creation
+		void BuildResourceCreateInfos(std::unordered_map<SubresourceName, ImageResourceCreateInfo>& outImageCreateInfos, std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& outBackbufferCreateInfos, std::unordered_set<RenderPassName>& swapchainPassNames);
+		
+		//Merges all image view create descriptions with same Format and Aspect Flags into single structures with multiple ViewAddresses
+		void MergeImageViewInfos(std::unordered_map<SubresourceName, ImageResourceCreateInfo>& inoutImageResourceCreateInfos);
+
+		//Validates PrevPassMetadata and NextPassMetadata links in each subresource info
+		void ValidateSubresourceLinks();
+
+		//Fixes 0 aspect flags and UNDEFINED formats in subresource metadatas from the information from image create infos
+		void PropagateMetadatasFromImageViews(const std::unordered_map<SubresourceName, ImageResourceCreateInfo>& imageCreateInfos, const std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& backbufferCreateInfos);
+
+		//Functions for creating frame graph passes and resources
 		void BuildSubresources(const MemoryManager* memoryAllocator, const std::vector<VkImage>& swapchainImages, std::unordered_set<RenderPassName>& swapchainPassNames, VkFormat swapchainFormat);
 		void BuildPassObjects(const std::unordered_set<RenderPassName>& swapchainPassNames);
 
-		void BuildResourceCreateInfos(std::unordered_map<SubresourceName, ImageResourceCreateInfo>& outImageCreateInfos, std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& outBackbufferCreateInfos, std::unordered_set<RenderPassName>& swapchainPassNames);
-		void MergeImageViewInfos(std::unordered_map<SubresourceName, ImageResourceCreateInfo>& inoutImageResourceCreateInfos);
-
-		void PropagateMetadatasFromImageViews(const std::unordered_map<SubresourceName, ImageResourceCreateInfo>& imageCreateInfos, const std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& backbufferCreateInfos);
-
+		//Functions for creating actual frame graph resources/subresources
 		void SetSwapchainImages(const std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& backbufferResourceCreateInfos, const std::vector<VkImage>& swapchainImages);
 		void CreateImages(const std::unordered_map<SubresourceName, ImageResourceCreateInfo>& imageResourceCreateInfos, const MemoryManager* memoryAllocator);
 		void CreateImageViews(const std::unordered_map<SubresourceName, ImageResourceCreateInfo>& imageResourceCreateInfos);
 		void CreateSwapchainImageViews(const std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& backbufferResourceCreateInfos, VkFormat swapchainFormat);
 
+		//Creates VkImageView from imageViewInfo
 		void CreateImageView(const ImageViewInfo& imageViewInfo, VkImage image, VkFormat defaultFormat, VkImageView* outImageView);
 
+		//Test if two writingPass writes to readingPass
 		bool PassesIntersect(const RenderPassName& writingPass, const RenderPassName& readingPass);
 
 	private:
