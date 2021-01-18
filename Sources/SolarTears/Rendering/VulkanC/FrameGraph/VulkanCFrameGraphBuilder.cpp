@@ -423,10 +423,44 @@ VkAccessFlags VulkanCBindings::FrameGraphBuilder::GetNextPassSubresourceAccessFl
 	}
 }
 
-void VulkanCBindings::FrameGraphBuilder::Build(const MemoryManager* memoryAllocator)
+void VulkanCBindings::FrameGraphBuilder::Build(const MemoryManager* memoryAllocator, const std::vector<VkImage>& swapchainImages, VkFormat swapchainFormat)
 {
-	BuildAdjacencyList();
+	std::vector<std::unordered_set<size_t>> adjacencyList;
+	BuildAdjacencyList(adjacencyList);
+	SortRenderPasses(adjacencyList);
 
+	ValidateSubresourceLinks();
+
+	std::unordered_set<RenderPassName> swapchainPassNames;
+	BuildSubresources(memoryAllocator, swapchainImages, swapchainPassNames, swapchainFormat);
+	BuildPassObjects(swapchainPassNames);
+}
+
+void VulkanCBindings::FrameGraphBuilder::BuildAdjacencyList(std::vector<std::unordered_set<size_t>>& adjacencyList)
+{
+	adjacencyList.clear();
+
+	for(size_t i = 0; i < mRenderPassNames.size(); i++)
+	{
+		adjacencyList.emplace_back();
+
+		for(size_t j = 0; j < mRenderPassNames.size(); j++)
+		{
+			if(i == j)
+			{
+				continue;
+			}
+
+			if(PassesIntersect(mRenderPassNames[i], mRenderPassNames[j]))
+			{
+				adjacencyList[i].insert(j);
+			}
+		}
+	}
+}
+
+void VulkanCBindings::FrameGraphBuilder::SortRenderPasses(const std::vector<std::unordered_set<size_t>>& adjacencyList)
+{
 	std::vector<size_t> sortedPassIndices;
 
 	std::vector<uint_fast8_t> visited(mRenderPassNames.size(), false);
@@ -434,7 +468,7 @@ void VulkanCBindings::FrameGraphBuilder::Build(const MemoryManager* memoryAlloca
 
 	for(size_t passIndex = 0; passIndex < mRenderPassNames.size(); passIndex++)
 	{
-		TopologicalSortNode(visited, onStack, passIndex, sortedPassIndices);
+		TopologicalSortNode(adjacencyList, visited, onStack, passIndex, sortedPassIndices);
 	}
 
 	std::vector<RenderPassName> sortedRenderPassNames(mRenderPassNames.size());
@@ -450,39 +484,9 @@ void VulkanCBindings::FrameGraphBuilder::Build(const MemoryManager* memoryAlloca
 	{
 		mRenderPassIndices[mRenderPassNames[i]] = i;
 	}
-
-	BuildAdjacencyList(); //Need to rebuild for other purposes, such as building dependency levels
-
-	BuildSubresourceNodes();
-
-	BuildSubresources(memoryAllocator);
-	BuildPassObjects();
 }
 
-void VulkanCBindings::FrameGraphBuilder::BuildAdjacencyList()
-{
-	mAdjacencyList.clear();
-
-	for(size_t i = 0; i < mRenderPassNames.size(); i++)
-	{
-		mAdjacencyList.emplace_back();
-
-		for(size_t j = 0; j < mRenderPassNames.size(); j++)
-		{
-			if(i == j)
-			{
-				continue;
-			}
-
-			if(PassesIntersect(mRenderPassNames[i], mRenderPassNames[j]))
-			{
-				mAdjacencyList[i].insert(j);
-			}
-		}
-	}
-}
-
-void VulkanCBindings::FrameGraphBuilder::TopologicalSortNode(std::vector<uint_fast8_t>& visited, std::vector<uint_fast8_t>& onStack, size_t passIndex, std::vector<size_t>& sortedPassIndices)
+void VulkanCBindings::FrameGraphBuilder::TopologicalSortNode(const std::vector<std::unordered_set<size_t>>& adjacencyList, std::vector<uint_fast8_t>& visited, std::vector<uint_fast8_t>& onStack, size_t passIndex, std::vector<size_t>& sortedPassIndices)
 {
 	if(visited[passIndex])
 	{
@@ -492,16 +496,16 @@ void VulkanCBindings::FrameGraphBuilder::TopologicalSortNode(std::vector<uint_fa
 	onStack[passIndex] = true;
 	visited[passIndex] = true;
 
-	for(size_t adjacentPassIndex: mAdjacencyList[passIndex])
+	for(size_t adjacentPassIndex: adjacencyList[passIndex])
 	{
-		TopologicalSortNode(visited, onStack, adjacentPassIndex, sortedPassIndices);
+		TopologicalSortNode(adjacencyList, visited, onStack, adjacentPassIndex, sortedPassIndices);
 	}
 
 	onStack[passIndex] = false;
 	sortedPassIndices.push_back(passIndex);
 }
 
-void VulkanCBindings::FrameGraphBuilder::BuildSubresourceNodes()
+void VulkanCBindings::FrameGraphBuilder::ValidateSubresourceLinks()
 {
 	std::unordered_map<SubresourceName, RenderPassName> subresourceLastRenderPasses; 
 
@@ -529,28 +533,87 @@ void VulkanCBindings::FrameGraphBuilder::BuildSubresourceNodes()
 	}
 }
 
-void VulkanCBindings::FrameGraphBuilder::BuildSubresources(const MemoryManager* memoryAllocator)
+void VulkanCBindings::FrameGraphBuilder::BuildSubresources(const MemoryManager* memoryAllocator, const std::vector<VkImage>& swapchainImages, std::unordered_set<RenderPassName>& swapchainPassNames, VkFormat swapchainFormat)
 {
-	std::unordered_map<SubresourceName, ResourceCreateInfo> resourceCreateInfos;
-	BuildResourceCreateInfos(resourceCreateInfos);
+	std::unordered_map<SubresourceName, ImageResourceCreateInfo>      imageResourceCreateInfos;
+	std::unordered_map<SubresourceName, BackbufferResourceCreateInfo> backbufferResourceCreateInfos;
+	BuildResourceCreateInfos(imageResourceCreateInfos, backbufferResourceCreateInfos, swapchainPassNames);
 
-	std::unordered_map<SubresourceName, uint32_t> imageIndices;
-	CreateImages(resourceCreateInfos, memoryAllocator);
+	PropagateMetadatasFromImageViews(imageResourceCreateInfos, backbufferResourceCreateInfos);
 
-	CreateImageViews(resourceCreateInfos);
+	CreateImages(imageResourceCreateInfos, memoryAllocator);
+	CreateImageViews(imageResourceCreateInfos);
+
+	SetSwapchainImages(backbufferResourceCreateInfos, swapchainImages);
+	CreateSwapchainImageViews(backbufferResourceCreateInfos, swapchainFormat);
 }
 
-void VulkanCBindings::FrameGraphBuilder::BuildPassObjects()
+void VulkanCBindings::FrameGraphBuilder::BuildPassObjects(const std::unordered_set<std::string>& swapchainPassNames)
 {
 	mGraphToBuild->mRenderPasses.clear();
+	mGraphToBuild->mSwapchainRenderPasses.clear();
+	mGraphToBuild->mSwapchainPassesSwapMap.clear();
+
+	mGraphToBuild->mGraphicsPassCount = 0;
+	mGraphToBuild->mComputePassCount  = 0;
+	mGraphToBuild->mTransferPassCount = 0;
 
 	for(const std::string& passName: mRenderPassNames)
 	{
-		mGraphToBuild->mRenderPasses.push_back(mRenderPassCreateFunctions.at(passName)(mGraphToBuild->mDeviceRef, this, passName));
+		if(swapchainPassNames.contains(passName))
+		{
+			//This pass uses swapchain images - create a copy of render pass for each swapchain image
+			mGraphToBuild->mRenderPasses.emplace_back(nullptr);
+
+			//Fill in primary swap link (what to swap)
+			mGraphToBuild->mSwapchainPassesSwapMap.push_back((uint32_t)(mGraphToBuild->mRenderPasses.size() - 1));
+
+			//Correctness is guaranteed as long as mLastSwapchainImageIndex is the last index in mSwapchainImageRefs
+			const uint32_t swapchainImageCount = (uint32_t)mGraphToBuild->mSwapchainImageRefs.size();			
+			for(uint32_t swapchainImageIndex = 0; swapchainImageIndex < mGraphToBuild->mSwapchainImageRefs.size(); swapchainImageIndex++)
+			{
+				//Create a separate render pass for each of swapchain images
+				mGraphToBuild->SwitchSwapchainImages(swapchainImageIndex);
+				mGraphToBuild->mSwapchainRenderPasses.push_back(mRenderPassCreateFunctions.at(passName)(mGraphToBuild->mDeviceRef, this, passName));
+
+				//Fill in secondary swap link (what to swap to)
+				mGraphToBuild->mSwapchainPassesSwapMap.push_back((uint32_t)(mGraphToBuild->mSwapchainRenderPasses.size() - 1));
+
+				mGraphToBuild->mLastSwapchainImageIndex = swapchainImageIndex;
+			}
+		}
+		else
+		{
+			//This pass does not use any swapchain images - can just create a single copy
+			mGraphToBuild->mRenderPasses.push_back(mRenderPassCreateFunctions.at(passName)(mGraphToBuild->mDeviceRef, this, passName));
+		}
+
+		if(mRenderPassTypes[passName] == RenderPassType::GRAPHICS)
+		{
+			mGraphToBuild->mGraphicsPassCount += 1;
+		}
+
+		if(mRenderPassTypes[passName] == RenderPassType::COMPUTE)
+		{
+			mGraphToBuild->mComputePassCount += 1;
+		}
+
+		if(mRenderPassTypes[passName] == RenderPassType::TRANSFER)
+		{
+			mGraphToBuild->mTransferPassCount += 1;
+		}
+	}
+
+	//Prepare for the first use
+	uint32_t swapchainImageCount = (uint32_t)mGraphToBuild->mSwapchainImageRefs.size();
+	for(uint32_t i = 0; i < (uint32_t)mGraphToBuild->mSwapchainPassesSwapMap.size(); i += (swapchainImageCount + 1u))
+	{
+		uint32_t passIndexToSwitch = mGraphToBuild->mSwapchainPassesSwapMap[i];
+		mGraphToBuild->mRenderPasses[passIndexToSwitch].swap(mGraphToBuild->mSwapchainRenderPasses[mGraphToBuild->mSwapchainPassesSwapMap[i + mGraphToBuild->mLastSwapchainImageIndex + 1]]);
 	}
 }
 
-void VulkanCBindings::FrameGraphBuilder::BuildResourceCreateInfos(std::unordered_map<SubresourceName, ResourceCreateInfo>& outResourceCreateInfos)
+void VulkanCBindings::FrameGraphBuilder::BuildResourceCreateInfos(std::unordered_map<SubresourceName, ImageResourceCreateInfo>& outImageCreateInfos, std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& outBackbufferCreateInfos, std::unordered_set<RenderPassName>& swapchainPassNames)
 {
 	std::unordered_map<RenderPassType, uint32_t> familyIndicesForPassTypes;
 	familyIndicesForPassTypes[RenderPassType::GRAPHICS] = mGraphToBuild->mGraphicsQueueFamilyIndex;
@@ -567,67 +630,87 @@ void VulkanCBindings::FrameGraphBuilder::BuildResourceCreateInfos(std::unordered
 
 			if(subresourceName == mBackbufferName)
 			{
-				continue;
+				ImageSubresourceMetadata metadata = mRenderPassesSubresourceMetadatas[renderPassName][subresourceId];
+
+				BackbufferResourceCreateInfo backbufferCreateInfo;
+
+				ImageViewInfo imageViewInfo;
+				imageViewInfo.Format     = metadata.Format;
+				imageViewInfo.AspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+				imageViewInfo.ViewAddresses.push_back({.PassName = renderPassName, .SubresId = subresourceId});
+
+				backbufferCreateInfo.ImageViewInfos.push_back(imageViewInfo);
+
+				outBackbufferCreateInfos[subresourceName] = backbufferCreateInfo;
+
+				swapchainPassNames.insert(renderPassName);
 			}
-
-			ImageSubresourceMetadata metadata = mRenderPassesSubresourceMetadatas[renderPassName][subresourceId];
-			if(!outResourceCreateInfos.contains(subresourceName))
+			else
 			{
-				ResourceCreateInfo resourceCreateInfo;
-
-				resourceCreateInfo.QueueOwnerIndices = std::to_array({familyIndicesForPassTypes.at(mRenderPassTypes.at(renderPassName))});
-
-
-				//TODO: Multisampling
-				VkImageCreateInfo imageCreateInfo;
-				imageCreateInfo.sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-				imageCreateInfo.pNext                 = nullptr;
-				imageCreateInfo.flags                 = 0;
-				imageCreateInfo.imageType             = VK_IMAGE_TYPE_2D;
-				imageCreateInfo.format                = metadata.Format;
-				imageCreateInfo.extent.width          = mGraphToBuild->mFrameGraphConfig.GetViewportWidth();
-				imageCreateInfo.extent.height         = mGraphToBuild->mFrameGraphConfig.GetViewportHeight();
-				imageCreateInfo.extent.depth          = 1;
-				imageCreateInfo.mipLevels             = 1;
-				imageCreateInfo.arrayLayers           = 1;
-				imageCreateInfo.samples               = VK_SAMPLE_COUNT_1_BIT;
-				imageCreateInfo.tiling                = VK_IMAGE_TILING_OPTIMAL;
-				imageCreateInfo.usage                 = metadata.UsageFlags;
-				imageCreateInfo.sharingMode           = VK_SHARING_MODE_EXCLUSIVE;
-				imageCreateInfo.queueFamilyIndexCount = (uint32_t)(resourceCreateInfo.QueueOwnerIndices.size());
-				imageCreateInfo.pQueueFamilyIndices   = resourceCreateInfo.QueueOwnerIndices.data();
-				imageCreateInfo.initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED;
-
-				resourceCreateInfo.ImageCreateInfo = imageCreateInfo;
-
-				outResourceCreateInfos[subresourceName] = resourceCreateInfo;
-			}
-
-			auto& resourceCreateInfo = outResourceCreateInfos[subresourceName];
-			if(metadata.Format != VK_FORMAT_UNDEFINED)
-			{
-				if(resourceCreateInfo.ImageCreateInfo.format == VK_FORMAT_UNDEFINED)
+				ImageSubresourceMetadata metadata = mRenderPassesSubresourceMetadatas[renderPassName][subresourceId];
+				if(!outImageCreateInfos.contains(subresourceName))
 				{
-					//Not all passes specify the format
-					resourceCreateInfo.ImageCreateInfo.format = metadata.Format;
+					ImageResourceCreateInfo imageResourceCreateInfo;
+
+					imageResourceCreateInfo.QueueOwnerIndices = std::to_array({familyIndicesForPassTypes.at(mRenderPassTypes.at(renderPassName))});
+
+
+					//TODO: Multisampling
+					VkImageCreateInfo imageCreateInfo;
+					imageCreateInfo.sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+					imageCreateInfo.pNext                 = nullptr;
+					imageCreateInfo.flags                 = 0;
+					imageCreateInfo.imageType             = VK_IMAGE_TYPE_2D;
+					imageCreateInfo.format                = metadata.Format;
+					imageCreateInfo.extent.width          = mGraphToBuild->mFrameGraphConfig.GetViewportWidth();
+					imageCreateInfo.extent.height         = mGraphToBuild->mFrameGraphConfig.GetViewportHeight();
+					imageCreateInfo.extent.depth          = 1;
+					imageCreateInfo.mipLevels             = 1;
+					imageCreateInfo.arrayLayers           = 1;
+					imageCreateInfo.samples               = VK_SAMPLE_COUNT_1_BIT;
+					imageCreateInfo.tiling                = VK_IMAGE_TILING_OPTIMAL;
+					imageCreateInfo.usage                 = metadata.UsageFlags;
+					imageCreateInfo.sharingMode           = VK_SHARING_MODE_EXCLUSIVE;
+					imageCreateInfo.queueFamilyIndexCount = (uint32_t)(imageResourceCreateInfo.QueueOwnerIndices.size());
+					imageCreateInfo.pQueueFamilyIndices   = imageResourceCreateInfo.QueueOwnerIndices.data();
+					imageCreateInfo.initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED;
+
+					imageResourceCreateInfo.ImageCreateInfo = imageCreateInfo;
+
+					outImageCreateInfos[subresourceName] = imageResourceCreateInfo;
 				}
+
+				auto& imageResourceCreateInfo = outImageCreateInfos[subresourceName];
+				if(metadata.Format != VK_FORMAT_UNDEFINED)
+				{
+					if(imageResourceCreateInfo.ImageCreateInfo.format == VK_FORMAT_UNDEFINED)
+					{
+						//Not all passes specify the format
+						imageResourceCreateInfo.ImageCreateInfo.format = metadata.Format;
+					}
+				}
+
+				//It's fine if format is UNDEFINED or AspectFlags is 0. It means it can be arbitrary and we'll fix it later based on other image view infos for this resource
+				ImageViewInfo imageViewInfo;
+				imageViewInfo.Format     = metadata.Format;
+				imageViewInfo.AspectMask = metadata.AspectFlags;
+				imageViewInfo.ViewAddresses.push_back({.PassName = renderPassName, .SubresId = subresourceId});
+
+				imageResourceCreateInfo.ImageViewInfos.push_back(imageViewInfo);
+
+				imageResourceCreateInfo.ImageCreateInfo.usage |= metadata.UsageFlags;
+				imageResourceCreateInfo.QueueOwnerIndices[0]   = familyIndicesForPassTypes.at(mRenderPassTypes.at(renderPassName));
 			}
-
-			//It's fine if format is UNDEFINED or AspectFlags is 0. It means it can be arbitrary and we'll fix it later based on other image view infos for this resource
-			ImageViewInfo imageViewInfo;
-			imageViewInfo.Format     = metadata.Format;
-			imageViewInfo.AspectMask = metadata.AspectFlags;
-			imageViewInfo.ViewAddresses.push_back({.PassName = renderPassName, .SubresId = subresourceId});
-
-			resourceCreateInfo.ImageViewInfos.push_back(imageViewInfo);
-
-			resourceCreateInfo.ImageCreateInfo.usage |= metadata.UsageFlags;
-			resourceCreateInfo.QueueOwnerIndices[0]   = familyIndicesForPassTypes.at(mRenderPassTypes.at(renderPassName));
 		}
 	}
 
+	MergeImageViewInfos(outImageCreateInfos);
+}
+
+void VulkanCBindings::FrameGraphBuilder::MergeImageViewInfos(std::unordered_map<SubresourceName, ImageResourceCreateInfo>& inoutImageResourceCreateInfos)
+{
 	//Fix all "arbitrary" image view infos
-	for(auto& nameWithCreateInfo: outResourceCreateInfos)
+	for(auto& nameWithCreateInfo: inoutImageResourceCreateInfos)
 	{
 		for(int i = 0; i < nameWithCreateInfo.second.ImageViewInfos.size(); i++)
 		{
@@ -729,9 +812,69 @@ void VulkanCBindings::FrameGraphBuilder::BuildResourceCreateInfos(std::unordered
 	}
 }
 
-void VulkanCBindings::FrameGraphBuilder::CreateImages(const std::unordered_map<SubresourceName, ResourceCreateInfo>& resourceCreateInfos, const MemoryManager* memoryAllocator)
+void VulkanCBindings::FrameGraphBuilder::PropagateMetadatasFromImageViews(const std::unordered_map<SubresourceName, ImageResourceCreateInfo>& imageCreateInfos, const std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& backbufferCreateInfos)
 {
-	for(const auto& nameWithCreateInfo: resourceCreateInfos)
+	for(auto& nameWithCreateInfo: imageCreateInfos)
+	{
+		for(size_t i = 0; i < nameWithCreateInfo.second.ImageViewInfos.size(); i++)
+		{
+			VkFormat           format      = nameWithCreateInfo.second.ImageViewInfos[i].Format;
+			VkImageAspectFlags aspectFlags = nameWithCreateInfo.second.ImageViewInfos[i].AspectMask;
+
+			for(size_t j = 0; j < nameWithCreateInfo.second.ImageViewInfos[i].ViewAddresses.size(); j++)
+			{
+				const SubresourceAddress& address = nameWithCreateInfo.second.ImageViewInfos[i].ViewAddresses[j];
+				mRenderPassesSubresourceMetadatas.at(address.PassName).at(address.SubresId).Format      = format;
+				mRenderPassesSubresourceMetadatas.at(address.PassName).at(address.SubresId).AspectFlags = aspectFlags;
+			}
+		}
+	}
+
+	for(auto& nameWithCreateInfo: backbufferCreateInfos)
+	{
+		for(size_t i = 0; i < nameWithCreateInfo.second.ImageViewInfos.size(); i++)
+		{
+			VkFormat           format      = nameWithCreateInfo.second.ImageViewInfos[i].Format;
+			VkImageAspectFlags aspectFlags = nameWithCreateInfo.second.ImageViewInfos[i].AspectMask;
+
+			for(size_t j = 0; j < nameWithCreateInfo.second.ImageViewInfos[i].ViewAddresses.size(); j++)
+			{
+				const SubresourceAddress& address = nameWithCreateInfo.second.ImageViewInfos[i].ViewAddresses[j];
+				mRenderPassesSubresourceMetadatas.at(address.PassName).at(address.SubresId).Format      = format;
+				mRenderPassesSubresourceMetadatas.at(address.PassName).at(address.SubresId).AspectFlags = aspectFlags;
+			}
+		}
+	}
+}
+
+void VulkanCBindings::FrameGraphBuilder::SetSwapchainImages(const std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& backbufferResourceCreateInfos, const std::vector<VkImage>& swapchainImages)
+{
+	mGraphToBuild->mSwapchainImageRefs.clear();
+
+	mGraphToBuild->mImages.push_back(VK_NULL_HANDLE);
+	mGraphToBuild->mBackbufferRefIndex = (uint32_t)(mGraphToBuild->mImages.size() - 1);
+
+	for(size_t i = 0; i < swapchainImages.size(); i++)
+	{
+		mGraphToBuild->mSwapchainImageRefs.push_back(swapchainImages[i]);
+	}
+	
+	for(const auto& nameWithCreateInfo: backbufferResourceCreateInfos)
+	{
+		//IMAGE VIEWS
+		for(const auto& imageViewInfo: nameWithCreateInfo.second.ImageViewInfos)
+		{
+			for(const auto& viewAddress: imageViewInfo.ViewAddresses)
+			{
+				mRenderPassesSubresourceMetadatas[viewAddress.PassName][viewAddress.SubresId].ImageIndex = mGraphToBuild->mBackbufferRefIndex;
+			}
+		}
+	}
+}
+
+void VulkanCBindings::FrameGraphBuilder::CreateImages(const std::unordered_map<SubresourceName, ImageResourceCreateInfo>& imageResourceCreateInfos, const MemoryManager* memoryAllocator)
+{
+	for(const auto& nameWithCreateInfo: imageResourceCreateInfos)
 	{
 		VkImage image = VK_NULL_HANDLE;
 		ThrowIfFailed(vkCreateImage(mGraphToBuild->mDeviceRef, &nameWithCreateInfo.second.ImageCreateInfo, nullptr, &image));
@@ -767,9 +910,9 @@ void VulkanCBindings::FrameGraphBuilder::CreateImages(const std::unordered_map<S
 	ThrowIfFailed(vkBindImageMemory2(mGraphToBuild->mDeviceRef, (uint32_t)(bindImageMemoryInfos.size()), bindImageMemoryInfos.data()));
 }
 
-void VulkanCBindings::FrameGraphBuilder::CreateImageViews(const std::unordered_map<SubresourceName, ResourceCreateInfo>& resourceCreateInfos)
+void VulkanCBindings::FrameGraphBuilder::CreateImageViews(const std::unordered_map<SubresourceName, ImageResourceCreateInfo>& imageResourceCreateInfos)
 {
-	for(const auto& nameWithCreateInfo: resourceCreateInfos)
+	for(const auto& nameWithCreateInfo: imageResourceCreateInfos)
 	{
 		//Image is the same for all image views
 		const SubresourceAddress firstViewAddress = nameWithCreateInfo.second.ImageViewInfos[0].ViewAddresses[0];
@@ -780,35 +923,8 @@ void VulkanCBindings::FrameGraphBuilder::CreateImageViews(const std::unordered_m
 		{
 			const ImageViewInfo& imageViewInfo = nameWithCreateInfo.second.ImageViewInfos[j];
 
-			VkFormat format = imageViewInfo.Format;
-			if(format == VK_FORMAT_UNDEFINED)
-			{
-				format = nameWithCreateInfo.second.ImageCreateInfo.format;
-			}
-
-			assert(format != VK_FORMAT_UNDEFINED);
-
-			//TODO: mutable format usage
-			//TODO: fragment density map
-			VkImageViewCreateInfo imageViewCreateInfo;
-			imageViewCreateInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-			imageViewCreateInfo.pNext                           = nullptr;
-			imageViewCreateInfo.flags                           = 0;
-			imageViewCreateInfo.image                           = image;
-			imageViewCreateInfo.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
-			imageViewCreateInfo.format                          = imageViewInfo.Format;
-			imageViewCreateInfo.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-			imageViewCreateInfo.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-			imageViewCreateInfo.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-			imageViewCreateInfo.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-			imageViewCreateInfo.subresourceRange.aspectMask     = imageViewInfo.AspectMask;
-			imageViewCreateInfo.subresourceRange.baseMipLevel   = 0;
-			imageViewCreateInfo.subresourceRange.levelCount     = 1;
-			imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
-			imageViewCreateInfo.subresourceRange.layerCount     = 1;
-
 			VkImageView imageView = VK_NULL_HANDLE;
-			ThrowIfFailed(vkCreateImageView(mGraphToBuild->mDeviceRef, &imageViewCreateInfo, nullptr, &imageView));
+			CreateImageView(imageViewInfo, image, nameWithCreateInfo.second.ImageCreateInfo.format, &imageView);
 
 			mGraphToBuild->mImageViews.push_back(imageView);
 
@@ -819,6 +935,88 @@ void VulkanCBindings::FrameGraphBuilder::CreateImageViews(const std::unordered_m
 			}
 		}
 	}
+}
+
+void VulkanCBindings::FrameGraphBuilder::CreateSwapchainImageViews(const std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& backbufferResourceCreateInfos, VkFormat swapchainFormat)
+{
+	mGraphToBuild->mSwapchainImageViews.clear();
+	mGraphToBuild->mSwapchainViewsSwapMap.clear();
+
+	for(const auto& nameWithCreateInfo: backbufferResourceCreateInfos)
+	{
+		for(size_t j = 0; j < nameWithCreateInfo.second.ImageViewInfos.size(); j++)
+		{
+			const ImageViewInfo& imageViewInfo = nameWithCreateInfo.second.ImageViewInfos[j];
+
+			//Base image view is NULL (it will be assigned from mSwapchainImageViews each frame)
+			mGraphToBuild->mImageViews.push_back(VK_NULL_HANDLE);
+
+			uint32_t imageViewIndex = (uint32_t)(mGraphToBuild->mImageViews.size() - 1);
+			for(size_t k = 0; k < imageViewInfo.ViewAddresses.size(); k++)
+			{
+				mRenderPassesSubresourceMetadatas[imageViewInfo.ViewAddresses[k].PassName][imageViewInfo.ViewAddresses[k].SubresId].ImageViewIndex = imageViewIndex;
+			}
+
+			//Create per-frame views and the entry in mSwapchainViewsSwapMap describing how to swap views each frame
+			mGraphToBuild->mSwapchainViewsSwapMap.push_back(imageViewIndex);
+			for(size_t swapchainImageIndex = 0; swapchainImageIndex < mGraphToBuild->mSwapchainImageRefs.size(); swapchainImageIndex++)
+			{
+				VkImage image = mGraphToBuild->mSwapchainImageRefs[swapchainImageIndex];
+
+				VkImageView imageView = VK_NULL_HANDLE;
+				CreateImageView(imageViewInfo, image, swapchainFormat, &imageView);
+
+				mGraphToBuild->mSwapchainImageViews.push_back(imageView);
+				mGraphToBuild->mSwapchainViewsSwapMap.push_back((uint32_t)(mGraphToBuild->mSwapchainImageViews.size() - 1));
+			}
+		}
+	}
+
+	mGraphToBuild->mLastSwapchainImageIndex = (uint32_t)(mGraphToBuild->mSwapchainImageRefs.size() - 1);
+	
+	std::swap(mGraphToBuild->mImages[mGraphToBuild->mBackbufferRefIndex], mGraphToBuild->mSwapchainImageRefs[mGraphToBuild->mLastSwapchainImageIndex]);
+	for(uint32_t i = 0; i < (uint32_t)mGraphToBuild->mSwapchainViewsSwapMap.size(); i += ((uint32_t)mGraphToBuild->mSwapchainImageRefs.size() + 1u))
+	{
+		uint32_t imageViewIndex     = mGraphToBuild->mSwapchainViewsSwapMap[i];
+		uint32_t imageViewSwapIndex = mGraphToBuild->mSwapchainViewsSwapMap[i + mGraphToBuild->mLastSwapchainImageIndex];
+
+		std::swap(mGraphToBuild->mImageViews[imageViewIndex], mGraphToBuild->mSwapchainImageViews[imageViewSwapIndex]);
+	}
+}
+
+void VulkanCBindings::FrameGraphBuilder::CreateImageView(const ImageViewInfo& imageViewInfo, VkImage image, VkFormat defaultFormat, VkImageView* outImageView)
+{
+	assert(outImageView != nullptr);
+
+	VkFormat format = imageViewInfo.Format;
+	if(format == VK_FORMAT_UNDEFINED)
+	{
+		format = defaultFormat;
+	}
+
+	assert(format != VK_FORMAT_UNDEFINED);
+
+	//TODO: mutable format usage
+	//TODO: fragment density map
+	VkImageViewCreateInfo imageViewCreateInfo;
+	imageViewCreateInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	imageViewCreateInfo.pNext                           = nullptr;
+	imageViewCreateInfo.flags                           = 0;
+	imageViewCreateInfo.image                           = image;
+	imageViewCreateInfo.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
+	imageViewCreateInfo.format                          = format;
+	imageViewCreateInfo.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+	imageViewCreateInfo.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+	imageViewCreateInfo.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+	imageViewCreateInfo.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+	imageViewCreateInfo.subresourceRange.aspectMask     = imageViewInfo.AspectMask;
+
+	imageViewCreateInfo.subresourceRange.baseMipLevel   = 0;
+	imageViewCreateInfo.subresourceRange.levelCount     = 1;
+	imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+	imageViewCreateInfo.subresourceRange.layerCount     = 1;
+
+	ThrowIfFailed(vkCreateImageView(mGraphToBuild->mDeviceRef, &imageViewCreateInfo, nullptr, outImageView));
 }
 
 bool VulkanCBindings::FrameGraphBuilder::PassesIntersect(const RenderPassName& writingPass, const RenderPassName& readingPass)

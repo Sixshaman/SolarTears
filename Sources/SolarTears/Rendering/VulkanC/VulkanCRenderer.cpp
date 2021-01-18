@@ -130,7 +130,13 @@ void VulkanCBindings::Renderer::InitSceneAndFrameGraph(SceneDescription* scene)
 
 	frameGraphBuilder.AssignBackbufferName("Backbuffer");
 
-	frameGraphBuilder.Build(mMemoryAllocator.get());
+	std::vector<VkImage> swapchainImages(mSwapChain->SwapchainImageCount);
+	for(uint32_t i = 0; i < mSwapChain->SwapchainImageCount; i++)
+	{
+		swapchainImages[i] = mSwapChain->GetSwapchainImage(i);
+	}
+
+	frameGraphBuilder.Build(mMemoryAllocator.get(), swapchainImages, mSwapChain->GetBackbufferFormat());
 
 	//Baking
 	ThrowIfFailed(vkResetCommandPool(mDevice, mMainTransferCommandPools[0], 0));
@@ -172,6 +178,7 @@ void VulkanCBindings::Renderer::InitSceneAndFrameGraph(SceneDescription* scene)
 void VulkanCBindings::Renderer::RenderScene()
 {
 	const uint32_t currentFrameResourceIndex = mCurrentFrameIndex % VulkanUtils::InFlightFrameCount;
+	const uint32_t currentSwapchainIndex     = currentFrameResourceIndex;
 
 	std::array frameFences = {mRenderFences[currentFrameResourceIndex]};
 	ThrowIfFailed(vkWaitForFences(mDevice, (uint32_t)(frameFences.size()), frameFences.data(), VK_TRUE, 3000000000));
@@ -179,7 +186,7 @@ void VulkanCBindings::Renderer::RenderScene()
 	ThrowIfFailed(vkResetFences(mDevice, (uint32_t)(frameFences.size()), frameFences.data()));
 	ThrowIfFailed(vkResetCommandPool(mDevice, mMainGraphicsCommandPools[currentFrameResourceIndex], 0));
 
-	mSwapChain->AcquireImage(mDevice, currentFrameResourceIndex);
+	mSwapChain->AcquireImage(mDevice, currentSwapchainIndex);
 
 	VkImage currSwapchainImage = mSwapChain->GetCurrentImage();
 
@@ -215,19 +222,7 @@ void VulkanCBindings::Renderer::RenderScene()
 		                 (uint32_t)bufferSwapchainAcquireBarriers.size(), bufferSwapchainAcquireBarriers.data(),
 		                 (uint32_t)imageSwapchainAcquireBarriers.size(),  imageSwapchainAcquireBarriers.data());
 
-	VkImageSubresourceRange clearRange;
-	clearRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-	clearRange.baseMipLevel   = 0;
-	clearRange.levelCount     = VK_REMAINING_MIP_LEVELS;
-	clearRange.baseArrayLayer = 0;
-	clearRange.layerCount     = VK_REMAINING_ARRAY_LAYERS;
-
-	VkClearColorValue clearColor;
-	std::array<float, 4> clearColorData = {1.0f, 0.0f, 0.0f, 1.0f};
-	memcpy(clearColor.float32, clearColorData.data(), clearColorData.size() * sizeof(float));
-
-	std::array clearRanges = {clearRange};
-	vkCmdClearColorImage(mMainComputeCommandBuffers[currentFrameResourceIndex], currSwapchainImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearColor, (uint32_t)clearRanges.size(), clearRanges.data());
+	mFrameGraph->Traverse(mCommandBuffers.get(), mScene.get(), mThreadPool, currentFrameResourceIndex, currentSwapchainIndex);
 
 	VkImageMemoryBarrier swapchainPresentBarrier;
 	swapchainPresentBarrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;

@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <memory>
 #include <array>
+#include <variant>
 
 namespace VulkanCBindings
 {
@@ -17,6 +18,12 @@ namespace VulkanCBindings
 		using RenderPassName  = std::string;
 		using SubresourceId   = std::string;
 		using SubresourceName = std::string;
+
+		enum class ResourceType
+		{
+			ImageResource,
+			BackbufferResource
+		};
 
 		struct ImageSubresourceMetadata
 		{
@@ -46,11 +53,16 @@ namespace VulkanCBindings
 			std::vector<SubresourceAddress> ViewAddresses;
 		};
 
-		struct ResourceCreateInfo
+		struct ImageResourceCreateInfo
 		{
 			VkImageCreateInfo          ImageCreateInfo;
 			std::vector<ImageViewInfo> ImageViewInfos;
 			std::array<uint32_t, 1>    QueueOwnerIndices;
+		};
+
+		struct BackbufferResourceCreateInfo
+		{
+			std::vector<ImageViewInfo> ImageViewInfos;
 		};
 
 	public:
@@ -97,26 +109,34 @@ namespace VulkanCBindings
 		VkImageAspectFlags   GetNextPassSubresourceAspectFlags(const std::string_view passName, const std::string_view subresourceId) const;
 		VkAccessFlags        GetNextPassSubresourceAccessFlags(const std::string_view passName, const std::string_view subresourceId) const;
 
-		void Build(const MemoryManager* memoryAllocator);
+		void Build(const MemoryManager* memoryAllocator, const std::vector<VkImage>& swapchainImages, VkFormat swapchainFormat);
 
 	private:
-		void BuildAdjacencyList();
-		void TopologicalSortNode(std::vector<uint_fast8_t>& visited, std::vector<uint_fast8_t>& onStack, size_t passIndex, std::vector<size_t>& sortedPassIndices);
-		void BuildSubresourceNodes();
+		void BuildAdjacencyList(std::vector<std::unordered_set<size_t>>& adjacencyList);
+		void SortRenderPasses(const std::vector<std::unordered_set<size_t>>& adjacencyList);
+		void ValidateSubresourceLinks();
 		
-		void BuildSubresources(const MemoryManager* memoryAllocator);
-		void BuildPassObjects();
+		void TopologicalSortNode(const std::vector<std::unordered_set<size_t>>& adjacencyList, std::vector<uint_fast8_t>& visited, std::vector<uint_fast8_t>& onStack, size_t passIndex, std::vector<size_t>& sortedPassIndices);
 
-		void BuildResourceCreateInfos(std::unordered_map<SubresourceName, ResourceCreateInfo>& outResourceCreateInfos);
-		void CreateImages(const std::unordered_map<SubresourceName, ResourceCreateInfo>& resourceCreateInfos, const MemoryManager* memoryAllocator);
-		void CreateImageViews(const std::unordered_map<SubresourceName, ResourceCreateInfo>& resourceCreateInfos);
+		void BuildSubresources(const MemoryManager* memoryAllocator, const std::vector<VkImage>& swapchainImages, std::unordered_set<RenderPassName>& swapchainPassNames, VkFormat swapchainFormat);
+		void BuildPassObjects(const std::unordered_set<RenderPassName>& swapchainPassNames);
+
+		void BuildResourceCreateInfos(std::unordered_map<SubresourceName, ImageResourceCreateInfo>& outImageCreateInfos, std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& outBackbufferCreateInfos, std::unordered_set<RenderPassName>& swapchainPassNames);
+		void MergeImageViewInfos(std::unordered_map<SubresourceName, ImageResourceCreateInfo>& inoutImageResourceCreateInfos);
+
+		void PropagateMetadatasFromImageViews(const std::unordered_map<SubresourceName, ImageResourceCreateInfo>& imageCreateInfos, const std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& backbufferCreateInfos);
+
+		void SetSwapchainImages(const std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& backbufferResourceCreateInfos, const std::vector<VkImage>& swapchainImages);
+		void CreateImages(const std::unordered_map<SubresourceName, ImageResourceCreateInfo>& imageResourceCreateInfos, const MemoryManager* memoryAllocator);
+		void CreateImageViews(const std::unordered_map<SubresourceName, ImageResourceCreateInfo>& imageResourceCreateInfos);
+		void CreateSwapchainImageViews(const std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& backbufferResourceCreateInfos, VkFormat swapchainFormat);
+
+		void CreateImageView(const ImageViewInfo& imageViewInfo, VkImage image, VkFormat defaultFormat, VkImageView* outImageView);
 
 		bool PassesIntersect(const RenderPassName& writingPass, const RenderPassName& readingPass);
 
 	private:
 		FrameGraph* mGraphToBuild;
-
-		std::vector<std::unordered_set<size_t>> mAdjacencyList;
 
 		std::vector<RenderPassName>                              mRenderPassNames;
 		std::unordered_map<RenderPassName, RenderPassCreateFunc> mRenderPassCreateFunctions;

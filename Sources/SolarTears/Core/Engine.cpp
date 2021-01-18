@@ -14,8 +14,6 @@ Engine::Engine(): mPaused(false)
 	mThreadPool = std::make_unique<ThreadPool>();
 
 	mRenderingSystem = std::make_unique<VulkanCBindings::Renderer>(mLoggerQueue.get(), mThreadPool.get());
-
-	CreateScene();
 }
 
 Engine::~Engine()
@@ -25,6 +23,7 @@ Engine::~Engine()
 void Engine::BindToWindow(Window* window)
 {
 	mRenderingSystem->AttachToWindow(window);
+	CreateScene();
 
 	window->RegisterResizeStartedCallback([](Window* window, void* userObject)
 	{

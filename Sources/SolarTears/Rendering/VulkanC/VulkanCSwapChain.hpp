@@ -31,6 +31,8 @@ namespace VulkanCBindings
 		VkImage GetSwapchainImage(uint32_t index) const;
 		VkImage GetCurrentImage()                 const;
 
+		VkFormat GetBackbufferFormat() const;
+
 		bool IsBackbufferHDR() const;
 
 	private:
