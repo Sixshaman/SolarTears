@@ -1,19 +1,17 @@
 #include "VulkanCWorkerCommandBuffers.hpp"
 #include "VulkanCUtils.hpp"
 #include "VulkanCFunctions.hpp"
+#include "VulkanCDeviceQueues.hpp"
 #include "../../Core/ThreadPool.hpp"
 #include <unordered_set>
 #include <array>
 
-VulkanCBindings::WorkerCommandBuffers::WorkerCommandBuffers(VkDevice device, uint32_t workerThreadCount,
-	                                                        uint32_t graphicsQueueFamilyIndex, 
-	                                                        uint32_t computeQueueFamilyIndex, 
-	                                                        uint32_t transferQueueFamilyIndex): mDeviceRef(device), mWorkerThreadCount(workerThreadCount),
-	                                                                                            mCommandBufferIndexForGraphics((uint32_t)(-1)), 
-	                                                                                            mCommandBufferIndexForCompute((uint32_t)(-1)), 
-	                                                                                            mCommandBufferIndexForTransfer((uint32_t)(-1))
+VulkanCBindings::WorkerCommandBuffers::WorkerCommandBuffers(VkDevice device, uint32_t workerThreadCount, const DeviceQueues* deviceQueues): mDeviceRef(device), mWorkerThreadCount(workerThreadCount),
+	                                                                                                                                        mCommandBufferIndexForGraphics((uint32_t)(-1)), 
+	                                                                                                                                        mCommandBufferIndexForCompute((uint32_t)(-1)), 
+	                                                                                                                                        mCommandBufferIndexForTransfer((uint32_t)(-1))
 {
-	InitCommandBuffers(graphicsQueueFamilyIndex, computeQueueFamilyIndex, transferQueueFamilyIndex);
+	InitCommandBuffers(deviceQueues->GetGraphicsQueueFamilyIndex(), deviceQueues->GetComputeQueueFamilyIndex(), deviceQueues->GetTransferQueueFamilyIndex());
 }
 
 VulkanCBindings::WorkerCommandBuffers::~WorkerCommandBuffers()

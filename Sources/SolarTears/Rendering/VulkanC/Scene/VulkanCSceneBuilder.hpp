@@ -12,16 +12,18 @@
 namespace VulkanCBindings
 {
 	class MemoryManager;
+	class DeviceQueues;
+	class WorkerCommandBuffers;
 
 	class RenderableSceneBuilder: public RenderableSceneBuilderBase
 	{
 	public:
-		RenderableSceneBuilder(RenderableScene* sceneToBuild, uint32_t transferQueueFamilyIndex, uint32_t computeQueueFamilyIndex, uint32_t graphicsQueueFamilyIndex);
+		RenderableSceneBuilder(RenderableScene* sceneToBuild);
 		~RenderableSceneBuilder();
 
 	public:
-		void BakeSceneFirstPart(const MemoryManager* memoryAllocator, const ShaderManager* shaderManager, const DeviceParameters& deviceParameters);
-		void BakeSceneSecondPart(VkCommandBuffer commandBuffer);
+		void BakeSceneFirstPart(const DeviceQueues* deviceQueues, const MemoryManager* memoryAllocator, const ShaderManager* shaderManager, const DeviceParameters& deviceParameters);
+		void BakeSceneSecondPart(DeviceQueues* deviceQueues, WorkerCommandBuffers* workerCommandBuffers);
 
 	public:
 		static constexpr size_t   GetVertexSize();
@@ -37,10 +39,10 @@ namespace VulkanCBindings
 	private:
 		void CreateSceneMeshMetadata(std::vector<std::wstring>& sceneTexturesVec);
 
-		void CreateSceneDataBuffers(VkDeviceSize* currentIntermediateBufferOffset);
+		void CreateSceneDataBuffers(const DeviceQueues* deviceQueues, VkDeviceSize* currentIntermediateBufferOffset);
 		void LoadTextureImages(const std::vector<std::wstring>& sceneTextures, const DeviceParameters& deviceParameters, VkDeviceSize* currentIntermediateBufferOffset);
 
-		void CreateIntermediateBuffer(const MemoryManager* memoryAllocator, VkDeviceSize intermediateBufferSize);
+		void CreateIntermediateBuffer(const DeviceQueues* deviceQueues, const MemoryManager* memoryAllocator, VkDeviceSize intermediateBufferSize);
 		void FillIntermediateBufferData();
 
 		void AllocateImageMemory(const MemoryManager* memoryAllocator);
@@ -54,10 +56,6 @@ namespace VulkanCBindings
 
 	private:
 		RenderableScene* mSceneToBuild; 
-
-		uint32_t mGraphicsQueueFamilyIndex;
-		uint32_t mComputeQueueFamilyIndex;
-		uint32_t mTransferQueueFamilyIndex;
 
 		std::vector<std::vector<VkBufferImageCopy>> mSceneTextureSubresourses;
 

@@ -5,6 +5,7 @@
 #include "VulkanCMemory.hpp"
 #include "VulkanCWorkerCommandBuffers.hpp"
 #include "VulkanCShaders.hpp"
+#include "VulkanCDeviceQueues.hpp"
 #include "FrameGraph/VulkanCRenderPass.hpp"
 #include "FrameGraph/VulkanCFrameGraph.hpp"
 #include "FrameGraph/VulkanCFrameGraphBuilder.hpp"
@@ -19,9 +20,7 @@
 #include "FrameGraph/Passes/VulkanCGBufferRenderPass.hpp"
 #include "FrameGraph/Passes/VulkanCCopyImagePass.hpp"
 
-VulkanCBindings::Renderer::Renderer(LoggerQueue* loggerQueue, ThreadPool* threadPool): ::Renderer(loggerQueue), mInstanceParameters(loggerQueue), mDeviceParameters(loggerQueue), mThreadPool(threadPool),
-                                                                                       mGraphicsQueueFamilyIndex((uint32_t)-1), mComputeQueueFamilyIndex((uint32_t)-1), mTransferQueueFamilyIndex((uint32_t)-1),
-	                                                                                   mCurrentFrameIndex(0)
+VulkanCBindings::Renderer::Renderer(LoggerQueue* loggerQueue, ThreadPool* threadPool): ::Renderer(loggerQueue), mInstanceParameters(loggerQueue), mDeviceParameters(loggerQueue), mThreadPool(threadPool), mCurrentFrameIndex(0)
 {
 	mDynamicLibrary = std::make_unique<VulkanCBindings::FunctionsLibrary>();
 
@@ -33,20 +32,22 @@ VulkanCBindings::Renderer::Renderer(LoggerQueue* loggerQueue, ThreadPool* thread
 	SelectPhysicalDevice(&mPhysicalDevice);
 
 	mDeviceParameters.InvalidateDeviceParameters(mPhysicalDevice);
-	FindDeviceQueueIndices(mPhysicalDevice, &mGraphicsQueueFamilyIndex, &mComputeQueueFamilyIndex, &mTransferQueueFamilyIndex);
 
-	std::unordered_set<uint32_t> deviceFamilyQueues = {mGraphicsQueueFamilyIndex, mComputeQueueFamilyIndex, mTransferQueueFamilyIndex};
+	mDeviceQueues = std::make_unique<DeviceQueues>(mPhysicalDevice);
+
+	std::unordered_set<uint32_t> deviceFamilyQueues = {mDeviceQueues->GetGraphicsQueueFamilyIndex(), mDeviceQueues->GetComputeQueueFamilyIndex(), mDeviceQueues->GetTransferQueueFamilyIndex()};
 	CreateLogicalDevice(mPhysicalDevice, deviceFamilyQueues);
 	mDynamicLibrary->LoadDeviceFunctions(mDevice);
 
-	GetDeviceQueues(mGraphicsQueueFamilyIndex, mComputeQueueFamilyIndex, mTransferQueueFamilyIndex);
+	mDeviceQueues->InitQueueHandles(mDevice);
 
-	mSwapChain = std::make_unique<VulkanCBindings::SwapChain>(mLoggingBoard, mInstance, mDevice);
+	mSwapChain = std::make_unique<SwapChain>(mLoggingBoard, mInstance, mDevice);
 
-	CreateCommandBuffersAndPools();
+	mCommandBuffers = std::make_unique<WorkerCommandBuffers>(mDevice, mThreadPool->GetWorkerThreadCount(), mDeviceQueues.get());
+
 	CreateFences();
 
-	mMemoryAllocator = std::make_unique<VulkanCBindings::MemoryManager>(mLoggingBoard, mPhysicalDevice, mDeviceParameters);
+	mMemoryAllocator = std::make_unique<MemoryManager>(mLoggingBoard, mPhysicalDevice, mDeviceParameters);
 
 	mShaderManager = std::make_unique<ShaderManager>(mLoggingBoard);
 }
@@ -77,13 +78,17 @@ void VulkanCBindings::Renderer::AttachToWindow(Window* window)
 	mSwapChain->BindToWindow(mPhysicalDevice, mInstanceParameters, mDeviceParameters, window);
 
 	//Assume it only has to be done once. The present queue index should NEVER change once we run the program
-	if(mSwapChain->GetPresentQueueFamilyIndex() != mGraphicsQueueFamilyIndex && mSwapChain->GetPresentQueueFamilyIndex() != mComputeQueueFamilyIndex && mSwapChain->GetPresentQueueFamilyIndex() != mTransferQueueFamilyIndex)
+	if(mSwapChain->GetPresentQueueFamilyIndex() != mDeviceQueues->GetGraphicsQueueFamilyIndex() 
+	&& mSwapChain->GetPresentQueueFamilyIndex() != mDeviceQueues->GetComputeQueueFamilyIndex() 
+	&& mSwapChain->GetPresentQueueFamilyIndex() != mDeviceQueues->GetTransferQueueFamilyIndex())
 	{
 		//Device wasn't created with separate present queue in mind. Recreate the device
 		SafeDestroyDevice(mDevice);
 
-		std::unordered_set<uint32_t> deviceFamilyQueues = { mGraphicsQueueFamilyIndex, mComputeQueueFamilyIndex, mTransferQueueFamilyIndex, mSwapChain->GetPresentQueueFamilyIndex()};
+		std::unordered_set<uint32_t> deviceFamilyQueues = {mDeviceQueues->GetGraphicsQueueFamilyIndex(), mDeviceQueues->GetComputeQueueFamilyIndex(), mDeviceQueues->GetTransferQueueFamilyIndex(), mSwapChain->GetPresentQueueFamilyIndex()};
 		CreateLogicalDevice(mPhysicalDevice, deviceFamilyQueues);
+
+		mDeviceQueues->InitQueueHandles(mDevice);
 
 		//Recreate the swapchain (without changing the present queue index)
 		mSwapChain->Recreate(mPhysicalDevice, mInstanceParameters, mDeviceParameters, window);
@@ -113,46 +118,11 @@ void VulkanCBindings::Renderer::InitScene(SceneDescription* scene)
 
 	mScene = std::make_unique<VulkanCBindings::RenderableScene>(mDevice, mDeviceParameters, mShaderManager.get());
 
-	VulkanCBindings::RenderableSceneBuilder sceneBuilder(mScene.get(), mTransferQueueFamilyIndex, mComputeQueueFamilyIndex, mGraphicsQueueFamilyIndex);
+	VulkanCBindings::RenderableSceneBuilder sceneBuilder(mScene.get());
 	scene->BindRenderableComponent(&sceneBuilder);
 
-	sceneBuilder.BakeSceneFirstPart(mMemoryAllocator.get(), mShaderManager.get(), mDeviceParameters);
-
-	//Baking
-	ThrowIfFailed(vkResetCommandPool(mDevice, mMainTransferCommandPools[0], 0));
-
-	//TODO: mGPU?
-	VkCommandBufferBeginInfo transferCmdBufferBeginInfo;
-	transferCmdBufferBeginInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	transferCmdBufferBeginInfo.pNext            = nullptr;
-	transferCmdBufferBeginInfo.flags            = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-	transferCmdBufferBeginInfo.pInheritanceInfo = nullptr;
-
-	ThrowIfFailed(vkBeginCommandBuffer(mMainTransferCommandBuffers[0], &transferCmdBufferBeginInfo));
-	
-	sceneBuilder.BakeSceneSecondPart(mMainTransferCommandBuffers[0]);
-
-	ThrowIfFailed(vkEndCommandBuffer(mMainTransferCommandBuffers[0]));
-
-	std::array commandBuffersToExecute = {mMainTransferCommandBuffers[0]};
-
-	//TODO: mGPU?
-	//TODO: Performance query?
-	VkSubmitInfo queueSubmitInfo;
-	queueSubmitInfo.sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	queueSubmitInfo.pNext                = nullptr;
-	queueSubmitInfo.waitSemaphoreCount   = 0;
-	queueSubmitInfo.pWaitSemaphores      = nullptr;
-	queueSubmitInfo.pWaitDstStageMask    = nullptr;
-	queueSubmitInfo.commandBufferCount   = (uint32_t)commandBuffersToExecute.size();
-	queueSubmitInfo.pCommandBuffers      = commandBuffersToExecute.data();
-	queueSubmitInfo.signalSemaphoreCount = 0;
-	queueSubmitInfo.pSignalSemaphores    = nullptr;
-
-	std::array submitInfos = {queueSubmitInfo};
-	ThrowIfFailed(vkQueueSubmit(mTransferQueue, (uint32_t)submitInfos.size(), submitInfos.data(), nullptr));
-
-	ThrowIfFailed(vkQueueWaitIdle(mTransferQueue));
+	sceneBuilder.BakeSceneFirstPart(mDeviceQueues.get(), mMemoryAllocator.get(), mShaderManager.get(), mDeviceParameters);
+	sceneBuilder.BakeSceneSecondPart(mDeviceQueues.get(), mCommandBuffers.get());
 }
 
 void VulkanCBindings::Renderer::RenderScene()
@@ -160,97 +130,13 @@ void VulkanCBindings::Renderer::RenderScene()
 	const uint32_t currentFrameResourceIndex = mCurrentFrameIndex % VulkanUtils::InFlightFrameCount;
 	const uint32_t currentSwapchainIndex     = currentFrameResourceIndex;
 
-	std::array frameFences = {mRenderFences[currentFrameResourceIndex]};
+	VkFence frameFence = mRenderFences[currentFrameResourceIndex];
+	std::array frameFences = {frameFence};
 	ThrowIfFailed(vkWaitForFences(mDevice, (uint32_t)(frameFences.size()), frameFences.data(), VK_TRUE, 3000000000));
 
 	ThrowIfFailed(vkResetFences(mDevice, (uint32_t)(frameFences.size()), frameFences.data()));
-	ThrowIfFailed(vkResetCommandPool(mDevice, mMainGraphicsCommandPools[currentFrameResourceIndex], 0));
 
-	mSwapChain->AcquireImage(mDevice, currentSwapchainIndex);
-
-	VkImage currSwapchainImage = mSwapChain->GetCurrentImage();
-
-	VkCommandBufferBeginInfo graphicsCmdBufferBeginInfo;
-	graphicsCmdBufferBeginInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	graphicsCmdBufferBeginInfo.pNext            = nullptr;
-	graphicsCmdBufferBeginInfo.flags            = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-	graphicsCmdBufferBeginInfo.pInheritanceInfo = nullptr;
-
-	vkBeginCommandBuffer(mMainGraphicsCommandBuffers[currentFrameResourceIndex], &graphicsCmdBufferBeginInfo);
-
-	VkImageMemoryBarrier swapchainAcquireBarrier;
-	swapchainAcquireBarrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	swapchainAcquireBarrier.pNext                           = nullptr;
-	swapchainAcquireBarrier.srcAccessMask                   = 0;
-	swapchainAcquireBarrier.dstAccessMask                   = 0;
-	swapchainAcquireBarrier.oldLayout                       = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-	swapchainAcquireBarrier.newLayout                       = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-	swapchainAcquireBarrier.srcQueueFamilyIndex             = mSwapChain->GetPresentQueueFamilyIndex();
-	swapchainAcquireBarrier.dstQueueFamilyIndex             = mGraphicsQueueFamilyIndex;
-	swapchainAcquireBarrier.image                           = currSwapchainImage;
-	swapchainAcquireBarrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-	swapchainAcquireBarrier.subresourceRange.baseMipLevel   = 0;
-	swapchainAcquireBarrier.subresourceRange.levelCount     = VK_REMAINING_MIP_LEVELS;
-	swapchainAcquireBarrier.subresourceRange.baseArrayLayer = 0;
-	swapchainAcquireBarrier.subresourceRange.layerCount     = VK_REMAINING_ARRAY_LAYERS;
-
-	std::array<VkMemoryBarrier, 0>         memorySwapchainAcquireBarriers;
-	std::array<VkBufferMemoryBarrier, 0>   bufferSwapchainAcquireBarriers;
-	std::array                             imageSwapchainAcquireBarriers = {swapchainAcquireBarrier};
-	vkCmdPipelineBarrier(mMainGraphicsCommandBuffers[currentFrameResourceIndex], VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0,
-		                 (uint32_t)memorySwapchainAcquireBarriers.size(), memorySwapchainAcquireBarriers.data(),
-		                 (uint32_t)bufferSwapchainAcquireBarriers.size(), bufferSwapchainAcquireBarriers.data(),
-		                 (uint32_t)imageSwapchainAcquireBarriers.size(),  imageSwapchainAcquireBarriers.data());
-
-	mFrameGraph->Traverse(mCommandBuffers.get(), mScene.get(), mThreadPool, currentFrameResourceIndex, currentSwapchainIndex);
-
-	VkImageMemoryBarrier swapchainPresentBarrier;
-	swapchainPresentBarrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	swapchainPresentBarrier.pNext                           = nullptr;
-	swapchainPresentBarrier.srcAccessMask                   = 0;
-	swapchainPresentBarrier.dstAccessMask                   = 0;
-	swapchainPresentBarrier.oldLayout                       = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-	swapchainPresentBarrier.newLayout                       = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-	swapchainPresentBarrier.srcQueueFamilyIndex             = mGraphicsQueueFamilyIndex;
-	swapchainPresentBarrier.dstQueueFamilyIndex             = mSwapChain->GetPresentQueueFamilyIndex();
-	swapchainPresentBarrier.image                           = currSwapchainImage;
-	swapchainPresentBarrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-	swapchainPresentBarrier.subresourceRange.baseMipLevel   = 0;
-	swapchainPresentBarrier.subresourceRange.levelCount     = VK_REMAINING_MIP_LEVELS;
-	swapchainPresentBarrier.subresourceRange.baseArrayLayer = 0;
-	swapchainPresentBarrier.subresourceRange.layerCount     = VK_REMAINING_ARRAY_LAYERS;
-
-	std::array<VkMemoryBarrier, 0>       memorySwapchainPresentBarriers;
-	std::array<VkBufferMemoryBarrier, 0> bufferSwapchainPresentBarriers;
-	std::array                           imageSwapchainPresentBarriers = {swapchainPresentBarrier};
-	vkCmdPipelineBarrier(mMainGraphicsCommandBuffers[currentFrameResourceIndex], VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0,
-		                 (uint32_t)memorySwapchainPresentBarriers.size(), memorySwapchainPresentBarriers.data(),
-		                 (uint32_t)bufferSwapchainPresentBarriers.size(), bufferSwapchainPresentBarriers.data(),
-		                 (uint32_t)imageSwapchainPresentBarriers.size(), imageSwapchainPresentBarriers.data());
-
-	ThrowIfFailed(vkEndCommandBuffer(mMainGraphicsCommandBuffers[currentFrameResourceIndex]));
-
-	std::array waitSemaphores      = {mSwapChain->GetImageAcquiredSemaphore(currentFrameResourceIndex)};
-	std::array signalSemaphores    = {mSwapChain->GetImagePresentSemaphore(currentFrameResourceIndex)};
-	std::array waitSemaphoreStages = {VkPipelineStageFlags(VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT)};
-
-	std::array commandBuffersToExecute = {mMainGraphicsCommandBuffers[currentFrameResourceIndex]};
-
-	VkSubmitInfo graphicsQueueSubmitInfo;
-	graphicsQueueSubmitInfo.sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	graphicsQueueSubmitInfo.pNext                = nullptr;
-	graphicsQueueSubmitInfo.waitSemaphoreCount   = (uint32_t)(waitSemaphores.size());
-	graphicsQueueSubmitInfo.pWaitSemaphores      = waitSemaphores.data();
-	graphicsQueueSubmitInfo.pWaitDstStageMask    = waitSemaphoreStages.data();
-	graphicsQueueSubmitInfo.commandBufferCount   = (uint32_t)commandBuffersToExecute.size();
-	graphicsQueueSubmitInfo.pCommandBuffers      = commandBuffersToExecute.data();
-	graphicsQueueSubmitInfo.signalSemaphoreCount = (uint32_t)signalSemaphores.size();
-	graphicsQueueSubmitInfo.pSignalSemaphores    = signalSemaphores.data();
-
-	std::array submitInfos = {graphicsQueueSubmitInfo};
-	ThrowIfFailed(vkQueueSubmit(mGraphicsQueue, (uint32_t)(submitInfos.size()), submitInfos.data(), frameFences[0]));
-
-	mSwapChain->Present(currentFrameResourceIndex);
+	mFrameGraph->Traverse(mCommandBuffers.get(), mScene.get(), mThreadPool, mSwapChain.get(), mDeviceQueues.get(), frameFence, currentFrameResourceIndex, currentSwapchainIndex);
 
 	mCurrentFrameIndex++;
 }
@@ -369,120 +255,6 @@ void VulkanCBindings::Renderer::CreateLogicalDevice(VkPhysicalDevice physicalDev
 	ThrowIfFailed(vkCreateDevice(mPhysicalDevice, &deviceCreateInfo, nullptr, &mDevice));
 }
 
-void VulkanCBindings::Renderer::FindDeviceQueueIndices(VkPhysicalDevice physicalDevice, uint32_t* outGraphicsQueueIndex, uint32_t* outComputeQueueIndex, uint32_t* outTransferQueueIndex)
-{
-	//Use dedicated queues
-	uint32_t graphicsQueueFamilyIndex = (uint32_t)(-1);
-	uint32_t computeQueueFamilyIndex  = (uint32_t)(-1);
-	uint32_t transferQueueFamilyIndex = (uint32_t)(-1);
-
-	std::vector<VkQueueFamilyProperties> queueFamiliesProperties;
-
-	uint32_t queueFamilyCount = 0;
-	vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, nullptr);
-
-	queueFamiliesProperties.resize(queueFamilyCount);
-	vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamiliesProperties.data());
-	for(uint32_t queueFamilyIndex = 0; queueFamilyIndex < (uint32_t)queueFamiliesProperties.size(); queueFamilyIndex++)
-	{
-		//First found graphics queue
-		if((graphicsQueueFamilyIndex == (uint32_t)(-1)) && ((queueFamiliesProperties[queueFamilyIndex].queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0))
-		{
-			graphicsQueueFamilyIndex = queueFamilyIndex;
-		}
-		
-		//First found dedicated compute queue
-		if((computeQueueFamilyIndex == (uint32_t)(-1)) && ((queueFamiliesProperties[queueFamilyIndex].queueFlags & VK_QUEUE_COMPUTE_BIT) != 0) && ((queueFamiliesProperties[queueFamilyIndex].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0))
-		{
-			computeQueueFamilyIndex = queueFamilyIndex;
-		}
-
-		//First found dedicated transfer queue
-		if((transferQueueFamilyIndex == (uint32_t)(-1)) && ((queueFamiliesProperties[queueFamilyIndex].queueFlags & VK_QUEUE_TRANSFER_BIT) != 0) && ((queueFamiliesProperties[queueFamilyIndex].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0) && ((queueFamiliesProperties[queueFamilyIndex].queueFlags & VK_QUEUE_COMPUTE_BIT) == 0))
-		{
-			transferQueueFamilyIndex = queueFamilyIndex;
-		}
-	}
-
-	//Some of the queues are not found, use non-dedicated ones instead
-	if(computeQueueFamilyIndex == (uint32_t)(-1))
-	{
-		computeQueueFamilyIndex = graphicsQueueFamilyIndex;
-	}
-
-	if(transferQueueFamilyIndex == (uint32_t)(-1))
-	{
-		transferQueueFamilyIndex = computeQueueFamilyIndex;
-	}
-
-	assert(graphicsQueueFamilyIndex != (uint32_t)(-1));
-	assert(computeQueueFamilyIndex  != (uint32_t)(-1));
-	assert(transferQueueFamilyIndex != (uint32_t)(-1));
-
-	if(outGraphicsQueueIndex != nullptr)
-	{
-		*outGraphicsQueueIndex = graphicsQueueFamilyIndex;
-	}
-
-	if(outComputeQueueIndex != nullptr)
-	{
-		*outComputeQueueIndex = computeQueueFamilyIndex;
-	}
-
-	if(outTransferQueueIndex != nullptr)
-	{
-		*outTransferQueueIndex = transferQueueFamilyIndex;
-	}
-}
-
-void VulkanCBindings::Renderer::GetDeviceQueues(uint32_t graphicsIndex, uint32_t computeIndex, uint32_t transferIndex)
-{
-	VkDeviceQueueInfo2 graphicsQueueInfo;
-	graphicsQueueInfo.sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2;
-	graphicsQueueInfo.pNext            = nullptr;
-	graphicsQueueInfo.flags            = 0; //I still don't use ANY queue priorities
-	graphicsQueueInfo.queueIndex       = 0; //Use only one queue per family
-	graphicsQueueInfo.queueFamilyIndex = graphicsIndex;
-
-	vkGetDeviceQueue2(mDevice, &graphicsQueueInfo, &mGraphicsQueue);
-
-
-	VkDeviceQueueInfo2 computeQueueInfo;
-	computeQueueInfo.sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2;
-	computeQueueInfo.pNext            = nullptr;
-	computeQueueInfo.flags            = 0; //I still don't use ANY queue priorities
-	computeQueueInfo.queueIndex       = 0; //Use only one queue per family
-	computeQueueInfo.queueFamilyIndex = computeIndex;
-
-	vkGetDeviceQueue2(mDevice, &computeQueueInfo, &mComputeQueue);
-
-
-	VkDeviceQueueInfo2 transferQueueInfo;
-	transferQueueInfo.sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2;
-	transferQueueInfo.pNext            = nullptr;
-	transferQueueInfo.flags            = 0; //I still don't use ANY queue priorities
-	transferQueueInfo.queueIndex       = 0; //Use only one queue per family
-	transferQueueInfo.queueFamilyIndex = transferIndex;
-
-	vkGetDeviceQueue2(mDevice, &transferQueueInfo, &mTransferQueue);
-}
-
-void VulkanCBindings::Renderer::CreateCommandBuffersAndPools()
-{
-	mCommandBuffers = std::make_unique<VulkanCBindings::WorkerCommandBuffers>(mDevice, mThreadPool->GetWorkerThreadCount(), mGraphicsQueueFamilyIndex, mComputeQueueFamilyIndex, mTransferQueueFamilyIndex);
-
-	for(uint32_t frame = 0; frame < VulkanUtils::InFlightFrameCount; frame++)
-	{
-		mMainGraphicsCommandPools[frame] = mCommandBuffers->GetMainThreadGraphicsCommandPool(frame);
-		mMainComputeCommandPools[frame]  = mCommandBuffers->GetMainThreadComputeCommandPool(frame);
-		mMainTransferCommandPools[frame] = mCommandBuffers->GetMainThreadTransferCommandPool(frame);
-
-		mMainGraphicsCommandBuffers[frame] = mCommandBuffers->GetMainThreadGraphicsCommandBuffer(frame);
-		mMainComputeCommandBuffers[frame]  = mCommandBuffers->GetMainThreadComputeCommandBuffer(frame);
-		mMainTransferCommandBuffers[frame] = mCommandBuffers->GetMainThreadTransferCommandBuffer(frame);
-	}
-}
-
 void VulkanCBindings::Renderer::CreateFences()
 {
 	for(uint32_t i = 0; i < VulkanUtils::InFlightFrameCount; i++)
@@ -498,7 +270,10 @@ void VulkanCBindings::Renderer::CreateFences()
 
 void VulkanCBindings::Renderer::InitializeSwapchainImages()
 {
-	ThrowIfFailed(vkResetCommandPool(mDevice, mMainGraphicsCommandPools[0], 0));
+	VkCommandBuffer commandBuffer = mCommandBuffers->GetMainThreadGraphicsCommandBuffer(0);
+	VkCommandPool   commandPool   = mCommandBuffers->GetMainThreadComputeCommandPool(0);
+
+	ThrowIfFailed(vkResetCommandPool(mDevice, commandPool, 0));
 
 	//TODO: mGPU?
 	VkCommandBufferBeginInfo graphicsCmdBufferBeginInfo;
@@ -507,7 +282,7 @@ void VulkanCBindings::Renderer::InitializeSwapchainImages()
 	graphicsCmdBufferBeginInfo.flags            = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 	graphicsCmdBufferBeginInfo.pInheritanceInfo = nullptr;
 
-	vkBeginCommandBuffer(mMainGraphicsCommandBuffers[0], &graphicsCmdBufferBeginInfo);
+	vkBeginCommandBuffer(commandBuffer, &graphicsCmdBufferBeginInfo);
 
 	std::array<VkImageMemoryBarrier, VulkanCBindings::SwapChain::SwapchainImageCount> imageBarriers;
 	for(uint32_t i = 0; i < VulkanCBindings::SwapChain::SwapchainImageCount; i++)
@@ -530,39 +305,22 @@ void VulkanCBindings::Renderer::InitializeSwapchainImages()
 
 	std::array<VkMemoryBarrier, 0>       memoryBarriers;
 	std::array<VkBufferMemoryBarrier, 0> bufferBarriers;
-	vkCmdPipelineBarrier(mMainGraphicsCommandBuffers[0], VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0,
+	vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0,
 		                 (uint32_t)memoryBarriers.size(), memoryBarriers.data(),
 		                 (uint32_t)bufferBarriers.size(), bufferBarriers.data(),
 		                 (uint32_t)imageBarriers.size(), imageBarriers.data());
 
-	ThrowIfFailed(vkEndCommandBuffer(mMainGraphicsCommandBuffers[0]));
+	ThrowIfFailed(vkEndCommandBuffer(commandBuffer));
 
-	std::array commandBuffersToExecute = {mMainGraphicsCommandBuffers[0]};
-
-	//TODO: mGPU?
-	//TODO: Performance query?
-	VkSubmitInfo queueSubmitInfo;
-	queueSubmitInfo.sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	queueSubmitInfo.pNext                = nullptr;
-	queueSubmitInfo.waitSemaphoreCount   = 0;
-	queueSubmitInfo.pWaitSemaphores      = nullptr;
-	queueSubmitInfo.pWaitDstStageMask    = nullptr;
-	queueSubmitInfo.commandBufferCount   = (uint32_t)commandBuffersToExecute.size();
-	queueSubmitInfo.pCommandBuffers      = commandBuffersToExecute.data();
-	queueSubmitInfo.signalSemaphoreCount = 0;
-	queueSubmitInfo.pSignalSemaphores    = nullptr;
-
-	std::array submitInfos = {queueSubmitInfo};
-	ThrowIfFailed(vkQueueSubmit(mGraphicsQueue, (uint32_t)submitInfos.size(), submitInfos.data(), nullptr));
-
-	ThrowIfFailed(vkQueueWaitIdle(mGraphicsQueue));
+	mDeviceQueues->GraphicsQueueSubmit(commandBuffer);
+	mDeviceQueues->GraphicsQueueWait();
 }
 
 void VulkanCBindings::Renderer::CreateFrameGraph()
 {
 	mFrameGraph.reset();
 
-	mFrameGraph = std::make_unique<VulkanCBindings::FrameGraph>(mDevice, mGraphicsQueueFamilyIndex, mComputeQueueFamilyIndex, mTransferQueueFamilyIndex);
+	mFrameGraph = std::make_unique<VulkanCBindings::FrameGraph>(mDevice);
 
 	VulkanCBindings::FrameGraphBuilder frameGraphBuilder(mFrameGraph.get(), mScene.get(), &mDeviceParameters, mShaderManager.get());
 
@@ -581,5 +339,5 @@ void VulkanCBindings::Renderer::CreateFrameGraph()
 		swapchainImages[i] = mSwapChain->GetSwapchainImage(i);
 	}
 
-	frameGraphBuilder.Build(mMemoryAllocator.get(), swapchainImages, mSwapChain->GetBackbufferFormat());
+	frameGraphBuilder.Build(mDeviceQueues.get(), mMemoryAllocator.get(), swapchainImages, mSwapChain->GetBackbufferFormat());
 }

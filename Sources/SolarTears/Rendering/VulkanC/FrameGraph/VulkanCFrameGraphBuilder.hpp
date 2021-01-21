@@ -10,6 +10,7 @@
 namespace VulkanCBindings
 {
 	class MemoryManager;
+	class DeviceQueues;
 
 	using RenderPassCreateFunc = std::unique_ptr<RenderPass>(*)(VkDevice, const FrameGraphBuilder*, const std::string&);
 
@@ -109,7 +110,7 @@ namespace VulkanCBindings
 		VkImageAspectFlags   GetNextPassSubresourceAspectFlags(const std::string_view passName, const std::string_view subresourceId) const;
 		VkAccessFlags        GetNextPassSubresourceAccessFlags(const std::string_view passName, const std::string_view subresourceId) const;
 
-		void Build(const MemoryManager* memoryAllocator, const std::vector<VkImage>& swapchainImages, VkFormat swapchainFormat);
+		void Build(const DeviceQueues* deviceQueues, const MemoryManager* memoryAllocator, const std::vector<VkImage>& swapchainImages, VkFormat swapchainFormat);
 
 	private:
 		//Builds frame graph adjacency list
@@ -122,7 +123,7 @@ namespace VulkanCBindings
 		void TopologicalSortNode(const std::vector<std::unordered_set<size_t>>& adjacencyList, std::vector<uint_fast8_t>& visited, std::vector<uint_fast8_t>& onStack, size_t passIndex, std::vector<size_t>& sortedPassIndices);
 
 		//Creates descriptions for resource creation
-		void BuildResourceCreateInfos(std::unordered_map<SubresourceName, ImageResourceCreateInfo>& outImageCreateInfos, std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& outBackbufferCreateInfos, std::unordered_set<RenderPassName>& swapchainPassNames);
+		void BuildResourceCreateInfos(const DeviceQueues* deviceQueues, std::unordered_map<SubresourceName, ImageResourceCreateInfo>& outImageCreateInfos, std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& outBackbufferCreateInfos, std::unordered_set<RenderPassName>& swapchainPassNames);
 		
 		//Merges all image view create descriptions with same Format and Aspect Flags into single structures with multiple ViewAddresses
 		void MergeImageViewInfos(std::unordered_map<SubresourceName, ImageResourceCreateInfo>& inoutImageResourceCreateInfos);
@@ -134,7 +135,7 @@ namespace VulkanCBindings
 		void PropagateMetadatasFromImageViews(const std::unordered_map<SubresourceName, ImageResourceCreateInfo>& imageCreateInfos, const std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& backbufferCreateInfos);
 
 		//Functions for creating frame graph passes and resources
-		void BuildSubresources(const MemoryManager* memoryAllocator, const std::vector<VkImage>& swapchainImages, std::unordered_set<RenderPassName>& swapchainPassNames, VkFormat swapchainFormat);
+		void BuildSubresources(const DeviceQueues* deviceQueues, const MemoryManager* memoryAllocator, const std::vector<VkImage>& swapchainImages, std::unordered_set<RenderPassName>& swapchainPassNames, VkFormat swapchainFormat);
 		void BuildPassObjects(const std::unordered_set<RenderPassName>& swapchainPassNames);
 
 		//Functions for creating actual frame graph resources/subresources

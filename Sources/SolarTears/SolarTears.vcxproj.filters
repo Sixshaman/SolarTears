@@ -225,6 +225,9 @@
     <ClInclude Include="..\3rd party\DirectXMath\Inc\DirectXMath.h">
       <Filter>3rdParty\DirectXMath\Inc</Filter>
     </ClInclude>
+    <ClInclude Include="Rendering\VulkanC\VulkanCDeviceQueues.hpp">
+      <Filter>Rendering\VulkanC</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Platform\Win32\Win32Application.cpp">
@@ -340,6 +343,9 @@
     </ClCompile>
     <ClCompile Include="..\3rd party\DDSTextureLoaderVk\DDSTextureLoaderVk.cpp">
       <Filter>3rdParty\DDSTextureLoaderVk</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\VulkanC\VulkanCDeviceQueues.cpp">
+      <Filter>Rendering\VulkanC</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

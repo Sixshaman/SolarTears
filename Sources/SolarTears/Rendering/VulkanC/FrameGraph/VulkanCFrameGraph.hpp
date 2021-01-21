@@ -11,20 +11,25 @@ class ThreadPool;
 namespace VulkanCBindings
 {
 	class WorkerCommandBuffers;
+	class SwapChain;
+	class DeviceQueues;
 
 	class FrameGraph
 	{
 		friend class FrameGraphBuilder;
 
 	public:
-		FrameGraph(VkDevice device, uint32_t graphicsQueueIndex, uint32_t computeQueueIndex, uint32_t transferQueueIndex);
+		FrameGraph(VkDevice device);
 		~FrameGraph();
 
-		void Traverse(WorkerCommandBuffers* commandBuffers, RenderableScene* scene, ThreadPool* threadPool, uint32_t currentFrameResourceIndex, uint32_t currentSwapchainImageIndex);
+		void Traverse(WorkerCommandBuffers* commandBuffers, RenderableScene* scene, ThreadPool* threadPool, SwapChain* swapChain, DeviceQueues* deviceQueues, VkFence traverseFence, uint32_t currentFrameResourceIndex, uint32_t currentSwapchainImageIndex);
 
 	private:
 		void SwitchSwapchainPasses(uint32_t swapchainImageIndex);
 		void SwitchSwapchainImages(uint32_t swapchainImageIndex);
+
+		void BeginCommandBuffer(VkCommandBuffer cmdBuffer, VkCommandPool cmdPool);
+		void EndCommandBuffer(VkCommandBuffer cmdBuffer);
 
 	private:
 		const VkDevice mDeviceRef;
@@ -33,11 +38,6 @@ namespace VulkanCBindings
 	
 		uint32_t mGraphicsPassCount;
 		uint32_t mComputePassCount;
-		uint32_t mTransferPassCount;
-
-		uint32_t mGraphicsQueueFamilyIndex;
-		uint32_t mComputeQueueFamilyIndex;
-		uint32_t mTransferQueueFamilyIndex;
 
 		std::vector<std::unique_ptr<RenderPass>> mRenderPasses;           //All currently used render passes
 		std::vector<std::unique_ptr<RenderPass>> mSwapchainRenderPasses;  //All render passes that use swapchain images (replaced every frame)
@@ -57,5 +57,8 @@ namespace VulkanCBindings
 		std::vector<uint32_t> mSwapchainViewsSwapMap;
 
 		VkDeviceMemory mImageMemory;
+
+		VkSemaphore mGraphicsToComputeSemaphores[VulkanUtils::InFlightFrameCount];
+		VkSemaphore mComputeToPresentSemaphores[VulkanUtils::InFlightFrameCount];
 	};
 }

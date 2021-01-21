@@ -1,13 +1,15 @@
 #include "VulkanCFrameGraph.hpp"
 #include "../VulkanCWorkerCommandBuffers.hpp"
 #include "../VulkanCFunctions.hpp"
+#include "../VulkanCSwapChain.hpp"
+#include "../VulkanCDeviceQueues.hpp"
 #include "../../../Core/ThreadPool.hpp"
+#include <array>
 
-VulkanCBindings::FrameGraph::FrameGraph(VkDevice device, uint32_t graphicsQueueIndex, uint32_t computeQueueIndex, uint32_t transferQueueIndex): mDeviceRef(device), mGraphicsQueueFamilyIndex(graphicsQueueIndex), mComputeQueueFamilyIndex(computeQueueIndex), mTransferQueueFamilyIndex(transferQueueIndex)
+VulkanCBindings::FrameGraph::FrameGraph(VkDevice device): mDeviceRef(device)
 {
 	mGraphicsPassCount = 0;
 	mComputePassCount  = 0;
-	mTransferPassCount = 0;
 
 	mImageMemory = VK_NULL_HANDLE;
 
@@ -18,7 +20,7 @@ VulkanCBindings::FrameGraph::~FrameGraph()
 {
 }
 
-void VulkanCBindings::FrameGraph::Traverse(WorkerCommandBuffers* commandBuffers, RenderableScene* scene, ThreadPool* threadPool, uint32_t currentFrameResourceIndex, uint32_t currentSwapchainImageIndex)
+void VulkanCBindings::FrameGraph::Traverse(WorkerCommandBuffers* commandBuffers, RenderableScene* scene, ThreadPool* threadPool, SwapChain* swapChain, DeviceQueues* deviceQueues, VkFence traverseFence, uint32_t currentFrameResourceIndex, uint32_t currentSwapchainImageIndex)
 {
 	//TODO: multithreading (thread pools are too hard for me rn, I have to level up my multithreading/concurrency skills)
 	UNREFERENCED_PARAMETER(threadPool);
@@ -28,7 +30,17 @@ void VulkanCBindings::FrameGraph::Traverse(WorkerCommandBuffers* commandBuffers,
 
 	uint32_t renderPassIndex = 0;
 
+	VkSemaphore presentToGraphicsSemaphore = swapChain->GetImageAcquiredSemaphore(currentFrameResourceIndex);
+	VkSemaphore graphicsToComputeSemaphore = mGraphicsToComputeSemaphores[currentFrameResourceIndex];
+	VkSemaphore computeToPresentSemaphore  = mComputeToPresentSemaphores[currentFrameResourceIndex];
+
+	swapChain->AcquireImage(mDeviceRef, currentSwapchainImageIndex);
+
+
 	VkCommandBuffer graphicsCommandBuffer = commandBuffers->GetMainThreadGraphicsCommandBuffer(currentFrameResourceIndex);
+	VkCommandPool   graphicsCommandPool   = commandBuffers->GetMainThreadGraphicsCommandPool(currentFrameResourceIndex);
+	BeginCommandBuffer(graphicsCommandBuffer, graphicsCommandPool);
+
 	while(renderPassIndex < mGraphicsPassCount)
 	{
 		mRenderPasses[renderPassIndex]->RecordExecution(graphicsCommandBuffer, scene, mFrameGraphConfig, currentFrameResourceIndex);
@@ -36,7 +48,16 @@ void VulkanCBindings::FrameGraph::Traverse(WorkerCommandBuffers* commandBuffers,
 		renderPassIndex++;
 	}
 
+	EndCommandBuffer(graphicsCommandBuffer);
+
+	std::array graphicsCommandBuffers = {graphicsCommandBuffer};
+	deviceQueues->GraphicsQueueSubmit(graphicsCommandBuffers.data(), graphicsCommandBuffers.size(), VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, presentToGraphicsSemaphore, graphicsToComputeSemaphore, nullptr);
+
+
 	VkCommandBuffer computeCommandBuffer = commandBuffers->GetMainThreadComputeCommandBuffer(currentFrameResourceIndex);
+	VkCommandPool   computeCommandPool   = commandBuffers->GetMainThreadComputeCommandPool(currentFrameResourceIndex);
+	BeginCommandBuffer(computeCommandBuffer, computeCommandPool);
+
 	while((renderPassIndex - mGraphicsPassCount) < mComputePassCount)
 	{
 		mRenderPasses[renderPassIndex]->RecordExecution(computeCommandBuffer, scene, mFrameGraphConfig, currentFrameResourceIndex);
@@ -44,13 +65,13 @@ void VulkanCBindings::FrameGraph::Traverse(WorkerCommandBuffers* commandBuffers,
 		renderPassIndex++;
 	}
 
-	VkCommandBuffer transferCommandBuffer = commandBuffers->GetMainThreadTransferCommandBuffer(currentFrameResourceIndex);
-	while((renderPassIndex - mGraphicsPassCount - mComputePassCount) < mTransferPassCount)
-	{
-		mRenderPasses[renderPassIndex]->RecordExecution(transferCommandBuffer, scene, mFrameGraphConfig, currentFrameResourceIndex);
+	EndCommandBuffer(computeCommandBuffer);
 
-		renderPassIndex++;
-	}
+	std::array computeCommandBuffers  = {computeCommandBuffer};
+	deviceQueues->ComputeQueueSubmit(computeCommandBuffers.data(), computeCommandBuffers.size(), VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, graphicsToComputeSemaphore, computeToPresentSemaphore, traverseFence);
+
+
+	swapChain->Present(computeToPresentSemaphore);
 
 	mLastSwapchainImageIndex = currentSwapchainImageIndex;
 }
@@ -82,4 +103,22 @@ void VulkanCBindings::FrameGraph::SwitchSwapchainImages(uint32_t swapchainImageI
 		std::swap(mImageViews[viewIndexToSwitch], mSwapchainImageViews[mSwapchainViewsSwapMap[i + mLastSwapchainImageIndex + 1]]);
 		std::swap(mImageViews[viewIndexToSwitch], mSwapchainImageViews[mSwapchainViewsSwapMap[i + swapchainImageIndex + 1]]);
 	}
+}
+
+void VulkanCBindings::FrameGraph::BeginCommandBuffer(VkCommandBuffer cmdBuffer, VkCommandPool cmdPool)
+{
+	ThrowIfFailed(vkResetCommandPool(mDeviceRef, cmdPool, 0));
+
+	VkCommandBufferBeginInfo cmdBufferBeginInfo;
+	cmdBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	cmdBufferBeginInfo.pNext = nullptr;
+	cmdBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	cmdBufferBeginInfo.pInheritanceInfo = nullptr;
+
+	ThrowIfFailed(vkBeginCommandBuffer(cmdBuffer, &cmdBufferBeginInfo));
+}
+
+void VulkanCBindings::FrameGraph::EndCommandBuffer(VkCommandBuffer cmdBuffer)
+{
+	ThrowIfFailed(vkEndCommandBuffer(cmdBuffer));
 }

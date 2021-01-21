@@ -20,7 +20,6 @@ VulkanCBindings::SwapChain::SwapChain(LoggerQueue* logger, VkInstance instance, 
 		semaphoreCreateInfo.flags = 0;
 
 		ThrowIfFailed(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &mImageAcquiredSemaphores[i]));
-		ThrowIfFailed(vkCreateSemaphore(device, &semaphoreCreateInfo, nullptr, &mImagePresentSemaphores[i]));
 	}
 }
 
@@ -32,7 +31,6 @@ VulkanCBindings::SwapChain::~SwapChain()
 	for(size_t i = 0; i < VulkanUtils::InFlightFrameCount; i++)
 	{
 		SafeDestroyObject(vkDestroySemaphore, mDeviceRef, mImageAcquiredSemaphores[i]);
-		SafeDestroyObject(vkDestroySemaphore, mDeviceRef, mImagePresentSemaphores[i]);
 	}
 }
 
@@ -97,16 +95,9 @@ VkSemaphore VulkanCBindings::SwapChain::GetImageAcquiredSemaphore(uint32_t frame
 	return mImageAcquiredSemaphores[frameInFlightIndex];
 }
 
-VkSemaphore VulkanCBindings::SwapChain::GetImagePresentSemaphore(uint32_t frameInFlightIndex) const
+void VulkanCBindings::SwapChain::Present(VkSemaphore presentSemaphore)
 {
-	assert(frameInFlightIndex < SwapchainImageCount);
-
-	return mImagePresentSemaphores[frameInFlightIndex];
-}
-
-void VulkanCBindings::SwapChain::Present(uint32_t frameInFlightIndex)
-{
-	std::array presentSemaphores = {mImagePresentSemaphores[frameInFlightIndex]};
+	std::array presentSemaphores = {presentSemaphore};
 	std::array swapchains        = {mSwapchain};
 	std::array imageIndices      = {mCurrentImageIndex};
 

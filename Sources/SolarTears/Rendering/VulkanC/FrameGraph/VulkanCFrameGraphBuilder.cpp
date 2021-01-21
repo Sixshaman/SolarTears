@@ -2,6 +2,7 @@
 #include "VulkanCFrameGraph.hpp"
 #include "../VulkanCFunctions.hpp"
 #include "../VulkanCMemory.hpp"
+#include "../VulkanCDeviceQueues.hpp"
 #include <algorithm>
 
 VulkanCBindings::FrameGraphBuilder::FrameGraphBuilder(FrameGraph* graphToBuild, const RenderableScene* scene, const DeviceParameters* deviceParameters, const ShaderManager* shaderManager): mGraphToBuild(graphToBuild), mScene(scene), mDeviceParameters(deviceParameters), mShaderManager(shaderManager)
@@ -423,7 +424,7 @@ VkAccessFlags VulkanCBindings::FrameGraphBuilder::GetNextPassSubresourceAccessFl
 	}
 }
 
-void VulkanCBindings::FrameGraphBuilder::Build(const MemoryManager* memoryAllocator, const std::vector<VkImage>& swapchainImages, VkFormat swapchainFormat)
+void VulkanCBindings::FrameGraphBuilder::Build(const DeviceQueues* deviceQueues, const MemoryManager* memoryAllocator, const std::vector<VkImage>& swapchainImages, VkFormat swapchainFormat)
 {
 	std::vector<std::unordered_set<size_t>> adjacencyList;
 	BuildAdjacencyList(adjacencyList);
@@ -432,7 +433,7 @@ void VulkanCBindings::FrameGraphBuilder::Build(const MemoryManager* memoryAlloca
 	ValidateSubresourceLinks();
 
 	std::unordered_set<RenderPassName> swapchainPassNames;
-	BuildSubresources(memoryAllocator, swapchainImages, swapchainPassNames, swapchainFormat);
+	BuildSubresources(deviceQueues, memoryAllocator, swapchainImages, swapchainPassNames, swapchainFormat);
 	BuildPassObjects(swapchainPassNames);
 }
 
@@ -533,11 +534,11 @@ void VulkanCBindings::FrameGraphBuilder::ValidateSubresourceLinks()
 	}
 }
 
-void VulkanCBindings::FrameGraphBuilder::BuildSubresources(const MemoryManager* memoryAllocator, const std::vector<VkImage>& swapchainImages, std::unordered_set<RenderPassName>& swapchainPassNames, VkFormat swapchainFormat)
+void VulkanCBindings::FrameGraphBuilder::BuildSubresources(const DeviceQueues* deviceQueues, const MemoryManager* memoryAllocator, const std::vector<VkImage>& swapchainImages, std::unordered_set<RenderPassName>& swapchainPassNames, VkFormat swapchainFormat)
 {
 	std::unordered_map<SubresourceName, ImageResourceCreateInfo>      imageResourceCreateInfos;
 	std::unordered_map<SubresourceName, BackbufferResourceCreateInfo> backbufferResourceCreateInfos;
-	BuildResourceCreateInfos(imageResourceCreateInfos, backbufferResourceCreateInfos, swapchainPassNames);
+	BuildResourceCreateInfos(deviceQueues, imageResourceCreateInfos, backbufferResourceCreateInfos, swapchainPassNames);
 
 	PropagateMetadatasFromImageViews(imageResourceCreateInfos, backbufferResourceCreateInfos);
 
@@ -556,7 +557,6 @@ void VulkanCBindings::FrameGraphBuilder::BuildPassObjects(const std::unordered_s
 
 	mGraphToBuild->mGraphicsPassCount = 0;
 	mGraphToBuild->mComputePassCount  = 0;
-	mGraphToBuild->mTransferPassCount = 0;
 
 	for(const std::string& passName: mRenderPassNames)
 	{
@@ -597,11 +597,6 @@ void VulkanCBindings::FrameGraphBuilder::BuildPassObjects(const std::unordered_s
 		{
 			mGraphToBuild->mComputePassCount += 1;
 		}
-
-		if(mRenderPassTypes[passName] == RenderPassType::TRANSFER)
-		{
-			mGraphToBuild->mTransferPassCount += 1;
-		}
 	}
 
 	//Prepare for the first use
@@ -613,12 +608,12 @@ void VulkanCBindings::FrameGraphBuilder::BuildPassObjects(const std::unordered_s
 	}
 }
 
-void VulkanCBindings::FrameGraphBuilder::BuildResourceCreateInfos(std::unordered_map<SubresourceName, ImageResourceCreateInfo>& outImageCreateInfos, std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& outBackbufferCreateInfos, std::unordered_set<RenderPassName>& swapchainPassNames)
+void VulkanCBindings::FrameGraphBuilder::BuildResourceCreateInfos(const DeviceQueues* deviceQueues, std::unordered_map<SubresourceName, ImageResourceCreateInfo>& outImageCreateInfos, std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& outBackbufferCreateInfos, std::unordered_set<RenderPassName>& swapchainPassNames)
 {
 	std::unordered_map<RenderPassType, uint32_t> familyIndicesForPassTypes;
-	familyIndicesForPassTypes[RenderPassType::GRAPHICS] = mGraphToBuild->mGraphicsQueueFamilyIndex;
-	familyIndicesForPassTypes[RenderPassType::COMPUTE]  = mGraphToBuild->mComputeQueueFamilyIndex;
-	familyIndicesForPassTypes[RenderPassType::TRANSFER] = mGraphToBuild->mTransferQueueFamilyIndex;
+	familyIndicesForPassTypes[RenderPassType::GRAPHICS] = deviceQueues->GetGraphicsQueueFamilyIndex();
+	familyIndicesForPassTypes[RenderPassType::COMPUTE]  = deviceQueues->GetComputeQueueFamilyIndex();
+	familyIndicesForPassTypes[RenderPassType::TRANSFER] = deviceQueues->GetTransferQueueFamilyIndex();
 
 	for(const auto& renderPassName: mRenderPassNames)
 	{

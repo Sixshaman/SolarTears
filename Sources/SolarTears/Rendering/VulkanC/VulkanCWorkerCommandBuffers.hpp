@@ -6,10 +6,12 @@
 
 namespace VulkanCBindings
 {
+	class DeviceQueues;
+
 	class WorkerCommandBuffers
 	{
 	public:
-		WorkerCommandBuffers(VkDevice device, uint32_t workerThreadCount, uint32_t graphicsQueueFamilyIndex, uint32_t computeQueueFamilyIndex, uint32_t transferQueueFamilyIndex);
+		WorkerCommandBuffers(VkDevice device, uint32_t workerThreadCount, const DeviceQueues* deviceQueues);
 		~WorkerCommandBuffers();
 
 		uint32_t GetWorkerThreadCount() const;
