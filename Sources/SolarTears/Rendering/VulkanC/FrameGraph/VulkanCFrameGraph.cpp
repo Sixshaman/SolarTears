@@ -14,6 +14,8 @@ VulkanCBindings::FrameGraph::FrameGraph(VkDevice device): mDeviceRef(device)
 	mImageMemory = VK_NULL_HANDLE;
 
 	mLastSwapchainImageIndex = 0;
+
+	CreateSemaphores();
 }
 
 VulkanCBindings::FrameGraph::~FrameGraph()
@@ -74,6 +76,20 @@ void VulkanCBindings::FrameGraph::Traverse(WorkerCommandBuffers* commandBuffers,
 	swapChain->Present(computeToPresentSemaphore);
 
 	mLastSwapchainImageIndex = currentSwapchainImageIndex;
+}
+
+void VulkanCBindings::FrameGraph::CreateSemaphores()
+{
+	for(uint32_t i = 0; i < VulkanUtils::InFlightFrameCount; i++)
+	{
+		VkSemaphoreCreateInfo semaphoreCreateInfo;
+		semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+		semaphoreCreateInfo.pNext = nullptr;
+		semaphoreCreateInfo.flags = 0;
+
+		ThrowIfFailed(vkCreateSemaphore(mDeviceRef, &semaphoreCreateInfo, nullptr, &mGraphicsToComputeSemaphores[i]));
+		ThrowIfFailed(vkCreateSemaphore(mDeviceRef, &semaphoreCreateInfo, nullptr, &mComputeToPresentSemaphores[i]));
+	}
 }
 
 void VulkanCBindings::FrameGraph::SwitchSwapchainPasses(uint32_t swapchainImageIndex)

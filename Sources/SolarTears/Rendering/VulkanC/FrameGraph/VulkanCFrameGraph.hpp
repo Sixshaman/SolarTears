@@ -25,6 +25,8 @@ namespace VulkanCBindings
 		void Traverse(WorkerCommandBuffers* commandBuffers, RenderableScene* scene, ThreadPool* threadPool, SwapChain* swapChain, DeviceQueues* deviceQueues, VkFence traverseFence, uint32_t currentFrameResourceIndex, uint32_t currentSwapchainImageIndex);
 
 	private:
+		void CreateSemaphores();
+		
 		void SwitchSwapchainPasses(uint32_t swapchainImageIndex);
 		void SwitchSwapchainImages(uint32_t swapchainImageIndex);
 
