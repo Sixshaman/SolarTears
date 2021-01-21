@@ -8,12 +8,14 @@
 #include <memory>
 
 class ThreadPool;
+
 namespace VulkanCBindings
 {
 	class FunctionsLibrary;
 	class WorkerCommandBuffers;
 	class MemoryManager;
 	class SwapChain;
+	class DeviceQueues;
 	class RenderableScene;
 	class FrameGraph;
 	class ShaderManager;
@@ -36,12 +38,6 @@ namespace VulkanCBindings
 		void InitInstance();
 		void SelectPhysicalDevice(VkPhysicalDevice* outPhysicalDevice);
 		void CreateLogicalDevice(VkPhysicalDevice physicalDevice, const std::unordered_set<uint32_t>& queueFamilies);
-
-		void FindDeviceQueueIndices(VkPhysicalDevice physicalDevice, uint32_t* outGraphicsQueueIndex, uint32_t* outComputeQueueIndex, uint32_t* outTransferQueueIndex);
-
-		void GetDeviceQueues(uint32_t graphicsIndex, uint32_t computeIndex, uint32_t transferIndex);
-
-		void CreateCommandBuffersAndPools();
 		void CreateFences();
 
 	private:
@@ -56,26 +52,9 @@ namespace VulkanCBindings
 		VkPhysicalDevice mPhysicalDevice;
 		VkDevice         mDevice;
 
-		uint32_t mGraphicsQueueFamilyIndex;
-		uint32_t mComputeQueueFamilyIndex;
-		uint32_t mTransferQueueFamilyIndex;
-
-		VkQueue mGraphicsQueue;
-		VkQueue mComputeQueue;
-		VkQueue mTransferQueue;
-
-		VkCommandPool mMainGraphicsCommandPools[VulkanUtils::InFlightFrameCount];
-		VkCommandPool mMainComputeCommandPools[VulkanUtils::InFlightFrameCount];
-		VkCommandPool mMainTransferCommandPools[VulkanUtils::InFlightFrameCount];
-
-		VkCommandBuffer mMainGraphicsCommandBuffers[VulkanUtils::InFlightFrameCount];
-		VkCommandBuffer mMainComputeCommandBuffers[VulkanUtils::InFlightFrameCount];
-		VkCommandBuffer mMainTransferCommandBuffers[VulkanUtils::InFlightFrameCount];
-
 		VkFence mRenderFences[VulkanUtils::InFlightFrameCount];
 
 		uint64_t mCurrentFrameIndex;
-		uint32_t mThreadCount;
 
 		VulkanCBindings::InstanceParameters mInstanceParameters;
 		VulkanCBindings::DeviceParameters   mDeviceParameters;
@@ -89,6 +68,7 @@ namespace VulkanCBindings
 		std::unique_ptr<ShaderManager> mShaderManager;
 
 		std::unique_ptr<SwapChain>            mSwapChain;
+		std::unique_ptr<DeviceQueues>         mDeviceQueues;
 		std::unique_ptr<WorkerCommandBuffers> mCommandBuffers;
 
 		std::unique_ptr<MemoryManager> mMemoryAllocator;

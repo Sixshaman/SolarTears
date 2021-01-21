@@ -21,10 +21,9 @@ namespace VulkanCBindings
 		void Recreate(VkPhysicalDevice physicalDevice, const InstanceParameters& instanceParameters, const DeviceParameters& deviceParameters, Window* window);
 
 		void AcquireImage(VkDevice device, uint32_t frameInFlightIndex);
-		void Present(uint32_t frameInFlightIndex);
+		void Present(VkSemaphore presentSemaphore);
 
 		VkSemaphore GetImageAcquiredSemaphore(uint32_t frameInFlightIndex) const;
-		VkSemaphore GetImagePresentSemaphore(uint32_t frameInFlightIndex)  const;
 
 		uint32_t GetPresentQueueFamilyIndex() const;
 
@@ -71,7 +70,6 @@ namespace VulkanCBindings
 		uint32_t mSwapchainHeight;
 
 		VkSemaphore mImageAcquiredSemaphores[VulkanUtils::InFlightFrameCount];
-		VkSemaphore mImagePresentSemaphores[VulkanUtils::InFlightFrameCount];
 
 		VkImage mSwapchainImages[SwapchainImageCount];
 

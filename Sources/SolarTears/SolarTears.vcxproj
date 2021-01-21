@@ -55,6 +55,7 @@
     <ClInclude Include="Rendering\VulkanC\Scene\VulkanCScene.hpp" />
     <ClInclude Include="Rendering\VulkanC\Scene\VulkanCSceneBuilder.hpp" />
     <ClInclude Include="Rendering\VulkanC\VulkanCDeviceParameters.hpp" />
+    <ClInclude Include="Rendering\VulkanC\VulkanCDeviceQueues.hpp" />
     <ClInclude Include="Rendering\VulkanC\VulkanCFunctions.hpp" />
     <ClInclude Include="Rendering\VulkanC\VulkanCFunctionsLibrary.hpp" />
     <ClInclude Include="Rendering\VulkanC\VulkanCInstanceParameters.hpp" />
@@ -95,6 +96,7 @@
     <ClCompile Include="Rendering\VulkanC\Scene\VulkanCScene.cpp" />
     <ClCompile Include="Rendering\VulkanC\Scene\VulkanCSceneBuilder.cpp" />
     <ClCompile Include="Rendering\VulkanC\VulkanCDeviceParameters.cpp" />
+    <ClCompile Include="Rendering\VulkanC\VulkanCDeviceQueues.cpp" />
     <ClCompile Include="Rendering\VulkanC\VulkanCFunctions.cpp" />
     <ClCompile Include="Rendering\VulkanC\VulkanCFunctionsLibrary.cpp" />
     <ClCompile Include="Rendering\VulkanC\VulkanCInstanceParameters.cpp" />
