@@ -118,7 +118,7 @@ namespace VulkanCBindings
 
 		//Sorts frame graph passes
 		void SortRenderPasses(const std::vector<std::unordered_set<size_t>>& adjacencyList);
-		
+
 		//Recursively sort subtree topologically
 		void TopologicalSortNode(const std::vector<std::unordered_set<size_t>>& adjacencyList, std::vector<uint_fast8_t>& visited, std::vector<uint_fast8_t>& onStack, size_t passIndex, std::vector<size_t>& sortedPassIndices);
 
@@ -156,8 +156,8 @@ namespace VulkanCBindings
 		std::vector<RenderPassName>                              mRenderPassNames;
 		std::unordered_map<RenderPassName, RenderPassCreateFunc> mRenderPassCreateFunctions;
 		std::unordered_map<RenderPassName, RenderPassType>       mRenderPassTypes;
-		std::unordered_map<RenderPassName, uint32_t>             mRenderPassIndices;
-                  
+		std::unordered_map<RenderPassName, uint32_t>             mRenderPassIndices;          
+
 		std::unordered_map<RenderPassName, std::unordered_set<SubresourceId>> mRenderPassesReadSubresourceIds;
 		std::unordered_map<RenderPassName, std::unordered_set<SubresourceId>> mRenderPassesWriteSubresourceIds;
 
