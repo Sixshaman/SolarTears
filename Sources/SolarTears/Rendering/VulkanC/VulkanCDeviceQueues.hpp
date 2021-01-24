@@ -23,6 +23,14 @@ namespace VulkanCBindings
 		void ComputeQueueSubmit(VkCommandBuffer  commandBuffer);
 		void TransferQueueSubmit(VkCommandBuffer commandBuffer);
 
+		void GraphicsQueueSubmit(VkCommandBuffer commandBuffer, VkSemaphore signalSemaphore);
+		void ComputeQueueSubmit(VkCommandBuffer  commandBuffer, VkSemaphore signalSemaphore);
+		void TransferQueueSubmit(VkCommandBuffer commandBuffer, VkSemaphore signalSemaphore);
+
+		void GraphicsQueueSubmit(VkCommandBuffer commandBuffer, VkSemaphore waitSemaphore, VkPipelineStageFlags waitStageFlags);
+		void ComputeQueueSubmit(VkCommandBuffer  commandBuffer, VkSemaphore waitSemaphore, VkPipelineStageFlags waitStageFlags);
+		void TransferQueueSubmit(VkCommandBuffer commandBuffer, VkSemaphore waitSemaphore, VkPipelineStageFlags waitStageFlags);
+
 		void GraphicsQueueSubmit(VkCommandBuffer* commandBuffers, size_t commandBufferCount);
 		void ComputeQueueSubmit(VkCommandBuffer* commandBuffers,  size_t commandBufferCount);
 		void TransferQueueSubmit(VkCommandBuffer* commandBuffers, size_t commandBufferCount);
@@ -35,6 +43,8 @@ namespace VulkanCBindings
 		void FindDeviceQueueIndices(VkPhysicalDevice physicalDevice);
 
 		void QueueSubmit(VkQueue queue, VkCommandBuffer* commandBuffers, uint32_t commandBufferCount);
+		void QueueSubmit(VkQueue queue, VkCommandBuffer* commandBuffers, uint32_t commandBufferCount,                                                                 VkSemaphore signalSemaphore, VkFence signalFence);
+		void QueueSubmit(VkQueue queue, VkCommandBuffer* commandBuffers, uint32_t commandBufferCount, VkPipelineStageFlags waitStageFlags, VkSemaphore waitSemaphore,                              VkFence signalFence);
 		void QueueSubmit(VkQueue queue, VkCommandBuffer* commandBuffers, uint32_t commandBufferCount, VkPipelineStageFlags waitStageFlags, VkSemaphore waitSemaphore, VkSemaphore signalSemaphore, VkFence signalFence);
 
 	private:

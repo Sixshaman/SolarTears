@@ -61,11 +61,26 @@ void VulkanCBindings::RenderableSceneBuilder::BakeSceneFirstPart(const DeviceQue
 
 void VulkanCBindings::RenderableSceneBuilder::BakeSceneSecondPart(DeviceQueues* deviceQueues, WorkerCommandBuffers* workerCommandBuffers)
 {
-	VkCommandPool   commandPool   = workerCommandBuffers->GetMainThreadTransferCommandPool(0);
-	VkCommandBuffer commandBuffer = workerCommandBuffers->GetMainThreadTransferCommandBuffer(0);
+	VkCommandPool   transferCommandPool   = workerCommandBuffers->GetMainThreadTransferCommandPool(0);
+	VkCommandBuffer transferCommandBuffer = workerCommandBuffers->GetMainThreadTransferCommandBuffer(0);
+
+	VkCommandPool   graphicsCommandPool   = workerCommandBuffers->GetMainThreadGraphicsCommandPool(0);
+	VkCommandBuffer graphicsCommandBuffer = workerCommandBuffers->GetMainThreadGraphicsCommandBuffer(0);
+
+	VkPipelineStageFlags invalidateStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+
+	VkSemaphore transferToGraphicsSemaphore = VK_NULL_HANDLE;
+	{
+		VkSemaphoreCreateInfo semaphoreCreateInfo;
+		semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+		semaphoreCreateInfo.pNext = nullptr;
+		semaphoreCreateInfo.flags = 0;
+
+		ThrowIfFailed(vkCreateSemaphore(mSceneToBuild->mDeviceRef, &semaphoreCreateInfo, nullptr, &transferToGraphicsSemaphore));
+	}
 
 	//Baking
-	ThrowIfFailed(vkResetCommandPool(mSceneToBuild->mDeviceRef, commandPool, 0));
+	ThrowIfFailed(vkResetCommandPool(mSceneToBuild->mDeviceRef, transferCommandPool, 0));
 
 	//TODO: mGPU?
 	VkCommandBufferBeginInfo transferCmdBufferBeginInfo;
@@ -74,7 +89,7 @@ void VulkanCBindings::RenderableSceneBuilder::BakeSceneSecondPart(DeviceQueues* 
 	transferCmdBufferBeginInfo.flags            = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 	transferCmdBufferBeginInfo.pInheritanceInfo = nullptr;
 
-	ThrowIfFailed(vkBeginCommandBuffer(commandBuffer, &transferCmdBufferBeginInfo));
+	ThrowIfFailed(vkBeginCommandBuffer(transferCommandBuffer, &transferCmdBufferBeginInfo));
 
 	std::array sceneBuffers           = {mSceneToBuild->mSceneVertexBuffer,   mSceneToBuild->mSceneIndexBuffer};
 	std::array sceneBufferAccessMasks = {VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, VK_ACCESS_INDEX_READ_BIT};
@@ -114,7 +129,7 @@ void VulkanCBindings::RenderableSceneBuilder::BakeSceneSecondPart(DeviceQueues* 
 	}
 
 	std::array<VkMemoryBarrier, 0> memoryTransferBarriers;
-	vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
+	vkCmdPipelineBarrier(transferCommandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
 		                 (uint32_t)memoryTransferBarriers.size(), memoryTransferBarriers.data(),
 		                 (uint32_t)bufferTransferBarriers.size(), bufferTransferBarriers.data(),
 		                 (uint32_t)imageTransferBarriers.size(),  imageTransferBarriers.data());
@@ -122,7 +137,7 @@ void VulkanCBindings::RenderableSceneBuilder::BakeSceneSecondPart(DeviceQueues* 
 
 	for(size_t i = 0; i < mSceneToBuild->mSceneTextures.size(); i++)
 	{
-		vkCmdCopyBufferToImage(commandBuffer, mIntermediateBuffer, mSceneToBuild->mSceneTextures[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, (uint32_t)mSceneTextureSubresourses[i].size(), mSceneTextureSubresourses[i].data());
+		vkCmdCopyBufferToImage(transferCommandBuffer, mIntermediateBuffer, mSceneToBuild->mSceneTextures[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, (uint32_t)mSceneTextureSubresourses[i].size(), mSceneTextureSubresourses[i].data());
 	}
 
 	std::array sceneBufferDataOffsets = {mIntermediateBufferVertexDataOffset,                      mIntermediateBufferIndexDataOffset};
@@ -135,59 +150,109 @@ void VulkanCBindings::RenderableSceneBuilder::BakeSceneSecondPart(DeviceQueues* 
 		copyRegion.size      = sceneBufferDataSizes[i];
 
 		std::array copyRegions = {copyRegion};
-		vkCmdCopyBuffer(commandBuffer, mIntermediateBuffer, sceneBuffers[i], (uint32_t)(copyRegions.size()), copyRegions.data());
+		vkCmdCopyBuffer(transferCommandBuffer, mIntermediateBuffer, sceneBuffers[i], (uint32_t)(copyRegions.size()), copyRegions.data());
 	}
 
-
-	VkPipelineStageFlags invalidateStageMask = 0;
-
-	std::vector<VkImageMemoryBarrier> imageInvalidateBarriers(mSceneToBuild->mSceneTextures.size());
+	std::vector<VkImageMemoryBarrier> releaseImageInvalidateBarriers(mSceneToBuild->mSceneTextures.size());
 	for(size_t i = 0; i < mSceneToBuild->mSceneTextures.size(); i++)
 	{
-		imageInvalidateBarriers[i].sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		imageInvalidateBarriers[i].pNext                           = nullptr;
-		imageInvalidateBarriers[i].srcAccessMask                   = VK_ACCESS_TRANSFER_WRITE_BIT;
-		imageInvalidateBarriers[i].dstAccessMask                   = VK_ACCESS_SHADER_READ_BIT;
-		imageInvalidateBarriers[i].oldLayout                       = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-		imageInvalidateBarriers[i].newLayout                       = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		imageInvalidateBarriers[i].srcQueueFamilyIndex             = deviceQueues->GetTransferQueueFamilyIndex();
-		imageInvalidateBarriers[i].dstQueueFamilyIndex             = deviceQueues->GetGraphicsQueueFamilyIndex();
-		imageInvalidateBarriers[i].image                           = mSceneToBuild->mSceneTextures[i];
-		imageInvalidateBarriers[i].subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-		imageInvalidateBarriers[i].subresourceRange.baseMipLevel   = 0;
-		imageInvalidateBarriers[i].subresourceRange.levelCount     = VK_REMAINING_MIP_LEVELS;
-		imageInvalidateBarriers[i].subresourceRange.baseArrayLayer = 0;
-		imageInvalidateBarriers[i].subresourceRange.layerCount     = VK_REMAINING_ARRAY_LAYERS;
+		releaseImageInvalidateBarriers[i].sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		releaseImageInvalidateBarriers[i].pNext                           = nullptr;
+		releaseImageInvalidateBarriers[i].srcAccessMask                   = VK_ACCESS_TRANSFER_WRITE_BIT;
+		releaseImageInvalidateBarriers[i].dstAccessMask                   = 0;
+		releaseImageInvalidateBarriers[i].oldLayout                       = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		releaseImageInvalidateBarriers[i].newLayout                       = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		releaseImageInvalidateBarriers[i].srcQueueFamilyIndex             = deviceQueues->GetTransferQueueFamilyIndex();
+		releaseImageInvalidateBarriers[i].dstQueueFamilyIndex             = deviceQueues->GetGraphicsQueueFamilyIndex();
+		releaseImageInvalidateBarriers[i].image                           = mSceneToBuild->mSceneTextures[i];
+		releaseImageInvalidateBarriers[i].subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+		releaseImageInvalidateBarriers[i].subresourceRange.baseMipLevel   = 0;
+		releaseImageInvalidateBarriers[i].subresourceRange.levelCount     = VK_REMAINING_MIP_LEVELS;
+		releaseImageInvalidateBarriers[i].subresourceRange.baseArrayLayer = 0;
+		releaseImageInvalidateBarriers[i].subresourceRange.layerCount     = VK_REMAINING_ARRAY_LAYERS;
 	}
 
-	invalidateStageMask |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-
-	std::array<VkBufferMemoryBarrier, sceneBuffers.size()> bufferInvalidateBarriers;
+	std::array<VkBufferMemoryBarrier, sceneBuffers.size()> releaseBufferInvalidateBarriers;
 	for(size_t i = 0; i < sceneBuffers.size(); i++)
 	{
-		bufferInvalidateBarriers[i].sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-		bufferInvalidateBarriers[i].pNext               = nullptr;
-		bufferInvalidateBarriers[i].srcAccessMask       = VK_ACCESS_TRANSFER_WRITE_BIT;
-		bufferInvalidateBarriers[i].dstAccessMask       = sceneBufferAccessMasks[i];
-		bufferInvalidateBarriers[i].srcQueueFamilyIndex = deviceQueues->GetTransferQueueFamilyIndex();
-		bufferInvalidateBarriers[i].dstQueueFamilyIndex = deviceQueues->GetGraphicsQueueFamilyIndex();
-		bufferInvalidateBarriers[i].buffer              = sceneBuffers[i];
-		bufferInvalidateBarriers[i].offset              = 0;
-		bufferInvalidateBarriers[i].size                = VK_WHOLE_SIZE;
+		releaseBufferInvalidateBarriers[i].sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+		releaseBufferInvalidateBarriers[i].pNext               = nullptr;
+		releaseBufferInvalidateBarriers[i].srcAccessMask       = VK_ACCESS_TRANSFER_WRITE_BIT;
+		releaseBufferInvalidateBarriers[i].dstAccessMask       = 0;
+		releaseBufferInvalidateBarriers[i].srcQueueFamilyIndex = deviceQueues->GetTransferQueueFamilyIndex();
+		releaseBufferInvalidateBarriers[i].dstQueueFamilyIndex = deviceQueues->GetGraphicsQueueFamilyIndex();
+		releaseBufferInvalidateBarriers[i].buffer              = sceneBuffers[i];
+		releaseBufferInvalidateBarriers[i].offset              = 0;
+		releaseBufferInvalidateBarriers[i].size                = VK_WHOLE_SIZE;
 	}
 
-	invalidateStageMask |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
-
 	std::array<VkMemoryBarrier, 0>       memoryInvalidateBarriers;
-	vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, invalidateStageMask, 0,
-		                 (uint32_t)memoryInvalidateBarriers.size(), memoryInvalidateBarriers.data(),
-		                 (uint32_t)bufferInvalidateBarriers.size(), bufferInvalidateBarriers.data(),
-		                 (uint32_t)imageInvalidateBarriers.size(),  imageInvalidateBarriers.data());
+	vkCmdPipelineBarrier(transferCommandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, invalidateStageMask, 0,
+		                 (uint32_t)memoryInvalidateBarriers.size(),        memoryInvalidateBarriers.data(),
+		                 (uint32_t)releaseBufferInvalidateBarriers.size(), releaseBufferInvalidateBarriers.data(),
+		                 (uint32_t)releaseImageInvalidateBarriers.size(),  releaseImageInvalidateBarriers.data());
 
-	ThrowIfFailed(vkEndCommandBuffer(commandBuffer));
+	ThrowIfFailed(vkEndCommandBuffer(transferCommandBuffer));
 
-	deviceQueues->TransferQueueSubmit(commandBuffer);
-	deviceQueues->TransferQueueWait();
+	deviceQueues->TransferQueueSubmit(transferCommandBuffer, transferToGraphicsSemaphore);
+
+	
+	//Graphics queue ownership
+	ThrowIfFailed(vkResetCommandPool(mSceneToBuild->mDeviceRef, graphicsCommandPool, 0));
+
+	//TODO: mGPU?
+	VkCommandBufferBeginInfo graphicsCmdBufferBeginInfo;
+	graphicsCmdBufferBeginInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	graphicsCmdBufferBeginInfo.pNext            = nullptr;
+	graphicsCmdBufferBeginInfo.flags            = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	graphicsCmdBufferBeginInfo.pInheritanceInfo = nullptr;
+
+	ThrowIfFailed(vkBeginCommandBuffer(graphicsCommandBuffer, &graphicsCmdBufferBeginInfo));
+
+	std::vector<VkImageMemoryBarrier> acquireImageInvalidateBarriers(mSceneToBuild->mSceneTextures.size());
+	for(size_t i = 0; i < mSceneToBuild->mSceneTextures.size(); i++)
+	{
+		acquireImageInvalidateBarriers[i].sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		acquireImageInvalidateBarriers[i].pNext                           = nullptr;
+		acquireImageInvalidateBarriers[i].srcAccessMask                   = 0;
+		acquireImageInvalidateBarriers[i].dstAccessMask                   = VK_ACCESS_SHADER_READ_BIT;
+		acquireImageInvalidateBarriers[i].oldLayout                       = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		acquireImageInvalidateBarriers[i].newLayout                       = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		acquireImageInvalidateBarriers[i].srcQueueFamilyIndex             = deviceQueues->GetTransferQueueFamilyIndex();
+		acquireImageInvalidateBarriers[i].dstQueueFamilyIndex             = deviceQueues->GetGraphicsQueueFamilyIndex();
+		acquireImageInvalidateBarriers[i].image                           = mSceneToBuild->mSceneTextures[i];
+		acquireImageInvalidateBarriers[i].subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+		acquireImageInvalidateBarriers[i].subresourceRange.baseMipLevel   = 0;
+		acquireImageInvalidateBarriers[i].subresourceRange.levelCount     = VK_REMAINING_MIP_LEVELS;
+		acquireImageInvalidateBarriers[i].subresourceRange.baseArrayLayer = 0;
+		acquireImageInvalidateBarriers[i].subresourceRange.layerCount     = VK_REMAINING_ARRAY_LAYERS;
+	}
+
+	std::array<VkBufferMemoryBarrier, sceneBuffers.size()> acquireBufferInvalidateBarriers;
+	for(size_t i = 0; i < sceneBuffers.size(); i++)
+	{
+		acquireBufferInvalidateBarriers[i].sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+		acquireBufferInvalidateBarriers[i].pNext               = nullptr;
+		acquireBufferInvalidateBarriers[i].srcAccessMask       = 0;
+		acquireBufferInvalidateBarriers[i].dstAccessMask       = sceneBufferAccessMasks[i];
+		acquireBufferInvalidateBarriers[i].srcQueueFamilyIndex = deviceQueues->GetTransferQueueFamilyIndex();
+		acquireBufferInvalidateBarriers[i].dstQueueFamilyIndex = deviceQueues->GetGraphicsQueueFamilyIndex();
+		acquireBufferInvalidateBarriers[i].buffer              = sceneBuffers[i];
+		acquireBufferInvalidateBarriers[i].offset              = 0;
+		acquireBufferInvalidateBarriers[i].size                = VK_WHOLE_SIZE;
+	}
+
+	vkCmdPipelineBarrier(graphicsCommandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, invalidateStageMask, 0,
+		                 (uint32_t)memoryInvalidateBarriers.size(),        memoryInvalidateBarriers.data(),
+		                 (uint32_t)acquireBufferInvalidateBarriers.size(), acquireBufferInvalidateBarriers.data(),
+		                 (uint32_t)acquireImageInvalidateBarriers.size(),  acquireImageInvalidateBarriers.data());
+
+	ThrowIfFailed(vkEndCommandBuffer(graphicsCommandBuffer));
+
+	deviceQueues->GraphicsQueueSubmit(graphicsCommandBuffer, transferToGraphicsSemaphore, VK_PIPELINE_STAGE_TRANSFER_BIT);
+	deviceQueues->GraphicsQueueWait();
+
+	SafeDestroyObject(vkDestroySemaphore, mSceneToBuild->mDeviceRef, transferToGraphicsSemaphore);
 }
 
 void VulkanCBindings::RenderableSceneBuilder::CreateSceneMeshMetadata(std::vector<std::wstring>& sceneTexturesVec)
