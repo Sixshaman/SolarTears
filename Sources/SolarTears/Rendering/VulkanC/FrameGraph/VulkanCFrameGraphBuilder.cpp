@@ -587,16 +587,22 @@ void VulkanCBindings::FrameGraphBuilder::BuildPassObjects(const std::unordered_s
 			//This pass does not use any swapchain images - can just create a single copy
 			mGraphToBuild->mRenderPasses.push_back(mRenderPassCreateFunctions.at(passName)(mGraphToBuild->mDeviceRef, this, passName));
 		}
+	}
 
-		if(mRenderPassTypes[passName] == RenderPassType::GRAPHICS)
-		{
-			mGraphToBuild->mGraphicsPassCount += 1;
-		}
+	//Simple strategy: all compute passes in the end are executed on compute queue
+	//ACTUAL async compute is very dependent on the frame graph structure and requires much more precise resource management
+	size_t renderPassNameIndex = mRenderPassNames.size() - 1;
+	while(renderPassNameIndex < mRenderPassNames.size() && mRenderPassTypes[mRenderPassNames[renderPassNameIndex]] == RenderPassType::COMPUTE)
+	{
+		mGraphToBuild->mComputePassCount++;
+		renderPassNameIndex--;
+	}
 
-		if(mRenderPassTypes[passName] == RenderPassType::COMPUTE)
-		{
-			mGraphToBuild->mComputePassCount += 1;
-		}
+	//Btw: the loop will wrap around 0
+	while(renderPassNameIndex < mRenderPassNames.size() && (mRenderPassTypes[mRenderPassNames[renderPassNameIndex]] == RenderPassType::GRAPHICS || mRenderPassTypes[mRenderPassNames[renderPassNameIndex]] == RenderPassType::COMPUTE || mRenderPassTypes[mRenderPassNames[renderPassNameIndex]] == RenderPassType::TRANSFER))
+	{
+		mGraphToBuild->mGraphicsPassCount++;
+		renderPassNameIndex--;
 	}
 
 	//Prepare for the first use
