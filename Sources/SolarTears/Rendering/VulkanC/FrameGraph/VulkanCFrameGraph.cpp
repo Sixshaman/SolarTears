@@ -32,48 +32,105 @@ void VulkanCBindings::FrameGraph::Traverse(WorkerCommandBuffers* commandBuffers,
 
 	uint32_t renderPassIndex = 0;
 
-	VkSemaphore presentToGraphicsSemaphore = swapChain->GetImageAcquiredSemaphore(currentFrameResourceIndex);
-	VkSemaphore graphicsToComputeSemaphore = mGraphicsToComputeSemaphores[currentFrameResourceIndex];
-	VkSemaphore computeToPresentSemaphore  = mComputeToPresentSemaphores[currentFrameResourceIndex];
 
+	VkSemaphore acquireSemaphore = swapChain->GetImageAcquiredSemaphore(currentFrameResourceIndex);
 	swapChain->AcquireImage(mDeviceRef, currentSwapchainImageIndex);
 
 
-	VkCommandBuffer graphicsCommandBuffer = commandBuffers->GetMainThreadGraphicsCommandBuffer(currentFrameResourceIndex);
-	VkCommandPool   graphicsCommandPool   = commandBuffers->GetMainThreadGraphicsCommandPool(currentFrameResourceIndex);
-	BeginCommandBuffer(graphicsCommandBuffer, graphicsCommandPool);
-
-	while(renderPassIndex < mGraphicsPassCount)
+	VkSemaphore lastSemaphore = acquireSemaphore;
+	if(mGraphicsPassCount > 0)
 	{
-		mRenderPasses[renderPassIndex]->RecordExecution(graphicsCommandBuffer, scene, mFrameGraphConfig, currentFrameResourceIndex);
+		VkSemaphore graphicsSemaphore = mGraphicsToComputeSemaphores[currentFrameResourceIndex];
 
-		renderPassIndex++;
+		VkCommandBuffer graphicsCommandBuffer = commandBuffers->GetMainThreadGraphicsCommandBuffer(currentFrameResourceIndex);
+		VkCommandPool   graphicsCommandPool   = commandBuffers->GetMainThreadGraphicsCommandPool(currentFrameResourceIndex);
+		BeginCommandBuffer(graphicsCommandBuffer, graphicsCommandPool);
+
+		std::array<VkImageMemoryBarrier, 1> imageAcquireBarriers;
+		imageAcquireBarriers[0].sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		imageAcquireBarriers[0].pNext                           = nullptr;
+		imageAcquireBarriers[0].srcAccessMask                   = 0;
+		imageAcquireBarriers[0].dstAccessMask                   = VK_ACCESS_TRANSFER_WRITE_BIT;
+		imageAcquireBarriers[0].oldLayout                       = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		imageAcquireBarriers[0].newLayout                       = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		imageAcquireBarriers[0].srcQueueFamilyIndex             = swapChain->GetPresentQueueFamilyIndex();
+		imageAcquireBarriers[0].dstQueueFamilyIndex             = deviceQueues->GetGraphicsQueueFamilyIndex();
+		imageAcquireBarriers[0].image                           = mImages[mBackbufferRefIndex];
+		imageAcquireBarriers[0].subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+		imageAcquireBarriers[0].subresourceRange.baseMipLevel   = 0;
+		imageAcquireBarriers[0].subresourceRange.levelCount     = VK_REMAINING_MIP_LEVELS;
+		imageAcquireBarriers[0].subresourceRange.baseArrayLayer = 0;
+		imageAcquireBarriers[0].subresourceRange.layerCount     = VK_REMAINING_ARRAY_LAYERS;
+
+		std::array<VkMemoryBarrier, 0>       memoryAcquireBarriers;
+		std::array<VkBufferMemoryBarrier, 0> bufferAcquireBarriers;
+		vkCmdPipelineBarrier(graphicsCommandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
+							 (uint32_t)memoryAcquireBarriers.size(), memoryAcquireBarriers.data(),
+							 (uint32_t)bufferAcquireBarriers.size(), bufferAcquireBarriers.data(),
+							 (uint32_t)imageAcquireBarriers.size(),   imageAcquireBarriers.data());
+
+		while(renderPassIndex < mGraphicsPassCount)
+		{
+			mRenderPasses[renderPassIndex]->RecordExecution(graphicsCommandBuffer, scene, mFrameGraphConfig, currentFrameResourceIndex);
+
+			renderPassIndex++;
+		}
+
+		std::array<VkImageMemoryBarrier, 1> imagePresentBarriers;
+		imagePresentBarriers[0].sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		imagePresentBarriers[0].pNext                           = nullptr;
+		imagePresentBarriers[0].srcAccessMask                   = VK_ACCESS_TRANSFER_WRITE_BIT;
+		imagePresentBarriers[0].dstAccessMask                   = 0;
+		imagePresentBarriers[0].oldLayout                       = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		imagePresentBarriers[0].newLayout                       = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		imagePresentBarriers[0].srcQueueFamilyIndex             = deviceQueues->GetGraphicsQueueFamilyIndex();
+		imagePresentBarriers[0].dstQueueFamilyIndex             = swapChain->GetPresentQueueFamilyIndex();
+		imagePresentBarriers[0].image                           = mImages[mBackbufferRefIndex];
+		imagePresentBarriers[0].subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+		imagePresentBarriers[0].subresourceRange.baseMipLevel   = 0;
+		imagePresentBarriers[0].subresourceRange.levelCount     = VK_REMAINING_MIP_LEVELS;
+		imagePresentBarriers[0].subresourceRange.baseArrayLayer = 0;
+		imagePresentBarriers[0].subresourceRange.layerCount     = VK_REMAINING_ARRAY_LAYERS;
+
+		std::array<VkMemoryBarrier, 0>       memoryPresentBarriers;
+		std::array<VkBufferMemoryBarrier, 0> bufferPresentBarriers;
+		vkCmdPipelineBarrier(graphicsCommandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0,
+							 (uint32_t)memoryPresentBarriers.size(), memoryPresentBarriers.data(),
+							 (uint32_t)bufferPresentBarriers.size(), bufferPresentBarriers.data(),
+							 (uint32_t)imagePresentBarriers.size(), imagePresentBarriers.data());
+
+		EndCommandBuffer(graphicsCommandBuffer);
+
+		std::array graphicsCommandBuffers = {graphicsCommandBuffer};
+		deviceQueues->GraphicsQueueSubmit(graphicsCommandBuffers.data(), graphicsCommandBuffers.size(), VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, acquireSemaphore, graphicsSemaphore, nullptr);
+
+		lastSemaphore = graphicsSemaphore;
 	}
 
-	EndCommandBuffer(graphicsCommandBuffer);
-
-	std::array graphicsCommandBuffers = {graphicsCommandBuffer};
-	deviceQueues->GraphicsQueueSubmit(graphicsCommandBuffers.data(), graphicsCommandBuffers.size(), VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, presentToGraphicsSemaphore, graphicsToComputeSemaphore, nullptr);
-
-
-	VkCommandBuffer computeCommandBuffer = commandBuffers->GetMainThreadComputeCommandBuffer(currentFrameResourceIndex);
-	VkCommandPool   computeCommandPool   = commandBuffers->GetMainThreadComputeCommandPool(currentFrameResourceIndex);
-	BeginCommandBuffer(computeCommandBuffer, computeCommandPool);
-
-	while((renderPassIndex - mGraphicsPassCount) < mComputePassCount)
+	if(mComputePassCount > 0)
 	{
-		mRenderPasses[renderPassIndex]->RecordExecution(computeCommandBuffer, scene, mFrameGraphConfig, currentFrameResourceIndex);
+		VkSemaphore computeSemaphore = mComputeToPresentSemaphores[currentFrameResourceIndex];
 
-		renderPassIndex++;
+		VkCommandBuffer computeCommandBuffer = commandBuffers->GetMainThreadComputeCommandBuffer(currentFrameResourceIndex);
+		VkCommandPool   computeCommandPool   = commandBuffers->GetMainThreadComputeCommandPool(currentFrameResourceIndex);
+		BeginCommandBuffer(computeCommandBuffer, computeCommandPool);
+
+		while ((renderPassIndex - mGraphicsPassCount) < mComputePassCount)
+		{
+			mRenderPasses[renderPassIndex]->RecordExecution(computeCommandBuffer, scene, mFrameGraphConfig, currentFrameResourceIndex);
+
+			renderPassIndex++;
+		}
+
+		EndCommandBuffer(computeCommandBuffer);
+
+		std::array computeCommandBuffers = { computeCommandBuffer };
+		deviceQueues->ComputeQueueSubmit(computeCommandBuffers.data(), computeCommandBuffers.size(), VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, lastSemaphore, computeSemaphore, traverseFence);
+
+		lastSemaphore = computeSemaphore;
 	}
 
-	EndCommandBuffer(computeCommandBuffer);
-
-	std::array computeCommandBuffers  = {computeCommandBuffer};
-	deviceQueues->ComputeQueueSubmit(computeCommandBuffers.data(), computeCommandBuffers.size(), VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, graphicsToComputeSemaphore, computeToPresentSemaphore, traverseFence);
-
-
-	swapChain->Present(computeToPresentSemaphore);
+	swapChain->Present(lastSemaphore);
 
 	mLastSwapchainImageIndex = currentSwapchainImageIndex;
 }
