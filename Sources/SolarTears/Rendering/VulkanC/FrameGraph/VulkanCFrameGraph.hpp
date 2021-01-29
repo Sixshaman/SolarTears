@@ -17,6 +17,14 @@ namespace VulkanCBindings
 	class FrameGraph
 	{
 		friend class FrameGraphBuilder;
+		
+		struct BarrierSpan
+		{
+			uint32_t BeforePassBegin;
+			uint32_t BeforePassEnd;
+			uint32_t AfterPassBegin;
+			uint32_t AfterPassEnd;
+		};
 
 	public:
 		FrameGraph(VkDevice device);
@@ -51,6 +59,9 @@ namespace VulkanCBindings
 		uint32_t                 mLastSwapchainImageIndex;
 		std::vector<VkImage>     mSwapchainImageRefs;
 		std::vector<VkImageView> mSwapchainImageViews;
+
+		std::vector<VkImageMemoryBarrier> mImageBarriers;
+		std::vector<BarrierSpan>          mImageRenderPassBarriers; //Required barriers before ith pass are mImageBarriers[Span.Begin...Span.End], where Span is mImageRenderPassBarriers[i]. Last span is for after-graph barriers
 
 		//Each i * (SwapchainFrameCount + 1) + 0 element tells the index in mRenderPasses/mImageViews that should be replaced with swapchain-related element every frame. 
 		//Pass to replace is taken from mSwapchainRenderPasses[i * (SwapchainFrameCount + 1) + currentSwapchainImageIndex + 1]
