@@ -27,7 +27,7 @@
     <ClInclude Include="..\3rd party\VulkanGenericStructures\Include\VulkanGenericStructures.h" />
     <ClInclude Include="Core\Allocators\StackAllocator.hpp" />
     <ClInclude Include="Core\Application.hpp" />
-    <ClInclude Include="Core\DataStructures\SmallVector.h" />
+    <ClInclude Include="Core\DataStructures\SmallVector.hpp" />
     <ClInclude Include="Core\Engine.hpp" />
     <ClInclude Include="Core\Scene\Camera.hpp" />
     <ClInclude Include="Core\Scene\Scene.hpp" />

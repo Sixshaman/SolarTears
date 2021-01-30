@@ -20,11 +20,18 @@ namespace VulkanCBindings
 		using SubresourceId   = std::string;
 		using SubresourceName = std::string;
 
+		constexpr static std::string_view AcquirePassName         = "SPECIAL_ACQUIRE_PASS";
+		constexpr static std::string_view PresentPassName         = "SPECIAL_PRESENT_PASS";
+		constexpr static std::string_view BackbufferAcquirePassId = "SpecialAcquirePass-Backbuffer";
+		constexpr static std::string_view BackbufferPresentPassId = "SpecialPresentPass-Backbuffer";
+
 		enum class ResourceType
 		{
 			ImageResource,
 			BackbufferResource
 		};
+
+		constexpr static uint32_t ImageFlagAutoBarrier = 0x01;
 
 		struct ImageSubresourceMetadata
 		{
@@ -33,6 +40,7 @@ namespace VulkanCBindings
 			
 			uint32_t             ImageIndex;
 			uint32_t             ImageViewIndex;
+			uint32_t             MetadataFlags;
 			VkFormat             Format;
 			VkImageLayout        Layout;
 			VkImageUsageFlags    UsageFlags;
@@ -83,6 +91,8 @@ namespace VulkanCBindings
 		void SetPassSubresourceAspectFlags(const std::string_view passName, const std::string_view subresourceId, VkImageAspectFlags aspect);
 		void SetPassSubresourceStageFlags(const std::string_view passName, const std::string_view subresourceId, VkPipelineStageFlags stage);
 		void SetPassSubresourceAccessFlags(const std::string_view passName, const std::string_view subresourceId, VkAccessFlags accessFlags);
+
+		void EnableSubresourceAutoBarrier(const std::string_view passName, const std::string_view subresourceId, bool autoBaarrier = true);
 
 		const RenderableScene*  GetScene()            const;
 		const DeviceParameters* GetDeviceParameters() const;
@@ -137,6 +147,9 @@ namespace VulkanCBindings
 		//Functions for creating frame graph passes and resources
 		void BuildSubresources(const DeviceQueues* deviceQueues, const MemoryManager* memoryAllocator, const std::vector<VkImage>& swapchainImages, std::unordered_set<RenderPassName>& swapchainPassNames, VkFormat swapchainFormat);
 		void BuildPassObjects(const std::unordered_set<RenderPassName>& swapchainPassNames);
+
+		//Builds barriers
+		void BuildBarriers();
 
 		//Functions for creating actual frame graph resources/subresources
 		void SetSwapchainImages(const std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& backbufferResourceCreateInfos, const std::vector<VkImage>& swapchainImages);
