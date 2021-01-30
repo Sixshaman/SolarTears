@@ -39,6 +39,7 @@ void VulkanCBindings::GBufferPass::Register(FrameGraphBuilder* frameGraphBuilder
 	frameGraphBuilder->RegisterRenderPass(passName, PassCreateFunc, RenderPassType::GRAPHICS);
 
 	frameGraphBuilder->RegisterWriteSubresource(passName, ColorBufferImageId);
+	frameGraphBuilder->EnableSubresourceAutoBarrier(passName, ColorBufferImageId, true);
 	frameGraphBuilder->SetPassSubresourceFormat(passName, ColorBufferImageId, VK_FORMAT_R8G8B8A8_UNORM);
 	frameGraphBuilder->SetPassSubresourceAspectFlags(passName, ColorBufferImageId, VK_IMAGE_ASPECT_COLOR_BIT);
 	frameGraphBuilder->SetPassSubresourceStageFlags(passName, ColorBufferImageId, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);

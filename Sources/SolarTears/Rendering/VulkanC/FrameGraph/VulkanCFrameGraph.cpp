@@ -41,6 +41,12 @@ void VulkanCBindings::FrameGraph::Traverse(WorkerCommandBuffers* commandBuffers,
 	{
 		VkSemaphore graphicsSemaphore = mGraphicsToComputeSemaphores[currentFrameResourceIndex];
 
+		VkFence graphicsFence = nullptr;
+		if(mComputePassCount == 0)
+		{
+			graphicsFence = traverseFence; //Signal the fence after graphics command submission if there are no compute passes	
+		}
+
 		VkCommandBuffer graphicsCommandBuffer = commandBuffers->GetMainThreadGraphicsCommandBuffer(currentFrameResourceIndex);
 		VkCommandPool   graphicsCommandPool   = commandBuffers->GetMainThreadGraphicsCommandPool(currentFrameResourceIndex);
 		BeginCommandBuffer(graphicsCommandBuffer, graphicsCommandPool);
@@ -77,7 +83,7 @@ void VulkanCBindings::FrameGraph::Traverse(WorkerCommandBuffers* commandBuffers,
 		EndCommandBuffer(graphicsCommandBuffer);
 
 		std::array graphicsCommandBuffers = {graphicsCommandBuffer};
-		deviceQueues->GraphicsQueueSubmit(graphicsCommandBuffers.data(), graphicsCommandBuffers.size(), VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, acquireSemaphore, graphicsSemaphore, nullptr);
+		deviceQueues->GraphicsQueueSubmit(graphicsCommandBuffers.data(), graphicsCommandBuffers.size(), VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, acquireSemaphore, graphicsSemaphore, graphicsFence);
 
 		lastSemaphore = graphicsSemaphore;
 	}
@@ -85,6 +91,8 @@ void VulkanCBindings::FrameGraph::Traverse(WorkerCommandBuffers* commandBuffers,
 	if(mComputePassCount > 0)
 	{
 		VkSemaphore computeSemaphore = mComputeToPresentSemaphores[currentFrameResourceIndex];
+
+		VkFence computeFence = traverseFence;
 
 		VkCommandBuffer computeCommandBuffer = commandBuffers->GetMainThreadComputeCommandBuffer(currentFrameResourceIndex);
 		VkCommandPool   computeCommandPool   = commandBuffers->GetMainThreadComputeCommandPool(currentFrameResourceIndex);
@@ -122,12 +130,13 @@ void VulkanCBindings::FrameGraph::Traverse(WorkerCommandBuffers* commandBuffers,
 		EndCommandBuffer(computeCommandBuffer);
 
 		std::array computeCommandBuffers = { computeCommandBuffer };
-		deviceQueues->ComputeQueueSubmit(computeCommandBuffers.data(), computeCommandBuffers.size(), VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, lastSemaphore, computeSemaphore, traverseFence);
+		deviceQueues->ComputeQueueSubmit(computeCommandBuffers.data(), computeCommandBuffers.size(), VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, lastSemaphore, computeSemaphore, computeFence);
 
 		lastSemaphore = computeSemaphore;
 	}
 
 	swapChain->Present(lastSemaphore);
+
 
 	mLastSwapchainImageIndex = currentSwapchainImageIndex;
 }

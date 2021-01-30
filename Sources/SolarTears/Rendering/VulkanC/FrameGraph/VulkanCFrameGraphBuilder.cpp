@@ -7,6 +7,15 @@
 
 VulkanCBindings::FrameGraphBuilder::FrameGraphBuilder(FrameGraph* graphToBuild, const RenderableScene* scene, const DeviceParameters* deviceParameters, const ShaderManager* shaderManager): mGraphToBuild(graphToBuild), mScene(scene), mDeviceParameters(deviceParameters), mShaderManager(shaderManager)
 {
+	//Create present quasi-pass
+	std::string acquirePassName(AcquirePassName);
+	std::string presentPassName(PresentPassName);
+
+	mRenderPassTypes[acquirePassName] = RenderPassType::PRESENT;
+	mRenderPassTypes[presentPassName] = RenderPassType::PRESENT;
+
+	RegisterWriteSubresource(AcquirePassName, BackbufferAcquirePassId);
+	RegisterReadSubresource(PresentPassName, BackbufferPresentPassId);
 }
 
 VulkanCBindings::FrameGraphBuilder::~FrameGraphBuilder()
@@ -46,6 +55,7 @@ void VulkanCBindings::FrameGraphBuilder::RegisterReadSubresource(const std::stri
 	ImageSubresourceMetadata subresourceMetadata;
 	subresourceMetadata.PrevPassMetadata   = nullptr;
 	subresourceMetadata.NextPassMetadata   = nullptr;
+	subresourceMetadata.MetadataFlags      = 0;
 	subresourceMetadata.Format             = VK_FORMAT_UNDEFINED;
 	subresourceMetadata.ImageIndex         = (uint32_t)(-1);
 	subresourceMetadata.ImageViewIndex     = (uint32_t)(-1);
@@ -80,6 +90,7 @@ void VulkanCBindings::FrameGraphBuilder::RegisterWriteSubresource(const std::str
 	ImageSubresourceMetadata subresourceMetadata;
 	subresourceMetadata.PrevPassMetadata   = nullptr;
 	subresourceMetadata.NextPassMetadata   = nullptr;
+	subresourceMetadata.MetadataFlags      = 0;
 	subresourceMetadata.Format             = VK_FORMAT_UNDEFINED;
 	subresourceMetadata.ImageIndex         = (uint32_t)(-1);
 	subresourceMetadata.ImageViewIndex     = (uint32_t)(-1);
@@ -108,6 +119,25 @@ void VulkanCBindings::FrameGraphBuilder::AssignSubresourceName(const std::string
 void VulkanCBindings::FrameGraphBuilder::AssignBackbufferName(const std::string_view backbufferName)
 {
 	mBackbufferName = backbufferName;
+
+	AssignSubresourceName(AcquirePassName, BackbufferAcquirePassId, mBackbufferName);
+	AssignSubresourceName(PresentPassName, BackbufferPresentPassId, mBackbufferName);
+
+	ImageSubresourceMetadata presentAcquirePassMetadata;
+	presentAcquirePassMetadata.PrevPassMetadata   = nullptr;
+	presentAcquirePassMetadata.NextPassMetadata   = nullptr;
+	presentAcquirePassMetadata.MetadataFlags      = 0;
+	presentAcquirePassMetadata.Format             = VK_FORMAT_UNDEFINED;
+	presentAcquirePassMetadata.ImageIndex         = (uint32_t)(-1);
+	presentAcquirePassMetadata.ImageViewIndex     = (uint32_t)(-1);
+	presentAcquirePassMetadata.Layout             = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	presentAcquirePassMetadata.UsageFlags         = 0;
+	presentAcquirePassMetadata.AspectFlags        = VK_IMAGE_ASPECT_COLOR_BIT;
+	presentAcquirePassMetadata.PipelineStageFlags = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+	presentAcquirePassMetadata.AccessFlags        = 0;
+
+	mRenderPassesSubresourceMetadatas[std::string(AcquirePassName)][std::string(BackbufferAcquirePassId)] = presentAcquirePassMetadata;
+	mRenderPassesSubresourceMetadatas[std::string(PresentPassName)][std::string(BackbufferPresentPassId)] = presentAcquirePassMetadata;
 }
 
 void VulkanCBindings::FrameGraphBuilder::SetPassSubresourceFormat(const std::string_view passName, const std::string_view subresourceId, VkFormat format)
@@ -156,6 +186,21 @@ void VulkanCBindings::FrameGraphBuilder::SetPassSubresourceAccessFlags(const std
 	SubresourceId  subresourceIdStr(subresourceId);
 
 	mRenderPassesSubresourceMetadatas[passNameStr][subresourceIdStr].AccessFlags = accessFlags;
+}
+
+void VulkanCBindings::FrameGraphBuilder::EnableSubresourceAutoBarrier(const std::string_view passName, const std::string_view subresourceId, bool autoBaarrier)
+{
+	RenderPassName passNameStr(passName);
+	SubresourceId  subresourceIdStr(subresourceId);
+
+	if(autoBaarrier)
+	{
+		mRenderPassesSubresourceMetadatas[passNameStr][subresourceIdStr].MetadataFlags |= ImageFlagAutoBarrier;
+	}
+	else
+	{
+		mRenderPassesSubresourceMetadatas[passNameStr][subresourceIdStr].MetadataFlags &= ~ImageFlagAutoBarrier;
+	}
 }
 
 const VulkanCBindings::RenderableScene* VulkanCBindings::FrameGraphBuilder::GetScene() const
@@ -435,6 +480,8 @@ void VulkanCBindings::FrameGraphBuilder::Build(const DeviceQueues* deviceQueues,
 	std::unordered_set<RenderPassName> swapchainPassNames;
 	BuildSubresources(deviceQueues, memoryAllocator, swapchainImages, swapchainPassNames, swapchainFormat);
 	BuildPassObjects(swapchainPassNames);
+
+	BuildBarriers();
 }
 
 void VulkanCBindings::FrameGraphBuilder::BuildAdjacencyList(std::vector<std::unordered_set<size_t>>& adjacencyList)
@@ -510,26 +557,60 @@ void VulkanCBindings::FrameGraphBuilder::ValidateSubresourceLinks()
 {
 	std::unordered_map<SubresourceName, RenderPassName> subresourceLastRenderPasses; 
 
+	//Build present pass links
+	subresourceLastRenderPasses[mBackbufferName] = std::string(AcquirePassName);
+
 	for(size_t i = 0; i < mRenderPassNames.size(); i++)
 	{
 		RenderPassName renderPassName = mRenderPassNames[i];
 		for(auto& subresourceNameId: mRenderPassesSubresourceNameIds[renderPassName])
 		{
 			SubresourceName           subresourceName     = subresourceNameId.first;
-			ImageSubresourceMetadata& subresourceMetadata = mRenderPassesSubresourceMetadatas[renderPassName][subresourceNameId.second];
+			ImageSubresourceMetadata& subresourceMetadata = mRenderPassesSubresourceMetadatas.at(renderPassName).at(subresourceNameId.second);
 
 			if(subresourceLastRenderPasses.contains(subresourceName))
 			{
 				RenderPassName prevPassName = subresourceLastRenderPasses.at(subresourceName);
 				
-				SubresourceId prevSubresourceId = mRenderPassesSubresourceNameIds[prevPassName][subresourceName];
-				ImageSubresourceMetadata& prevSubresourceMetadata = mRenderPassesSubresourceMetadatas[prevPassName][prevSubresourceId];
+				SubresourceId             prevSubresourceId       = mRenderPassesSubresourceNameIds.at(prevPassName).at(subresourceName);
+				ImageSubresourceMetadata& prevSubresourceMetadata = mRenderPassesSubresourceMetadatas.at(prevPassName).at(prevSubresourceId);
 
 				prevSubresourceMetadata.NextPassMetadata = &subresourceMetadata;
-				subresourceMetadata.PrevPassMetadata = &prevSubresourceMetadata;
+				subresourceMetadata.PrevPassMetadata     = &prevSubresourceMetadata;
 			}
 
 			subresourceLastRenderPasses[subresourceName] = renderPassName;
+		}
+	}
+
+	RenderPassName backbufferLastPassName = subresourceLastRenderPasses.at(mBackbufferName);
+
+	SubresourceId             backbufferLastSubresourceId          = mRenderPassesSubresourceNameIds.at(backbufferLastPassName).at(mBackbufferName);
+	ImageSubresourceMetadata& backbufferLastSubresourceMetadata    = mRenderPassesSubresourceMetadatas.at(backbufferLastPassName).at(backbufferLastSubresourceId);
+	ImageSubresourceMetadata& backbufferPresentSubresourceMetadata = mRenderPassesSubresourceMetadatas.at(std::string(PresentPassName)).at(std::string(BackbufferPresentPassId));
+
+	backbufferLastSubresourceMetadata.NextPassMetadata    = &backbufferPresentSubresourceMetadata;
+	backbufferPresentSubresourceMetadata.PrevPassMetadata = &backbufferLastSubresourceMetadata;
+
+	//Validate cyclic links
+	for(size_t i = 0; i < mRenderPassNames.size(); i++)
+	{
+		RenderPassName renderPassName = mRenderPassNames[i];
+		for(auto& subresourceNameId: mRenderPassesSubresourceNameIds[renderPassName])
+		{
+			ImageSubresourceMetadata& subresourceMetadata = mRenderPassesSubresourceMetadatas.at(renderPassName).at(subresourceNameId.second);
+			if(subresourceMetadata.PrevPassMetadata == nullptr)
+			{
+				SubresourceName subresourceName = subresourceNameId.first;
+
+				RenderPassName prevPassName = subresourceLastRenderPasses.at(subresourceName);
+
+				SubresourceId             prevSubresourceId       = mRenderPassesSubresourceNameIds.at(prevPassName).at(subresourceName);
+				ImageSubresourceMetadata& prevSubresourceMetadata = mRenderPassesSubresourceMetadatas.at(prevPassName).at(prevSubresourceId);
+
+				subresourceMetadata.PrevPassMetadata     = &prevSubresourceMetadata; //Barrier from the last state at the beginning of frame
+				prevSubresourceMetadata.NextPassMetadata = nullptr;                  //No barriers after the frame ends (except for present barrier)
+			}
 		}
 	}
 }
@@ -611,6 +692,22 @@ void VulkanCBindings::FrameGraphBuilder::BuildPassObjects(const std::unordered_s
 	{
 		uint32_t passIndexToSwitch = mGraphToBuild->mSwapchainPassesSwapMap[i];
 		mGraphToBuild->mRenderPasses[passIndexToSwitch].swap(mGraphToBuild->mSwapchainRenderPasses[mGraphToBuild->mSwapchainPassesSwapMap[i + mGraphToBuild->mLastSwapchainImageIndex + 1]]);
+	}
+}
+
+void VulkanCBindings::FrameGraphBuilder::BuildBarriers()
+{
+	mGraphToBuild->mImageRenderPassBarriers.resize(mRenderPassNames.size());
+	
+	for(size_t i = 0; i < mRenderPassNames.size(); i++)
+	{
+		FrameGraph::BarrierSpan barrierSpan;
+		barrierSpan.BeforePassBegin = 0;
+		barrierSpan.BeforePassEnd   = 0;
+		barrierSpan.AfterPassBegin  = 0;
+		barrierSpan.AfterPassEnd    = 0;
+
+		mGraphToBuild->mImageRenderPassBarriers[i] = barrierSpan;
 	}
 }
 
