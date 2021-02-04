@@ -1,6 +1,8 @@
 - AFTER FIXING TEXTURES, READ BEST PRACTICES AND WRITE NOTES!
 - Also try tools like RMV
 
+- More fine-grained barriers (no TOP_OF_PIPE/BOTTOM_OF_PIPE)
+- Async compute: cross-queue barriers
 - Scene subobjects
 - String views and vector ranges
 - Dedicated allocation (VkMemoryDedicatedRequirements::prefersDedicatedAllocation)
@@ -15,6 +17,7 @@
 - VulkanSH.h и VulkanSH.cpp
 - Compare HOST_VISIBLE-only memory with cached DEVICE_LOCAL copy (yes, it influences descriptor sets too!)
 - Anisotropic filtering
+- CHECK GAMMA CORRECTION
 - Object data updating: memcpy() data for eah object or batch updates for sequentional objects (harder because of alignment)
 - VECTORCALL functions in user code
 - Scene controls abstraction: the perfect way would be to use a class that has std::function bound to each user input event. This way Scene could use it instead of ugly member functions to control camera.

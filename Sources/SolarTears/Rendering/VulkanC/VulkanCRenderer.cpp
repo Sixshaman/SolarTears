@@ -333,11 +333,5 @@ void VulkanCBindings::Renderer::CreateFrameGraph()
 
 	frameGraphBuilder.AssignBackbufferName("Backbuffer");
 
-	std::vector<VkImage> swapchainImages(mSwapChain->SwapchainImageCount);
-	for(uint32_t i = 0; i < mSwapChain->SwapchainImageCount; i++)
-	{
-		swapchainImages[i] = mSwapChain->GetSwapchainImage(i);
-	}
-
-	frameGraphBuilder.Build(mDeviceQueues.get(), mMemoryAllocator.get(), swapchainImages, mSwapChain->GetBackbufferFormat());
+	frameGraphBuilder.Build(mDeviceQueues.get(), mMemoryAllocator.get(), mSwapChain.get());
 }
