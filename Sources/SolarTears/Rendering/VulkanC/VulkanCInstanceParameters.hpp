@@ -17,6 +17,7 @@ namespace VulkanCBindings
 	{
 		struct InstanceExtensionFlags
 		{
+			bool DebugUtilsExtensionEnabled;
 			bool DisplayExtensionPresent;
 			bool DisplayProperties2ExtensionPresent;
 			bool DirectModeDisplayExtensionPresent;
@@ -34,6 +35,7 @@ namespace VulkanCBindings
 
 		void InvalidateInstanceExtensions(std::vector<std::string>& outEnabledExtensions, vgs::StructureChainBlob<VkInstanceCreateInfo>& outStructureChain);
 
+		bool IsDebugUtilsExtensionEnabled()           const;
 		bool IsDisplayExtensionEnabled()              const;
 		bool IsDisplayProperties2ExtensionEnabled()   const;
 		bool IsDirectModeDisplayExtensionEnabled()    const;

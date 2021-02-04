@@ -322,7 +322,7 @@ void VulkanCBindings::Renderer::CreateFrameGraph()
 
 	mFrameGraph = std::make_unique<VulkanCBindings::FrameGraph>(mDevice);
 
-	VulkanCBindings::FrameGraphBuilder frameGraphBuilder(mFrameGraph.get(), mScene.get(), &mDeviceParameters, mShaderManager.get());
+	VulkanCBindings::FrameGraphBuilder frameGraphBuilder(mFrameGraph.get(), mScene.get(), &mInstanceParameters, &mDeviceParameters, mShaderManager.get());
 
 	GBufferPass::Register(&frameGraphBuilder, "GBuffer");
 	CopyImagePass::Register(&frameGraphBuilder, "CopyImage");

@@ -1,12 +1,13 @@
 #include "VulkanCFrameGraphBuilder.hpp"
 #include "VulkanCFrameGraph.hpp"
+#include "../VulkanCInstanceParameters.hpp"
 #include "../VulkanCFunctions.hpp"
 #include "../VulkanCMemory.hpp"
 #include "../VulkanCSwapChain.hpp"
 #include "../VulkanCDeviceQueues.hpp"
 #include <algorithm>
 
-VulkanCBindings::FrameGraphBuilder::FrameGraphBuilder(FrameGraph* graphToBuild, const RenderableScene* scene, const DeviceParameters* deviceParameters, const ShaderManager* shaderManager): mGraphToBuild(graphToBuild), mScene(scene), mDeviceParameters(deviceParameters), mShaderManager(shaderManager)
+VulkanCBindings::FrameGraphBuilder::FrameGraphBuilder(FrameGraph* graphToBuild, const RenderableScene* scene, const InstanceParameters* instanceParameters, const DeviceParameters* deviceParameters, const ShaderManager* shaderManager): mGraphToBuild(graphToBuild), mScene(scene), mInstanceParameters(instanceParameters), mDeviceParameters(deviceParameters), mShaderManager(shaderManager)
 {
 	mSubresourceMetadataCounter = 0;
 
@@ -505,6 +506,7 @@ void VulkanCBindings::FrameGraphBuilder::Build(const DeviceQueues* deviceQueues,
 	BuildSubresources(memoryAllocator, swapchainImages, backbufferPassNames, swapChain->GetBackbufferFormat());
 	BuildPassObjects(backbufferPassNames);
 
+	BuildDescriptors();
 	BuildBarriers();
 }
 
@@ -920,6 +922,12 @@ void VulkanCBindings::FrameGraphBuilder::BuildBarriers()
 	}
 }
 
+void VulkanCBindings::FrameGraphBuilder::BuildDescriptors()
+{
+	//TODO (in case of passes using storage images or input attachments)
+	//For now I don't have any passes to test it
+}
+
 void VulkanCBindings::FrameGraphBuilder::BuildResourceCreateInfos(std::unordered_map<SubresourceName, ImageResourceCreateInfo>& outImageCreateInfos, std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& outBackbufferCreateInfos, std::unordered_set<RenderPassName>& swapchainPassNames)
 {
 	for(const auto& renderPassName: mRenderPassNames)
@@ -1189,6 +1197,8 @@ void VulkanCBindings::FrameGraphBuilder::CreateImages(const std::unordered_map<S
 				mRenderPassesSubresourceMetadatas[viewAddress.PassName][viewAddress.SubresId].ImageIndex = (uint32_t)(mGraphToBuild->mImages.size() - 1);
 			}
 		}
+		
+		SetDebugObjectName(image, nameWithCreateInfo.first); //Only does something in debug
 	}
 
 	SafeDestroyObject(vkFreeMemory, mGraphToBuild->mDeviceRef, mGraphToBuild->mImageMemory);
@@ -1363,4 +1373,23 @@ bool VulkanCBindings::FrameGraphBuilder::PassesIntersect(const RenderPassName& w
 	}
 
 	return false;
+}
+
+void VulkanCBindings::FrameGraphBuilder::SetDebugObjectName(VkImage image, const SubresourceName& name) const
+{
+#if defined(VK_EXT_debug_utils) && (defined(DEBUG) || defined(_DEBUG))
+	
+	if(mInstanceParameters->IsDebugUtilsExtensionEnabled())
+	{
+		VkDebugUtilsObjectNameInfoEXT imageNameInfo;
+		imageNameInfo.sType        = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+		imageNameInfo.pNext        = nullptr;
+		imageNameInfo.objectType   = VK_OBJECT_TYPE_IMAGE;
+		imageNameInfo.objectHandle = reinterpret_cast<uint64_t>(image);
+		imageNameInfo.pObjectName  = name.c_str();
+
+		ThrowIfFailed(vkSetDebugUtilsObjectNameEXT(mGraphToBuild->mDeviceRef, &imageNameInfo));
+	}
+
+#endif
 }
