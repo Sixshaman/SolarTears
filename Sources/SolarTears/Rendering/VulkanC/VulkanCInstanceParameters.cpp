@@ -20,6 +20,7 @@ namespace VulkanCBindings
 	static const std::vector<std::string> global_config_instance_extensions =
 	{
 	#if defined(DEBUG) || defined(_DEBUG)
+		VK_EXT_DEBUG_UTILS_EXTENSION_NAME,         //DEBUG UTILS
 		VK_EXT_DEBUG_REPORT_EXTENSION_NAME,        //Debug reports!
 		VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME, //VVvvvvvvvvvalidation!
 	#endif
@@ -81,6 +82,11 @@ namespace VulkanCBindings
 
 const std::unordered_map<std::string, size_t> VulkanCBindings::InstanceParameters::global_config_instance_extension_flags_offsets =
 {
+	{
+		VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
+		offsetof(InstanceExtensionFlags, DebugUtilsExtensionEnabled)
+	},
+
 	{
 		VK_KHR_DISPLAY_EXTENSION_NAME,
 		offsetof(InstanceExtensionFlags, DisplayExtensionPresent)
@@ -196,6 +202,11 @@ void VulkanCBindings::InstanceParameters::InvalidateInstanceExtensions(std::vect
 			outStructureChain.AppendToChainGeneric(it->second);
 		}
 	}
+}
+
+bool VulkanCBindings::InstanceParameters::IsDebugUtilsExtensionEnabled() const
+{
+	return mEnabledExtensionFlags.DebugUtilsExtensionEnabled;
 }
 
 bool VulkanCBindings::InstanceParameters::IsDisplayExtensionEnabled() const

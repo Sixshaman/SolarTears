@@ -11,6 +11,7 @@ namespace VulkanCBindings
 {
 	class MemoryManager;
 	class DeviceQueues;
+	class InstanceParameters;
 
 	using RenderPassCreateFunc = std::unique_ptr<RenderPass>(*)(VkDevice, const FrameGraphBuilder*, const std::string&);
 
@@ -78,7 +79,7 @@ namespace VulkanCBindings
 		};
 
 	public:
-		FrameGraphBuilder(FrameGraph* graphToBuild, const RenderableScene* scene, const DeviceParameters* deviceParameters, const ShaderManager* shaderManager);
+		FrameGraphBuilder(FrameGraph* graphToBuild, const RenderableScene* scene, const InstanceParameters* instanceParameters, const DeviceParameters* deviceParameters, const ShaderManager* shaderManager);
 		~FrameGraphBuilder();
 
 		void RegisterRenderPass(const std::string_view passName, RenderPassCreateFunc createFunc, RenderPassType passType);
@@ -160,6 +161,9 @@ namespace VulkanCBindings
 		//Builds barriers
 		void BuildBarriers();
 
+		//Build descriptors
+		void BuildDescriptors();
+
 		//Functions for creating actual frame graph resources/subresources
 		void SetSwapchainImages(const std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& backbufferResourceCreateInfos, const std::vector<VkImage>& swapchainImages);
 		void CreateImages(const std::unordered_map<SubresourceName, ImageResourceCreateInfo>& imageResourceCreateInfos, const MemoryManager* memoryAllocator);
@@ -169,11 +173,10 @@ namespace VulkanCBindings
 		//Creates VkImageView from imageViewInfo
 		void CreateImageView(const ImageViewInfo& imageViewInfo, VkImage image, VkFormat defaultFormat, VkImageView* outImageView);
 
-		//Create beforePass-afterPass barrier 
-		void CreateBarrier(const ImageSubresourceMetadata& beforePass, const ImageSubresourceMetadata& afterPass, VkImageMemoryBarrier* outBarrier);
-
 		//Test if two writingPass writes to readingPass
 		bool PassesIntersect(const RenderPassName& writingPass, const RenderPassName& readingPass);
+
+		void SetDebugObjectName(VkImage image, const SubresourceName& name) const;
 
 	private:
 		FrameGraph* mGraphToBuild;
@@ -195,8 +198,9 @@ namespace VulkanCBindings
 		SubresourceName mBackbufferName;
 
 		//Several things that might be needed to create some of the passes
-		const RenderableScene*  mScene;
-		const DeviceParameters* mDeviceParameters;
-		const ShaderManager*    mShaderManager;
+		const RenderableScene*    mScene;
+		const InstanceParameters* mInstanceParameters;
+		const DeviceParameters*   mDeviceParameters;
+		const ShaderManager*      mShaderManager;
 	};
 }
