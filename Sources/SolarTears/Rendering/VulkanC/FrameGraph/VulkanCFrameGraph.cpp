@@ -63,7 +63,7 @@ void VulkanCBindings::FrameGraph::Traverse(WorkerCommandBuffers* commandBuffers,
 				const VkBufferMemoryBarrier* bufferBarrierPointer = nullptr;
 				const VkMemoryBarrier*       memoryBarrierPointer = nullptr;
 
-				vkCmdPipelineBarrier(graphicsCommandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, 0, memoryBarrierPointer, 0, bufferBarrierPointer, beforePassBarrierCount, imageBarrierPointer);
+				vkCmdPipelineBarrier(graphicsCommandBuffer, barrierSpan.beforeFlagsBegin, barrierSpan.beforeFlagsEnd, 0, 0, memoryBarrierPointer, 0, bufferBarrierPointer, beforePassBarrierCount, imageBarrierPointer);
 			}
 
 			mRenderPasses[renderPassIndex]->RecordExecution(graphicsCommandBuffer, scene, mFrameGraphConfig, currentFrameResourceIndex);
@@ -74,7 +74,7 @@ void VulkanCBindings::FrameGraph::Traverse(WorkerCommandBuffers* commandBuffers,
 				const VkBufferMemoryBarrier* bufferBarrierPointer = nullptr;
 				const VkMemoryBarrier*       memoryBarrierPointer = nullptr;
 
-				vkCmdPipelineBarrier(graphicsCommandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, 0, memoryBarrierPointer, 0, bufferBarrierPointer, beforePassBarrierCount, imageBarrierPointer);
+				vkCmdPipelineBarrier(graphicsCommandBuffer, barrierSpan.afterFlagsBegin, barrierSpan.AfterPassEnd, 0, 0, memoryBarrierPointer, 0, bufferBarrierPointer, beforePassBarrierCount, imageBarrierPointer);
 			}
 
 			renderPassIndex++;
@@ -170,10 +170,20 @@ void VulkanCBindings::FrameGraph::SwitchSwapchainPasses(uint32_t swapchainImageI
 
 void VulkanCBindings::FrameGraph::SwitchSwapchainImages(uint32_t swapchainImageIndex)
 {
+	//Swap images
 	std::swap(mImages[mBackbufferRefIndex], mSwapchainImageRefs[mLastSwapchainImageIndex]);
 	std::swap(mImages[mBackbufferRefIndex], mSwapchainImageRefs[swapchainImageIndex]);
 
-	uint32_t swapchainImageCount = (uint32_t)mSwapchainImageRefs.size();
+
+	//Update barriers
+	for(size_t i = 0; i < mSwapchainBarrierIndices.size(); i++)
+	{
+		mImageBarriers[i].image = mImages[mBackbufferRefIndex];
+	}
+
+
+	//Swap image views
+	uint32_t swapchainImageCount = (uint32_t)mSwapchainImageViews.size();
 
 	for(uint32_t i = 0; i < (uint32_t)mSwapchainViewsSwapMap.size(); i += (swapchainImageCount + 1u))
 	{

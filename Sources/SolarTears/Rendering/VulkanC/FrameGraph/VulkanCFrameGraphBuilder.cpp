@@ -2,11 +2,14 @@
 #include "VulkanCFrameGraph.hpp"
 #include "../VulkanCFunctions.hpp"
 #include "../VulkanCMemory.hpp"
+#include "../VulkanCSwapChain.hpp"
 #include "../VulkanCDeviceQueues.hpp"
 #include <algorithm>
 
 VulkanCBindings::FrameGraphBuilder::FrameGraphBuilder(FrameGraph* graphToBuild, const RenderableScene* scene, const DeviceParameters* deviceParameters, const ShaderManager* shaderManager): mGraphToBuild(graphToBuild), mScene(scene), mDeviceParameters(deviceParameters), mShaderManager(shaderManager)
 {
+	mSubresourceMetadataCounter = 0;
+
 	//Create present quasi-pass
 	std::string acquirePassName(AcquirePassName);
 	std::string presentPassName(PresentPassName);
@@ -53,17 +56,21 @@ void VulkanCBindings::FrameGraphBuilder::RegisterReadSubresource(const std::stri
 	}
 
 	ImageSubresourceMetadata subresourceMetadata;
-	subresourceMetadata.PrevPassMetadata   = nullptr;
-	subresourceMetadata.NextPassMetadata   = nullptr;
-	subresourceMetadata.MetadataFlags      = 0;
-	subresourceMetadata.Format             = VK_FORMAT_UNDEFINED;
-	subresourceMetadata.ImageIndex         = (uint32_t)(-1);
-	subresourceMetadata.ImageViewIndex     = (uint32_t)(-1);
-	subresourceMetadata.Layout             = VK_IMAGE_LAYOUT_GENERAL;
-	subresourceMetadata.UsageFlags         = 0;
-	subresourceMetadata.AspectFlags        = 0;
-	subresourceMetadata.PipelineStageFlags = 0;
-	subresourceMetadata.AccessFlags        = 0;
+	subresourceMetadata.MetadataId           = mSubresourceMetadataCounter;
+	subresourceMetadata.PrevPassMetadata     = nullptr;
+	subresourceMetadata.NextPassMetadata     = nullptr;
+	subresourceMetadata.MetadataFlags        = 0;
+	subresourceMetadata.QueueFamilyOwnership = (uint32_t)(-1);
+	subresourceMetadata.Format               = VK_FORMAT_UNDEFINED;
+	subresourceMetadata.ImageIndex           = (uint32_t)(-1);
+	subresourceMetadata.ImageViewIndex       = (uint32_t)(-1);
+	subresourceMetadata.Layout               = VK_IMAGE_LAYOUT_GENERAL;
+	subresourceMetadata.UsageFlags           = 0;
+	subresourceMetadata.AspectFlags          = 0;
+	subresourceMetadata.PipelineStageFlags   = 0;
+	subresourceMetadata.AccessFlags          = 0;
+
+	mSubresourceMetadataCounter++;
 
 	mRenderPassesSubresourceMetadatas[renderPassName][subresId] = subresourceMetadata;
 }
@@ -88,17 +95,21 @@ void VulkanCBindings::FrameGraphBuilder::RegisterWriteSubresource(const std::str
 	}
 
 	ImageSubresourceMetadata subresourceMetadata;
-	subresourceMetadata.PrevPassMetadata   = nullptr;
-	subresourceMetadata.NextPassMetadata   = nullptr;
-	subresourceMetadata.MetadataFlags      = 0;
-	subresourceMetadata.Format             = VK_FORMAT_UNDEFINED;
-	subresourceMetadata.ImageIndex         = (uint32_t)(-1);
-	subresourceMetadata.ImageViewIndex     = (uint32_t)(-1);
-	subresourceMetadata.Layout             = VK_IMAGE_LAYOUT_UNDEFINED;
-	subresourceMetadata.UsageFlags         = 0;
-	subresourceMetadata.AspectFlags        = 0;
-	subresourceMetadata.PipelineStageFlags = 0;
-	subresourceMetadata.AccessFlags        = 0;
+	subresourceMetadata.MetadataId           = mSubresourceMetadataCounter;
+	subresourceMetadata.PrevPassMetadata     = nullptr;
+	subresourceMetadata.NextPassMetadata     = nullptr;
+	subresourceMetadata.MetadataFlags        = 0;
+	subresourceMetadata.QueueFamilyOwnership = (uint32_t)(-1);
+	subresourceMetadata.Format               = VK_FORMAT_UNDEFINED;
+	subresourceMetadata.ImageIndex           = (uint32_t)(-1);
+	subresourceMetadata.ImageViewIndex       = (uint32_t)(-1);
+	subresourceMetadata.Layout               = VK_IMAGE_LAYOUT_UNDEFINED;
+	subresourceMetadata.UsageFlags           = 0;
+	subresourceMetadata.AspectFlags          = 0;
+	subresourceMetadata.PipelineStageFlags   = 0;
+	subresourceMetadata.AccessFlags          = 0;
+
+	mSubresourceMetadataCounter++;
 
 	mRenderPassesSubresourceMetadatas[renderPassName][subresId] = subresourceMetadata;
 }
@@ -124,17 +135,21 @@ void VulkanCBindings::FrameGraphBuilder::AssignBackbufferName(const std::string_
 	AssignSubresourceName(PresentPassName, BackbufferPresentPassId, mBackbufferName);
 
 	ImageSubresourceMetadata presentAcquirePassMetadata;
-	presentAcquirePassMetadata.PrevPassMetadata   = nullptr;
-	presentAcquirePassMetadata.NextPassMetadata   = nullptr;
-	presentAcquirePassMetadata.MetadataFlags      = 0;
-	presentAcquirePassMetadata.Format             = VK_FORMAT_UNDEFINED;
-	presentAcquirePassMetadata.ImageIndex         = (uint32_t)(-1);
-	presentAcquirePassMetadata.ImageViewIndex     = (uint32_t)(-1);
-	presentAcquirePassMetadata.Layout             = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-	presentAcquirePassMetadata.UsageFlags         = 0;
-	presentAcquirePassMetadata.AspectFlags        = VK_IMAGE_ASPECT_COLOR_BIT;
-	presentAcquirePassMetadata.PipelineStageFlags = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-	presentAcquirePassMetadata.AccessFlags        = 0;
+	presentAcquirePassMetadata.MetadataId           = mSubresourceMetadataCounter;
+	presentAcquirePassMetadata.PrevPassMetadata     = nullptr;
+	presentAcquirePassMetadata.NextPassMetadata     = nullptr;
+	presentAcquirePassMetadata.MetadataFlags        = 0;
+	presentAcquirePassMetadata.QueueFamilyOwnership = (uint32_t)(-1);
+	presentAcquirePassMetadata.Format               = VK_FORMAT_UNDEFINED;
+	presentAcquirePassMetadata.ImageIndex           = (uint32_t)(-1);
+	presentAcquirePassMetadata.ImageViewIndex       = (uint32_t)(-1);
+	presentAcquirePassMetadata.Layout               = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	presentAcquirePassMetadata.UsageFlags           = 0;
+	presentAcquirePassMetadata.AspectFlags          = VK_IMAGE_ASPECT_COLOR_BIT;
+	presentAcquirePassMetadata.PipelineStageFlags   = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+	presentAcquirePassMetadata.AccessFlags          = 0;
+
+	mSubresourceMetadataCounter++;
 
 	mRenderPassesSubresourceMetadatas[std::string(AcquirePassName)][std::string(BackbufferAcquirePassId)] = presentAcquirePassMetadata;
 	mRenderPassesSubresourceMetadatas[std::string(PresentPassName)][std::string(BackbufferPresentPassId)] = presentAcquirePassMetadata;
@@ -469,17 +484,26 @@ VkAccessFlags VulkanCBindings::FrameGraphBuilder::GetNextPassSubresourceAccessFl
 	}
 }
 
-void VulkanCBindings::FrameGraphBuilder::Build(const DeviceQueues* deviceQueues, const MemoryManager* memoryAllocator, const std::vector<VkImage>& swapchainImages, VkFormat swapchainFormat)
+void VulkanCBindings::FrameGraphBuilder::Build(const DeviceQueues* deviceQueues, const MemoryManager* memoryAllocator, const SwapChain* swapChain)
 {
+	std::vector<VkImage> swapchainImages(swapChain->SwapchainImageCount);
+	for(uint32_t i = 0; i < swapChain->SwapchainImageCount; i++)
+	{
+		swapchainImages[i] = swapChain->GetSwapchainImage(i);
+	}
+
 	std::vector<std::unordered_set<size_t>> adjacencyList;
 	BuildAdjacencyList(adjacencyList);
 	SortRenderPasses(adjacencyList);
 
-	ValidateSubresourceLinks();
+	BuildQueueAffinities(deviceQueues, swapChain);
 
-	std::unordered_set<RenderPassName> swapchainPassNames;
-	BuildSubresources(deviceQueues, memoryAllocator, swapchainImages, swapchainPassNames, swapchainFormat);
-	BuildPassObjects(swapchainPassNames);
+	ValidateSubresourceLinks();
+	ValidateSubresourceQueues();
+
+	std::unordered_set<RenderPassName> backbufferPassNames; //All passes that use the backbuffer
+	BuildSubresources(memoryAllocator, swapchainImages, backbufferPassNames, swapChain->GetBackbufferFormat());
+	BuildPassObjects(backbufferPassNames);
 
 	BuildBarriers();
 }
@@ -532,6 +556,49 @@ void VulkanCBindings::FrameGraphBuilder::SortRenderPasses(const std::vector<std:
 	{
 		mRenderPassIndices[mRenderPassNames[i]] = i;
 	}
+}
+
+void VulkanCBindings::FrameGraphBuilder::BuildQueueAffinities(const DeviceQueues* deviceQueues, const SwapChain* swapChain)
+{
+	mGraphToBuild->mGraphicsPassCount = 0;
+	mGraphToBuild->mComputePassCount  = 0;
+
+	//Simple strategy: all compute passes in the end are executed on compute queue
+	//ACTUAL async compute is very dependent on the frame graph structure and requires much more precise resource management
+	size_t renderPassNameIndex = mRenderPassNames.size() - 1;
+	while(renderPassNameIndex < mRenderPassNames.size())
+	{
+		//Async compute
+		RenderPassName renderPassName = mRenderPassNames[renderPassNameIndex];
+		if(mRenderPassTypes[renderPassName] != RenderPassType::COMPUTE)
+		{
+			break;
+		}
+
+		mRenderPassQueueFamilies[renderPassName] = deviceQueues->GetComputeQueueFamilyIndex();
+
+		mGraphToBuild->mComputePassCount++;
+		renderPassNameIndex--;
+	}
+
+	//Btw: the loop will wrap around 0
+	while(renderPassNameIndex < mRenderPassNames.size())
+	{
+		//Non-async compute/transfer, graphics
+		RenderPassName renderPassName = mRenderPassNames[renderPassNameIndex];
+		if(mRenderPassTypes[renderPassName] != RenderPassType::GRAPHICS && mRenderPassTypes[renderPassName] != RenderPassType::COMPUTE && mRenderPassTypes[renderPassName] != RenderPassType::TRANSFER)
+		{
+			break;
+		}
+
+		mRenderPassQueueFamilies[renderPassName] = deviceQueues->GetGraphicsQueueFamilyIndex();
+
+		mGraphToBuild->mGraphicsPassCount++;
+		renderPassNameIndex--;
+	}
+
+	mRenderPassQueueFamilies[std::string(AcquirePassName)] = swapChain->GetPresentQueueFamilyIndex();
+	mRenderPassQueueFamilies[std::string(PresentPassName)] = swapChain->GetPresentQueueFamilyIndex();
 }
 
 void VulkanCBindings::FrameGraphBuilder::TopologicalSortNode(const std::vector<std::unordered_set<size_t>>& adjacencyList, std::vector<uint_fast8_t>& visited, std::vector<uint_fast8_t>& onStack, size_t passIndex, std::vector<size_t>& sortedPassIndices)
@@ -615,11 +682,42 @@ void VulkanCBindings::FrameGraphBuilder::ValidateSubresourceLinks()
 	}
 }
 
-void VulkanCBindings::FrameGraphBuilder::BuildSubresources(const DeviceQueues* deviceQueues, const MemoryManager* memoryAllocator, const std::vector<VkImage>& swapchainImages, std::unordered_set<RenderPassName>& swapchainPassNames, VkFormat swapchainFormat)
+void VulkanCBindings::FrameGraphBuilder::ValidateSubresourceQueues()
+{
+	//Queue families should be known
+	assert(!mRenderPassQueueFamilies.empty());
+
+	std::string acquirePassName(AcquirePassName);
+	std::string presentPassName(PresentPassName);
+
+	for(auto& subresourceNameId: mRenderPassesSubresourceNameIds[acquirePassName])
+	{
+		ImageSubresourceMetadata& subresourceMetadata = mRenderPassesSubresourceMetadatas.at(acquirePassName).at(subresourceNameId.second);
+		subresourceMetadata.QueueFamilyOwnership      = mRenderPassQueueFamilies[acquirePassName];
+	}
+
+	for(size_t i = 0; i < mRenderPassNames.size(); i++)
+	{
+		RenderPassName renderPassName = mRenderPassNames[i];
+		for(auto& subresourceNameId: mRenderPassesSubresourceNameIds[renderPassName])
+		{
+			ImageSubresourceMetadata& subresourceMetadata = mRenderPassesSubresourceMetadatas.at(renderPassName).at(subresourceNameId.second);
+			subresourceMetadata.QueueFamilyOwnership      = mRenderPassQueueFamilies[renderPassName];
+		}
+	}
+
+	for(auto& subresourceNameId: mRenderPassesSubresourceNameIds[presentPassName])
+	{
+		ImageSubresourceMetadata& subresourceMetadata = mRenderPassesSubresourceMetadatas.at(presentPassName).at(subresourceNameId.second);
+		subresourceMetadata.QueueFamilyOwnership      = mRenderPassQueueFamilies[presentPassName];
+	}
+}
+
+void VulkanCBindings::FrameGraphBuilder::BuildSubresources(const MemoryManager* memoryAllocator, const std::vector<VkImage>& swapchainImages, std::unordered_set<RenderPassName>& swapchainPassNames, VkFormat swapchainFormat)
 {
 	std::unordered_map<SubresourceName, ImageResourceCreateInfo>      imageResourceCreateInfos;
 	std::unordered_map<SubresourceName, BackbufferResourceCreateInfo> backbufferResourceCreateInfos;
-	BuildResourceCreateInfos(deviceQueues, imageResourceCreateInfos, backbufferResourceCreateInfos, swapchainPassNames);
+	BuildResourceCreateInfos(imageResourceCreateInfos, backbufferResourceCreateInfos, swapchainPassNames);
 
 	PropagateMetadatasFromImageViews(imageResourceCreateInfos, backbufferResourceCreateInfos);
 
@@ -635,9 +733,6 @@ void VulkanCBindings::FrameGraphBuilder::BuildPassObjects(const std::unordered_s
 	mGraphToBuild->mRenderPasses.clear();
 	mGraphToBuild->mSwapchainRenderPasses.clear();
 	mGraphToBuild->mSwapchainPassesSwapMap.clear();
-
-	mGraphToBuild->mGraphicsPassCount = 0;
-	mGraphToBuild->mComputePassCount  = 0;
 
 	for(const std::string& passName: mRenderPassNames)
 	{
@@ -670,22 +765,6 @@ void VulkanCBindings::FrameGraphBuilder::BuildPassObjects(const std::unordered_s
 		}
 	}
 
-	//Simple strategy: all compute passes in the end are executed on compute queue
-	//ACTUAL async compute is very dependent on the frame graph structure and requires much more precise resource management
-	size_t renderPassNameIndex = mRenderPassNames.size() - 1;
-	while(renderPassNameIndex < mRenderPassNames.size() && mRenderPassTypes[mRenderPassNames[renderPassNameIndex]] == RenderPassType::COMPUTE)
-	{
-		mGraphToBuild->mComputePassCount++;
-		renderPassNameIndex--;
-	}
-
-	//Btw: the loop will wrap around 0
-	while(renderPassNameIndex < mRenderPassNames.size() && (mRenderPassTypes[mRenderPassNames[renderPassNameIndex]] == RenderPassType::GRAPHICS || mRenderPassTypes[mRenderPassNames[renderPassNameIndex]] == RenderPassType::COMPUTE || mRenderPassTypes[mRenderPassNames[renderPassNameIndex]] == RenderPassType::TRANSFER))
-	{
-		mGraphToBuild->mGraphicsPassCount++;
-		renderPassNameIndex--;
-	}
-
 	//Prepare for the first use
 	uint32_t swapchainImageCount = (uint32_t)mGraphToBuild->mSwapchainImageRefs.size();
 	for(uint32_t i = 0; i < (uint32_t)mGraphToBuild->mSwapchainPassesSwapMap.size(); i += (swapchainImageCount + 1u))
@@ -698,26 +777,151 @@ void VulkanCBindings::FrameGraphBuilder::BuildPassObjects(const std::unordered_s
 void VulkanCBindings::FrameGraphBuilder::BuildBarriers()
 {
 	mGraphToBuild->mImageRenderPassBarriers.resize(mRenderPassNames.size());
-	
+	mGraphToBuild->mSwapchainBarrierIndices.clear();
+
+	std::unordered_set<uint64_t> processedMetadataIds; //This is here so no barrier gets added twice
 	for(size_t i = 0; i < mRenderPassNames.size(); i++)
 	{
+		RenderPassName renderPassName = mRenderPassNames[i];
+
+		const auto& nameIdMap     = mRenderPassesSubresourceNameIds.at(renderPassName);
+		const auto& idMetadataMap = mRenderPassesSubresourceMetadatas.at(renderPassName);
+
+		std::vector<VkImageMemoryBarrier> beforeBarriers;
+		std::vector<VkImageMemoryBarrier> afterBarriers;
+		std::vector<size_t>               beforeSwapchainBarriers;
+		std::vector<size_t>               afterSwapchainBarriers;
+		for(auto& subresourceNameId: nameIdMap)
+		{
+			SubresourceName subresourceName = subresourceNameId.first;
+			SubresourceId   subresourceId   = subresourceNameId.second;
+
+			ImageSubresourceMetadata subresourceMetadata = idMetadataMap.at(subresourceId);
+			if(!(subresourceMetadata.MetadataFlags & ImageFlagAutoBarrier))
+			{
+				if(subresourceMetadata.PrevPassMetadata != nullptr)
+				{
+					if(processedMetadataIds.contains(subresourceMetadata.PrevPassMetadata->MetadataId)) //Was already processed as "after pass"
+					{
+						continue;
+					}
+
+					const bool accessFlagsDiffer   = (subresourceMetadata.AccessFlags          != subresourceMetadata.PrevPassMetadata->AccessFlags);
+					const bool layoutsDiffer       = (subresourceMetadata.Layout               != subresourceMetadata.PrevPassMetadata->Layout);
+					const bool queueFamiliesDiffer = (subresourceMetadata.QueueFamilyOwnership != subresourceMetadata.PrevPassMetadata->QueueFamilyOwnership);
+					if(accessFlagsDiffer || layoutsDiffer || queueFamiliesDiffer)
+					{
+						//Swapchain image barriers are changed every frame
+						VkImage barrieredImage = nullptr;
+						if(subresourceMetadata.ImageIndex != mGraphToBuild->mBackbufferRefIndex)
+						{
+							barrieredImage = mGraphToBuild->mImages[subresourceMetadata.ImageIndex];
+						}
+
+						VkImageMemoryBarrier imageMemoryBarrier;
+						imageMemoryBarrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+						imageMemoryBarrier.pNext                           = nullptr;
+						imageMemoryBarrier.srcAccessMask                   = subresourceMetadata.PrevPassMetadata->AccessFlags;
+						imageMemoryBarrier.dstAccessMask                   = subresourceMetadata.AccessFlags;
+						imageMemoryBarrier.oldLayout                       = subresourceMetadata.PrevPassMetadata->Layout;
+						imageMemoryBarrier.newLayout                       = subresourceMetadata.Layout;
+						imageMemoryBarrier.srcQueueFamilyIndex             = subresourceMetadata.PrevPassMetadata->QueueFamilyOwnership;
+						imageMemoryBarrier.dstQueueFamilyIndex             = subresourceMetadata.QueueFamilyOwnership;
+						imageMemoryBarrier.image                           = barrieredImage;
+						imageMemoryBarrier.subresourceRange.aspectMask     = subresourceMetadata.AspectFlags;
+						imageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
+						imageMemoryBarrier.subresourceRange.layerCount     = 1;
+						imageMemoryBarrier.subresourceRange.baseMipLevel   = 0;
+						imageMemoryBarrier.subresourceRange.levelCount     = 1;
+
+						beforeBarriers.push_back(imageMemoryBarrier);
+
+						//Mark the swapchain barriers
+						if(barrieredImage == nullptr)
+						{
+							beforeSwapchainBarriers.push_back(beforeBarriers.size() - 1);
+						}
+					}
+				}
+
+				if(subresourceMetadata.NextPassMetadata != nullptr)
+				{
+					const bool accessFlagsDiffer   = (subresourceMetadata.AccessFlags          != subresourceMetadata.NextPassMetadata->AccessFlags);
+					const bool layoutsDiffer       = (subresourceMetadata.Layout               != subresourceMetadata.NextPassMetadata->Layout);
+					const bool queueFamiliesDiffer = (subresourceMetadata.QueueFamilyOwnership != subresourceMetadata.NextPassMetadata->QueueFamilyOwnership);
+					if(accessFlagsDiffer || layoutsDiffer || queueFamiliesDiffer)
+					{
+						//Swapchain image barriers are changed every frame
+						VkImage barrieredImage = nullptr;
+						if(subresourceMetadata.ImageIndex != mGraphToBuild->mBackbufferRefIndex)
+						{
+							barrieredImage = mGraphToBuild->mImages[subresourceMetadata.ImageIndex];
+						}
+
+						VkImageMemoryBarrier imageMemoryBarrier;
+						imageMemoryBarrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+						imageMemoryBarrier.pNext                           = nullptr;
+						imageMemoryBarrier.srcAccessMask                   = subresourceMetadata.AccessFlags;
+						imageMemoryBarrier.dstAccessMask                   = subresourceMetadata.NextPassMetadata->AccessFlags;
+						imageMemoryBarrier.oldLayout                       = subresourceMetadata.Layout;
+						imageMemoryBarrier.newLayout                       = subresourceMetadata.NextPassMetadata->Layout;
+						imageMemoryBarrier.srcQueueFamilyIndex             = subresourceMetadata.QueueFamilyOwnership;
+						imageMemoryBarrier.dstQueueFamilyIndex             = subresourceMetadata.NextPassMetadata->QueueFamilyOwnership;
+						imageMemoryBarrier.image                           = mGraphToBuild->mImages[subresourceMetadata.ImageIndex];
+						imageMemoryBarrier.subresourceRange.aspectMask     = subresourceMetadata.NextPassMetadata->AspectFlags;
+						imageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
+						imageMemoryBarrier.subresourceRange.layerCount     = 1;
+						imageMemoryBarrier.subresourceRange.baseMipLevel   = 0;
+						imageMemoryBarrier.subresourceRange.levelCount     = 1;
+
+						afterBarriers.push_back(imageMemoryBarrier);
+
+						//Mark the swapchain barriers
+						if(barrieredImage == nullptr)
+						{
+							afterSwapchainBarriers.push_back(afterBarriers.size() - 1);
+						}
+					}
+				}
+			}
+
+			processedMetadataIds.insert(subresourceMetadata.MetadataId);
+		}
+
+		uint32_t beforeBarrierBegin = (uint32_t)(mGraphToBuild->mImageBarriers.size());
+		mGraphToBuild->mImageBarriers.insert(mGraphToBuild->mImageBarriers.end(), beforeBarriers.begin(), beforeBarriers.end());
+
+		uint32_t afterBarrierBegin = (uint32_t)(mGraphToBuild->mImageBarriers.size());
+		mGraphToBuild->mImageBarriers.insert(mGraphToBuild->mImageBarriers.end(), afterBarriers.begin(), afterBarriers.end());
+
 		FrameGraph::BarrierSpan barrierSpan;
-		barrierSpan.BeforePassBegin = 0;
-		barrierSpan.BeforePassEnd   = 0;
-		barrierSpan.AfterPassBegin  = 0;
-		barrierSpan.AfterPassEnd    = 0;
+		barrierSpan.BeforePassBegin = beforeBarrierBegin;
+		barrierSpan.BeforePassEnd   = beforeBarrierBegin + (uint32_t)(beforeBarriers.size());
+		barrierSpan.AfterPassBegin  = afterBarrierBegin;
+		barrierSpan.AfterPassEnd    = afterBarrierBegin + (uint32_t)(afterBarriers.size());
+
+		//That's for now
+		barrierSpan.beforeFlagsBegin = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+		barrierSpan.beforeFlagsEnd   = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		barrierSpan.afterFlagsBegin  = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+		barrierSpan.afterFlagsEnd    = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 
 		mGraphToBuild->mImageRenderPassBarriers[i] = barrierSpan;
+
+		for(size_t beforeSwapchainBarrierIndex: beforeSwapchainBarriers)
+		{
+			mGraphToBuild->mSwapchainBarrierIndices.push_back(beforeBarrierBegin + (uint32_t)beforeSwapchainBarrierIndex);
+		}
+
+		for(size_t afterSwapchainBarrierIndex: afterSwapchainBarriers)
+		{
+			mGraphToBuild->mSwapchainBarrierIndices.push_back(afterBarrierBegin + (uint32_t)afterSwapchainBarrierIndex);
+		}
 	}
 }
 
-void VulkanCBindings::FrameGraphBuilder::BuildResourceCreateInfos(const DeviceQueues* deviceQueues, std::unordered_map<SubresourceName, ImageResourceCreateInfo>& outImageCreateInfos, std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& outBackbufferCreateInfos, std::unordered_set<RenderPassName>& swapchainPassNames)
+void VulkanCBindings::FrameGraphBuilder::BuildResourceCreateInfos(std::unordered_map<SubresourceName, ImageResourceCreateInfo>& outImageCreateInfos, std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& outBackbufferCreateInfos, std::unordered_set<RenderPassName>& swapchainPassNames)
 {
-	std::unordered_map<RenderPassType, uint32_t> familyIndicesForPassTypes;
-	familyIndicesForPassTypes[RenderPassType::GRAPHICS] = deviceQueues->GetGraphicsQueueFamilyIndex();
-	familyIndicesForPassTypes[RenderPassType::COMPUTE]  = deviceQueues->GetComputeQueueFamilyIndex();
-	familyIndicesForPassTypes[RenderPassType::TRANSFER] = deviceQueues->GetTransferQueueFamilyIndex();
-
 	for(const auto& renderPassName: mRenderPassNames)
 	{
 		const auto& nameIdMap = mRenderPassesSubresourceNameIds[renderPassName];
@@ -749,9 +953,7 @@ void VulkanCBindings::FrameGraphBuilder::BuildResourceCreateInfos(const DeviceQu
 				if(!outImageCreateInfos.contains(subresourceName))
 				{
 					ImageResourceCreateInfo imageResourceCreateInfo;
-
-					imageResourceCreateInfo.QueueOwnerIndices = std::to_array({familyIndicesForPassTypes.at(mRenderPassTypes.at(renderPassName))});
-
+					imageResourceCreateInfo.QueueOwnerIndices = std::to_array({metadata.QueueFamilyOwnership});
 
 					//TODO: Multisampling
 					VkImageCreateInfo imageCreateInfo;
@@ -797,7 +999,7 @@ void VulkanCBindings::FrameGraphBuilder::BuildResourceCreateInfos(const DeviceQu
 				imageResourceCreateInfo.ImageViewInfos.push_back(imageViewInfo);
 
 				imageResourceCreateInfo.ImageCreateInfo.usage |= metadata.UsageFlags;
-				imageResourceCreateInfo.QueueOwnerIndices[0]   = familyIndicesForPassTypes.at(mRenderPassTypes.at(renderPassName));
+				imageResourceCreateInfo.QueueOwnerIndices[0]   = metadata.QueueFamilyOwnership;
 			}
 		}
 	}
@@ -1116,6 +1318,10 @@ void VulkanCBindings::FrameGraphBuilder::CreateImageView(const ImageViewInfo& im
 
 	ThrowIfFailed(vkCreateImageView(mGraphToBuild->mDeviceRef, &imageViewCreateInfo, nullptr, outImageView));
 }
+
+//void VulkanCBindings::FrameGraphBuilder::CreateBarrier(const ImageSubresourceMetadata& beforePass, const ImageSubresourceMetadata& afterPass, VkImageMemoryBarrier* outBarrier)
+//{
+//}
 
 bool VulkanCBindings::FrameGraphBuilder::PassesIntersect(const RenderPassName& writingPass, const RenderPassName& readingPass)
 {
