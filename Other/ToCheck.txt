@@ -10,6 +10,7 @@
 - Depth prepass
 - BATCH pipeline creation calls (maybe something like pipeline allocator will help? Instead of calling vkCreateGraphicsPipelines, schedule it to creation in allocator)
 - Pipeline cache (allocator again)
+- Fences after transit in frame graph and scene builders
 - Try to do VERTEX PULLING
 - Uint16 or Uint32 indices?
 - Separate descriptor sets

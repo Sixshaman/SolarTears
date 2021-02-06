@@ -70,7 +70,6 @@ namespace VulkanCBindings
 		{
 			VkImageCreateInfo          ImageCreateInfo;
 			std::vector<ImageViewInfo> ImageViewInfos;
-			std::array<uint32_t, 1>    QueueOwnerIndices; //Only here to store the pointer somewhere
 		};
 
 		struct BackbufferResourceCreateInfo
@@ -124,7 +123,7 @@ namespace VulkanCBindings
 		VkImageAspectFlags   GetNextPassSubresourceAspectFlags(const std::string_view passName, const std::string_view subresourceId) const;
 		VkAccessFlags        GetNextPassSubresourceAccessFlags(const std::string_view passName, const std::string_view subresourceId) const;
 
-		void Build(const DeviceQueues* deviceQueues, const MemoryManager* memoryAllocator, const SwapChain* swapChain);
+		void Build(const DeviceQueues* deviceQueues, const WorkerCommandBuffers* workerCommandBuffers, const MemoryManager* memoryAllocator, const SwapChain* swapChain);
 
 	private:
 		//Builds frame graph adjacency list
@@ -140,7 +139,7 @@ namespace VulkanCBindings
 		void TopologicalSortNode(const std::vector<std::unordered_set<size_t>>& adjacencyList, std::vector<uint_fast8_t>& visited, std::vector<uint_fast8_t>& onStack, size_t passIndex, std::vector<size_t>& sortedPassIndices);
 
 		//Creates descriptions for resource creation
-		void BuildResourceCreateInfos(std::unordered_map<SubresourceName, ImageResourceCreateInfo>& outImageCreateInfos, std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& outBackbufferCreateInfos, std::unordered_set<RenderPassName>& swapchainPassNames);
+		void BuildResourceCreateInfos(const std::vector<uint32_t>& defaultQueueIndices, std::unordered_map<SubresourceName, ImageResourceCreateInfo>& outImageCreateInfos, std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& outBackbufferCreateInfos, std::unordered_set<RenderPassName>& swapchainPassNames);
 		
 		//Merges all image view create descriptions with same Format and Aspect Flags into single structures with multiple ViewAddresses
 		void MergeImageViewInfos(std::unordered_map<SubresourceName, ImageResourceCreateInfo>& inoutImageResourceCreateInfos);
@@ -155,7 +154,7 @@ namespace VulkanCBindings
 		void PropagateMetadatasFromImageViews(const std::unordered_map<SubresourceName, ImageResourceCreateInfo>& imageCreateInfos, const std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& backbufferCreateInfos);
 
 		//Functions for creating frame graph passes and resources
-		void BuildSubresources(const MemoryManager* memoryAllocator, const std::vector<VkImage>& swapchainImages, std::unordered_set<RenderPassName>& swapchainPassNames, VkFormat swapchainFormat);
+		void BuildSubresources(const MemoryManager* memoryAllocator, const std::vector<VkImage>& swapchainImages, std::unordered_set<RenderPassName>& swapchainPassNames, VkFormat swapchainFormat, uint32_t defaultQueueIndex);
 		void BuildPassObjects(const std::unordered_set<RenderPassName>& swapchainPassNames);
 
 		//Builds barriers
@@ -163,6 +162,9 @@ namespace VulkanCBindings
 
 		//Build descriptors
 		void BuildDescriptors();
+
+		//Transit images from UNDEFINED to usable state
+		void BarrierImages(const DeviceQueues* deviceQueues, const WorkerCommandBuffers* workerCommandBuffers, uint32_t defaultQueueIndex);
 
 		//Functions for creating actual frame graph resources/subresources
 		void SetSwapchainImages(const std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& backbufferResourceCreateInfos, const std::vector<VkImage>& swapchainImages);
@@ -176,6 +178,7 @@ namespace VulkanCBindings
 		//Test if two writingPass writes to readingPass
 		bool PassesIntersect(const RenderPassName& writingPass, const RenderPassName& readingPass);
 
+		//Set object name for debug messages
 		void SetDebugObjectName(VkImage image, const SubresourceName& name) const;
 
 	private:
