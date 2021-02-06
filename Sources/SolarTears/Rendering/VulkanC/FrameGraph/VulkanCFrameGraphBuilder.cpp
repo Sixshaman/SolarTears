@@ -937,25 +937,27 @@ void VulkanCBindings::FrameGraphBuilder::BuildDescriptors()
 
 void VulkanCBindings::FrameGraphBuilder::BarrierImages(const DeviceQueues* deviceQueues, const WorkerCommandBuffers* workerCommandBuffers, uint32_t defaultQueueIndex)
 {
-	//Transit to the first pass (so we can begin the rendering correctly)
+	//Transit to the last pass as if rendering just ended. That ensures correct barriers at the start of the frame
 	std::vector<VkImageMemoryBarrier> imageMemoryBarriers;
 
-	std::unordered_map<SubresourceName, ImageSubresourceMetadata> imageFirstMetadatas;
-	for(const auto& renderPassName: mRenderPassNames)
+	std::unordered_map<SubresourceName, ImageSubresourceMetadata> imageLastMetadatas;
+	for(size_t i = mRenderPassNames.size() - 1; i < mRenderPassNames.size(); i--) //The loop wraps around 0
 	{
+		const RenderPassName renderPassName = mRenderPassNames[i];
+
 		const auto& nameIdMap = mRenderPassesSubresourceNameIds[renderPassName];
 		for(const auto& nameId: nameIdMap)
 		{
-			if(!imageFirstMetadatas.contains(nameId.first) && nameId.first != mBackbufferName)
+			if(!imageLastMetadatas.contains(nameId.first) && nameId.first != mBackbufferName)
 			{
 				ImageSubresourceMetadata metadata = mRenderPassesSubresourceMetadatas[renderPassName][nameId.second];
-				imageFirstMetadatas[nameId.first] = metadata;
+				imageLastMetadatas[nameId.first] = metadata;
 			}
 		}
 	}
 
 	std::vector<VkImageMemoryBarrier> imageBarriers;
-	for(const auto& nameMetadata: imageFirstMetadatas)
+	for(const auto& nameMetadata: imageLastMetadatas)
 	{
 		VkImageMemoryBarrier imageBarrier;
 		imageBarrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
