@@ -19,33 +19,33 @@ namespace VulkanCBindings
 		void ComputeQueueWait()  const;
 		void TransferQueueWait() const;
 
-		void GraphicsQueueSubmit(VkCommandBuffer commandBuffer);
-		void ComputeQueueSubmit(VkCommandBuffer  commandBuffer);
-		void TransferQueueSubmit(VkCommandBuffer commandBuffer);
+		void GraphicsQueueSubmit(VkCommandBuffer commandBuffer) const;
+		void ComputeQueueSubmit(VkCommandBuffer  commandBuffer) const;
+		void TransferQueueSubmit(VkCommandBuffer commandBuffer) const;
 
-		void GraphicsQueueSubmit(VkCommandBuffer commandBuffer, VkSemaphore signalSemaphore);
-		void ComputeQueueSubmit(VkCommandBuffer  commandBuffer, VkSemaphore signalSemaphore);
-		void TransferQueueSubmit(VkCommandBuffer commandBuffer, VkSemaphore signalSemaphore);
+		void GraphicsQueueSubmit(VkCommandBuffer commandBuffer, VkSemaphore signalSemaphore) const;
+		void ComputeQueueSubmit(VkCommandBuffer  commandBuffer, VkSemaphore signalSemaphore) const;
+		void TransferQueueSubmit(VkCommandBuffer commandBuffer, VkSemaphore signalSemaphore) const;
 
-		void GraphicsQueueSubmit(VkCommandBuffer commandBuffer, VkSemaphore waitSemaphore, VkPipelineStageFlags waitStageFlags);
-		void ComputeQueueSubmit(VkCommandBuffer  commandBuffer, VkSemaphore waitSemaphore, VkPipelineStageFlags waitStageFlags);
-		void TransferQueueSubmit(VkCommandBuffer commandBuffer, VkSemaphore waitSemaphore, VkPipelineStageFlags waitStageFlags);
+		void GraphicsQueueSubmit(VkCommandBuffer commandBuffer, VkSemaphore waitSemaphore, VkPipelineStageFlags waitStageFlags) const;
+		void ComputeQueueSubmit(VkCommandBuffer  commandBuffer, VkSemaphore waitSemaphore, VkPipelineStageFlags waitStageFlags) const;
+		void TransferQueueSubmit(VkCommandBuffer commandBuffer, VkSemaphore waitSemaphore, VkPipelineStageFlags waitStageFlags) const;
 
-		void GraphicsQueueSubmit(VkCommandBuffer* commandBuffers, size_t commandBufferCount);
-		void ComputeQueueSubmit(VkCommandBuffer* commandBuffers,  size_t commandBufferCount);
-		void TransferQueueSubmit(VkCommandBuffer* commandBuffers, size_t commandBufferCount);
+		void GraphicsQueueSubmit(VkCommandBuffer* commandBuffers, size_t commandBufferCount) const;
+		void ComputeQueueSubmit(VkCommandBuffer* commandBuffers,  size_t commandBufferCount) const;
+		void TransferQueueSubmit(VkCommandBuffer* commandBuffers, size_t commandBufferCount) const;
 
-		void GraphicsQueueSubmit(VkCommandBuffer* commandBuffers, size_t commandBufferCount, VkPipelineStageFlags waitStageFlags, VkSemaphore waitSemaphore, VkSemaphore signalSemaphore, VkFence signalFence);
-		void ComputeQueueSubmit(VkCommandBuffer*  commandBuffers, size_t commandBufferCount, VkPipelineStageFlags waitStageFlags, VkSemaphore waitSemaphore, VkSemaphore signalSemaphore, VkFence signalFence);
-		void TransferQueueSubmit(VkCommandBuffer* commandBuffers, size_t commandBufferCount, VkPipelineStageFlags waitStageFlags, VkSemaphore waitSemaphore, VkSemaphore signalSemaphore, VkFence signalFence);
+		void GraphicsQueueSubmit(VkCommandBuffer* commandBuffers, size_t commandBufferCount, VkPipelineStageFlags waitStageFlags, VkSemaphore waitSemaphore, VkSemaphore signalSemaphore, VkFence signalFence) const;
+		void ComputeQueueSubmit(VkCommandBuffer*  commandBuffers, size_t commandBufferCount, VkPipelineStageFlags waitStageFlags, VkSemaphore waitSemaphore, VkSemaphore signalSemaphore, VkFence signalFence) const;
+		void TransferQueueSubmit(VkCommandBuffer* commandBuffers, size_t commandBufferCount, VkPipelineStageFlags waitStageFlags, VkSemaphore waitSemaphore, VkSemaphore signalSemaphore, VkFence signalFence) const;
 
 	private:
 		void FindDeviceQueueIndices(VkPhysicalDevice physicalDevice);
 
-		void QueueSubmit(VkQueue queue, VkCommandBuffer* commandBuffers, uint32_t commandBufferCount);
-		void QueueSubmit(VkQueue queue, VkCommandBuffer* commandBuffers, uint32_t commandBufferCount,                                                                 VkSemaphore signalSemaphore, VkFence signalFence);
-		void QueueSubmit(VkQueue queue, VkCommandBuffer* commandBuffers, uint32_t commandBufferCount, VkPipelineStageFlags waitStageFlags, VkSemaphore waitSemaphore,                              VkFence signalFence);
-		void QueueSubmit(VkQueue queue, VkCommandBuffer* commandBuffers, uint32_t commandBufferCount, VkPipelineStageFlags waitStageFlags, VkSemaphore waitSemaphore, VkSemaphore signalSemaphore, VkFence signalFence);
+		void QueueSubmit(VkQueue queue, VkCommandBuffer* commandBuffers, uint32_t commandBufferCount)                                                                                                                    const;
+		void QueueSubmit(VkQueue queue, VkCommandBuffer* commandBuffers, uint32_t commandBufferCount,                                                                 VkSemaphore signalSemaphore, VkFence signalFence)  const;
+		void QueueSubmit(VkQueue queue, VkCommandBuffer* commandBuffers, uint32_t commandBufferCount, VkPipelineStageFlags waitStageFlags, VkSemaphore waitSemaphore,                              VkFence signalFence)  const;
+		void QueueSubmit(VkQueue queue, VkCommandBuffer* commandBuffers, uint32_t commandBufferCount, VkPipelineStageFlags waitStageFlags, VkSemaphore waitSemaphore, VkSemaphore signalSemaphore, VkFence signalFence)  const;
 
 	private:
 		uint32_t mGraphicsQueueFamilyIndex;

@@ -333,5 +333,5 @@ void VulkanCBindings::Renderer::CreateFrameGraph()
 
 	frameGraphBuilder.AssignBackbufferName("Backbuffer");
 
-	frameGraphBuilder.Build(mDeviceQueues.get(), mMemoryAllocator.get(), mSwapChain.get());
+	frameGraphBuilder.Build(mDeviceQueues.get(), mCommandBuffers.get(), mMemoryAllocator.get(), mSwapChain.get());
 }

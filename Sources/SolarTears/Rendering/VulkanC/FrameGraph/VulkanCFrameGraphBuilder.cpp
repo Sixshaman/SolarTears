@@ -1,6 +1,7 @@
 #include "VulkanCFrameGraphBuilder.hpp"
 #include "VulkanCFrameGraph.hpp"
 #include "../VulkanCInstanceParameters.hpp"
+#include "../VulkanCWorkerCommandBuffers.hpp"
 #include "../VulkanCFunctions.hpp"
 #include "../VulkanCMemory.hpp"
 #include "../VulkanCSwapChain.hpp"
@@ -485,7 +486,7 @@ VkAccessFlags VulkanCBindings::FrameGraphBuilder::GetNextPassSubresourceAccessFl
 	}
 }
 
-void VulkanCBindings::FrameGraphBuilder::Build(const DeviceQueues* deviceQueues, const MemoryManager* memoryAllocator, const SwapChain* swapChain)
+void VulkanCBindings::FrameGraphBuilder::Build(const DeviceQueues* deviceQueues, const WorkerCommandBuffers* workerCommandBuffers, const MemoryManager* memoryAllocator, const SwapChain* swapChain)
 {
 	std::vector<VkImage> swapchainImages(swapChain->SwapchainImageCount);
 	for(uint32_t i = 0; i < swapChain->SwapchainImageCount; i++)
@@ -502,12 +503,16 @@ void VulkanCBindings::FrameGraphBuilder::Build(const DeviceQueues* deviceQueues,
 	ValidateSubresourceLinks();
 	ValidateSubresourceQueues();
 
+	uint32_t defaultQueueIndex = deviceQueues->GetGraphicsQueueFamilyIndex(); //Default image queue ownership
+
 	std::unordered_set<RenderPassName> backbufferPassNames; //All passes that use the backbuffer
-	BuildSubresources(memoryAllocator, swapchainImages, backbufferPassNames, swapChain->GetBackbufferFormat());
+	BuildSubresources(memoryAllocator, swapchainImages, backbufferPassNames, swapChain->GetBackbufferFormat(), defaultQueueIndex);
 	BuildPassObjects(backbufferPassNames);
 
 	BuildDescriptors();
 	BuildBarriers();
+
+	BarrierImages(deviceQueues, workerCommandBuffers, defaultQueueIndex);
 }
 
 void VulkanCBindings::FrameGraphBuilder::BuildAdjacencyList(std::vector<std::unordered_set<size_t>>& adjacencyList)
@@ -661,7 +666,7 @@ void VulkanCBindings::FrameGraphBuilder::ValidateSubresourceLinks()
 	backbufferLastSubresourceMetadata.NextPassMetadata    = &backbufferPresentSubresourceMetadata;
 	backbufferPresentSubresourceMetadata.PrevPassMetadata = &backbufferLastSubresourceMetadata;
 
-	//Validate cyclic links
+	//Validate cyclic links (so first pass knows what state to barrier from)
 	for(size_t i = 0; i < mRenderPassNames.size(); i++)
 	{
 		RenderPassName renderPassName = mRenderPassNames[i];
@@ -715,11 +720,13 @@ void VulkanCBindings::FrameGraphBuilder::ValidateSubresourceQueues()
 	}
 }
 
-void VulkanCBindings::FrameGraphBuilder::BuildSubresources(const MemoryManager* memoryAllocator, const std::vector<VkImage>& swapchainImages, std::unordered_set<RenderPassName>& swapchainPassNames, VkFormat swapchainFormat)
+void VulkanCBindings::FrameGraphBuilder::BuildSubresources(const MemoryManager* memoryAllocator, const std::vector<VkImage>& swapchainImages, std::unordered_set<RenderPassName>& swapchainPassNames, VkFormat swapchainFormat, uint32_t defaultQueueIndex)
 {
+	std::vector<uint32_t> defaultQueueIndices = {defaultQueueIndex};
+
 	std::unordered_map<SubresourceName, ImageResourceCreateInfo>      imageResourceCreateInfos;
 	std::unordered_map<SubresourceName, BackbufferResourceCreateInfo> backbufferResourceCreateInfos;
-	BuildResourceCreateInfos(imageResourceCreateInfos, backbufferResourceCreateInfos, swapchainPassNames);
+	BuildResourceCreateInfos(defaultQueueIndices, imageResourceCreateInfos, backbufferResourceCreateInfos, swapchainPassNames);
 
 	PropagateMetadatasFromImageViews(imageResourceCreateInfos, backbufferResourceCreateInfos);
 
@@ -928,7 +935,75 @@ void VulkanCBindings::FrameGraphBuilder::BuildDescriptors()
 	//For now I don't have any passes to test it
 }
 
-void VulkanCBindings::FrameGraphBuilder::BuildResourceCreateInfos(std::unordered_map<SubresourceName, ImageResourceCreateInfo>& outImageCreateInfos, std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& outBackbufferCreateInfos, std::unordered_set<RenderPassName>& swapchainPassNames)
+void VulkanCBindings::FrameGraphBuilder::BarrierImages(const DeviceQueues* deviceQueues, const WorkerCommandBuffers* workerCommandBuffers, uint32_t defaultQueueIndex)
+{
+	//Transit to the first pass (so we can begin the rendering correctly)
+	std::vector<VkImageMemoryBarrier> imageMemoryBarriers;
+
+	std::unordered_map<SubresourceName, ImageSubresourceMetadata> imageFirstMetadatas;
+	for(const auto& renderPassName: mRenderPassNames)
+	{
+		const auto& nameIdMap = mRenderPassesSubresourceNameIds[renderPassName];
+		for(const auto& nameId: nameIdMap)
+		{
+			if(!imageFirstMetadatas.contains(nameId.first) && nameId.first != mBackbufferName)
+			{
+				ImageSubresourceMetadata metadata = mRenderPassesSubresourceMetadatas[renderPassName][nameId.second];
+				imageFirstMetadatas[nameId.first] = metadata;
+			}
+		}
+	}
+
+	std::vector<VkImageMemoryBarrier> imageBarriers;
+	for(const auto& nameMetadata: imageFirstMetadatas)
+	{
+		VkImageMemoryBarrier imageBarrier;
+		imageBarrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		imageBarrier.pNext                           = nullptr;
+		imageBarrier.srcAccessMask                   = 0;
+		imageBarrier.dstAccessMask                   = nameMetadata.second.AccessFlags;
+		imageBarrier.oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;
+		imageBarrier.newLayout                       = nameMetadata.second.Layout;
+		imageBarrier.srcQueueFamilyIndex             = defaultQueueIndex; //Resources were created with that queue ownership
+		imageBarrier.dstQueueFamilyIndex             = nameMetadata.second.QueueFamilyOwnership;
+		imageBarrier.image                           = mGraphToBuild->mImages[nameMetadata.second.ImageIndex];
+		imageBarrier.subresourceRange.aspectMask     = nameMetadata.second.AspectFlags;
+		imageBarrier.subresourceRange.baseMipLevel   = 0;
+		imageBarrier.subresourceRange.levelCount     = VK_REMAINING_MIP_LEVELS;
+		imageBarrier.subresourceRange.baseArrayLayer = 0;
+		imageBarrier.subresourceRange.layerCount     = VK_REMAINING_ARRAY_LAYERS;
+
+		imageBarriers.push_back(imageBarrier);
+	}
+
+	VkCommandPool   graphicsCommandPool   = workerCommandBuffers->GetMainThreadGraphicsCommandPool(0);
+	VkCommandBuffer graphicsCommandBuffer = workerCommandBuffers->GetMainThreadGraphicsCommandBuffer(0);
+
+	ThrowIfFailed(vkResetCommandPool(mGraphToBuild->mDeviceRef, graphicsCommandPool, 0));
+
+	//TODO: mGPU?
+	VkCommandBufferBeginInfo graphicsCmdBufferBeginInfo;
+	graphicsCmdBufferBeginInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	graphicsCmdBufferBeginInfo.pNext            = nullptr;
+	graphicsCmdBufferBeginInfo.flags            = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	graphicsCmdBufferBeginInfo.pInheritanceInfo = nullptr;
+
+	ThrowIfFailed(vkBeginCommandBuffer(graphicsCommandBuffer, &graphicsCmdBufferBeginInfo));
+
+	std::array<VkMemoryBarrier,       0> memoryBarriers;
+	std::array<VkBufferMemoryBarrier, 0> bufferBarriers;
+	vkCmdPipelineBarrier(graphicsCommandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0,
+		                 (uint32_t)memoryBarriers.size(), memoryBarriers.data(),
+		                 (uint32_t)bufferBarriers.size(), bufferBarriers.data(),
+		                 (uint32_t)imageBarriers.size(),  imageBarriers.data());
+
+	ThrowIfFailed(vkEndCommandBuffer(graphicsCommandBuffer));
+
+	deviceQueues->GraphicsQueueSubmit(graphicsCommandBuffer);
+	deviceQueues->GraphicsQueueWait();
+}
+
+void VulkanCBindings::FrameGraphBuilder::BuildResourceCreateInfos(const std::vector<uint32_t>& defaultQueueIndices, std::unordered_map<SubresourceName, ImageResourceCreateInfo>& outImageCreateInfos, std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& outBackbufferCreateInfos, std::unordered_set<RenderPassName>& swapchainPassNames)
 {
 	for(const auto& renderPassName: mRenderPassNames)
 	{
@@ -961,7 +1036,6 @@ void VulkanCBindings::FrameGraphBuilder::BuildResourceCreateInfos(std::unordered
 				if(!outImageCreateInfos.contains(subresourceName))
 				{
 					ImageResourceCreateInfo imageResourceCreateInfo;
-					imageResourceCreateInfo.QueueOwnerIndices = std::to_array({metadata.QueueFamilyOwnership});
 
 					//TODO: Multisampling
 					VkImageCreateInfo imageCreateInfo;
@@ -979,8 +1053,8 @@ void VulkanCBindings::FrameGraphBuilder::BuildResourceCreateInfos(std::unordered
 					imageCreateInfo.tiling                = VK_IMAGE_TILING_OPTIMAL;
 					imageCreateInfo.usage                 = metadata.UsageFlags;
 					imageCreateInfo.sharingMode           = VK_SHARING_MODE_EXCLUSIVE;
-					imageCreateInfo.queueFamilyIndexCount = (uint32_t)(imageResourceCreateInfo.QueueOwnerIndices.size());
-					imageCreateInfo.pQueueFamilyIndices   = imageResourceCreateInfo.QueueOwnerIndices.data();
+					imageCreateInfo.queueFamilyIndexCount = (uint32_t)(defaultQueueIndices.size());
+					imageCreateInfo.pQueueFamilyIndices   = defaultQueueIndices.data();
 					imageCreateInfo.initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED;
 
 					imageResourceCreateInfo.ImageCreateInfo = imageCreateInfo;
@@ -1007,7 +1081,6 @@ void VulkanCBindings::FrameGraphBuilder::BuildResourceCreateInfos(std::unordered
 				imageResourceCreateInfo.ImageViewInfos.push_back(imageViewInfo);
 
 				imageResourceCreateInfo.ImageCreateInfo.usage |= metadata.UsageFlags;
-				imageResourceCreateInfo.QueueOwnerIndices[0]   = metadata.QueueFamilyOwnership;
 			}
 		}
 	}
@@ -1182,6 +1255,8 @@ void VulkanCBindings::FrameGraphBuilder::SetSwapchainImages(const std::unordered
 
 void VulkanCBindings::FrameGraphBuilder::CreateImages(const std::unordered_map<SubresourceName, ImageResourceCreateInfo>& imageResourceCreateInfos, const MemoryManager* memoryAllocator)
 {
+	mGraphToBuild->mImages.clear();
+
 	for(const auto& nameWithCreateInfo: imageResourceCreateInfos)
 	{
 		VkImage image = VK_NULL_HANDLE;
@@ -1222,6 +1297,8 @@ void VulkanCBindings::FrameGraphBuilder::CreateImages(const std::unordered_map<S
 
 void VulkanCBindings::FrameGraphBuilder::CreateImageViews(const std::unordered_map<SubresourceName, ImageResourceCreateInfo>& imageResourceCreateInfos)
 {
+	mGraphToBuild->mImageViews.clear();
+
 	for(const auto& nameWithCreateInfo: imageResourceCreateInfos)
 	{
 		//Image is the same for all image views
@@ -1328,10 +1405,6 @@ void VulkanCBindings::FrameGraphBuilder::CreateImageView(const ImageViewInfo& im
 
 	ThrowIfFailed(vkCreateImageView(mGraphToBuild->mDeviceRef, &imageViewCreateInfo, nullptr, outImageView));
 }
-
-//void VulkanCBindings::FrameGraphBuilder::CreateBarrier(const ImageSubresourceMetadata& beforePass, const ImageSubresourceMetadata& afterPass, VkImageMemoryBarrier* outBarrier)
-//{
-//}
 
 bool VulkanCBindings::FrameGraphBuilder::PassesIntersect(const RenderPassName& writingPass, const RenderPassName& readingPass)
 {
