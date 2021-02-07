@@ -195,7 +195,7 @@
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>$(VULKAN_SDK)\Include;$(IncludePath)</IncludePath>
     <LibraryPath>$(VULKAN_SDK)\Lib;$(LibraryPath)</LibraryPath>
-    <RunCodeAnalysis>true</RunCodeAnalysis>
+    <RunCodeAnalysis>false</RunCodeAnalysis>
     <TargetName>$(ProjectName)d</TargetName>
     <OutDir>$(SolutionDir)..\Compiled\</OutDir>
   </PropertyGroup>
