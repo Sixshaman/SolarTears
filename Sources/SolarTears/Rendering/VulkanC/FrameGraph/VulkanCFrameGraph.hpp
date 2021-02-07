@@ -44,6 +44,9 @@ namespace VulkanCBindings
 		void SwitchSwapchainPasses(uint32_t swapchainImageIndex);
 		void SwitchSwapchainImages(uint32_t swapchainImageIndex);
 
+		void UnsetSwapchainPasses();
+		void UnsetSwapchainImages();
+
 		void BeginCommandBuffer(VkCommandBuffer cmdBuffer, VkCommandPool cmdPool);
 		void EndCommandBuffer(VkCommandBuffer cmdBuffer);
 
@@ -61,11 +64,13 @@ namespace VulkanCBindings
 		std::vector<VkImage>     mImages;
 		std::vector<VkImageView> mImageViews;
 
+		//Swapchain images and related data
 		uint32_t                 mBackbufferRefIndex;
 		uint32_t                 mLastSwapchainImageIndex;
 		std::vector<VkImage>     mSwapchainImageRefs;
 		std::vector<VkImageView> mSwapchainImageViews;
 
+		//Barriers and barrier metadata
 		std::vector<VkImageMemoryBarrier> mImageBarriers;
 		std::vector<uint32_t>             mSwapchainBarrierIndices;
 		std::vector<BarrierSpan>          mImageRenderPassBarriers; //Required barriers before ith pass are mImageBarriers[Span.Begin...Span.End], where Span is mImageRenderPassBarriers[i]. Last span is for after-graph barriers
@@ -73,6 +78,7 @@ namespace VulkanCBindings
 		//Each i * (SwapchainFrameCount + 1) + 0 element tells the index in mRenderPasses/mImageViews that should be replaced with swapchain-related element every frame. 
 		//Pass to replace is taken from mSwapchainRenderPasses[i * (SwapchainFrameCount + 1) + currentSwapchainImageIndex + 1]
 		//View to replace is taken from   mSwapchainImageViews[i * (SwapchainFrameCount + 1) + currentSwapchainImageIndex + 1]
+		//The reason to use it is to make mRenderPasses always relate to passes actually used
 		std::vector<uint32_t> mSwapchainPassesSwapMap;
 		std::vector<uint32_t> mSwapchainViewsSwapMap;
 

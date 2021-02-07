@@ -26,6 +26,11 @@ VulkanCBindings::GBufferPass::GBufferPass(VkDevice device, const FrameGraphBuild
 
 VulkanCBindings::GBufferPass::~GBufferPass()
 {
+	SafeDestroyObject(vkDestroyPipeline, mDeviceRef, mPipeline);
+	SafeDestroyObject(vkDestroyPipelineLayout, mDeviceRef, mPipelineLayout);
+
+	SafeDestroyObject(vkDestroyRenderPass, mDeviceRef, mRenderPass);
+	SafeDestroyObject(vkDestroyFramebuffer, mDeviceRef, mFramebuffer);
 }
 
 void VulkanCBindings::GBufferPass::Register(FrameGraphBuilder* frameGraphBuilder, const std::string& passName)
@@ -429,4 +434,9 @@ void VulkanCBindings::GBufferPass::CreatePipeline(const ShaderManager* shaderMan
 
 	std::array graphicsPipelineCreateInfos = {gbufferPipelineCreateInfo};
 	ThrowIfFailed(vkCreateGraphicsPipelines(mDeviceRef, VK_NULL_HANDLE, (uint32_t)graphicsPipelineCreateInfos.size(), graphicsPipelineCreateInfos.data(), nullptr, &mPipeline));
+
+	for(size_t i = 0; i < shaderModules.size(); i++)
+	{
+		SafeDestroyObject(vkDestroyShaderModule, mDeviceRef, shaderModules[i]);
+	}
 }
