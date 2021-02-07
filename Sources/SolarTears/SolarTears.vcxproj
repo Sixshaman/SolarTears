@@ -196,7 +196,7 @@
     <IncludePath>$(VULKAN_SDK)\Include;$(IncludePath)</IncludePath>
     <LibraryPath>$(VULKAN_SDK)\Lib;$(LibraryPath)</LibraryPath>
     <RunCodeAnalysis>false</RunCodeAnalysis>
-    <TargetName>$(ProjectName)d</TargetName>
+    <TargetName>$(ProjectName)</TargetName>
     <OutDir>$(SolutionDir)..\Compiled\</OutDir>
   </PropertyGroup>
   <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
