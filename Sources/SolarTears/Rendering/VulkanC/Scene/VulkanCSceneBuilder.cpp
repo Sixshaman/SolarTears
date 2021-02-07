@@ -568,8 +568,8 @@ void VulkanCBindings::RenderableSceneBuilder::FillDescriptorSets(const ShaderMan
 	std::vector<VkWriteDescriptorSet> writeDescriptorSets;
 	std::vector<VkCopyDescriptorSet>  copyDescriptorSets;
 
-	VkDeviceSize uniformObjectDataSize = mSceneToBuild->mScenePerObjectData.size() * mSceneToBuild->mGBufferObjectChunkDataSize * VulkanUtils::InFlightFrameCount;
-	VkDeviceSize uniformFrameDataSize  = mSceneToBuild->mGBufferFrameChunkDataSize * VulkanUtils::InFlightFrameCount;
+	VkDeviceSize uniformObjectDataSize = mSceneToBuild->mScenePerObjectData.size() * mSceneToBuild->mGBufferObjectChunkDataSize;
+	VkDeviceSize uniformFrameDataSize  = mSceneToBuild->mGBufferFrameChunkDataSize;
 
 	std::array gbufferUniformBindingNames = {"UniformBufferObject",                              "UniformBufferFrame"};
 	std::array gbufferUniformOffsets      = {mSceneToBuild->mSceneDataUniformObjectBufferOffset, mSceneToBuild->mSceneDataUniformFrameBufferOffset};
