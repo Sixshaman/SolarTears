@@ -6,10 +6,15 @@
 *.lo
 *.o
 *.obj
+*.iobj
 
 # Precompiled Headers
 *.gch
 *.pch
+
+# Debug data
+*.pdb
+*.ipdb
 
 # Compiled Dynamic libraries
 *.so
