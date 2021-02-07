@@ -1465,6 +1465,8 @@ void VulkanCBindings::FrameGraphBuilder::SetDebugObjectName(VkImage image, const
 
 		ThrowIfFailed(vkSetDebugUtilsObjectNameEXT(mGraphToBuild->mDeviceRef, &imageNameInfo));
 	}
-
+#else
+	UNREFERENCED_PARAMETER(image);
+	UNREFERENCED_PARAMETER(name);
 #endif
 }

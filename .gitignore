@@ -38,3 +38,6 @@
 /Sources/.vs/SolarTears/v16
 /Sources/SolarTears/x64/Debug
 /Compiled/SolarTearsd.ilk
+/Sources/SolarTears/x64/Release
+/Compiled/SolarTearsd.ipdb
+/Compiled/SolarTearsd.iobj
