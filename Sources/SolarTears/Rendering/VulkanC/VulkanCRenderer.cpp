@@ -62,8 +62,9 @@ VulkanCBindings::Renderer::~Renderer()
 	}
 
 	mScene.reset();
-	mCommandBuffers.reset();
+	mFrameGraph.reset();
 	mSwapChain.reset();
+	mCommandBuffers.reset();
 
 	SafeDestroyDevice(mDevice);
 	SafeDestroyInstance(mInstance);

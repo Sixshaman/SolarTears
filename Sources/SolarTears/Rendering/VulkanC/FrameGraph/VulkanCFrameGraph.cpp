@@ -20,6 +20,31 @@ VulkanCBindings::FrameGraph::FrameGraph(VkDevice device): mDeviceRef(device)
 
 VulkanCBindings::FrameGraph::~FrameGraph()
 {
+	UnsetSwapchainPasses();
+	UnsetSwapchainImages();
+
+	for(size_t i = 0; i < mSwapchainImageViews.size(); i++)
+	{
+		SafeDestroyObject(vkDestroyImageView, mDeviceRef, mSwapchainImageViews[i]);
+	}
+
+	for(size_t i = 0; i < mImageViews.size(); i++)
+	{
+		SafeDestroyObject(vkDestroyImageView, mDeviceRef, mImageViews[i]);
+	}
+
+	for(size_t i = 0; i < mImages.size(); i++)
+	{
+		SafeDestroyObject(vkDestroyImage, mDeviceRef, mImages[i]);
+	}
+
+	for(size_t i = 0; i < VulkanUtils::InFlightFrameCount; i++)
+	{
+		SafeDestroyObject(vkDestroySemaphore, mDeviceRef, mGraphicsToComputeSemaphores[i]);
+		SafeDestroyObject(vkDestroySemaphore, mDeviceRef, mComputeToPresentSemaphores[i]);
+	}
+
+	SafeDestroyObject(vkFreeMemory, mDeviceRef, mImageMemory);
 }
 
 void VulkanCBindings::FrameGraph::Traverse(WorkerCommandBuffers* commandBuffers, RenderableScene* scene, ThreadPool* threadPool, SwapChain* swapChain, DeviceQueues* deviceQueues, VkFence traverseFence, uint32_t currentFrameResourceIndex, uint32_t currentSwapchainImageIndex)
@@ -183,14 +208,43 @@ void VulkanCBindings::FrameGraph::SwitchSwapchainImages(uint32_t swapchainImageI
 
 
 	//Swap image views
-	uint32_t swapchainImageCount = (uint32_t)mSwapchainImageViews.size();
-
-	for(uint32_t i = 0; i < (uint32_t)mSwapchainViewsSwapMap.size(); i += (swapchainImageCount + 1u))
+	uint32_t swapchainImageViewCount = (uint32_t)mSwapchainImageViews.size();
+	for(uint32_t i = 0; i < (uint32_t)mSwapchainViewsSwapMap.size(); i += (swapchainImageViewCount + 1u))
 	{
 		uint32_t viewIndexToSwitch = mSwapchainViewsSwapMap[i];
 		
 		std::swap(mImageViews[viewIndexToSwitch], mSwapchainImageViews[mSwapchainViewsSwapMap[i + mLastSwapchainImageIndex + 1]]);
 		std::swap(mImageViews[viewIndexToSwitch], mSwapchainImageViews[mSwapchainViewsSwapMap[i + swapchainImageIndex + 1]]);
+	}
+}
+
+void VulkanCBindings::FrameGraph::UnsetSwapchainPasses()
+{
+	uint32_t swapchainImageCount = (uint32_t)mSwapchainImageRefs.size();
+	for(uint32_t i = 0; i < (uint32_t)mSwapchainPassesSwapMap.size(); i += (swapchainImageCount + 1u))
+	{
+		uint32_t passIndexToSwitch = mSwapchainPassesSwapMap[i];
+		mRenderPasses[passIndexToSwitch].swap(mSwapchainRenderPasses[mSwapchainPassesSwapMap[i + mLastSwapchainImageIndex + 1]]);
+	}
+}
+
+void VulkanCBindings::FrameGraph::UnsetSwapchainImages()
+{
+	//Swap images
+	std::swap(mImages[mBackbufferRefIndex], mSwapchainImageRefs[mLastSwapchainImageIndex]);
+
+	//Update barriers
+	for(size_t i = 0; i < mSwapchainBarrierIndices.size(); i++)
+	{
+		mImageBarriers[i].image = mImages[mBackbufferRefIndex];
+	}
+
+	//Swap image views
+	uint32_t swapchainImageViewCount = (uint32_t)mSwapchainImageViews.size();
+	for(uint32_t i = 0; i < (uint32_t)mSwapchainViewsSwapMap.size(); i += (swapchainImageViewCount + 1u))
+	{
+		uint32_t viewIndexToSwitch = mSwapchainViewsSwapMap[i];
+		std::swap(mImageViews[viewIndexToSwitch], mSwapchainImageViews[mSwapchainViewsSwapMap[i + mLastSwapchainImageIndex + 1]]);
 	}
 }
 
