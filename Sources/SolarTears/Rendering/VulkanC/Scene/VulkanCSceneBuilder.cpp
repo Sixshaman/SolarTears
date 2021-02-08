@@ -161,7 +161,7 @@ void VulkanCBindings::RenderableSceneBuilder::BakeSceneSecondPart(DeviceQueues* 
 		releaseImageInvalidateBarriers[i].srcAccessMask                   = VK_ACCESS_TRANSFER_WRITE_BIT;
 		releaseImageInvalidateBarriers[i].dstAccessMask                   = 0;
 		releaseImageInvalidateBarriers[i].oldLayout                       = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-		releaseImageInvalidateBarriers[i].newLayout                       = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		releaseImageInvalidateBarriers[i].newLayout                       = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 		releaseImageInvalidateBarriers[i].srcQueueFamilyIndex             = deviceQueues->GetTransferQueueFamilyIndex();
 		releaseImageInvalidateBarriers[i].dstQueueFamilyIndex             = deviceQueues->GetGraphicsQueueFamilyIndex();
 		releaseImageInvalidateBarriers[i].image                           = mSceneToBuild->mSceneTextures[i];
@@ -196,7 +196,6 @@ void VulkanCBindings::RenderableSceneBuilder::BakeSceneSecondPart(DeviceQueues* 
 
 	deviceQueues->TransferQueueSubmit(transferCommandBuffer, transferToGraphicsSemaphore);
 
-	
 	//Graphics queue ownership
 	ThrowIfFailed(vkResetCommandPool(mSceneToBuild->mDeviceRef, graphicsCommandPool, 0));
 
