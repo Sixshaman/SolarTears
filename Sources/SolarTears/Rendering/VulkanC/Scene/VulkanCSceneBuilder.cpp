@@ -32,6 +32,7 @@ void VulkanCBindings::RenderableSceneBuilder::BakeSceneFirstPart(const DeviceQue
 	//Create scene subobjects
 	std::vector<std::wstring> sceneTexturesVec;
 	CreateSceneMeshMetadata(sceneTexturesVec);
+	ResetSceneMeshData();
 
 	VkDeviceSize intermediateBufferOffset = 0;
 
@@ -297,6 +298,30 @@ void VulkanCBindings::RenderableSceneBuilder::CreateSceneMeshMetadata(std::vecto
 	mSceneToBuild->mScenePerObjectData.resize(mSceneToBuild->mSceneMeshes.size());
 	mSceneToBuild->mScheduledSceneUpdates.resize(mSceneToBuild->mSceneMeshes.size() + 1); //1 for each subobject and 1 for frame data
 	mSceneToBuild->mObjectDataScheduledUpdateIndices.resize(mSceneToBuild->mSceneSubobjects.size());
+}
+
+void VulkanCBindings::RenderableSceneBuilder::ResetSceneMeshData()
+{
+	mSceneToBuild->mScheduledSceneUpdatesCount = 0;
+
+	for(size_t i = 0; i < mSceneToBuild->mScenePerObjectData.size(); i++)
+	{
+		RenderableSceneBase::ScheduledSceneUpdate sceneUpdate;
+		sceneUpdate.UpdateType       = RenderableSceneBase::SceneUpdateType::UPDATE_OBJECT;
+		sceneUpdate.ObjectIndex      = (uint32_t)i;
+		sceneUpdate.DirtyFramesCount = mSceneToBuild->mMaxDirtyFrames;
+
+		mSceneToBuild->mScheduledSceneUpdates[mSceneToBuild->mScheduledSceneUpdatesCount] = sceneUpdate;
+		mSceneToBuild->mScheduledSceneUpdatesCount++;
+	}
+
+	RenderableSceneBase::ScheduledSceneUpdate sceneUpdate;
+	sceneUpdate.UpdateType       = RenderableSceneBase::SceneUpdateType::UPDATE_COMMON;
+	sceneUpdate.ObjectIndex      = (uint32_t)(-1);
+	sceneUpdate.DirtyFramesCount = mSceneToBuild->mMaxDirtyFrames;
+
+	mSceneToBuild->mScheduledSceneUpdates[mSceneToBuild->mScheduledSceneUpdatesCount] = sceneUpdate;
+	mSceneToBuild->mScheduledSceneUpdatesCount++;
 }
 
 void VulkanCBindings::RenderableSceneBuilder::CreateSceneDataBuffers(const DeviceQueues* deviceQueues, VkDeviceSize* currentIntermediateBufferOffset)
