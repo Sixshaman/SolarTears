@@ -131,6 +131,8 @@ void VulkanCBindings::Renderer::RenderScene()
 	const uint32_t currentFrameResourceIndex = mCurrentFrameIndex % VulkanUtils::InFlightFrameCount;
 	const uint32_t currentSwapchainIndex     = currentFrameResourceIndex;
 
+	mScene->UpdateScene(currentFrameResourceIndex);
+
 	VkFence frameFence = mRenderFences[currentFrameResourceIndex];
 	std::array frameFences = {frameFence};
 	ThrowIfFailed(vkWaitForFences(mDevice, (uint32_t)(frameFences.size()), frameFences.data(), VK_TRUE, 3000000000));
