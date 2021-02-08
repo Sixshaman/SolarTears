@@ -161,7 +161,10 @@ void VulkanCBindings::RenderableScene::UpdateScene(uint32_t currentFrameResource
 	mScheduledSceneUpdatesCount = freeSpaceIndex;
 
 	//Flush the last ranges
-	ThrowIfFailed(vkFlushMappedMemoryRanges(mDeviceRef, rangesToFlush, mappedMemoryRanges.data()));
+	if(rangesToFlush > 0)
+	{
+		ThrowIfFailed(vkFlushMappedMemoryRanges(mDeviceRef, rangesToFlush, mappedMemoryRanges.data()));
+	}
 }
 
 void VulkanCBindings::RenderableScene::DrawObjectsOntoGBuffer(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, uint32_t currentFrameResourceIndex) const
