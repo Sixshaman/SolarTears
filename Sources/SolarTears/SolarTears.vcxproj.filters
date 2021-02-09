@@ -228,6 +228,12 @@
     <ClInclude Include="Core\DataStructures\SmallVector.hpp">
       <Filter>Core\DataStructures</Filter>
     </ClInclude>
+    <ClInclude Include="Core\FrameCounter.hpp">
+      <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\FPSCounter.hpp">
+      <Filter>Core</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Platform\Win32\Win32Application.cpp">
@@ -346,6 +352,12 @@
     </ClCompile>
     <ClCompile Include="Rendering\VulkanC\VulkanCDeviceQueues.cpp">
       <Filter>Rendering\VulkanC</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\FrameCounter.cpp">
+      <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\FPSCounter.cpp">
+      <Filter>Исходные файлы</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

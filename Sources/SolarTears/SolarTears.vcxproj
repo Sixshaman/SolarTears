@@ -29,6 +29,8 @@
     <ClInclude Include="Core\Application.hpp" />
     <ClInclude Include="Core\DataStructures\SmallVector.hpp" />
     <ClInclude Include="Core\Engine.hpp" />
+    <ClInclude Include="Core\FPSCounter.hpp" />
+    <ClInclude Include="Core\FrameCounter.hpp" />
     <ClInclude Include="Core\Scene\Camera.hpp" />
     <ClInclude Include="Core\Scene\Scene.hpp" />
     <ClInclude Include="Core\Scene\SceneDescription.hpp" />
@@ -71,6 +73,8 @@
     <ClCompile Include="..\3rd party\SPIRV-Reflect\spirv_reflect.c" />
     <ClCompile Include="Core\Allocators\StackAllocator.cpp" />
     <ClCompile Include="Core\Engine.cpp" />
+    <ClCompile Include="Core\FPSCounter.cpp" />
+    <ClCompile Include="Core\FrameCounter.cpp" />
     <ClCompile Include="Core\Scene\Camera.cpp" />
     <ClCompile Include="Core\Scene\Scene.cpp" />
     <ClCompile Include="Core\Scene\SceneDescription.cpp" />

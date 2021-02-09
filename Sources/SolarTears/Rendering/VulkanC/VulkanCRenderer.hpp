@@ -8,6 +8,7 @@
 #include <memory>
 
 class ThreadPool;
+class FrameCounter;
 
 namespace VulkanCBindings
 {
@@ -23,7 +24,7 @@ namespace VulkanCBindings
 	class Renderer: public ::Renderer
 	{
 	public:
-		Renderer(LoggerQueue* loggerQueue, ThreadPool* threadPool);
+		Renderer(LoggerQueue* loggerQueue, FrameCounter* frameCounter, ThreadPool* threadPool);
 		~Renderer();
 
 		void AttachToWindow(Window* window)      override;
@@ -31,8 +32,6 @@ namespace VulkanCBindings
 
 		void InitScene(SceneDescription* scene) override;
 		void RenderScene()                      override;
-		
-		uint64_t GetFrameNumber() const override;
 
 	private:
 		void InitInstance();
@@ -46,15 +45,14 @@ namespace VulkanCBindings
 		void CreateFrameGraph();
 
 	private:
-		ThreadPool* mThreadPool;
+		const ThreadPool*   mThreadPoolRef;
+		const FrameCounter* mFrameCounterRef;
 
 		VkInstance       mInstance;
 		VkPhysicalDevice mPhysicalDevice;
 		VkDevice         mDevice;
 
 		VkFence mRenderFences[VulkanUtils::InFlightFrameCount];
-
-		uint64_t mCurrentFrameIndex;
 
 		VulkanCBindings::InstanceParameters mInstanceParameters;
 		VulkanCBindings::DeviceParameters   mDeviceParameters;

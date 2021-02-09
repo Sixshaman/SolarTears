@@ -5,6 +5,7 @@
 #include <string>
 #include "../VulkanCDeviceParameters.hpp"
 #include "../../RenderableSceneBase.hpp"
+#include "../../../Core/FrameCounter.hpp"
 
 namespace VulkanCBindings
 {
@@ -31,13 +32,13 @@ namespace VulkanCBindings
 		};
 
 	public:
-		RenderableScene(const VkDevice device, const DeviceParameters& deviceParameters, const ShaderManager* shaderManager);
+		RenderableScene(const VkDevice device, const FrameCounter* frameCounter, const DeviceParameters& deviceParameters, const ShaderManager* shaderManager);
 		~RenderableScene();
 
 	public:
-		void UpdateScene(uint32_t currentFrameResourceIndex);
+		void FinalizeSceneUpdating() override;
 
-		void DrawObjectsOntoGBuffer(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, uint32_t currentFrameResourceIndex) const;
+		void DrawObjectsOntoGBuffer(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout) const;
 
 
 		VkDescriptorSetLayout GetGBufferUniformsDescriptorSetLayout() const;
@@ -54,6 +55,8 @@ namespace VulkanCBindings
 		//Created from inside
 
 		const VkDevice mDeviceRef;
+
+		const FrameCounter* mFrameCounterRef;
 
 		VkDescriptorSetLayout mGBufferUniformsDescriptorSetLayout;
 		VkDescriptorSetLayout mGBufferTexturesDescriptorSetLayout;

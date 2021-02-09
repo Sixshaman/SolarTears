@@ -43,11 +43,15 @@ public:
 
 	void SetCameraAspectRatio(uint32_t width, uint32_t height);
 
-public:
-	void UpdateRenderableScene(RenderableSceneBase* renderableScene);
+	void UpdateScene();
+
+private:
+	void UpdateRenderableComponent();
 
 private:
 	std::vector<SceneObject> mSceneObjects;
 
 	Camera mCamera;
+
+	RenderableSceneBase* mRenderableComponentRef;
 };

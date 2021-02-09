@@ -17,12 +17,12 @@ void Timer::Tick()
 	mCurrTime = std::chrono::time_point_cast<std::chrono::seconds>(mClock.now());
 }
 
-float Timer::GetCurrTime()
+float Timer::GetCurrTime() const
 {
 	return static_cast<float>((mCurrTime - mStartTime).count() / (1000000000.0));
 }
 
-float Timer::GetDeltaTime()
+float Timer::GetDeltaTime() const
 {
 	return static_cast<float>((mCurrTime - mPrevTime).count() / (1000000000.0));
 }

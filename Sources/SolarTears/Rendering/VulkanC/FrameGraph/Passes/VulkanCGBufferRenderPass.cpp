@@ -52,7 +52,7 @@ void VulkanCBindings::GBufferPass::Register(FrameGraphBuilder* frameGraphBuilder
 	frameGraphBuilder->SetPassSubresourceUsage(passName, ColorBufferImageId, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
 }
 
-void VulkanCBindings::GBufferPass::RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig, uint32_t currentFrameResourceIndex)
+void VulkanCBindings::GBufferPass::RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig)
 {
 	constexpr uint32_t WriteAttachmentCount = 1;
 
@@ -85,7 +85,7 @@ void VulkanCBindings::GBufferPass::RecordExecution(VkCommandBuffer commandBuffer
 
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipeline);
 
-	scene->DrawObjectsOntoGBuffer(commandBuffer, mPipelineLayout, currentFrameResourceIndex);
+	scene->DrawObjectsOntoGBuffer(commandBuffer, mPipelineLayout);
 
 	vkCmdEndRenderPass(commandBuffer);
 }

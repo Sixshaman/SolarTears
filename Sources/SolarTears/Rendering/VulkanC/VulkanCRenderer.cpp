@@ -13,6 +13,7 @@
 #include "Scene/VulkanCSceneBuilder.hpp"
 #include "../../Core/Util.hpp"
 #include "../../Core/ThreadPool.hpp"
+#include "../../Core/FrameCounter.hpp"
 #include "../../../3rd party/VulkanGenericStructures/Include/VulkanGenericStructures.h"
 #include <array>
 #include <unordered_set>
@@ -20,7 +21,7 @@
 #include "FrameGraph/Passes/VulkanCGBufferRenderPass.hpp"
 #include "FrameGraph/Passes/VulkanCCopyImagePass.hpp"
 
-VulkanCBindings::Renderer::Renderer(LoggerQueue* loggerQueue, ThreadPool* threadPool): ::Renderer(loggerQueue), mInstanceParameters(loggerQueue), mDeviceParameters(loggerQueue), mThreadPool(threadPool), mCurrentFrameIndex(0)
+VulkanCBindings::Renderer::Renderer(LoggerQueue* loggerQueue, FrameCounter* frameCounter, ThreadPool* threadPool): ::Renderer(loggerQueue), mInstanceParameters(loggerQueue), mDeviceParameters(loggerQueue), mThreadPoolRef(threadPool), mFrameCounterRef(frameCounter)
 {
 	mDynamicLibrary = std::make_unique<VulkanCBindings::FunctionsLibrary>();
 
@@ -43,7 +44,7 @@ VulkanCBindings::Renderer::Renderer(LoggerQueue* loggerQueue, ThreadPool* thread
 
 	mSwapChain = std::make_unique<SwapChain>(mLoggingBoard, mInstance, mDevice);
 
-	mCommandBuffers = std::make_unique<WorkerCommandBuffers>(mDevice, mThreadPool->GetWorkerThreadCount(), mDeviceQueues.get());
+	mCommandBuffers = std::make_unique<WorkerCommandBuffers>(mDevice, mThreadPoolRef->GetWorkerThreadCount(), mDeviceQueues.get());
 
 	CreateFences();
 
@@ -117,7 +118,7 @@ void VulkanCBindings::Renderer::InitScene(SceneDescription* scene)
 {
 	ThrowIfFailed(vkDeviceWaitIdle(mDevice));
 
-	mScene = std::make_unique<VulkanCBindings::RenderableScene>(mDevice, mDeviceParameters, mShaderManager.get());
+	mScene = std::make_unique<VulkanCBindings::RenderableScene>(mDevice, mFrameCounterRef, mDeviceParameters, mShaderManager.get());
 
 	VulkanCBindings::RenderableSceneBuilder sceneBuilder(mScene.get());
 	scene->BindRenderableComponent(&sceneBuilder);
@@ -126,12 +127,31 @@ void VulkanCBindings::Renderer::InitScene(SceneDescription* scene)
 	sceneBuilder.BakeSceneSecondPart(mDeviceQueues.get(), mCommandBuffers.get());
 }
 
+void VulkanCBindings::Renderer::CreateFrameGraph()
+{
+	mFrameGraph.reset();
+
+	mFrameGraph = std::make_unique<VulkanCBindings::FrameGraph>(mDevice);
+
+	VulkanCBindings::FrameGraphBuilder frameGraphBuilder(mFrameGraph.get(), mScene.get(), &mInstanceParameters, &mDeviceParameters, mShaderManager.get());
+
+	GBufferPass::Register(&frameGraphBuilder, "GBuffer");
+	CopyImagePass::Register(&frameGraphBuilder, "CopyImage");
+
+	frameGraphBuilder.AssignSubresourceName("GBuffer",   GBufferPass::ColorBufferImageId, "ColorBuffer");
+	frameGraphBuilder.AssignSubresourceName("CopyImage", CopyImagePass::SrcImageId,       "ColorBuffer");
+	frameGraphBuilder.AssignSubresourceName("CopyImage", CopyImagePass::DstImageId,       "Backbuffer");
+
+	frameGraphBuilder.AssignBackbufferName("Backbuffer");
+
+	frameGraphBuilder.Build(mDeviceQueues.get(), mCommandBuffers.get(), mMemoryAllocator.get(), mSwapChain.get());
+}
+
+
 void VulkanCBindings::Renderer::RenderScene()
 {
-	const uint32_t currentFrameResourceIndex = mCurrentFrameIndex % VulkanUtils::InFlightFrameCount;
+	const uint32_t currentFrameResourceIndex = mFrameCounterRef->GetFrameCount() % VulkanUtils::InFlightFrameCount;
 	const uint32_t currentSwapchainIndex     = currentFrameResourceIndex;
-
-	mScene->UpdateScene(currentFrameResourceIndex);
 
 	VkFence frameFence = mRenderFences[currentFrameResourceIndex];
 	std::array frameFences = {frameFence};
@@ -139,14 +159,7 @@ void VulkanCBindings::Renderer::RenderScene()
 
 	ThrowIfFailed(vkResetFences(mDevice, (uint32_t)(frameFences.size()), frameFences.data()));
 
-	mFrameGraph->Traverse(mCommandBuffers.get(), mScene.get(), mThreadPool, mSwapChain.get(), mDeviceQueues.get(), frameFence, currentFrameResourceIndex, currentSwapchainIndex);
-
-	mCurrentFrameIndex++;
-}
-
-uint64_t VulkanCBindings::Renderer::GetFrameNumber() const
-{
-	return mCurrentFrameIndex;
+	mFrameGraph->Traverse(mThreadPoolRef, mCommandBuffers.get(), mScene.get(), mSwapChain.get(), mDeviceQueues.get(), frameFence, currentFrameResourceIndex, currentSwapchainIndex);
 }
 
 void VulkanCBindings::Renderer::InitInstance()
@@ -317,24 +330,4 @@ void VulkanCBindings::Renderer::InitializeSwapchainImages()
 
 	mDeviceQueues->GraphicsQueueSubmit(commandBuffer);
 	mDeviceQueues->GraphicsQueueWait();
-}
-
-void VulkanCBindings::Renderer::CreateFrameGraph()
-{
-	mFrameGraph.reset();
-
-	mFrameGraph = std::make_unique<VulkanCBindings::FrameGraph>(mDevice);
-
-	VulkanCBindings::FrameGraphBuilder frameGraphBuilder(mFrameGraph.get(), mScene.get(), &mInstanceParameters, &mDeviceParameters, mShaderManager.get());
-
-	GBufferPass::Register(&frameGraphBuilder, "GBuffer");
-	CopyImagePass::Register(&frameGraphBuilder, "CopyImage");
-
-	frameGraphBuilder.AssignSubresourceName("GBuffer",   GBufferPass::ColorBufferImageId, "ColorBuffer");
-	frameGraphBuilder.AssignSubresourceName("CopyImage", CopyImagePass::SrcImageId,       "ColorBuffer");
-	frameGraphBuilder.AssignSubresourceName("CopyImage", CopyImagePass::DstImageId,       "Backbuffer");
-
-	frameGraphBuilder.AssignBackbufferName("Backbuffer");
-
-	frameGraphBuilder.Build(mDeviceQueues.get(), mCommandBuffers.get(), mMemoryAllocator.get(), mSwapChain.get());
 }

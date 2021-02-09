@@ -38,6 +38,8 @@ public:
 	void UpdateSceneMeshData(RenderableSceneMeshHandle meshHandle, const Scene::SceneObjectLocation& sceneObjectLocation);
 	void UpdateSceneCameraData(DirectX::XMMATRIX View, DirectX::XMMATRIX Proj);
 
+	virtual void FinalizeSceneUpdating() = 0;
+
 protected:
 	//Set from inside
 	uint32_t mMaxDirtyFrames;

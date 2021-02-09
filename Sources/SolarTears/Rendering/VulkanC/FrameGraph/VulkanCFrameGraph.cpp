@@ -47,7 +47,7 @@ VulkanCBindings::FrameGraph::~FrameGraph()
 	SafeDestroyObject(vkFreeMemory, mDeviceRef, mImageMemory);
 }
 
-void VulkanCBindings::FrameGraph::Traverse(WorkerCommandBuffers* commandBuffers, RenderableScene* scene, ThreadPool* threadPool, SwapChain* swapChain, DeviceQueues* deviceQueues, VkFence traverseFence, uint32_t currentFrameResourceIndex, uint32_t currentSwapchainImageIndex)
+void VulkanCBindings::FrameGraph::Traverse(const ThreadPool* threadPool, WorkerCommandBuffers* commandBuffers, RenderableScene* scene, SwapChain* swapChain, DeviceQueues* deviceQueues, VkFence traverseFence, uint32_t currentFrameResourceIndex, uint32_t currentSwapchainImageIndex)
 {
 	//TODO: multithreading (thread pools are too hard for me rn, I have to level up my multithreading/concurrency skills)
 	UNREFERENCED_PARAMETER(threadPool);
@@ -91,7 +91,7 @@ void VulkanCBindings::FrameGraph::Traverse(WorkerCommandBuffers* commandBuffers,
 				vkCmdPipelineBarrier(graphicsCommandBuffer, barrierSpan.beforeFlagsBegin, barrierSpan.beforeFlagsEnd, 0, 0, memoryBarrierPointer, 0, bufferBarrierPointer, beforePassBarrierCount, imageBarrierPointer);
 			}
 
-			mRenderPasses[renderPassIndex]->RecordExecution(graphicsCommandBuffer, scene, mFrameGraphConfig, currentFrameResourceIndex);
+			mRenderPasses[renderPassIndex]->RecordExecution(graphicsCommandBuffer, scene, mFrameGraphConfig);
 
 			if(afterPassBarrierCount != 0)
 			{
@@ -138,7 +138,7 @@ void VulkanCBindings::FrameGraph::Traverse(WorkerCommandBuffers* commandBuffers,
 				vkCmdPipelineBarrier(computeCommandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, 0, memoryBarrierPointer, 0, bufferBarrierPointer, beforePassBarrierCount, imageBarrierPointer);
 			}
 
-			mRenderPasses[renderPassIndex]->RecordExecution(computeCommandBuffer, scene, mFrameGraphConfig, currentFrameResourceIndex);
+			mRenderPasses[renderPassIndex]->RecordExecution(computeCommandBuffer, scene, mFrameGraphConfig);
 
 			if(afterPassBarrierCount != 0)
 			{
