@@ -53,9 +53,6 @@ void Engine::Update()
 	{
 		mTimer->Tick();
 
-		float fps = mFPSCounter->CalculateFPS(mFrameCounter.get(), mTimer.get());
-		mLoggerQueue->PostLogMessage("FPS: " + std::to_string(fps) + ", mspf: " + std::to_string(1.0f / fps));
-
 		const uint32_t maxLogMessagesPerTick = 10;
 		mLoggerQueue->FeedMessages(mLogger.get(), maxLogMessagesPerTick);
 
@@ -63,6 +60,7 @@ void Engine::Update()
 		mRenderingSystem->RenderScene();
 
 		mFrameCounter->IncrementFrame();
+		mFPSCounter->LogFPS(mFrameCounter.get(), mTimer.get(), mLoggerQueue.get());
 	}
 }
 

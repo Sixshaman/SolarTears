@@ -23,7 +23,8 @@ public:
 	void BuildScene(Scene* scene);
 
 public:
-	void BindRenderableComponent(RenderableSceneBuilderBase* renderableSceneBuilder);
+	void BuildRenderableComponent(RenderableSceneBuilderBase* renderableSceneBuilder);
+	void BindRenderableComponent(RenderableSceneBase* renderableScene);
 
 private:
 	std::vector<SceneDescriptionObject> mSceneObjects;
@@ -35,4 +36,6 @@ private:
 	uint32_t mViewportHeight;
 
 	std::unordered_map<uint64_t, RenderableSceneMeshHandle> mSceneEntityMeshes;
+
+	RenderableSceneBase* mRenderableSceneRef;
 };

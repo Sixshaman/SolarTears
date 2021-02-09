@@ -296,7 +296,8 @@ void VulkanCBindings::RenderableSceneBuilder::CreateSceneMeshMetadata(std::vecto
 
 	mSceneToBuild->mScenePerObjectData.resize(mSceneToBuild->mSceneMeshes.size());
 	mSceneToBuild->mScheduledSceneUpdates.resize(mSceneToBuild->mSceneMeshes.size() + 1); //1 for each subobject and 1 for frame data
-	mSceneToBuild->mObjectDataScheduledUpdateIndices.resize(mSceneToBuild->mSceneSubobjects.size());
+	mSceneToBuild->mObjectDataScheduledUpdateIndices.resize(mSceneToBuild->mSceneSubobjects.size(), (uint32_t)(-1));
+	mSceneToBuild->mFrameDataScheduledUpdateIndex = (uint32_t)(-1);
 }
 
 void VulkanCBindings::RenderableSceneBuilder::CreateSceneDataBuffers(const DeviceQueues* deviceQueues, VkDeviceSize* currentIntermediateBufferOffset)

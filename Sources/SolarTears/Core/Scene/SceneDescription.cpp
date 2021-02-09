@@ -65,9 +65,11 @@ void SceneDescription::BuildScene(Scene* scene)
 	//TODO: more camera control
 	scene->mCamera.SetCameraSpace(cameraPos, cameraLook, worldUp);
 	scene->mCamera.SetProjectionParameters(DirectX::XM_PIDIV2, (float)mViewportWidth / (float)mViewportHeight, 0.01f, 100.0f);
+
+	scene->mRenderableComponentRef = mRenderableSceneRef;
 }
 
-void SceneDescription::BindRenderableComponent(RenderableSceneBuilderBase* renderableSceneBuilder)
+void SceneDescription::BuildRenderableComponent(RenderableSceneBuilderBase* renderableSceneBuilder)
 {
 	for(size_t i = 0; i < mSceneObjects.size(); i++)
 	{
@@ -96,4 +98,9 @@ void SceneDescription::BindRenderableComponent(RenderableSceneBuilderBase* rende
 			mSceneEntityMeshes[mSceneObjects[i].GetEntityId()] = meshHandle;
 		}
 	}
+}
+
+void SceneDescription::BindRenderableComponent(RenderableSceneBase* renderableScene)
+{
+	mRenderableSceneRef = renderableScene;
 }
