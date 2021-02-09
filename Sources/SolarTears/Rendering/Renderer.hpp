@@ -28,8 +28,6 @@ public:
 	virtual void InitScene(SceneDescription* scene) = 0;
 	virtual void RenderScene()                      = 0;
 
-	virtual uint64_t GetFrameNumber() const = 0;
-
 protected:
 	LoggerQueue* mLoggingBoard;
 };

@@ -9,6 +9,8 @@ class Renderer;
 class Logger;
 class LoggerQueue;
 class Scene;
+class FrameCounter;
+class FPSCounter;
 
 class Engine
 {
@@ -22,8 +24,6 @@ public:
 private:
 	void CreateScene();
 
-	void CalcNextFPS();
-
 private:
 	bool mPaused;
 
@@ -36,4 +36,7 @@ private:
 	std::unique_ptr<ThreadPool> mThreadPool;
 
 	std::unique_ptr<Renderer> mRenderingSystem;
+
+	std::unique_ptr<FrameCounter> mFrameCounter;
+	std::unique_ptr<FPSCounter>   mFPSCounter;
 };

@@ -1,4 +1,6 @@
 #include "Engine.hpp"
+#include "FrameCounter.hpp"
+#include "FPSCounter.hpp"
 #include "Scene/SceneDescription.hpp"
 #include "Scene/Scene.hpp"
 #include "../Rendering/VulkanC/VulkanCRenderer.hpp"
@@ -13,7 +15,10 @@ Engine::Engine(): mPaused(false)
 	mTimer      = std::make_unique<Timer>();
 	mThreadPool = std::make_unique<ThreadPool>();
 
-	mRenderingSystem = std::make_unique<VulkanCBindings::Renderer>(mLoggerQueue.get(), mThreadPool.get());
+	mFrameCounter = std::make_unique<FrameCounter>();
+	mFPSCounter = std::make_unique<FPSCounter>();
+
+	mRenderingSystem = std::make_unique<VulkanCBindings::Renderer>(mLoggerQueue.get(), mFrameCounter.get(), mThreadPool.get());
 
 	CreateScene();
 }
@@ -48,17 +53,24 @@ void Engine::Update()
 	{
 		mTimer->Tick();
 
+		float fps = mFPSCounter->CalculateFPS(mFrameCounter.get(), mTimer.get());
+		mLoggerQueue->PostLogMessage("FPS: " + std::to_string(fps) + ", mspf: " + std::to_string(1.0f / fps));
+
 		const uint32_t maxLogMessagesPerTick = 10;
 		mLoggerQueue->FeedMessages(mLogger.get(), maxLogMessagesPerTick);
 
+		mScene->UpdateScene();
 		mRenderingSystem->RenderScene();
 
-		CalcNextFPS();
+		mFrameCounter->IncrementFrame();
 	}
 }
 
 void Engine::CreateScene()
 {
+	mScene.reset();
+	mScene = std::make_unique<Scene>();
+
 	SceneDescription sceneDesc;
 
 	SceneDescriptionObject& sceneObject = sceneDesc.CreateEmptySceneObject();
@@ -112,22 +124,6 @@ void Engine::CreateScene()
 	sceneObject.SetMeshComponent(meshComponent);
 
 	mRenderingSystem->InitScene(&sceneDesc);
-}
 
-void Engine::CalcNextFPS()
-{
-	static float lastMeasurementTime = mTimer->GetCurrTime();
-	float currMeasurementTime = mTimer->GetCurrTime();
-
-	static uint64_t lastFrameIndex = mRenderingSystem->GetFrameNumber();
-	uint64_t frameIndex = mRenderingSystem->GetFrameNumber();
-
-	if(currMeasurementTime - lastMeasurementTime >= 1.0f)
-	{
-		float currentFPS    = (frameIndex - lastFrameIndex) / (currMeasurementTime - lastMeasurementTime);
-		lastMeasurementTime = currMeasurementTime;
-		lastFrameIndex      = frameIndex;
-
-		mLoggerQueue->PostLogMessage("FPS: " + std::to_string(currentFPS) + ", mspf: " + std::to_string(1.0f / currentFPS));
-	}
+	sceneDesc.BuildScene(mScene.get());
 }

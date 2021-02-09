@@ -10,8 +10,8 @@ public:
 
 	void Tick();
 
-	float GetCurrTime();
-	float GetDeltaTime();
+	float GetCurrTime()  const;
+	float GetDeltaTime() const;
 
 private:
 	std::chrono::high_resolution_clock mClock;

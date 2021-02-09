@@ -38,7 +38,6 @@ namespace VulkanCBindings
 
 	private:
 		void CreateSceneMeshMetadata(std::vector<std::wstring>& sceneTexturesVec);
-		void ResetSceneMeshData();
 
 		void CreateSceneDataBuffers(const DeviceQueues* deviceQueues, VkDeviceSize* currentIntermediateBufferOffset);
 		void LoadTextureImages(const std::vector<std::wstring>& sceneTextures, const DeviceParameters& deviceParameters, VkDeviceSize* currentIntermediateBufferOffset);

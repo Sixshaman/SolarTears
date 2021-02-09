@@ -8,7 +8,7 @@
 #include "../../RenderableSceneMisc.hpp"
 #include <array>
 
-VulkanCBindings::RenderableScene::RenderableScene(const VkDevice device, const DeviceParameters& deviceParameters, const ShaderManager* shaderManager): RenderableSceneBase(VulkanUtils::InFlightFrameCount), mDeviceRef(device)
+VulkanCBindings::RenderableScene::RenderableScene(const VkDevice device, const FrameCounter* frameCounter, const DeviceParameters& deviceParameters, const ShaderManager* shaderManager) :RenderableSceneBase(VulkanUtils::InFlightFrameCount), mFrameCounterRef(frameCounter), mDeviceRef(device)
 {
 	mSceneVertexBuffer = VK_NULL_HANDLE;
 	mSceneIndexBuffer  = VK_NULL_HANDLE;
@@ -74,8 +74,10 @@ VulkanCBindings::RenderableScene::~RenderableScene()
 	SafeDestroyObject(vkFreeMemory, mDeviceRef, mBufferHostVisibleMemory);
 }
 
-void VulkanCBindings::RenderableScene::UpdateScene(uint32_t currentFrameResourceIndex)
+void VulkanCBindings::RenderableScene::FinalizeSceneUpdating()
 {
+	uint32_t frameResourceIndex = mFrameCounterRef->GetFrameCount() % VulkanUtils::InFlightFrameCount;
+
 	constexpr size_t MaxRangesToFlush = 16;
 	std::array<VkMappedMemoryRange, MaxRangesToFlush> mappedMemoryRanges;
 
@@ -95,7 +97,7 @@ void VulkanCBindings::RenderableScene::UpdateScene(uint32_t currentFrameResource
 		{
 		case SceneUpdateType::UPDATE_OBJECT:
 		{
-			bufferOffset  = CalculatePerObjectDataOffset(mScheduledSceneUpdates[i].ObjectIndex, currentFrameResourceIndex);
+			bufferOffset  = CalculatePerObjectDataOffset(mScheduledSceneUpdates[i].ObjectIndex, frameResourceIndex);
 			updateSize    = sizeof(RenderableSceneBase::PerObjectData);
 			flushSize     = mGBufferObjectChunkDataSize;
 			updatePointer = &mScenePerObjectData[mScheduledSceneUpdates[i].ObjectIndex];
@@ -103,7 +105,7 @@ void VulkanCBindings::RenderableScene::UpdateScene(uint32_t currentFrameResource
 		}
 		case SceneUpdateType::UPDATE_COMMON:
 		{
-			bufferOffset  = CalculatePerFrameDataOffset(currentFrameResourceIndex);
+			bufferOffset  = CalculatePerFrameDataOffset(frameResourceIndex);
 			updateSize    = sizeof(RenderableSceneBase::PerFrameData);
 			flushSize     = mGBufferFrameChunkDataSize;
 			updatePointer = &mScenePerFrameData;
@@ -153,7 +155,6 @@ void VulkanCBindings::RenderableScene::UpdateScene(uint32_t currentFrameResource
 		{
 			//Shift by one
 			mScheduledSceneUpdates[freeSpaceIndex] = mScheduledSceneUpdates[i];
-
 			freeSpaceIndex += 1;
 		}
 	}
@@ -167,7 +168,7 @@ void VulkanCBindings::RenderableScene::UpdateScene(uint32_t currentFrameResource
 	}
 }
 
-void VulkanCBindings::RenderableScene::DrawObjectsOntoGBuffer(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, uint32_t currentFrameResourceIndex) const
+void VulkanCBindings::RenderableScene::DrawObjectsOntoGBuffer(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout) const
 {
 	//TODO: extended dynamic state
 	std::array sceneVertexBuffers = {mSceneVertexBuffer};
@@ -177,10 +178,12 @@ void VulkanCBindings::RenderableScene::DrawObjectsOntoGBuffer(VkCommandBuffer co
 
 	vkCmdBindIndexBuffer(commandBuffer, mSceneIndexBuffer, 0, VulkanUtils::FormatForIndexType<RenderableSceneIndex>);
 
-	uint32_t PerFrameOffset = currentFrameResourceIndex * mGBufferFrameChunkDataSize;
+	uint32_t frameResourceIndex = mFrameCounterRef->GetFrameCount() % VulkanUtils::InFlightFrameCount;
+	uint32_t PerFrameOffset     = frameResourceIndex * mGBufferFrameChunkDataSize;
+
 	for(size_t meshIndex = 0; meshIndex < mSceneMeshes.size(); meshIndex++)
 	{
-		uint32_t PerObjectOffset = (uint32_t)(currentFrameResourceIndex * mSceneMeshes.size() + meshIndex) * mGBufferObjectChunkDataSize;
+		uint32_t PerObjectOffset = (uint32_t)(frameResourceIndex * mSceneMeshes.size() + meshIndex) * mGBufferObjectChunkDataSize;
 
 		for(uint32_t subobjectIndex = mSceneMeshes[meshIndex].FirstSubobjectIndex; subobjectIndex < mSceneMeshes[meshIndex].AfterLastSubobjectIndex; subobjectIndex++)
 		{

@@ -31,14 +31,19 @@ void Scene::SetCameraAspectRatio(uint32_t width, uint32_t height)
 	mCamera.SetProjectionParameters(mCamera.GetFovY(), (float)width / (float)height, mCamera.GetNearZ(), mCamera.GetFarZ());
 }
 
-void Scene::UpdateRenderableScene(RenderableSceneBase* renderableScene)
+void Scene::UpdateScene()
+{
+	UpdateRenderableComponent();
+}
+
+void Scene::UpdateRenderableComponent()
 {
 	//TODO: keep only the list of changed objects (no dirty flag)
 	for(size_t i = 0; i < mSceneObjects.size(); i++)
 	{
 		if(mSceneObjects[i].RenderableHandle != INVALID_SCENE_MESH_HANDLE && mSceneObjects[i].DirtyFlag)
 		{
-			renderableScene->UpdateSceneMeshData(mSceneObjects[i].RenderableHandle, mSceneObjects[i].Location);
+			mRenderableComponentRef->UpdateSceneMeshData(mSceneObjects[i].RenderableHandle, mSceneObjects[i].Location);
 			mSceneObjects[i].DirtyFlag = false;
 		}
 	}
@@ -46,5 +51,5 @@ void Scene::UpdateRenderableScene(RenderableSceneBase* renderableScene)
 	//TODO: only recalculate if needed
 	mCamera.RecalcViewMatrix();
 	mCamera.RecalcProjMatrix();
-	renderableScene->UpdateSceneCameraData(mCamera.GetViewMatrix(), mCamera.GetProjMatrix());
+	mRenderableComponentRef->UpdateSceneCameraData(mCamera.GetViewMatrix(), mCamera.GetProjMatrix());
 }

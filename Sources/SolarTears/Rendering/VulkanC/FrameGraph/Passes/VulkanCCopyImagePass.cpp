@@ -40,10 +40,9 @@ VulkanCBindings::CopyImagePass::~CopyImagePass()
 {
 }
 
-void VulkanCBindings::CopyImagePass::RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig, uint32_t currentFrameResourceIndex)
+void VulkanCBindings::CopyImagePass::RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig)
 {
 	UNREFERENCED_PARAMETER(scene);
-	UNREFERENCED_PARAMETER(currentFrameResourceIndex);
 
 	VkImageCopy imageCopyInfo;
 	imageCopyInfo.srcOffset.x                   = 0;
