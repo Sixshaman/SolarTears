@@ -30,8 +30,8 @@ namespace VulkanCBindings
 		void AttachToWindow(Window* window)      override;
 		void ResizeWindowBuffers(Window* window) override;
 
-		void InitScene(SceneDescription* scene) override;
-		void RenderScene()                      override;
+		void InitScene(SceneDescription* sceneDescription) override;
+		void RenderScene()                                 override;
 
 	private:
 		void InitInstance();

@@ -52,4 +52,6 @@ void Scene::UpdateRenderableComponent()
 	mCamera.RecalcViewMatrix();
 	mCamera.RecalcProjMatrix();
 	mRenderableComponentRef->UpdateSceneCameraData(mCamera.GetViewMatrix(), mCamera.GetProjMatrix());
+
+	mRenderableComponentRef->FinalizeSceneUpdating();
 }

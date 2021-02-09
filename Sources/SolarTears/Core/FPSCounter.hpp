@@ -2,6 +2,7 @@
 
 #include "Timer.hpp"
 #include "FrameCounter.hpp"
+#include "../Logging/LoggerQueue.hpp"
 
 class FPSCounter
 {
@@ -9,7 +10,7 @@ public:
 	FPSCounter();
 	~FPSCounter();
 
-	float CalculateFPS(const FrameCounter* frameCounter, const Timer* timer);
+	void LogFPS(const FrameCounter* frameCounter, const Timer* timer, LoggerQueue* logger);
 
 private:
 	uint64_t mLastMeasuredFrame;

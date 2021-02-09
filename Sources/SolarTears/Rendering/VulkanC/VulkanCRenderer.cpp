@@ -114,14 +114,15 @@ void VulkanCBindings::Renderer::ResizeWindowBuffers(Window* window)
 	CreateFrameGraph();
 }
 
-void VulkanCBindings::Renderer::InitScene(SceneDescription* scene)
+void VulkanCBindings::Renderer::InitScene(SceneDescription* sceneDescription)
 {
 	ThrowIfFailed(vkDeviceWaitIdle(mDevice));
 
 	mScene = std::make_unique<VulkanCBindings::RenderableScene>(mDevice, mFrameCounterRef, mDeviceParameters, mShaderManager.get());
+	sceneDescription->BindRenderableComponent(mScene.get());
 
 	VulkanCBindings::RenderableSceneBuilder sceneBuilder(mScene.get());
-	scene->BindRenderableComponent(&sceneBuilder);
+	sceneDescription->BuildRenderableComponent(&sceneBuilder);
 
 	sceneBuilder.BakeSceneFirstPart(mDeviceQueues.get(), mMemoryAllocator.get(), mShaderManager.get(), mDeviceParameters);
 	sceneBuilder.BakeSceneSecondPart(mDeviceQueues.get(), mCommandBuffers.get());

@@ -11,7 +11,8 @@ RenderableSceneBase::~RenderableSceneBase()
 
 void RenderableSceneBase::UpdateSceneMeshData(RenderableSceneMeshHandle meshHandle, const Scene::SceneObjectLocation& sceneObjectLocation)
 {
-	if(mFrameDataScheduledUpdateIndex == -1)
+	uint32_t scheduledUpdateIndex = mObjectDataScheduledUpdateIndices[meshHandle.Id];
+	if(scheduledUpdateIndex == -1) //This mesh's update is not known yet
 	{
 		ScheduledSceneUpdate sceneUpdate;
 		sceneUpdate.UpdateType       = SceneUpdateType::UPDATE_OBJECT;
@@ -23,7 +24,7 @@ void RenderableSceneBase::UpdateSceneMeshData(RenderableSceneMeshHandle meshHand
 	}
 	else
 	{
-		mScheduledSceneUpdates[mObjectDataScheduledUpdateIndices[meshHandle.Id]].DirtyFramesCount = mMaxDirtyFrames;
+		mScheduledSceneUpdates[scheduledUpdateIndex].DirtyFramesCount = mMaxDirtyFrames;
 	}
 
 	const DirectX::XMVECTOR scale    = DirectX::XMVectorSet(sceneObjectLocation.Scale, sceneObjectLocation.Scale, sceneObjectLocation.Scale, 0.0f);

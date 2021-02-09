@@ -12,7 +12,7 @@ FPSCounter::~FPSCounter()
 {
 }
 
-float FPSCounter::CalculateFPS(const FrameCounter* frameCounter, const Timer* timer)
+void FPSCounter::LogFPS(const FrameCounter* frameCounter, const Timer* timer, LoggerQueue* logger)
 {
 	float    currMeasurementTime = timer->GetCurrTime();
 	uint64_t frameIndex          = frameCounter->GetFrameCount();
@@ -22,7 +22,7 @@ float FPSCounter::CalculateFPS(const FrameCounter* frameCounter, const Timer* ti
 		mLastMeasuredFPS   = (frameIndex - mLastMeasuredFrame) / (currMeasurementTime - mLastMeasuredTime);
 		mLastMeasuredTime  = currMeasurementTime;
 		mLastMeasuredFrame = frameIndex;	 
-	}
 
-	return mLastMeasuredFPS;
+		logger->PostLogMessage("FPS: " + std::to_string(mLastMeasuredFPS) + ", mspf: " + std::to_string(1.0f / mLastMeasuredFPS));
+	}
 }
