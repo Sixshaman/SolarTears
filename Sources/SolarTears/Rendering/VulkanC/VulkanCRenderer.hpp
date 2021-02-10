@@ -42,7 +42,7 @@ namespace VulkanCBindings
 	private:
 		void InitializeSwapchainImages();
 
-		void CreateFrameGraph();
+		void CreateFrameGraph(uint32_t viewportWidth, uint32_t viewportHeight);
 
 	private:
 		const ThreadPool*   mThreadPoolRef;

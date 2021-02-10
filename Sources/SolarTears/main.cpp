@@ -18,7 +18,7 @@ int main(int argc, char* argv[])
 
 	std::unique_ptr<Engine> engine = std::make_unique<Engine>();
 
-	Window window(app.NativeHandle(), L"Solar Tears", 100, 100, 640, 480);
+	Window window(app.NativeHandle(), L"Solar Tears", 100, 100, 768, 768);
 	engine->BindToWindow(&window);
 
 	return app.Run(engine.get());

@@ -6,7 +6,7 @@
 #include "../../../Core/ThreadPool.hpp"
 #include <array>
 
-VulkanCBindings::FrameGraph::FrameGraph(VkDevice device): mDeviceRef(device)
+VulkanCBindings::FrameGraph::FrameGraph(VkDevice device, const FrameGraphConfig& frameGraphConfig): mDeviceRef(device)
 {
 	mGraphicsPassCount = 0;
 	mComputePassCount  = 0;
@@ -14,6 +14,8 @@ VulkanCBindings::FrameGraph::FrameGraph(VkDevice device): mDeviceRef(device)
 	mImageMemory = VK_NULL_HANDLE;
 
 	mLastSwapchainImageIndex = 0;
+
+	mFrameGraphConfig = frameGraphConfig;
 
 	CreateSemaphores();
 }
