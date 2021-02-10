@@ -357,7 +357,7 @@
       <Filter>Core</Filter>
     </ClCompile>
     <ClCompile Include="Core\FPSCounter.cpp">
-      <Filter>Исходные файлы</Filter>
+      <Filter>Core</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
