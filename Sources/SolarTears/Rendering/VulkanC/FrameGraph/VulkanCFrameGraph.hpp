@@ -33,7 +33,7 @@ namespace VulkanCBindings
 		};
 
 	public:
-		FrameGraph(VkDevice device);
+		FrameGraph(VkDevice device, const FrameGraphConfig& frameGraphConfig);
 		~FrameGraph();
 
 		void Traverse(const ThreadPool* threadPool, WorkerCommandBuffers* commandBuffers, RenderableScene* scene, SwapChain* swapChain, DeviceQueues* deviceQueues, VkFence traverseFence, uint32_t currentFrameResourceIndex, uint32_t currentSwapchainImageIndex);

@@ -98,7 +98,7 @@ void VulkanCBindings::Renderer::AttachToWindow(Window* window)
 	
 	InitializeSwapchainImages();
 
-	CreateFrameGraph();
+	CreateFrameGraph(window->GetWidth(), window->GetHeight());
 }
 
 void VulkanCBindings::Renderer::ResizeWindowBuffers(Window* window)
@@ -111,7 +111,7 @@ void VulkanCBindings::Renderer::ResizeWindowBuffers(Window* window)
 		
 	InitializeSwapchainImages();
 
-	CreateFrameGraph();
+	CreateFrameGraph(window->GetWidth(), window->GetHeight());
 }
 
 void VulkanCBindings::Renderer::InitScene(SceneDescription* sceneDescription)
@@ -128,11 +128,14 @@ void VulkanCBindings::Renderer::InitScene(SceneDescription* sceneDescription)
 	sceneBuilder.BakeSceneSecondPart(mDeviceQueues.get(), mCommandBuffers.get());
 }
 
-void VulkanCBindings::Renderer::CreateFrameGraph()
+void VulkanCBindings::Renderer::CreateFrameGraph(uint32_t viewportWidth, uint32_t viewportHeight)
 {
 	mFrameGraph.reset();
 
-	mFrameGraph = std::make_unique<VulkanCBindings::FrameGraph>(mDevice);
+	FrameGraphConfig frameGraphConfig;
+	frameGraphConfig.SetScreenSize((uint16_t)viewportWidth, (uint16_t)viewportHeight);
+
+	mFrameGraph = std::make_unique<VulkanCBindings::FrameGraph>(mDevice, frameGraphConfig);
 
 	VulkanCBindings::FrameGraphBuilder frameGraphBuilder(mFrameGraph.get(), mScene.get(), &mInstanceParameters, &mDeviceParameters, mShaderManager.get());
 
