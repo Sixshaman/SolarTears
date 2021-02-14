@@ -371,6 +371,8 @@ void VulkanCBindings::RenderableSceneBuilder::CreateSceneDataBuffers(const Devic
 
 void VulkanCBindings::RenderableSceneBuilder::LoadTextureImages(const std::vector<std::wstring>& sceneTextures, const DeviceParameters& deviceParameters, VkDeviceSize* currentIntermediateBufferOffset)
 {
+	DDSTextureLoaderVk::SetVkCreateImageFuncPtr(vkCreateImage);
+
 	mTextureData.clear();
 
 	VkDeviceSize currentOffset = *currentIntermediateBufferOffset;
@@ -380,7 +382,7 @@ void VulkanCBindings::RenderableSceneBuilder::LoadTextureImages(const std::vecto
 		std::vector<VkBufferImageCopy> texSubresources;
 
 		VkImage texture;
-		ThrowIfFailed(Vulkan::LoadDDSTextureFromFile(mSceneToBuild->mDeviceRef, sceneTextures[i].c_str(), &texture, texData, texSubresources, deviceParameters.GetDeviceProperties().limits.maxImageDimension2D, currentOffset));
+		ThrowIfFailed(DDSTextureLoaderVk::LoadDDSTextureFromFile(mSceneToBuild->mDeviceRef, sceneTextures[i].c_str(), &texture, texData, texSubresources, deviceParameters.GetDeviceProperties().limits.maxImageDimension2D, currentOffset));
 
 		mTextureData.insert(mTextureData.end(), texData.begin(), texData.end());
 		mSceneToBuild->mSceneTextures.push_back(texture);
