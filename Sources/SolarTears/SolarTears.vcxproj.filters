@@ -216,9 +216,6 @@
     <ClInclude Include="..\3rd party\DDSTextureLoaderVk\DDSTextureLoaderVk.h">
       <Filter>3rdParty\DDSTextureLoaderVk</Filter>
     </ClInclude>
-    <ClInclude Include="..\3rd party\DDSTextureLoaderVk\DDSVulkanFunctionsInclude.h">
-      <Filter>3rdParty\DDSTextureLoaderVk</Filter>
-    </ClInclude>
     <ClInclude Include="..\3rd party\DirectXMath\Inc\DirectXMath.h">
       <Filter>3rdParty\DirectXMath\Inc</Filter>
     </ClInclude>
