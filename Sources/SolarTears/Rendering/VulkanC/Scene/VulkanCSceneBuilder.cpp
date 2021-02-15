@@ -381,8 +381,8 @@ void VulkanCBindings::RenderableSceneBuilder::LoadTextureImages(const std::vecto
 		std::vector<uint8_t>           texData;
 		std::vector<VkBufferImageCopy> texSubresources;
 
-		VkImage texture;
-		ThrowIfFailed(DDSTextureLoaderVk::LoadDDSTextureFromFile(mSceneToBuild->mDeviceRef, sceneTextures[i].c_str(), &texture, texData, texSubresources, deviceParameters.GetDeviceProperties().limits.maxImageDimension2D, currentOffset));
+		VkImage texture = VK_NULL_HANDLE;
+		DDSTextureLoaderVk::LoadDDSTextureFromFile(mSceneToBuild->mDeviceRef, sceneTextures[i].c_str(), &texture, texData, texSubresources, deviceParameters.GetDeviceProperties().limits.maxImageDimension2D, currentOffset);
 
 		mTextureData.insert(mTextureData.end(), texData.begin(), texData.end());
 		mSceneToBuild->mSceneTextures.push_back(texture);
