@@ -135,9 +135,9 @@ void VulkanCBindings::RenderableSceneBuilder::BakeSceneSecondPart(DeviceQueues* 
 		                 (uint32_t)imageTransferBarriers.size(),  imageTransferBarriers.data());
 
 
-	for(size_t i = 0; i < mSceneToBuild->mSceneTextures.size(); i++)
+	for(size_t i = 0; i < mSceneTextures.size(); i++)
 	{
-		vkCmdCopyBufferToImage(transferCommandBuffer, mIntermediateBuffer, mSceneToBuild->mSceneTextures[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, (uint32_t)mSceneTextureSubresourses[i].size(), mSceneTextureSubresourses[i].data());
+		vkCmdCopyBufferToImage(transferCommandBuffer, mIntermediateBuffer, mSceneToBuild->mSceneTextures[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, (uint32_t)mSceneTextureCopyInfos[i].size(), mSceneTextureCopyInfos[i].data());
 	}
 
 	std::array sceneBufferDataOffsets = {mIntermediateBufferVertexDataOffset,                      mIntermediateBufferIndexDataOffset};
@@ -378,17 +378,35 @@ void VulkanCBindings::RenderableSceneBuilder::LoadTextureImages(const std::vecto
 	VkDeviceSize currentOffset = *currentIntermediateBufferOffset;
 	for(size_t i = 0; i < sceneTextures.size(); i++)
 	{
-		std::vector<uint8_t>           texData;
-		std::vector<VkBufferImageCopy> texSubresources;
+		std::unique_ptr<uint8_t[]>                             texData;
+		std::vector<DDSTextureLoaderVk::LoadedSubresourceData> texSubresources;
 
 		VkImage texture = VK_NULL_HANDLE;
-		DDSTextureLoaderVk::LoadDDSTextureFromFile(mSceneToBuild->mDeviceRef, sceneTextures[i].c_str(), &texture, texData, texSubresources, deviceParameters.GetDeviceProperties().limits.maxImageDimension2D, currentOffset);
+		DDSTextureLoaderVk::LoadDDSTextureFromFile(mSceneToBuild->mDeviceRef, sceneTextures[i].c_str(), &texture, texData, texSubresources, deviceParameters.GetDeviceProperties().limits.maxImageDimension2D);
 
-		mTextureData.insert(mTextureData.end(), texData.begin(), texData.end());
 		mSceneToBuild->mSceneTextures.push_back(texture);
-		mSceneTextureSubresourses.push_back(texSubresources);
 
-		currentOffset += texData.size() * sizeof(uint8_t);
+		mSceneTextureCopyInfos.push_back(std::vector<VkBufferImageCopy>());
+		for(size_t j = 0; j < texSubresources.size(); j++)
+		{
+			currentOffset = mTextureData.size();
+			mTextureData.insert(mTextureData.end(), texSubresources[j].PData, texSubresources[j].PData + texSubresources[j].DataByteSize);
+
+			VkBufferImageCopy copyRegion;
+			copyRegion.bufferOffset                    = currentOffset;
+			copyRegion.bufferRowLength                 = 0;
+			copyRegion.bufferImageHeight               = 0;
+			copyRegion.imageSubresource.aspectMask     = texSubresources[j].SubresourceSlice.aspectMask;
+			copyRegion.imageSubresource.mipLevel       = texSubresources[j].SubresourceSlice.mipLevel;
+			copyRegion.imageSubresource.baseArrayLayer = texSubresources[j].SubresourceSlice.arrayLayer;
+			copyRegion.imageSubresource.layerCount     = 1;
+			copyRegion.imageOffset.x                   = 0;
+			copyRegion.imageOffset.y                   = 0;
+			copyRegion.imageOffset.z                   = 0;
+			copyRegion.imageExtent                     = texSubresources[j].Extent;
+
+			mSceneTextureCopyInfos.back().push_back(copyRegion);
+		}
 	}
 
 	mIntermediateBufferTextureDataOffset = *currentIntermediateBufferOffset;
