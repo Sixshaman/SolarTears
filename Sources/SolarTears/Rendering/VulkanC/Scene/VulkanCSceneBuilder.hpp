@@ -57,7 +57,7 @@ namespace VulkanCBindings
 	private:
 		RenderableScene* mSceneToBuild; 
 
-		std::vector<std::vector<VkBufferImageCopy>> mSceneTextureSubresourses;
+		std::vector<std::vector<VkBufferImageCopy>> mSceneTextureCopyInfos;
 
 		std::vector<uint8_t>               mTextureData;
 		std::vector<RenderableSceneVertex> mVertexBufferData;
