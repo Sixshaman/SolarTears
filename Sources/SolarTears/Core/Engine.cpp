@@ -31,20 +31,78 @@ void Engine::BindToWindow(Window* window)
 {
 	mRenderingSystem->AttachToWindow(window);
 
+	window->SetCallbackUserPtr(this);
 	window->RegisterResizeStartedCallback([](Window* window, void* userObject)
 	{
 		UNREFERENCED_PARAMETER(window);
 
 		Engine* that  = reinterpret_cast<Engine*>(userObject);
 		that->mPaused = true;
-	}, this);
+	});
 
 	window->RegisterResizeFinishedCallback([](Window* window, void* userObject)
 	{
 		Engine* that = reinterpret_cast<Engine*>(userObject);
 		that->mRenderingSystem->ResizeWindowBuffers(window);
 		that->mPaused = false;
-	}, this);
+	});
+
+	window->RegisterKeyPressedCallback([](Window* window, ControlCode controlCode, void* userObject)
+	{
+		UNREFERENCED_PARAMETER(window);
+		UNREFERENCED_PARAMETER(userObject);
+
+		switch(controlCode)
+		{
+		case ControlCode::Nothing:
+			break;
+		case ControlCode::MoveForward:
+			OutputDebugString(L"Forward pressed\n");
+			break;
+		case ControlCode::MoveBack:
+			OutputDebugString(L"Back pressed\n");
+			break;
+		case ControlCode::MoveLeft:
+			OutputDebugString(L"Left pressed\n");
+			break;
+		case ControlCode::MoveRight:
+			OutputDebugString(L"Right pressed\n");
+			break;
+		default:
+			break;
+		}
+	});
+
+	window->RegisterKeyReleasedCallback([](Window* window, ControlCode controlCode, void* userObject)
+	{
+		UNREFERENCED_PARAMETER(window);
+		UNREFERENCED_PARAMETER(userObject);
+
+		switch(controlCode)
+		{
+		case ControlCode::Nothing:
+			break;
+		case ControlCode::MoveForward:
+			OutputDebugString(L"Forward released\n");
+			break;
+		case ControlCode::MoveBack:
+			OutputDebugString(L"Back released\n");
+			break;
+		case ControlCode::MoveLeft:
+			OutputDebugString(L"Left released\n");
+			break;
+		case ControlCode::MoveRight:
+			OutputDebugString(L"Right released\n");
+			break;
+		default:
+			break;
+		}
+	});
+
+	window->MapKey(KeyCode::W, ControlCode::MoveForward);
+	window->MapKey(KeyCode::A, ControlCode::MoveLeft);
+	window->MapKey(KeyCode::S, ControlCode::MoveBack);
+	window->MapKey(KeyCode::D, ControlCode::MoveRight);
 }
 
 void Engine::Update()

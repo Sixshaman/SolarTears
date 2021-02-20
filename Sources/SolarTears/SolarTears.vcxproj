@@ -24,6 +24,8 @@
     <ClInclude Include="..\3rd party\SPIRV-Reflect\include\spirv\unified1\spirv.h" />
     <ClInclude Include="..\3rd party\SPIRV-Reflect\spirv_reflect.h" />
     <ClInclude Include="..\3rd party\VulkanGenericStructures\Include\VulkanGenericStructures.h" />
+    <ClInclude Include="Controls\ControlCodes.hpp" />
+    <ClInclude Include="Controls\KeyboardKeyCodes.hpp" />
     <ClInclude Include="Core\Allocators\StackAllocator.hpp" />
     <ClInclude Include="Core\Application.hpp" />
     <ClInclude Include="Core\DataStructures\SmallVector.hpp" />
