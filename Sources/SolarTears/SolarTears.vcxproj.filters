@@ -240,6 +240,12 @@
     <ClInclude Include="Controls\ControlCodes.hpp">
       <Filter>Controls</Filter>
     </ClInclude>
+    <ClInclude Include="Controls\KeyMap.hpp">
+      <Filter>Controls</Filter>
+    </ClInclude>
+    <ClInclude Include="Platform\Win32\Win32KeyMap.hpp">
+      <Filter>Platform\Win32</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Platform\Win32\Win32Application.cpp">
@@ -364,6 +370,9 @@
     </ClCompile>
     <ClCompile Include="Core\FPSCounter.cpp">
       <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Platform\Win32\Win32KeyMap.cpp">
+      <Filter>Platform\Win32</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

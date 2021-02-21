@@ -11,6 +11,7 @@ class LoggerQueue;
 class Scene;
 class FrameCounter;
 class FPSCounter;
+class KeyMap;
 
 class Engine
 {
@@ -27,7 +28,7 @@ private:
 private:
 	bool mPaused;
 
-	std::unique_ptr<Scene> mScene;
+	std::unique_ptr<Scene>  mScene;
 
 	std::unique_ptr<LoggerQueue> mLoggerQueue;
 	std::unique_ptr<Logger>      mLogger;
@@ -36,6 +37,7 @@ private:
 	std::unique_ptr<ThreadPool> mThreadPool;
 
 	std::unique_ptr<Renderer> mRenderingSystem;
+	std::unique_ptr<KeyMap>   mKeyMap;
 
 	std::unique_ptr<FrameCounter> mFrameCounter;
 	std::unique_ptr<FPSCounter>   mFPSCounter;

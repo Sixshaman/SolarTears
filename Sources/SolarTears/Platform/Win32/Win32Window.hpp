@@ -5,11 +5,13 @@
 #include <string>
 #include <Windows.h>
 #include <wil/resource.h>
-#include "../../Controls/KeyboardKeyCodes.hpp"
-#include "../../Controls/ControlCodes.hpp"
+#include "../../Controls/KeyMap.hpp"
 
 class Window
 {
+private:
+	using KeyMapCallback = ControlCode(*)(const KeyMap*, uint8_t nativeCode);
+
 public:
 	using ResizeStartedCallback  = void(*)(Window*,              void*);
 	using ResizeFinishedCallback = void(*)(Window*,              void*);
@@ -34,10 +36,9 @@ public:
 
 	void SetCallbackUserPtr(void* userPtr);
 
-	void MapKey(KeyCode keyCode, ControlCode controlCode);
+	void SetKeyMap(const KeyMap* keyMap);
 
 private:
-	void    InitializeKeyMap();
 	uint8_t CalcExtendedKey(uint8_t keyCode, uint8_t scanCode, bool extendedKey);
 
 	void CreateMainWindow(HINSTANCE hInstance, const std::wstring& title, int posX, int posY, int sizeX, int sizeY);
@@ -59,6 +60,8 @@ private:
 
 	void* mCallbackUserPtr;
 
-	uint8_t     mAgnosticKeyMap[256];
-	ControlCode mNativeKeyMap[256];
+
+	KeyMapCallback mKeyMapCallback;
+
+	const KeyMap* mKeyMapRef;
 };
