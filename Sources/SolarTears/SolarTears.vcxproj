@@ -26,6 +26,7 @@
     <ClInclude Include="..\3rd party\VulkanGenericStructures\Include\VulkanGenericStructures.h" />
     <ClInclude Include="Controls\ControlCodes.hpp" />
     <ClInclude Include="Controls\KeyboardKeyCodes.hpp" />
+    <ClInclude Include="Controls\KeyMap.hpp" />
     <ClInclude Include="Core\Allocators\StackAllocator.hpp" />
     <ClInclude Include="Core\Application.hpp" />
     <ClInclude Include="Core\DataStructures\SmallVector.hpp" />
@@ -44,6 +45,7 @@
     <ClInclude Include="Logging\LoggerQueue.hpp" />
     <ClInclude Include="Logging\VisualStudioDebugLogger.hpp" />
     <ClInclude Include="Platform\Win32\Win32Application.hpp" />
+    <ClInclude Include="Platform\Win32\Win32KeyMap.hpp" />
     <ClInclude Include="Platform\Win32\Win32Window.hpp" />
     <ClInclude Include="Rendering\RenderableSceneBase.hpp" />
     <ClInclude Include="Rendering\RenderableSceneBuilderBase.hpp" />
@@ -88,6 +90,7 @@
     <ClCompile Include="Logging\VisualStudioDebugLogger.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Platform\Win32\Win32Application.cpp" />
+    <ClCompile Include="Platform\Win32\Win32KeyMap.cpp" />
     <ClCompile Include="Platform\Win32\Win32Window.cpp" />
     <ClCompile Include="Rendering\RenderableSceneBase.cpp" />
     <ClCompile Include="Rendering\RenderableSceneBuilderBase.cpp" />

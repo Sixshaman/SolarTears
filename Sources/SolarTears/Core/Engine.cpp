@@ -16,7 +16,7 @@ Engine::Engine(): mPaused(false)
 	mThreadPool = std::make_unique<ThreadPool>();
 
 	mFrameCounter = std::make_unique<FrameCounter>();
-	mFPSCounter = std::make_unique<FPSCounter>();
+	mFPSCounter   = std::make_unique<FPSCounter>();
 
 	mRenderingSystem = std::make_unique<VulkanCBindings::Renderer>(mLoggerQueue.get(), mFrameCounter.get(), mThreadPool.get());
 
@@ -99,10 +99,14 @@ void Engine::BindToWindow(Window* window)
 		}
 	});
 
-	window->MapKey(KeyCode::W, ControlCode::MoveForward);
-	window->MapKey(KeyCode::A, ControlCode::MoveLeft);
-	window->MapKey(KeyCode::S, ControlCode::MoveBack);
-	window->MapKey(KeyCode::D, ControlCode::MoveRight);
+	mKeyMap = std::make_unique<KeyMap>();
+
+	mKeyMap->MapKey(KeyCode::W, ControlCode::MoveForward);
+	mKeyMap->MapKey(KeyCode::A, ControlCode::MoveLeft);
+	mKeyMap->MapKey(KeyCode::S, ControlCode::MoveBack);
+	mKeyMap->MapKey(KeyCode::D, ControlCode::MoveRight);
+
+	window->SetKeyMap(mKeyMap.get());
 }
 
 void Engine::Update()
