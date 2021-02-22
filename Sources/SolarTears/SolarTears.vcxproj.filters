@@ -88,7 +88,7 @@
     <Filter Include="3rdParty\DirectXMath\Inc">
       <UniqueIdentifier>{e2962605-bbf7-48cd-8771-ba5709a77bd1}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Controls">
+    <Filter Include="Input">
       <UniqueIdentifier>{4af8c876-b523-4a5d-b063-c5cb7158234a}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
@@ -234,17 +234,23 @@
     <ClInclude Include="Core\FPSCounter.hpp">
       <Filter>Core</Filter>
     </ClInclude>
-    <ClInclude Include="Controls\KeyboardKeyCodes.hpp">
-      <Filter>Controls</Filter>
-    </ClInclude>
-    <ClInclude Include="Controls\ControlCodes.hpp">
-      <Filter>Controls</Filter>
-    </ClInclude>
-    <ClInclude Include="Controls\KeyMap.hpp">
-      <Filter>Controls</Filter>
-    </ClInclude>
     <ClInclude Include="Platform\Win32\Win32KeyMap.hpp">
       <Filter>Platform\Win32</Filter>
+    </ClInclude>
+    <ClInclude Include="Input\KeyboardKeyCodes.hpp">
+      <Filter>Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Input\KeyMap.hpp">
+      <Filter>Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Input\ControlCodes.hpp">
+      <Filter>Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Input\Input.hpp">
+      <Filter>Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Input\ControlScene.hpp">
+      <Filter>Input</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -373,6 +379,12 @@
     </ClCompile>
     <ClCompile Include="Platform\Win32\Win32KeyMap.cpp">
       <Filter>Platform\Win32</Filter>
+    </ClCompile>
+    <ClCompile Include="Input\Input.cpp">
+      <Filter>Input</Filter>
+    </ClCompile>
+    <ClCompile Include="Input\ControlScene.cpp">
+      <Filter>Input</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

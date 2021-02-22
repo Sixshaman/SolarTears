@@ -6,12 +6,12 @@
 #include "Timer.hpp"
 
 class Renderer;
+class Input;
 class Logger;
 class LoggerQueue;
 class Scene;
 class FrameCounter;
 class FPSCounter;
-class KeyMap;
 
 class Engine
 {
@@ -37,7 +37,7 @@ private:
 	std::unique_ptr<ThreadPool> mThreadPool;
 
 	std::unique_ptr<Renderer> mRenderingSystem;
-	std::unique_ptr<KeyMap>   mKeyMap;
+	std::unique_ptr<Input>    mInputSystem;
 
 	std::unique_ptr<FrameCounter> mFrameCounter;
 	std::unique_ptr<FPSCounter>   mFPSCounter;

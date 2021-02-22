@@ -5,7 +5,8 @@
 #include <string>
 #include <Windows.h>
 #include <wil/resource.h>
-#include "../../Controls/KeyMap.hpp"
+#include "../../Input/ControlCodes.hpp"
+#include "../../Input/KeyMap.hpp"
 
 class Window
 {
@@ -34,7 +35,8 @@ public:
 	void RegisterKeyPressedCallback(KeyPressedCallback callback);
 	void RegisterKeyReleasedCallback(KeyReleasedCallback callback);
 
-	void SetCallbackUserPtr(void* userPtr);
+	void SetResizeCallbackUserPtr(void* userPtr);
+	void SetKeyCallbackUserPtr(void* userPtr);
 
 	void SetKeyMap(const KeyMap* keyMap);
 
@@ -58,8 +60,8 @@ private:
 	KeyPressedCallback     mKeyPressedCallback;
 	KeyReleasedCallback    mKeyReleasedCallback;
 
-	void* mCallbackUserPtr;
-
+	void* mResizeCallbackUserPtr;
+	void* mKeyCallbackUserPtr;
 
 	KeyMapCallback mKeyMapCallback;
 

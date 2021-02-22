@@ -24,9 +24,6 @@
     <ClInclude Include="..\3rd party\SPIRV-Reflect\include\spirv\unified1\spirv.h" />
     <ClInclude Include="..\3rd party\SPIRV-Reflect\spirv_reflect.h" />
     <ClInclude Include="..\3rd party\VulkanGenericStructures\Include\VulkanGenericStructures.h" />
-    <ClInclude Include="Controls\ControlCodes.hpp" />
-    <ClInclude Include="Controls\KeyboardKeyCodes.hpp" />
-    <ClInclude Include="Controls\KeyMap.hpp" />
     <ClInclude Include="Core\Allocators\StackAllocator.hpp" />
     <ClInclude Include="Core\Application.hpp" />
     <ClInclude Include="Core\DataStructures\SmallVector.hpp" />
@@ -41,6 +38,11 @@
     <ClInclude Include="Core\Timer.hpp" />
     <ClInclude Include="Core\Util.hpp" />
     <ClInclude Include="Core\Window.hpp" />
+    <ClInclude Include="Input\ControlCodes.hpp" />
+    <ClInclude Include="Input\ControlScene.hpp" />
+    <ClInclude Include="Input\Input.hpp" />
+    <ClInclude Include="Input\KeyboardKeyCodes.hpp" />
+    <ClInclude Include="Input\KeyMap.hpp" />
     <ClInclude Include="Logging\Logger.hpp" />
     <ClInclude Include="Logging\LoggerQueue.hpp" />
     <ClInclude Include="Logging\VisualStudioDebugLogger.hpp" />
@@ -85,6 +87,8 @@
     <ClCompile Include="Core\ThreadPool.cpp" />
     <ClCompile Include="Core\Timer.cpp" />
     <ClCompile Include="Core\Util.cpp" />
+    <ClCompile Include="Input\ControlScene.cpp" />
+    <ClCompile Include="Input\Input.cpp" />
     <ClCompile Include="Logging\Logger.cpp" />
     <ClCompile Include="Logging\LoggerQueue.cpp" />
     <ClCompile Include="Logging\VisualStudioDebugLogger.cpp" />

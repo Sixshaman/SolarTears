@@ -28,7 +28,8 @@ namespace
 
 Window::Window(HINSTANCE hInstance, const std::wstring& title, int posX, int posY, int sizeX, int sizeY): mResizeStartedCallback(DefaultResizeStartedCallback), mResizeFinishedCallback(DefaultResizeFinishedCallback),
                                                                                                           mKeyPressedCallback(DefaultKeyPressedCallback), mKeyReleasedCallback(DefaultKeyReleasedCallback),
-	                                                                                                      mCallbackUserPtr(nullptr), mResizingFlag(false), mKeyMapCallback(DefaultKeyMapCallback), mKeyMapRef(nullptr)
+	                                                                                                      mResizeCallbackUserPtr(nullptr), mKeyCallbackUserPtr(nullptr), mResizingFlag(false),
+	                                                                                                      mKeyMapCallback(DefaultKeyMapCallback), mKeyMapRef(nullptr)
 {
 	CreateMainWindow(hInstance, title, posX, posY, sizeX, sizeY);
 }
@@ -77,9 +78,14 @@ void Window::RegisterKeyReleasedCallback(KeyReleasedCallback callback)
 	mKeyReleasedCallback = callback;
 }
 
-void Window::SetCallbackUserPtr(void* userPtr)
+void Window::SetResizeCallbackUserPtr(void* userPtr)
 {
-	mCallbackUserPtr = userPtr;
+	mResizeCallbackUserPtr = userPtr;
+}
+
+void Window::SetKeyCallbackUserPtr(void* userPtr)
+{
+	mKeyCallbackUserPtr = userPtr;
 }
 
 void Window::SetKeyMap(const KeyMap* keyMap)
@@ -190,14 +196,14 @@ LRESULT Window::WindowProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam
 	{
 		mResizingFlag = true;
 
-		mResizeStartedCallback(this, mCallbackUserPtr);
+		mResizeStartedCallback(this, mResizeCallbackUserPtr);
 		break;
 	}
 	case WM_EXITSIZEMOVE:
 	{
 		mResizingFlag = false;
 
-		mResizeFinishedCallback(this, mCallbackUserPtr);
+		mResizeFinishedCallback(this, mResizeCallbackUserPtr);
 		break;
 	}
 	case WM_SIZE:
@@ -213,7 +219,7 @@ LRESULT Window::WindowProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam
 
 		case SIZE_MAXIMIZED:
 		{
-			mResizeFinishedCallback(this, mCallbackUserPtr);
+			mResizeFinishedCallback(this, mResizeCallbackUserPtr);
 			break;
 		}
 
@@ -229,7 +235,7 @@ LRESULT Window::WindowProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam
 		{
 			if(!mResizingFlag)
 			{
-				mResizeFinishedCallback(this, mCallbackUserPtr);
+				mResizeFinishedCallback(this, mResizeCallbackUserPtr);
 			}
 
 			break;
@@ -250,7 +256,7 @@ LRESULT Window::WindowProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam
 		uint8_t keycode = CalcExtendedKey((uint8_t)wparam, scancode, extendedKey);
 
 		ControlCode controlCode = mKeyMapCallback(mKeyMapRef, keycode);
-		mKeyPressedCallback(this, controlCode, mCallbackUserPtr);
+		mKeyPressedCallback(this, controlCode, mKeyCallbackUserPtr);
 		return 0;
 	}
 	case WM_SYSKEYUP:
@@ -262,7 +268,7 @@ LRESULT Window::WindowProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam
 		uint8_t keycode = CalcExtendedKey((uint8_t)wparam, scancode, extendedKey);
 
 		ControlCode controlCode = mKeyMapCallback(mKeyMapRef, keycode);
-		mKeyReleasedCallback(this, controlCode, mCallbackUserPtr);
+		mKeyReleasedCallback(this, controlCode, mKeyCallbackUserPtr);
 		return 0;
 	}
 	default:

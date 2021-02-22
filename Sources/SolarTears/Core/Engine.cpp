@@ -3,6 +3,7 @@
 #include "FPSCounter.hpp"
 #include "Scene/SceneDescription.hpp"
 #include "Scene/Scene.hpp"
+#include "../Input/Input.hpp"
 #include "../Rendering/VulkanC/VulkanCRenderer.hpp"
 #include "../Logging/LoggerQueue.hpp"
 #include "../Logging/VisualStudioDebugLogger.hpp"
@@ -19,6 +20,7 @@ Engine::Engine(): mPaused(false)
 	mFPSCounter   = std::make_unique<FPSCounter>();
 
 	mRenderingSystem = std::make_unique<VulkanCBindings::Renderer>(mLoggerQueue.get(), mFrameCounter.get(), mThreadPool.get());
+	mInputSystem     = std::make_unique<Input>(mLoggerQueue.get());
 
 	CreateScene();
 }
@@ -30,8 +32,10 @@ Engine::~Engine()
 void Engine::BindToWindow(Window* window)
 {
 	mRenderingSystem->AttachToWindow(window);
+	mInputSystem->AttachToWindow(window);
 
-	window->SetCallbackUserPtr(this);
+	window->SetResizeCallbackUserPtr(this);
+
 	window->RegisterResizeStartedCallback([](Window* window, void* userObject)
 	{
 		UNREFERENCED_PARAMETER(window);
@@ -46,67 +50,6 @@ void Engine::BindToWindow(Window* window)
 		that->mRenderingSystem->ResizeWindowBuffers(window);
 		that->mPaused = false;
 	});
-
-	window->RegisterKeyPressedCallback([](Window* window, ControlCode controlCode, void* userObject)
-	{
-		UNREFERENCED_PARAMETER(window);
-		UNREFERENCED_PARAMETER(userObject);
-
-		switch(controlCode)
-		{
-		case ControlCode::Nothing:
-			break;
-		case ControlCode::MoveForward:
-			OutputDebugString(L"Forward pressed\n");
-			break;
-		case ControlCode::MoveBack:
-			OutputDebugString(L"Back pressed\n");
-			break;
-		case ControlCode::MoveLeft:
-			OutputDebugString(L"Left pressed\n");
-			break;
-		case ControlCode::MoveRight:
-			OutputDebugString(L"Right pressed\n");
-			break;
-		default:
-			break;
-		}
-	});
-
-	window->RegisterKeyReleasedCallback([](Window* window, ControlCode controlCode, void* userObject)
-	{
-		UNREFERENCED_PARAMETER(window);
-		UNREFERENCED_PARAMETER(userObject);
-
-		switch(controlCode)
-		{
-		case ControlCode::Nothing:
-			break;
-		case ControlCode::MoveForward:
-			OutputDebugString(L"Forward released\n");
-			break;
-		case ControlCode::MoveBack:
-			OutputDebugString(L"Back released\n");
-			break;
-		case ControlCode::MoveLeft:
-			OutputDebugString(L"Left released\n");
-			break;
-		case ControlCode::MoveRight:
-			OutputDebugString(L"Right released\n");
-			break;
-		default:
-			break;
-		}
-	});
-
-	mKeyMap = std::make_unique<KeyMap>();
-
-	mKeyMap->MapKey(KeyCode::W, ControlCode::MoveForward);
-	mKeyMap->MapKey(KeyCode::A, ControlCode::MoveLeft);
-	mKeyMap->MapKey(KeyCode::S, ControlCode::MoveBack);
-	mKeyMap->MapKey(KeyCode::D, ControlCode::MoveRight);
-
-	window->SetKeyMap(mKeyMap.get());
 }
 
 void Engine::Update()
@@ -117,6 +60,8 @@ void Engine::Update()
 
 		const uint32_t maxLogMessagesPerTick = 10;
 		mLoggerQueue->FeedMessages(mLogger.get(), maxLogMessagesPerTick);
+
+		mInputSystem->UpdateScene();
 
 		mScene->UpdateScene();
 		mRenderingSystem->RenderScene();
