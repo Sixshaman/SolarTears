@@ -11,7 +11,7 @@
 	Vertex shader tesselation. Emissive lighting shaders. Young technologies that were created 2 days ago - I'll touch everything. Of course, 
 	this will take all of my time, but I don't mind it. Ultimately, I will become the champion and surpass anyone! The hardest algorithms
 	in this world will be implemented in this engine! Using it will be the greatest things ever! And all of it will be made by me.
-	Nobody, not even John K, will stop me from reaching my goal.
+	Nobody will stop me from reaching my goal.
 
 	(The end) 
 */

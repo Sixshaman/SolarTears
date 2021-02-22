@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../../Controls/ControlCodes.hpp"
-#include "../../Controls/KeyboardKeyCodes.hpp"
+#include "../../Input/ControlCodes.hpp"
+#include "../../Input/KeyboardKeyCodes.hpp"
 
 class KeyMap
 {
