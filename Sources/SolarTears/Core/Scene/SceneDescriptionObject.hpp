@@ -4,6 +4,7 @@
 #include <string>
 #include <memory>
 #include "Scene.hpp"
+#include "../../Input/ControlCodes.hpp"
 #include "../../../3rd party/DirectXMath/Inc/DirectXMath.h"
 
 class SceneDescriptionObject
@@ -21,6 +22,11 @@ public:
 		std::vector<SceneObjectVertex> Vertices;
 		std::vector<uint32_t>          Indices;
 		std::wstring                   TextureFilename;
+	};
+
+	struct InputComponent
+	{
+		InputControlPressedCallback KeyPressedCallbacks[(uint8_t)ControlCode::Count];
 	};
 
 public:
@@ -44,13 +50,16 @@ public:
 	float GetScale()                const;
 
 	void SetMeshComponent(const MeshComponent& meshComponent);
+	void SetInputComponent(const InputComponent& inputComponent);
 
-	MeshComponent* GetMeshComponent() const;
+	MeshComponent*  GetMeshComponent()  const;
+	InputComponent* GetInputComponent() const;
 
 private:
 	uint64_t mEntityId;
 
-	Scene::SceneObjectLocation mLocation;
+	SceneObjectLocation mLocation;
 
-	std::unique_ptr<MeshComponent> mMeshComponent;
+	std::unique_ptr<MeshComponent>  mMeshComponent;
+	std::unique_ptr<InputComponent> mInputComponent;
 };

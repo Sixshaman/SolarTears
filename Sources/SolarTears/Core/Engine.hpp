@@ -6,7 +6,7 @@
 #include "Timer.hpp"
 
 class Renderer;
-class Input;
+class Inputter;
 class Logger;
 class LoggerQueue;
 class Scene;
@@ -37,7 +37,7 @@ private:
 	std::unique_ptr<ThreadPool> mThreadPool;
 
 	std::unique_ptr<Renderer> mRenderingSystem;
-	std::unique_ptr<Input>    mInputSystem;
+	std::unique_ptr<Inputter> mInputSystem;
 
 	std::unique_ptr<FrameCounter> mFrameCounter;
 	std::unique_ptr<FPSCounter>   mFPSCounter;

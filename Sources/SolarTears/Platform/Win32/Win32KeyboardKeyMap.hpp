@@ -3,11 +3,11 @@
 #include "../../Input/ControlCodes.hpp"
 #include "../../Input/KeyboardKeyCodes.hpp"
 
-class KeyMap
+class KeyboardKeyMap
 {
 public:
-	KeyMap();
-	~KeyMap();
+	KeyboardKeyMap();
+	~KeyboardKeyMap();
 
 	void MapKey(KeyCode keyCode, ControlCode controlCode);
 

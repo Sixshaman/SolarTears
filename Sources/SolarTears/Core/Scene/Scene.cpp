@@ -1,5 +1,6 @@
 #include "Scene.hpp"
 #include "../../Rendering/RenderableSceneBase.hpp"
+#include "../../Input/InputScene.hpp"
 
 Scene::Scene()
 {
@@ -9,31 +10,23 @@ Scene::~Scene()
 {
 }
 
-void Scene::MoveCameraForward(float distance)
-{
-	mCamera.WalkForward(distance);
-}
-
-void Scene::MoveCameraSideways(float distance)
-{
-	mCamera.WalkSideways(distance);
-}
-
-void Scene::RotateCamera(float horizontalAngle, float verticalAngle)
-{
-	mCamera.Pitch(verticalAngle);
-	mCamera.Yaw(horizontalAngle);
-}
-
-void Scene::SetCameraAspectRatio(uint32_t width, uint32_t height)
-{
-	//TODO: more camera control
-	mCamera.SetProjectionParameters(mCamera.GetFovY(), (float)width / (float)height, mCamera.GetNearZ(), mCamera.GetFarZ());
-}
-
 void Scene::UpdateScene()
 {
+	UpdateInputComponent();
 	UpdateRenderableComponent();
+}
+
+void Scene::UpdateInputComponent()
+{
+	//TODO: keep the list of objects that can be controlled
+	for (size_t i = 0; i < mSceneObjects.size(); i++)
+	{
+		if(mSceneObjects[i].InputHandle != INVALID_SCENE_CONTROL_HANDLE && mInputComponentRef->IsLocationChanged(mSceneObjects[i].InputHandle))
+		{
+			mSceneObjects[i].Location = mInputComponentRef->GetUpdatedLocation(mSceneObjects[i].InputHandle);
+			mSceneObjects[i].DirtyFlag = true;
+		}
+	}
 }
 
 void Scene::UpdateRenderableComponent()
@@ -48,10 +41,15 @@ void Scene::UpdateRenderableComponent()
 		}
 	}
 
-	//TODO: only recalculate if needed
-	mCamera.RecalcViewMatrix();
+	//The matrix from camera space to world space
+	DirectX::XMVECTOR cameraPosition       = DirectX::XMLoadFloat3(&mSceneObjects[mCameraSceneObjectIndex].Location.Position);
+	DirectX::XMVECTOR cameraRotation       = DirectX::XMLoadFloat4(&mSceneObjects[mCameraSceneObjectIndex].Location.RotationQuaternion);
+	DirectX::XMVECTOR cameraRotationOrigin = DirectX::XMVectorZero();
+	DirectX::XMVECTOR cameraScale          = DirectX::XMVectorSplatOne();
+	DirectX::XMMATRIX invViewMatrix = DirectX::XMMatrixAffineTransformation(cameraScale, cameraRotationOrigin, cameraRotation, cameraPosition);
+
 	mCamera.RecalcProjMatrix();
-	mRenderableComponentRef->UpdateSceneCameraData(mCamera.GetViewMatrix(), mCamera.GetProjMatrix());
+	mRenderableComponentRef->UpdateSceneCameraData(DirectX::XMMatrixInverse(nullptr, invViewMatrix), mCamera.GetProjMatrix());
 
 	mRenderableComponentRef->FinalizeSceneUpdating();
 }

@@ -2,9 +2,9 @@
 
 Timer::Timer()
 {
-	mStartTime = std::chrono::time_point_cast<std::chrono::seconds>(mClock.now());
-	mPrevTime  = std::chrono::time_point_cast<std::chrono::seconds>(mClock.now());
-	mCurrTime  = std::chrono::time_point_cast<std::chrono::seconds>(mClock.now());
+	mStartTime = std::chrono::time_point_cast<std::chrono::nanoseconds>(mClock.now());
+	mPrevTime  = std::chrono::time_point_cast<std::chrono::nanoseconds>(mClock.now());
+	mCurrTime  = std::chrono::time_point_cast<std::chrono::nanoseconds>(mClock.now());
 }
 
 Timer::~Timer()
@@ -14,7 +14,7 @@ Timer::~Timer()
 void Timer::Tick()
 {
 	mPrevTime = mCurrTime;
-	mCurrTime = std::chrono::time_point_cast<std::chrono::seconds>(mClock.now());
+	mCurrTime = std::chrono::time_point_cast<std::chrono::nanoseconds>(mClock.now());
 }
 
 float Timer::GetCurrTime() const

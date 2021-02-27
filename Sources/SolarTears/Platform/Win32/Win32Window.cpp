@@ -20,7 +20,7 @@ namespace
 	{
 	}
 
-	ControlCode DefaultKeyMapCallback(const KeyMap*, uint8_t)
+	ControlCode DefaultKeyMapCallback(const KeyboardKeyMap*, uint8_t)
 	{
 		return ControlCode::Nothing;
 	}
@@ -88,11 +88,11 @@ void Window::SetKeyCallbackUserPtr(void* userPtr)
 	mKeyCallbackUserPtr = userPtr;
 }
 
-void Window::SetKeyMap(const KeyMap* keyMap)
+void Window::SetKeyMap(const KeyboardKeyMap* keyMap)
 {
 	if(keyMap)
 	{
-		mKeyMapCallback = [](const KeyMap* keyMap, uint8_t nativeCode)
+		mKeyMapCallback = [](const KeyboardKeyMap* keyMap, uint8_t nativeCode)
 		{
 			return keyMap->GetControlCode(nativeCode);
 		};

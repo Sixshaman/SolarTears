@@ -2,11 +2,17 @@
 
 SceneDescription::SceneDescription()
 {
-	mViewportWidth  = 256;
-	mViewportHeight = 256;
+	mCameraViewportWidth  = 256;
+	mCameraViewportHeight = 256;
 
-	mCameraPosition = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f);
-	mCameraLook     = DirectX::XMFLOAT3(0.0f, 0.0f, 1.0f);
+	mCameraVerticalFov = DirectX::XM_PIDIV2;
+
+	SceneDescriptionObject& cameraObject = mSceneObjects.emplace_back(mSceneObjects.size());
+	cameraObject.SetPosition(DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f));
+	cameraObject.SetRotation(DirectX::XMQuaternionIdentity());
+	cameraObject.SetScale(1.0f);
+
+	mCameraObjectIndex = mSceneObjects.size() - 1;
 }
 
 SceneDescription::~SceneDescription()
@@ -21,52 +27,79 @@ SceneDescriptionObject& SceneDescription::CreateEmptySceneObject()
 	return mSceneObjects.back();
 }
 
+SceneDescriptionObject& SceneDescription::GetCameraSceneObject()
+{
+	return mSceneObjects[mCameraObjectIndex];
+}
+
 void SceneDescription::SetCameraPosition(DirectX::XMVECTOR pos)
 {
-	DirectX::XMStoreFloat3(&mCameraPosition, pos);
+	mSceneObjects[mCameraObjectIndex].SetPosition(pos);
 }
 
 void SceneDescription::SetCameraLook(DirectX::XMVECTOR look)
 {
-	DirectX::XMStoreFloat3(&mCameraLook, look);
+	DirectX::XMVECTOR defaultLook    = DirectX::XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
+	DirectX::XMVECTOR normalizedLook = DirectX::XMVector3Normalize(look);
+
+	//Find a quaternion that rotates look -> default look
+	DirectX::XMVECTOR rotAxis = DirectX::XMVector3Cross(defaultLook, normalizedLook);
+	if(DirectX::XMVector3NearEqual(rotAxis, DirectX::XMVectorZero(), DirectX::XMVectorSplatConstant(1, 16)))
+	{
+		//180 degrees rotation about an arbitrary axis
+		mSceneObjects[mCameraObjectIndex].SetRotation(DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f));
+	}
+	else
+	{
+		//Calculate the necessary rotation quaternion q = (n * sin(theta / 2), cos(theta / 2)) that rotates by angle theta.
+		//We have rotAxis = n * sin(theta). We can construct a quaternion q2 = (n * sin(theta), cos(theta)) that rotates by angle 2 * theta. 
+		//Then we construct a quaternion q0 = (0, 0, 0, 1) that rotates by angle 0. Then q = normalize((q2 + q0) / 2) = normalize(q2 + q0).
+		//No slerp needed since it's a perfect mid-way interpolation.
+		float cosAngle = DirectX::XMVectorGetX(DirectX::XMVector3Dot(defaultLook, normalizedLook));
+
+		DirectX::XMVECTOR unitQuaternion  = DirectX::XMQuaternionIdentity();
+		DirectX::XMVECTOR twiceQuaternion = DirectX::XMVectorSetW(rotAxis, cosAngle);
+
+		DirectX::XMVECTOR midQuaternion = DirectX::XMQuaternionNormalize(DirectX::XMVectorAdd(unitQuaternion, twiceQuaternion));
+		mSceneObjects[mCameraObjectIndex].SetRotation(midQuaternion);
+	}
 }
 
-void SceneDescription::SetViewportParameters(uint32_t width, uint32_t height)
+void SceneDescription::SetCameraViewportParameters(float vFov, uint32_t viewportWidth, uint32_t viewportHeight)
 {
-	mViewportWidth  = width;
-	mViewportHeight = height;
+	mCameraVerticalFov = vFov;
+
+	mCameraViewportWidth = viewportWidth;
+	mCameraViewportHeight = viewportHeight;
 }
 
 void SceneDescription::BuildScene(Scene* scene)
 {
-	scene->mSceneObjects.resize(mSceneObjects.size());
+	scene->mSceneObjects.reserve(mSceneObjects.size());
+
+	scene->mCameraSceneObjectIndex = mCameraObjectIndex;
 
 	for(size_t i = 0; i < mSceneObjects.size(); i++)
 	{
-		Scene::SceneObject sceneObject;
+		Scene::SceneObject sceneObject = {.Id = mSceneObjects[i].GetEntityId()};
 
 		DirectX::XMStoreFloat3(&sceneObject.Location.Position,           mSceneObjects[i].GetPosition());
 		DirectX::XMStoreFloat4(&sceneObject.Location.RotationQuaternion, mSceneObjects[i].GetRotation());
 		sceneObject.Location.Scale = mSceneObjects[i].GetScale();
-
-		sceneObject.Id = mSceneObjects[i].GetEntityId();
 		
 		sceneObject.RenderableHandle = mSceneEntityMeshes[mSceneObjects[i].GetEntityId()];
+		sceneObject.InputHandle      = mSceneInputControls[mSceneObjects[i].GetEntityId()];
 
 		sceneObject.DirtyFlag = true;
 
-		scene->mSceneObjects[i] = sceneObject;
+		scene->mSceneObjects.emplace_back(sceneObject);
 	}
 
-	DirectX::XMVECTOR cameraPos  = DirectX::XMLoadFloat3(&mCameraPosition);
-	DirectX::XMVECTOR cameraLook = DirectX::XMLoadFloat3(&mCameraLook);
-	DirectX::XMVECTOR worldUp    = DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
-
 	//TODO: more camera control
-	scene->mCamera.SetCameraSpace(cameraPos, cameraLook, worldUp);
-	scene->mCamera.SetProjectionParameters(DirectX::XM_PIDIV2, (float)mViewportWidth / (float)mViewportHeight, 0.01f, 100.0f);
+	scene->mCamera.SetProjectionParameters(mCameraVerticalFov, (float)mCameraViewportWidth / (float)mCameraViewportHeight, 0.01f, 100.0f);
 
 	scene->mRenderableComponentRef = mRenderableSceneRef;
+	scene->mInputComponentRef      = mInputSceneRef;
 }
 
 void SceneDescription::BuildRenderableComponent(RenderableSceneBuilderBase* renderableSceneBuilder)
@@ -103,4 +136,36 @@ void SceneDescription::BuildRenderableComponent(RenderableSceneBuilderBase* rend
 void SceneDescription::BindRenderableComponent(RenderableSceneBase* renderableScene)
 {
 	mRenderableSceneRef = renderableScene;
+}
+
+void SceneDescription::BuildInputComponent(InputSceneBuilder* inputSceneBuilder)
+{
+	for(size_t i = 0; i < mSceneObjects.size(); i++)
+	{
+		SceneDescriptionObject::InputComponent* inputComponent = mSceneObjects[i].GetInputComponent();
+		if(inputComponent != nullptr)
+		{
+			SceneObjectLocation objectLocation;
+
+			DirectX::XMStoreFloat3(&objectLocation.Position,           mSceneObjects[i].GetPosition());
+			DirectX::XMStoreFloat4(&objectLocation.RotationQuaternion, mSceneObjects[i].GetRotation());
+			objectLocation.Scale = mSceneObjects[i].GetScale();
+
+			InputSceneControlHandle inputHandle = inputSceneBuilder->AddInputObject(objectLocation);
+			for(uint8_t key = 0; key < (uint8_t)(ControlCode::Count); key++)
+			{
+				if(inputComponent->KeyPressedCallbacks[key] != nullptr)
+				{
+					inputSceneBuilder->SetInputObjectKeyCallback(inputHandle, (ControlCode)(key), inputComponent->KeyPressedCallbacks[key]);
+				}
+			}
+
+			mSceneInputControls[mSceneObjects[i].GetEntityId()] = inputHandle;
+		}
+	}
+}
+
+void SceneDescription::BindInputComponent(InputScene* inputScene)
+{
+	mInputSceneRef = inputScene;
 }

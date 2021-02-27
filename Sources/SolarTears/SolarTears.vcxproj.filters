@@ -234,22 +234,34 @@
     <ClInclude Include="Core\FPSCounter.hpp">
       <Filter>Core</Filter>
     </ClInclude>
-    <ClInclude Include="Platform\Win32\Win32KeyMap.hpp">
-      <Filter>Platform\Win32</Filter>
-    </ClInclude>
     <ClInclude Include="Input\KeyboardKeyCodes.hpp">
-      <Filter>Input</Filter>
-    </ClInclude>
-    <ClInclude Include="Input\KeyMap.hpp">
       <Filter>Input</Filter>
     </ClInclude>
     <ClInclude Include="Input\ControlCodes.hpp">
       <Filter>Input</Filter>
     </ClInclude>
-    <ClInclude Include="Input\Input.hpp">
+    <ClInclude Include="Input\InputSceneMisc.hpp">
       <Filter>Input</Filter>
     </ClInclude>
-    <ClInclude Include="Input\ControlScene.hpp">
+    <ClInclude Include="Input\InputScene.hpp">
+      <Filter>Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Input\KeyboardControl.hpp">
+      <Filter>Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Platform\Win32\Win32KeyboardKeyMap.hpp">
+      <Filter>Platform\Win32</Filter>
+    </ClInclude>
+    <ClInclude Include="Input\KeyboardKeyMap.hpp">
+      <Filter>Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Input\Inputter.hpp">
+      <Filter>Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Input\InputSceneBuilder.hpp">
+      <Filter>Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Input\InputControlLocation.hpp">
       <Filter>Input</Filter>
     </ClInclude>
   </ItemGroup>
@@ -377,13 +389,22 @@
     <ClCompile Include="Core\FPSCounter.cpp">
       <Filter>Core</Filter>
     </ClCompile>
-    <ClCompile Include="Platform\Win32\Win32KeyMap.cpp">
-      <Filter>Platform\Win32</Filter>
-    </ClCompile>
-    <ClCompile Include="Input\Input.cpp">
+    <ClCompile Include="Input\InputScene.cpp">
       <Filter>Input</Filter>
     </ClCompile>
-    <ClCompile Include="Input\ControlScene.cpp">
+    <ClCompile Include="Platform\Win32\Win32KeyboardKeyMap.cpp">
+      <Filter>Platform\Win32</Filter>
+    </ClCompile>
+    <ClCompile Include="Input\Inputter.cpp">
+      <Filter>Input</Filter>
+    </ClCompile>
+    <ClCompile Include="Input\KeyboardControl.cpp">
+      <Filter>Input</Filter>
+    </ClCompile>
+    <ClCompile Include="Input\InputSceneBuilder.cpp">
+      <Filter>Input</Filter>
+    </ClCompile>
+    <ClCompile Include="Input\InputControlLocation.cpp">
       <Filter>Input</Filter>
     </ClCompile>
   </ItemGroup>
@@ -396,6 +417,9 @@
     </None>
     <None Include="Rendering\VulkanC\Scene\VulkanCSceneBuilder.inl">
       <Filter>Rendering\VulkanC\Scene</Filter>
+    </None>
+    <None Include="Core\Scene\SceneObjectLocation.hpp">
+      <Filter>Core\Scene</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>

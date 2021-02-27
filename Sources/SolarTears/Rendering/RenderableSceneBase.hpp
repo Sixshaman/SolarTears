@@ -35,7 +35,7 @@ public:
 	RenderableSceneBase(uint32_t maxDirtyFrames);
 	~RenderableSceneBase();
 
-	void UpdateSceneMeshData(RenderableSceneMeshHandle meshHandle, const Scene::SceneObjectLocation& sceneObjectLocation);
+	void UpdateSceneMeshData(RenderableSceneMeshHandle meshHandle, const SceneObjectLocation& sceneObjectLocation);
 	void UpdateSceneCameraData(DirectX::XMMATRIX View, DirectX::XMMATRIX Proj);
 
 	virtual void FinalizeSceneUpdating() = 0;

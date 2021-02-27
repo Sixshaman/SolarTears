@@ -1,28 +1,28 @@
-#include "Win32KeyMap.hpp"
+#include "Win32KeyboardKeyMap.hpp"
 #include <Windows.h>
 
-KeyMap::KeyMap()
+KeyboardKeyMap::KeyboardKeyMap()
 {
 	InitializeKeyMap();
 	memset(mNativeKeyMap, (uint8_t)(ControlCode::Nothing), 256 * sizeof(uint8_t));
 }
 
-KeyMap::~KeyMap()
+KeyboardKeyMap::~KeyboardKeyMap()
 {
 }
 
-void KeyMap::MapKey(KeyCode keyCode, ControlCode controlCode)
+void KeyboardKeyMap::MapKey(KeyCode keyCode, ControlCode controlCode)
 {
 	uint8_t nativeKeyCode = mAgnosticKeyMap[(uint8_t)keyCode];
 	mNativeKeyMap[nativeKeyCode] = controlCode;
 }
 
-ControlCode KeyMap::GetControlCode(uint8_t nativeKeyCode) const
+ControlCode KeyboardKeyMap::GetControlCode(uint8_t nativeKeyCode) const
 {
 	return mNativeKeyMap[nativeKeyCode];
 }
 
-void KeyMap::InitializeKeyMap()
+void KeyboardKeyMap::InitializeKeyMap()
 {
 	memset(mAgnosticKeyMap, 0, sizeof(KeyCode) * 256);
 
