@@ -6,12 +6,12 @@
 #include <Windows.h>
 #include <wil/resource.h>
 #include "../../Input/ControlCodes.hpp"
-#include "../../Input/KeyMap.hpp"
+#include "../../Input/KeyboardKeyMap.hpp"
 
 class Window
 {
 private:
-	using KeyMapCallback = ControlCode(*)(const KeyMap*, uint8_t nativeCode);
+	using KeyMapCallback = ControlCode(*)(const KeyboardKeyMap*, uint8_t nativeCode);
 
 public:
 	using ResizeStartedCallback  = void(*)(Window*,              void*);
@@ -38,7 +38,7 @@ public:
 	void SetResizeCallbackUserPtr(void* userPtr);
 	void SetKeyCallbackUserPtr(void* userPtr);
 
-	void SetKeyMap(const KeyMap* keyMap);
+	void SetKeyMap(const KeyboardKeyMap* keyMap);
 
 private:
 	uint8_t CalcExtendedKey(uint8_t keyCode, uint8_t scanCode, bool extendedKey);
@@ -65,5 +65,5 @@ private:
 
 	KeyMapCallback mKeyMapCallback;
 
-	const KeyMap* mKeyMapRef;
+	const KeyboardKeyMap* mKeyMapRef;
 };

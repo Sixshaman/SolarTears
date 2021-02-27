@@ -39,15 +39,19 @@
     <ClInclude Include="Core\Util.hpp" />
     <ClInclude Include="Core\Window.hpp" />
     <ClInclude Include="Input\ControlCodes.hpp" />
-    <ClInclude Include="Input\ControlScene.hpp" />
-    <ClInclude Include="Input\Input.hpp" />
+    <ClInclude Include="Input\InputControlLocation.hpp" />
+    <ClInclude Include="Input\InputScene.hpp" />
+    <ClInclude Include="Input\InputSceneBuilder.hpp" />
+    <ClInclude Include="Input\Inputter.hpp" />
+    <ClInclude Include="Input\InputSceneMisc.hpp" />
+    <ClInclude Include="Input\KeyboardControl.hpp" />
     <ClInclude Include="Input\KeyboardKeyCodes.hpp" />
-    <ClInclude Include="Input\KeyMap.hpp" />
+    <ClInclude Include="Input\KeyboardKeyMap.hpp" />
     <ClInclude Include="Logging\Logger.hpp" />
     <ClInclude Include="Logging\LoggerQueue.hpp" />
     <ClInclude Include="Logging\VisualStudioDebugLogger.hpp" />
     <ClInclude Include="Platform\Win32\Win32Application.hpp" />
-    <ClInclude Include="Platform\Win32\Win32KeyMap.hpp" />
+    <ClInclude Include="Platform\Win32\Win32KeyboardKeyMap.hpp" />
     <ClInclude Include="Platform\Win32\Win32Window.hpp" />
     <ClInclude Include="Rendering\RenderableSceneBase.hpp" />
     <ClInclude Include="Rendering\RenderableSceneBuilderBase.hpp" />
@@ -87,14 +91,17 @@
     <ClCompile Include="Core\ThreadPool.cpp" />
     <ClCompile Include="Core\Timer.cpp" />
     <ClCompile Include="Core\Util.cpp" />
-    <ClCompile Include="Input\ControlScene.cpp" />
-    <ClCompile Include="Input\Input.cpp" />
+    <ClCompile Include="Input\InputControlLocation.cpp" />
+    <ClCompile Include="Input\InputScene.cpp" />
+    <ClCompile Include="Input\InputSceneBuilder.cpp" />
+    <ClCompile Include="Input\Inputter.cpp" />
+    <ClCompile Include="Input\KeyboardControl.cpp" />
     <ClCompile Include="Logging\Logger.cpp" />
     <ClCompile Include="Logging\LoggerQueue.cpp" />
     <ClCompile Include="Logging\VisualStudioDebugLogger.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Platform\Win32\Win32Application.cpp" />
-    <ClCompile Include="Platform\Win32\Win32KeyMap.cpp" />
+    <ClCompile Include="Platform\Win32\Win32KeyboardKeyMap.cpp" />
     <ClCompile Include="Platform\Win32\Win32Window.cpp" />
     <ClCompile Include="Rendering\RenderableSceneBase.cpp" />
     <ClCompile Include="Rendering\RenderableSceneBuilderBase.cpp" />
@@ -121,6 +128,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Core\Allocators\StackAllocator.inl" />
+    <None Include="Core\Scene\SceneObjectLocation.hpp" />
     <None Include="Platform\Win32\Win32Util.inl" />
     <CustomBuild Include="Shaders\Vulkan\GBuffer\GBufferDraw.frag">
       <FileType>Document</FileType>

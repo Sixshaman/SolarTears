@@ -3,7 +3,7 @@
 #include "FPSCounter.hpp"
 #include "Scene/SceneDescription.hpp"
 #include "Scene/Scene.hpp"
-#include "../Input/Input.hpp"
+#include "../Input/Inputter.hpp"
 #include "../Rendering/VulkanC/VulkanCRenderer.hpp"
 #include "../Logging/LoggerQueue.hpp"
 #include "../Logging/VisualStudioDebugLogger.hpp"
@@ -20,7 +20,7 @@ Engine::Engine(): mPaused(false)
 	mFPSCounter   = std::make_unique<FPSCounter>();
 
 	mRenderingSystem = std::make_unique<VulkanCBindings::Renderer>(mLoggerQueue.get(), mFrameCounter.get(), mThreadPool.get());
-	mInputSystem     = std::make_unique<Input>(mLoggerQueue.get());
+	mInputSystem     = std::make_unique<Inputter>(mLoggerQueue.get());
 
 	CreateScene();
 }
@@ -61,7 +61,7 @@ void Engine::Update()
 		const uint32_t maxLogMessagesPerTick = 10;
 		mLoggerQueue->FeedMessages(mLogger.get(), maxLogMessagesPerTick);
 
-		mInputSystem->UpdateScene();
+		mInputSystem->UpdateScene(mTimer->GetDeltaTime());
 
 		mScene->UpdateScene();
 		mRenderingSystem->RenderScene();
@@ -128,7 +128,31 @@ void Engine::CreateScene()
 	meshComponent.TextureFilename = L"Test1.dds";
 	sceneObject.SetMeshComponent(meshComponent);
 
+	SceneDescriptionObject& cameraObject = sceneDesc.GetCameraSceneObject();
+	
+	SceneDescriptionObject::InputComponent cameraInputComponent;
+	std::fill(cameraInputComponent.KeyPressedCallbacks, cameraInputComponent.KeyPressedCallbacks + (uint8_t)ControlCode::Count, nullptr);
+	cameraInputComponent.KeyPressedCallbacks[(uint8_t)ControlCode::MoveForward] = [](InputControlLocation* location, float dt)
+	{
+		location->Walk(1.0f * dt);
+	};
+	cameraInputComponent.KeyPressedCallbacks[(uint8_t)ControlCode::MoveBack] = [](InputControlLocation* location, float dt)
+	{
+		location->Walk(-1.0f * dt);
+	};
+	cameraInputComponent.KeyPressedCallbacks[(uint8_t)ControlCode::MoveLeft] = [](InputControlLocation* location, float dt)
+	{
+		location->Strafe(-1.0f * dt);
+	};
+	cameraInputComponent.KeyPressedCallbacks[(uint8_t)ControlCode::MoveRight] = [](InputControlLocation* location, float dt)
+	{
+		location->Strafe(1.0f * dt);
+	};
+
+	cameraObject.SetInputComponent(cameraInputComponent);
+
 	mRenderingSystem->InitScene(&sceneDesc);
+	mInputSystem->InitScene(&sceneDesc);
 
 	sceneDesc.BuildScene(mScene.get());
 }

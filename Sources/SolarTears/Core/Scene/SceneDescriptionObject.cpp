@@ -61,12 +61,20 @@ uint64_t SceneDescriptionObject::GetEntityId() const
 
 void SceneDescriptionObject::SetMeshComponent(const MeshComponent& meshComponent)
 {
-	mMeshComponent.reset();
-
 	mMeshComponent = std::make_unique<MeshComponent>(meshComponent);
+}
+
+void SceneDescriptionObject::SetInputComponent(const InputComponent& inputComponent)
+{
+	mInputComponent = std::make_unique<InputComponent>(inputComponent);
 }
 
 SceneDescriptionObject::MeshComponent* SceneDescriptionObject::GetMeshComponent() const
 {
 	return mMeshComponent.get();
+}
+
+SceneDescriptionObject::InputComponent* SceneDescriptionObject::GetInputComponent() const
+{
+	return mInputComponent.get();
 }

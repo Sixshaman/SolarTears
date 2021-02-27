@@ -9,7 +9,7 @@ RenderableSceneBase::~RenderableSceneBase()
 {
 }
 
-void RenderableSceneBase::UpdateSceneMeshData(RenderableSceneMeshHandle meshHandle, const Scene::SceneObjectLocation& sceneObjectLocation)
+void RenderableSceneBase::UpdateSceneMeshData(RenderableSceneMeshHandle meshHandle, const SceneObjectLocation& sceneObjectLocation)
 {
 	uint32_t scheduledUpdateIndex = mObjectDataScheduledUpdateIndices[meshHandle.Id];
 	if(scheduledUpdateIndex == -1) //This mesh's update is not known yet

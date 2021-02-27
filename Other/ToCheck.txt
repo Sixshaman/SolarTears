@@ -27,6 +27,7 @@
 - Profile cache usage
 - #include <system_error>
 - Allocators
+- Camera component?
 
 - DX12: Dedicated present queue is good (https://gpuopen.com/performance/)
 - DX12: Use DXC with /Zpr option
