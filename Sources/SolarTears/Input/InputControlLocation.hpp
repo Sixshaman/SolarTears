@@ -12,6 +12,12 @@ public:
 	void Strafe(float d);
 	void Float(float d);
 
+	void Pitch(float d);
+	void Yaw(float d);
+	void Roll(float d);
+
+	void Rotate(DirectX::XMVECTOR rotationAxis, float d);
+
 	SceneObjectLocation GetLocation() const;
 
 private:

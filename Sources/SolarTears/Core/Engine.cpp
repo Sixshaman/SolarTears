@@ -132,6 +132,9 @@ void Engine::CreateScene()
 	
 	SceneDescriptionObject::InputComponent cameraInputComponent;
 	std::fill(cameraInputComponent.KeyPressedCallbacks, cameraInputComponent.KeyPressedCallbacks + (uint8_t)ControlCode::Count, nullptr);
+	cameraInputComponent.AxisMoveCallback1 = nullptr;
+	cameraInputComponent.AxisMoveCallback3 = nullptr;
+
 	cameraInputComponent.KeyPressedCallbacks[(uint8_t)ControlCode::MoveForward] = [](InputControlLocation* location, float dt)
 	{
 		location->Walk(1.0f * dt);
@@ -147,6 +150,11 @@ void Engine::CreateScene()
 	cameraInputComponent.KeyPressedCallbacks[(uint8_t)ControlCode::MoveRight] = [](InputControlLocation* location, float dt)
 	{
 		location->Strafe(1.0f * dt);
+	};
+	cameraInputComponent.AxisMoveCallback2 = [](InputControlLocation* location, float dx, float dy, float dt)
+	{
+		location->Pitch(-dy * dt);
+		location->Rotate(DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f), dx * dt);
 	};
 
 	cameraObject.SetInputComponent(cameraInputComponent);

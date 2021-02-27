@@ -1,6 +1,8 @@
 #include "Win32Window.hpp"
 #include <wil/result.h>
 #include <windowsx.h>
+#include "Win32KeyboardKeyMap.hpp"
+#include "Win32MouseKeyMap.hpp"
 
 namespace
 {
@@ -24,7 +26,12 @@ namespace
 	{
 	}
 
-	ControlCode DefaultKeyMapCallback(const KeyboardKeyMap*, uint8_t)
+	ControlCode DefaultKeyboardKeyMapCallback(const KeyboardKeyMap*, uint8_t)
+	{
+		return ControlCode::Nothing;
+	}
+
+	ControlCode DefaultMouseKeyMapCallback(const MouseKeyMap*, uint8_t)
 	{
 		return ControlCode::Nothing;
 	}
@@ -32,9 +39,10 @@ namespace
 
 Window::Window(HINSTANCE hInstance, const std::wstring& title, int posX, int posY, int sizeX, int sizeY): mResizeStartedCallback(DefaultResizeStartedCallback), mResizeFinishedCallback(DefaultResizeFinishedCallback),
                                                                                                           mKeyPressedCallback(DefaultKeyPressedCallback), mKeyReleasedCallback(DefaultKeyReleasedCallback), 
-	                                                                                                      mMouseMoveCallback(DefaultMouseMoveCallback),
+	                                                                                                      mMouseMoveCallback(DefaultMouseMoveCallback), mResizingFlag(false), mSetCursorPosFlag(false),
 	                                                                                                      mResizeCallbackUserPtr(nullptr), mKeyCallbackUserPtr(nullptr), mMouseCallbackUserPtr(nullptr),
-	                                                                                                      mResizingFlag(false), mKeyMapCallback(DefaultKeyMapCallback), mKeyMapRef(nullptr)
+	                                                                                                      mKeyboardKeyMapCallback(DefaultKeyboardKeyMapCallback), mKeyboardKeyMapRef(nullptr),
+	                                                                                                      mMouseKeyMapCallback(DefaultMouseKeyMapCallback), mMouseKeyMapRef(nullptr)
 {
 	CreateMainWindow(hInstance, title, posX, posY, sizeX, sizeY);
 }
@@ -61,6 +69,17 @@ uint32_t Window::GetWidth() const
 uint32_t Window::GetHeight() const
 {
 	return mWindowHeight;
+}
+
+void Window::SetCursorVisible(bool cursorVisible)
+{
+	ShowCursor(cursorVisible);
+}
+
+void Window::SetMousePos(int32_t x, int32_t y)
+{
+	SetCursorPos(mWindowPosX + x, mWindowPosY + y);
+	mSetCursorPosFlag = true;
 }
 
 void Window::RegisterResizeStartedCallback(ResizeStartedCallback callback)
@@ -103,21 +122,38 @@ void Window::SetMouseCallbackUserPtr(void* userPtr)
 	mMouseCallbackUserPtr = userPtr;
 }
 
-void Window::SetKeyMap(const KeyboardKeyMap* keyMap)
+void Window::SetKeyboardKeyMap(const KeyboardKeyMap* keyMap)
 {
 	if(keyMap)
 	{
-		mKeyMapCallback = [](const KeyboardKeyMap* keyMap, uint8_t nativeCode)
+		mKeyboardKeyMapCallback = [](const KeyboardKeyMap* keyMap, uint8_t nativeCode)
 		{
 			return keyMap->GetControlCode(nativeCode);
 		};
 	}
 	else
 	{
-		mKeyMapCallback = DefaultKeyMapCallback;
+		mKeyboardKeyMapCallback = DefaultKeyboardKeyMapCallback;
 	}
 
-	mKeyMapRef = keyMap;
+	mKeyboardKeyMapRef = keyMap;
+}
+
+void Window::SetMouseKeyMap(const MouseKeyMap* keyMap)
+{
+	if(keyMap)
+	{
+		mMouseKeyMapCallback = [](const MouseKeyMap* keyMap, uint8_t nativeCode)
+		{
+			return keyMap->GetControlCode(nativeCode);
+		};
+	}
+	else
+	{
+		mMouseKeyMapCallback = DefaultMouseKeyMapCallback;
+	}
+
+	mMouseKeyMapRef = keyMap;
 }
 
 uint8_t Window::CalcExtendedKey(uint8_t keyCode, uint8_t scanCode, bool extendedKey)
@@ -143,6 +179,9 @@ void Window::CreateMainWindow(HINSTANCE hInstance, const std::wstring& title, in
 
 	mWindowWidth  = sizeX;
 	mWindowHeight = sizeY;
+
+	mWindowPosX = posX;
+	mWindowPosY = posY;
 	
 	WNDCLASSEX wc;
 	wc.cbSize        = sizeof(WNDCLASSEX);
@@ -221,6 +260,15 @@ LRESULT Window::WindowProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam
 		mResizeFinishedCallback(this, mResizeCallbackUserPtr);
 		break;
 	}
+	case WM_MOVE:
+	{
+		POINTS windowCoords = MAKEPOINTS(lparam);
+
+		mWindowPosX = windowCoords.x;
+		mWindowPosY = windowCoords.y;
+
+		return 0;
+	}
 	case WM_SIZE:
 	{
 		mWindowWidth  = GET_X_LPARAM(lparam);
@@ -270,7 +318,7 @@ LRESULT Window::WindowProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam
 
 		uint8_t keycode = CalcExtendedKey((uint8_t)wparam, scancode, extendedKey);
 
-		ControlCode controlCode = mKeyMapCallback(mKeyMapRef, keycode);
+		ControlCode controlCode = mKeyboardKeyMapCallback(mKeyboardKeyMapRef, keycode);
 		mKeyPressedCallback(this, controlCode, mKeyCallbackUserPtr);
 		return 0;
 	}
@@ -282,13 +330,20 @@ LRESULT Window::WindowProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam
 
 		uint8_t keycode = CalcExtendedKey((uint8_t)wparam, scancode, extendedKey);
 
-		ControlCode controlCode = mKeyMapCallback(mKeyMapRef, keycode);
+		ControlCode controlCode = mKeyboardKeyMapCallback(mKeyboardKeyMapRef, keycode);
 		mKeyReleasedCallback(this, controlCode, mKeyCallbackUserPtr);
 		return 0;
 	}
 	case WM_MOUSEMOVE:
 	{
-		mMouseMoveCallback(this, GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), mMouseCallbackUserPtr);
+		if(!mSetCursorPosFlag)
+		{
+			mMouseMoveCallback(this, GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), mMouseCallbackUserPtr);
+		}
+		else
+		{
+			mSetCursorPosFlag = false;
+		}
 		return 0;
 	}
 	default:

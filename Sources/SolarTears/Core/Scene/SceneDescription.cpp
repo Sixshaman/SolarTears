@@ -160,6 +160,21 @@ void SceneDescription::BuildInputComponent(InputSceneBuilder* inputSceneBuilder)
 				}
 			}
 
+			if(inputComponent->AxisMoveCallback1 != nullptr)
+			{
+				inputSceneBuilder->SetInputObjectAxis1Callback(inputHandle, inputComponent->AxisMoveCallback1);
+			}
+
+			if(inputComponent->AxisMoveCallback2 != nullptr)
+			{
+				inputSceneBuilder->SetInputObjectAxis2Callback(inputHandle, inputComponent->AxisMoveCallback2);
+			}
+
+			if(inputComponent->AxisMoveCallback3 != nullptr)
+			{
+				inputSceneBuilder->SetInputObjectAxis3Callback(inputHandle, inputComponent->AxisMoveCallback3);
+			}
+
 			mSceneInputControls[mSceneObjects[i].GetEntityId()] = inputHandle;
 		}
 	}

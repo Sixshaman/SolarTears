@@ -11,6 +11,7 @@ struct InputSceneControlHandle
 	bool operator!=(const InputSceneControlHandle right) { return Id != right.Id; }
 };
 
-using InputControlPressedCallback = void(*)(InputControlLocation*, float dt);
+using InputControlPressedCallback = void(*)(InputControlLocation*, float);
+using InputAxisMoveCallback       = void(*)(InputControlLocation*, float, float, float);
 
 static constexpr InputSceneControlHandle INVALID_SCENE_CONTROL_HANDLE = { .Id = (uint32_t)(-1) };

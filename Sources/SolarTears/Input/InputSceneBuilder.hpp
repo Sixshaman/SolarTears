@@ -14,6 +14,10 @@ public:
 
 	void SetInputObjectKeyCallback(InputSceneControlHandle controlHandle, ControlCode controlCode, InputControlPressedCallback controlCallback);
 
+	void SetInputObjectAxis1Callback(InputSceneControlHandle controlHandle, InputAxisMoveCallback axisCallback);
+	void SetInputObjectAxis2Callback(InputSceneControlHandle controlHandle, InputAxisMoveCallback axisCallback);
+	void SetInputObjectAxis3Callback(InputSceneControlHandle controlHandle, InputAxisMoveCallback axisCallback);
+
 private:
 	InputScene* mSceneToBuild;
 };
