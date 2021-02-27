@@ -18,6 +18,7 @@ public:
 	using ResizeFinishedCallback = void(*)(Window*,              void*);
 	using KeyPressedCallback     = void(*)(Window*, ControlCode, void*);
 	using KeyReleasedCallback    = void(*)(Window*, ControlCode, void*);
+	using MouseMoveCallback      = void(*)(Window*, int, int,    void*);
 
 public:
 	Window(HINSTANCE hInstance, const std::wstring& title, int posX, int posY, int sizeX, int sizeY);
@@ -34,9 +35,11 @@ public:
 	void RegisterResizeFinishedCallback(ResizeFinishedCallback callback);
 	void RegisterKeyPressedCallback(KeyPressedCallback callback);
 	void RegisterKeyReleasedCallback(KeyReleasedCallback callback);
+	void RegisterMouseMoveCallback(MouseMoveCallback callback);
 
 	void SetResizeCallbackUserPtr(void* userPtr);
 	void SetKeyCallbackUserPtr(void* userPtr);
+	void SetMouseCallbackUserPtr(void* userPtr);
 
 	void SetKeyMap(const KeyboardKeyMap* keyMap);
 
@@ -59,9 +62,11 @@ private:
 	ResizeFinishedCallback mResizeFinishedCallback;
 	KeyPressedCallback     mKeyPressedCallback;
 	KeyReleasedCallback    mKeyReleasedCallback;
+	MouseMoveCallback      mMouseMoveCallback;
 
 	void* mResizeCallbackUserPtr;
 	void* mKeyCallbackUserPtr;
+	void* mMouseCallbackUserPtr;
 
 	KeyMapCallback mKeyMapCallback;
 

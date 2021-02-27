@@ -99,6 +99,7 @@
     <ClCompile Include="Input\InputSceneBuilder.cpp" />
     <ClCompile Include="Input\Inputter.cpp" />
     <ClCompile Include="Input\KeyboardControl.cpp" />
+    <ClCompile Include="Input\MouseControl.cpp" />
     <ClCompile Include="Logging\Logger.cpp" />
     <ClCompile Include="Logging\LoggerQueue.cpp" />
     <ClCompile Include="Logging\VisualStudioDebugLogger.cpp" />
