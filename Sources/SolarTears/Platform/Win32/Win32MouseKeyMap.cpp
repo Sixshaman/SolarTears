@@ -36,7 +36,7 @@ ControlCode MouseKeyMap::GetControlCode(uint8_t nativeMouseCode) const
 	case VK_MBUTTON:
 		return mMButtonAction;
 	default:
-		break;
+		return ControlCode::Nothing;
 	}
 }
 

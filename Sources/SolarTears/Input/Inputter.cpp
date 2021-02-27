@@ -4,6 +4,7 @@
 #include "ControlCodes.hpp"
 #include "InputScene.hpp"
 #include "KeyboardControl.hpp"
+#include "MouseControl.hpp"
 #include "../Core/Window.hpp"
 #include "../Core/Util.hpp"
 #include "../Core/Scene/SceneDescription.hpp"
@@ -42,6 +43,10 @@ void Inputter::InitScene(SceneDescription* sceneDescription)
 void Inputter::UpdateScene(float dt)
 {
 	mInputKeyState = mKeyboardControl->GetControlState();
+
+	//mAxis1Delta = DirectX::XMFLOAT2(0.0f,                       0.0f);
+	//mAxis2Delta = DirectX::XMFLOAT2(mMouseControl->GetXDelta(), mMouseControl->GetYDelta());
+	//mAxis3Delta = DirectX::XMFLOAT2(0.0f,                       mMouseControl->GetWheelDelta());
 
 	mScene->UpdateScene(mInputKeyState, dt);
 }

@@ -417,7 +417,10 @@
       <Filter>Input</Filter>
     </ClCompile>
     <ClCompile Include="Platform\Win32\Win32MouseKeyMap.cpp">
-      <Filter>Исходные файлы</Filter>
+      <Filter>Platform\Win32</Filter>
+    </ClCompile>
+    <ClCompile Include="Input\MouseControl.cpp">
+      <Filter>Input</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

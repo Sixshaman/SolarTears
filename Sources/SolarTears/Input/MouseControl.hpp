@@ -3,23 +3,27 @@
 #include <memory>
 
 class Window;
-class KeyboardKeyMap;
+class MouseKeyMap;
 
-class KeyboardControl
+class MouseControl
 {
 public:
-	KeyboardControl();
-	~KeyboardControl();
+	MouseControl();
+	~MouseControl();
 
 	void AttachToWindow(Window* window);
 
 	uint32_t GetControlState();
 
+	float GetXDelta();
+	float GetYDelta();
+	float GetWheelDelta();
+
 private:
 	void InitKeyMap();
 
 private:
-	std::unique_ptr<KeyboardKeyMap> mKeyMap;
+	std::unique_ptr<MouseKeyMap> mKeyMap;
 
 	uint32_t mControlState;
 };

@@ -20,6 +20,10 @@ namespace
 	{
 	}
 
+	void DefaultMouseMoveCallback(Window*, int, int, void*)
+	{
+	}
+
 	ControlCode DefaultKeyMapCallback(const KeyboardKeyMap*, uint8_t)
 	{
 		return ControlCode::Nothing;
@@ -27,9 +31,10 @@ namespace
 }
 
 Window::Window(HINSTANCE hInstance, const std::wstring& title, int posX, int posY, int sizeX, int sizeY): mResizeStartedCallback(DefaultResizeStartedCallback), mResizeFinishedCallback(DefaultResizeFinishedCallback),
-                                                                                                          mKeyPressedCallback(DefaultKeyPressedCallback), mKeyReleasedCallback(DefaultKeyReleasedCallback),
-	                                                                                                      mResizeCallbackUserPtr(nullptr), mKeyCallbackUserPtr(nullptr), mResizingFlag(false),
-	                                                                                                      mKeyMapCallback(DefaultKeyMapCallback), mKeyMapRef(nullptr)
+                                                                                                          mKeyPressedCallback(DefaultKeyPressedCallback), mKeyReleasedCallback(DefaultKeyReleasedCallback), 
+	                                                                                                      mMouseMoveCallback(DefaultMouseMoveCallback),
+	                                                                                                      mResizeCallbackUserPtr(nullptr), mKeyCallbackUserPtr(nullptr), mMouseCallbackUserPtr(nullptr),
+	                                                                                                      mResizingFlag(false), mKeyMapCallback(DefaultKeyMapCallback), mKeyMapRef(nullptr)
 {
 	CreateMainWindow(hInstance, title, posX, posY, sizeX, sizeY);
 }
@@ -78,6 +83,11 @@ void Window::RegisterKeyReleasedCallback(KeyReleasedCallback callback)
 	mKeyReleasedCallback = callback;
 }
 
+void Window::RegisterMouseMoveCallback(MouseMoveCallback callback)
+{
+	mMouseMoveCallback = callback;
+}
+
 void Window::SetResizeCallbackUserPtr(void* userPtr)
 {
 	mResizeCallbackUserPtr = userPtr;
@@ -86,6 +96,11 @@ void Window::SetResizeCallbackUserPtr(void* userPtr)
 void Window::SetKeyCallbackUserPtr(void* userPtr)
 {
 	mKeyCallbackUserPtr = userPtr;
+}
+
+void Window::SetMouseCallbackUserPtr(void* userPtr)
+{
+	mMouseCallbackUserPtr = userPtr;
 }
 
 void Window::SetKeyMap(const KeyboardKeyMap* keyMap)
@@ -269,6 +284,11 @@ LRESULT Window::WindowProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam
 
 		ControlCode controlCode = mKeyMapCallback(mKeyMapRef, keycode);
 		mKeyReleasedCallback(this, controlCode, mKeyCallbackUserPtr);
+		return 0;
+	}
+	case WM_MOUSEMOVE:
+	{
+		mMouseMoveCallback(this, GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), mMouseCallbackUserPtr);
 		return 0;
 	}
 	default:
