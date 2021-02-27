@@ -47,11 +47,14 @@
     <ClInclude Include="Input\KeyboardControl.hpp" />
     <ClInclude Include="Input\KeyboardKeyCodes.hpp" />
     <ClInclude Include="Input\KeyboardKeyMap.hpp" />
+    <ClInclude Include="Input\MouseControl.hpp" />
+    <ClInclude Include="Input\MouseKeyMap.hpp" />
     <ClInclude Include="Logging\Logger.hpp" />
     <ClInclude Include="Logging\LoggerQueue.hpp" />
     <ClInclude Include="Logging\VisualStudioDebugLogger.hpp" />
     <ClInclude Include="Platform\Win32\Win32Application.hpp" />
     <ClInclude Include="Platform\Win32\Win32KeyboardKeyMap.hpp" />
+    <ClInclude Include="Platform\Win32\Win32MouseKeyMap.hpp" />
     <ClInclude Include="Platform\Win32\Win32Window.hpp" />
     <ClInclude Include="Rendering\RenderableSceneBase.hpp" />
     <ClInclude Include="Rendering\RenderableSceneBuilderBase.hpp" />
@@ -102,6 +105,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Platform\Win32\Win32Application.cpp" />
     <ClCompile Include="Platform\Win32\Win32KeyboardKeyMap.cpp" />
+    <ClCompile Include="Platform\Win32\Win32MouseKeyMap.cpp" />
     <ClCompile Include="Platform\Win32\Win32Window.cpp" />
     <ClCompile Include="Rendering\RenderableSceneBase.cpp" />
     <ClCompile Include="Rendering\RenderableSceneBuilderBase.cpp" />
