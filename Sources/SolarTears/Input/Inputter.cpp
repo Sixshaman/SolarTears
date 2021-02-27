@@ -13,6 +13,7 @@
 Inputter::Inputter(LoggerQueue* loggerQueue): mLoggingBoard(loggerQueue)
 {
 	mKeyboardControl = std::make_unique<KeyboardControl>();
+	mMouseControl    = std::make_unique<MouseControl>();
 
 	mInputKeyState = 0u;
 }
@@ -24,6 +25,7 @@ Inputter::~Inputter()
 void Inputter::AttachToWindow(Window* window)
 {
 	mKeyboardControl->AttachToWindow(window);
+	mMouseControl->AttachToWindow(window);
 }
 
 bool Inputter::GetKeyState(ControlCode key)
@@ -44,9 +46,9 @@ void Inputter::UpdateScene(float dt)
 {
 	mInputKeyState = mKeyboardControl->GetControlState();
 
-	//mAxis1Delta = DirectX::XMFLOAT2(0.0f,                       0.0f);
-	//mAxis2Delta = DirectX::XMFLOAT2(mMouseControl->GetXDelta(), mMouseControl->GetYDelta());
-	//mAxis3Delta = DirectX::XMFLOAT2(0.0f,                       mMouseControl->GetWheelDelta());
+	mAxis1Delta = DirectX::XMFLOAT2(0.0f,                       0.0f);
+	mAxis2Delta = DirectX::XMFLOAT2(mMouseControl->GetXDelta(), mMouseControl->GetYDelta());
+	mAxis3Delta = DirectX::XMFLOAT2(0.0f,                       mMouseControl->GetWheelDelta());
 
-	mScene->UpdateScene(mInputKeyState, dt);
+	mScene->UpdateScene(mInputKeyState, mAxis2Delta.x, mAxis2Delta.y, dt);
 }

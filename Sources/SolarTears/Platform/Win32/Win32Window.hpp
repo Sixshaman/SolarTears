@@ -6,12 +6,15 @@
 #include <Windows.h>
 #include <wil/resource.h>
 #include "../../Input/ControlCodes.hpp"
-#include "../../Input/KeyboardKeyMap.hpp"
+
+class KeyboardKeyMap;
+class MouseKeyMap;
 
 class Window
 {
 private:
-	using KeyMapCallback = ControlCode(*)(const KeyboardKeyMap*, uint8_t nativeCode);
+	using KeyboardKeyMapCallback = ControlCode(*)(const KeyboardKeyMap*, uint8_t nativeCode);
+	using MouseKeyMapCallback    = ControlCode(*)(const MouseKeyMap*,    uint8_t nativeCode);
 
 public:
 	using ResizeStartedCallback  = void(*)(Window*,              void*);
@@ -31,6 +34,9 @@ public:
 	uint32_t GetWidth()  const;
 	uint32_t GetHeight() const;
 
+	void SetCursorVisible(bool cursorVisible);
+	void SetMousePos(int32_t x, int32_t y);
+
 	void RegisterResizeStartedCallback(ResizeStartedCallback callback);
 	void RegisterResizeFinishedCallback(ResizeFinishedCallback callback);
 	void RegisterKeyPressedCallback(KeyPressedCallback callback);
@@ -41,7 +47,8 @@ public:
 	void SetKeyCallbackUserPtr(void* userPtr);
 	void SetMouseCallbackUserPtr(void* userPtr);
 
-	void SetKeyMap(const KeyboardKeyMap* keyMap);
+	void SetKeyboardKeyMap(const KeyboardKeyMap* keyMap);
+	void SetMouseKeyMap(const MouseKeyMap* keyMap);
 
 private:
 	uint8_t CalcExtendedKey(uint8_t keyCode, uint8_t scanCode, bool extendedKey);
@@ -55,8 +62,11 @@ private:
 
 	uint32_t mWindowWidth;
 	uint32_t mWindowHeight;
+	int32_t  mWindowPosX;
+	int32_t  mWindowPosY;
 
 	bool mResizingFlag;
+	bool mSetCursorPosFlag;
 
 	ResizeStartedCallback  mResizeStartedCallback;
 	ResizeFinishedCallback mResizeFinishedCallback;
@@ -68,7 +78,9 @@ private:
 	void* mKeyCallbackUserPtr;
 	void* mMouseCallbackUserPtr;
 
-	KeyMapCallback mKeyMapCallback;
+	KeyboardKeyMapCallback mKeyboardKeyMapCallback;
+	MouseKeyMapCallback    mMouseKeyMapCallback;
 
-	const KeyboardKeyMap* mKeyMapRef;
+	const KeyboardKeyMap* mKeyboardKeyMapRef;
+	const MouseKeyMap*    mMouseKeyMapRef;
 };

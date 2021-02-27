@@ -27,6 +27,9 @@ public:
 	struct InputComponent
 	{
 		InputControlPressedCallback KeyPressedCallbacks[(uint8_t)ControlCode::Count];
+		InputAxisMoveCallback       AxisMoveCallback1;
+		InputAxisMoveCallback       AxisMoveCallback2;
+		InputAxisMoveCallback       AxisMoveCallback3;
 	};
 
 public:

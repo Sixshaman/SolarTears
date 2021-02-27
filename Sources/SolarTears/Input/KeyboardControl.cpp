@@ -35,7 +35,7 @@ void KeyboardControl::AttachToWindow(Window* window)
 		that->mControlState &= ~(1u << (uint32_t)(controlCode));
 	});
 
-	window->SetKeyMap(mKeyMap.get());
+	window->SetKeyboardKeyMap(mKeyMap.get());
 }
 
 uint32_t KeyboardControl::GetControlState()

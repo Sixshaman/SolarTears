@@ -25,3 +25,18 @@ void InputSceneBuilder::SetInputObjectKeyCallback(InputSceneControlHandle contro
 {
 	mSceneToBuild->mInputSceneObjects[controlHandle.Id].KeyPressedCallbacks[(uint8_t)(controlCode)] = controlCallback;
 }
+
+void InputSceneBuilder::SetInputObjectAxis1Callback(InputSceneControlHandle controlHandle, InputAxisMoveCallback axisCallback)
+{
+	mSceneToBuild->mInputSceneObjects[controlHandle.Id].Axis1Callback = axisCallback;
+}
+
+void InputSceneBuilder::SetInputObjectAxis2Callback(InputSceneControlHandle controlHandle, InputAxisMoveCallback axisCallback)
+{
+	mSceneToBuild->mInputSceneObjects[controlHandle.Id].Axis2Callback = axisCallback;
+}
+
+void InputSceneBuilder::SetInputObjectAxis3Callback(InputSceneControlHandle controlHandle, InputAxisMoveCallback axisCallback)
+{
+	mSceneToBuild->mInputSceneObjects[controlHandle.Id].Axis3Callback = axisCallback;
+}
