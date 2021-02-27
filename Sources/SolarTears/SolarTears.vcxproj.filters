@@ -264,6 +264,15 @@
     <ClInclude Include="Input\InputControlLocation.hpp">
       <Filter>Input</Filter>
     </ClInclude>
+    <ClInclude Include="Input\MouseControl.hpp">
+      <Filter>Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Input\MouseKeyMap.hpp">
+      <Filter>Input</Filter>
+    </ClInclude>
+    <ClInclude Include="Platform\Win32\Win32MouseKeyMap.hpp">
+      <Filter>Platform\Win32</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Platform\Win32\Win32Application.cpp">
@@ -406,6 +415,9 @@
     </ClCompile>
     <ClCompile Include="Input\InputControlLocation.cpp">
       <Filter>Input</Filter>
+    </ClCompile>
+    <ClCompile Include="Platform\Win32\Win32MouseKeyMap.cpp">
+      <Filter>Исходные файлы</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

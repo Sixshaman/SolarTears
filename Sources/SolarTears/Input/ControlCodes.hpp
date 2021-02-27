@@ -9,6 +9,10 @@ enum class ControlCode : uint8_t
 	MoveLeft,
 	MoveRight,
 
+	Action1,
+	Action2,
+	Action3,
+
 	Count,
 	Nothing = Count,
 };
