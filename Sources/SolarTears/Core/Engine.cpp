@@ -125,7 +125,7 @@ void Engine::CreateScene()
 		0, 2, 3
 	};
 
-	meshComponent.TextureFilename = L"Test1.dds";
+	meshComponent.TextureFilename = L"Test2.dds";
 	sceneObject.SetMeshComponent(meshComponent);
 
 	SceneDescriptionObject& cameraObject = sceneDesc.GetCameraSceneObject();
