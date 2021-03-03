@@ -371,6 +371,8 @@ void VulkanCBindings::RenderableSceneBuilder::CreateSceneDataBuffers(const Devic
 
 void VulkanCBindings::RenderableSceneBuilder::LoadTextureImages(const std::vector<std::wstring>& sceneTextures, const DeviceParameters& deviceParameters, VkDeviceSize* currentIntermediateBufferOffset)
 {
+	mIntermediateBufferTextureDataOffset = *currentIntermediateBufferOffset;
+
 	DDSTextureLoaderVk::SetVkCreateImageFuncPtr(vkCreateImage);
 
 	mTextureData.clear();
@@ -393,7 +395,7 @@ void VulkanCBindings::RenderableSceneBuilder::LoadTextureImages(const std::vecto
 			mTextureData.insert(mTextureData.end(), texSubresources[j].PData, texSubresources[j].PData + texSubresources[j].DataByteSize);
 
 			VkBufferImageCopy copyRegion;
-			copyRegion.bufferOffset                    = currentOffset;
+			copyRegion.bufferOffset                    = currentOffset + mIntermediateBufferTextureDataOffset;
 			copyRegion.bufferRowLength                 = 0;
 			copyRegion.bufferImageHeight               = 0;
 			copyRegion.imageSubresource.aspectMask     = texSubresources[j].SubresourceSlice.aspectMask;
@@ -409,8 +411,7 @@ void VulkanCBindings::RenderableSceneBuilder::LoadTextureImages(const std::vecto
 		}
 	}
 
-	mIntermediateBufferTextureDataOffset = *currentIntermediateBufferOffset;
-	*currentIntermediateBufferOffset     = *currentIntermediateBufferOffset + mTextureData.size() * sizeof(uint8_t);
+	*currentIntermediateBufferOffset = mIntermediateBufferTextureDataOffset + mTextureData.size() * sizeof(uint8_t);
 }
 
 void VulkanCBindings::RenderableSceneBuilder::AllocateImageMemory(const MemoryManager* memoryAllocator)
