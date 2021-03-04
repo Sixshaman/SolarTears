@@ -319,7 +319,7 @@ void VulkanCBindings::GBufferPass::CreatePipeline(const ShaderManager* shaderMan
 	pipelineRasterizationStateCreateInfo.rasterizerDiscardEnable = false;
 	pipelineRasterizationStateCreateInfo.polygonMode             = VK_POLYGON_MODE_FILL;
 	pipelineRasterizationStateCreateInfo.cullMode                = VK_CULL_MODE_BACK_BIT;
-	pipelineRasterizationStateCreateInfo.frontFace               = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+	pipelineRasterizationStateCreateInfo.frontFace               = VK_FRONT_FACE_CLOCKWISE;
 	pipelineRasterizationStateCreateInfo.depthBiasEnable         = false;
 	pipelineRasterizationStateCreateInfo.depthBiasConstantFactor = 0.0f;
 	pipelineRasterizationStateCreateInfo.depthBiasClamp          = 0.0f;

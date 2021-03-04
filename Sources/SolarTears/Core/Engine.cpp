@@ -125,7 +125,7 @@ void Engine::CreateScene()
 		0, 2, 3
 	};
 
-	meshComponent.TextureFilename = L"Test2.dds";
+	meshComponent.TextureFilename = L"Test1.dds";
 	sceneObject.SetMeshComponent(meshComponent);
 
 	SceneDescriptionObject& cameraObject = sceneDesc.GetCameraSceneObject();
@@ -137,19 +137,19 @@ void Engine::CreateScene()
 
 	cameraInputComponent.KeyPressedCallbacks[(uint8_t)ControlCode::MoveForward] = [](InputControlLocation* location, float dt)
 	{
-		location->Walk(1.0f * dt);
+		location->Walk(10.0f * dt);
 	};
 	cameraInputComponent.KeyPressedCallbacks[(uint8_t)ControlCode::MoveBack] = [](InputControlLocation* location, float dt)
 	{
-		location->Walk(-1.0f * dt);
+		location->Walk(-10.0f * dt);
 	};
 	cameraInputComponent.KeyPressedCallbacks[(uint8_t)ControlCode::MoveLeft] = [](InputControlLocation* location, float dt)
 	{
-		location->Strafe(-1.0f * dt);
+		location->Strafe(-10.0f * dt);
 	};
 	cameraInputComponent.KeyPressedCallbacks[(uint8_t)ControlCode::MoveRight] = [](InputControlLocation* location, float dt)
 	{
-		location->Strafe(1.0f * dt);
+		location->Strafe(10.0f * dt);
 	};
 	cameraInputComponent.AxisMoveCallback2 = [](InputControlLocation* location, float dx, float dy, float dt)
 	{
