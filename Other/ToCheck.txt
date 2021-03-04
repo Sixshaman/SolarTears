@@ -1,6 +1,7 @@
 - AFTER FIXING TEXTURES, READ BEST PRACTICES AND WRITE NOTES!
 - Also try tools like RMV
 
+- CMake
 - Blit pass
 - More fine-grained barriers (no TOP_OF_PIPE/BOTTOM_OF_PIPE)
 - Async compute: cross-queue barriers

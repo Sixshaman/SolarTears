@@ -21,4 +21,7 @@ void main()
 	outTexCoord = inTexCoord;
 
 	gl_Position = ViewProjMatrix * ModelMatrix * vec4(inPosition, 1.0f);
+
+	//Vulkan uses top-to-bottom NDC space, the engine uses bottom-to-top NDC space
+	gl_Position.y = -gl_Position.y;
 }
