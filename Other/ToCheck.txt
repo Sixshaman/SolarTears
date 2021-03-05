@@ -1,6 +1,7 @@
 - AFTER FIXING TEXTURES, READ BEST PRACTICES AND WRITE NOTES!
 - Also try tools like RMV
 
+- Automatic subresource format tracking. If resource A gets copied into resource B, and it's known that resource B has format F, then resource A should also have format F.
 - CMake
 - Blit pass
 - More fine-grained barriers (no TOP_OF_PIPE/BOTTOM_OF_PIPE)
