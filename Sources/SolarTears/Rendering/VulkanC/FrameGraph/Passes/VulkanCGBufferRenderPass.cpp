@@ -45,7 +45,7 @@ void VulkanCBindings::GBufferPass::Register(FrameGraphBuilder* frameGraphBuilder
 
 	frameGraphBuilder->RegisterWriteSubresource(passName, ColorBufferImageId);
 	frameGraphBuilder->EnableSubresourceAutoBarrier(passName, ColorBufferImageId, true);
-	frameGraphBuilder->SetPassSubresourceFormat(passName, ColorBufferImageId, VK_FORMAT_R8G8B8A8_UNORM);
+	frameGraphBuilder->SetPassSubresourceFormat(passName, ColorBufferImageId, VK_FORMAT_B8G8R8A8_UNORM); //TODO: maybe passing the format????
 	frameGraphBuilder->SetPassSubresourceAspectFlags(passName, ColorBufferImageId, VK_IMAGE_ASPECT_COLOR_BIT);
 	frameGraphBuilder->SetPassSubresourceStageFlags(passName, ColorBufferImageId, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
 	frameGraphBuilder->SetPassSubresourceLayout(passName, ColorBufferImageId, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
@@ -96,7 +96,7 @@ void VulkanCBindings::GBufferPass::CreateRenderPass(const FrameGraphBuilder* fra
 	//TODO: multisampling?
 	std::array<VkAttachmentDescription, 1> attachments;
 	attachments[0].flags          = 0;
-	attachments[0].format         = VK_FORMAT_R8G8B8A8_UNORM;
+	attachments[0].format         = frameGraphBuilder->GetRegisteredSubresourceFormat(currentPassName, ColorBufferImageId);
 	attachments[0].samples        = VK_SAMPLE_COUNT_1_BIT;
 	attachments[0].loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	attachments[0].storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
