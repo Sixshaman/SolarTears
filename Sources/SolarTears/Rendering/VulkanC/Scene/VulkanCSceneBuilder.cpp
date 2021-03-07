@@ -384,9 +384,11 @@ void VulkanCBindings::RenderableSceneBuilder::LoadTextureImages(const std::vecto
 		std::vector<DDSTextureLoaderVk::LoadedSubresourceData> texSubresources;
 
 		VkImage texture = VK_NULL_HANDLE;
-		DDSTextureLoaderVk::LoadDDSTextureFromFile(mSceneToBuild->mDeviceRef, sceneTextures[i].c_str(), &texture, texData, texSubresources, deviceParameters.GetDeviceProperties().limits.maxImageDimension2D);
+		VkImageCreateInfo textureCreateInfo;
+		DDSTextureLoaderVk::LoadDDSTextureFromFile(mSceneToBuild->mDeviceRef, sceneTextures[i].c_str(), &texture, texData, texSubresources, deviceParameters.GetDeviceProperties().limits.maxImageDimension2D, &textureCreateInfo);
 
 		mSceneToBuild->mSceneTextures.push_back(texture);
+		mSceneTextureCreateInfos.push_back(std::move(textureCreateInfo));
 
 		mSceneTextureCopyInfos.push_back(std::vector<VkBufferImageCopy>());
 		for(size_t j = 0; j < texSubresources.size(); j++)
@@ -491,7 +493,7 @@ void VulkanCBindings::RenderableSceneBuilder::CreateImageViews()
 		imageViewCreateInfo.flags                           = 0;
 		imageViewCreateInfo.image                           = mSceneToBuild->mSceneTextures[i];
 		imageViewCreateInfo.viewType                        = VK_IMAGE_VIEW_TYPE_2D; //Only 2D-textures are stored in mSceneTextures
-		imageViewCreateInfo.format                          = VK_FORMAT_B8G8R8A8_UNORM;
+		imageViewCreateInfo.format                          = mSceneTextureCreateInfos[i].format;
 		imageViewCreateInfo.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY;
 		imageViewCreateInfo.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
 		imageViewCreateInfo.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;

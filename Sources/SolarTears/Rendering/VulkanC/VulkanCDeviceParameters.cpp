@@ -67,6 +67,7 @@ namespace VulkanCBindings
 		VK_NVX_MULTIVIEW_PER_VIEW_ATTRIBUTES_EXTENSION_NAME, //Better VR support!
 		VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,           //Extended renderpasses!
 		VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME,   //Viewport and layer indices!
+		VK_EXT_4444_FORMATS_EXTENSION_NAME,                  //R4G4B4A4 formats!
 
 		VK_KHR_SWAPCHAIN_EXTENSION_NAME,             //Swapchains are the most important
 		VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME, //Fullscreen-exclusive swapchains!
@@ -214,6 +215,11 @@ namespace VulkanCBindings
 		{
 			VK_KHR_VULKAN_MEMORY_MODEL_EXTENSION_NAME,
 			VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_MEMORY_MODEL_FEATURES
+		},
+
+		{
+			VK_EXT_4444_FORMATS_EXTENSION_NAME,
+			VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_4444_FORMATS_FEATURES_EXT
 		}
 	};
 }
@@ -402,7 +408,7 @@ const std::unordered_map<std::string, size_t> VulkanCBindings::DeviceParameters:
 
 	{
 		VK_EXT_HDR_METADATA_EXTENSION_NAME,
-		offsetof(DeviceExtensionFlags, IsHDRMetadataExtensionPresent)
+offsetof(DeviceExtensionFlags, IsHDRMetadataExtensionPresent)
 	},
 
 	{
@@ -501,6 +507,11 @@ const std::unordered_map<std::string, size_t> VulkanCBindings::DeviceParameters:
 	},
 
 	{
+		VK_EXT_4444_FORMATS_EXTENSION_NAME,
+		offsetof(DeviceExtensionFlags, Is4444FormatsExtensionPresent)
+	},
+
+	{
 		VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME,
 		offsetof(DeviceExtensionFlags, IsFullscreenExclusiveExtensionPresent)
 	}
@@ -556,6 +567,7 @@ void VulkanCBindings::DeviceParameters::InvalidateDeviceExtensions(const VkPhysi
 	deviceFeatureStructures.push_back(vgs::TransmuteTypeToSType(mShadingRateImageFeatures));
 	deviceFeatureStructures.push_back(vgs::TransmuteTypeToSType(mTexelBufferAlignmentFeatures));
 	deviceFeatureStructures.push_back(vgs::TransmuteTypeToSType(mUniformBufferStandardLayoutFeatures));
+	deviceFeatureStructures.push_back(vgs::TransmuteTypeToSType(mVulkan4444FormatFeatures));
 	deviceFeatureStructures.push_back(vgs::TransmuteTypeToSType(mVulkanMemoryModelFeatures));
 
 	std::unordered_map<VkStructureType, size_t> featureStructureIndices;
