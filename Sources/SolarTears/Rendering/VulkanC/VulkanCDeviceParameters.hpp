@@ -75,6 +75,7 @@ namespace VulkanCBindings
 			bool IsCreateRenderpass2ExtensionPresent;
 			bool IsShaderViewportIndexLayerExtensionPresent;
 			bool IsFullscreenExclusiveExtensionPresent;
+			bool Is4444FormatsExtensionPresent;
 		};
 
 		static const std::unordered_map<std::string, size_t> global_config_device_extension_flags_offsets;
@@ -186,6 +187,7 @@ namespace VulkanCBindings
 		VkPhysicalDeviceShadingRateImageFeaturesNV                mShadingRateImageFeatures;
 		VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT           mTexelBufferAlignmentFeatures;
 		VkPhysicalDeviceUniformBufferStandardLayoutFeatures       mUniformBufferStandardLayoutFeatures;
+		VkPhysicalDevice4444FormatsFeaturesEXT                    mVulkan4444FormatFeatures;
 		VkPhysicalDeviceVulkanMemoryModelFeatures                 mVulkanMemoryModelFeatures;
 
 		VkPhysicalDeviceProperties2                             mProperties;
