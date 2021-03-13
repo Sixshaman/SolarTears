@@ -22,6 +22,7 @@
 - Compare HOST_VISIBLE-only memory with cached DEVICE_LOCAL copy (yes, it influences descriptor sets too!)
 - Anisotropic filtering
 - CHECK GAMMA CORRECTION
+- std::hardware_destructive_interference_size and std::hardware_constructive_interference_size 
 - Object data updating: memcpy() data for eah object or batch updates for sequentional objects (harder because of alignment)
 - VECTORCALL functions in user code
 - Scene controls abstraction: the perfect way would be to use a class that has std::function bound to each user input event. This way Scene could use it instead of ugly member functions to control camera.
