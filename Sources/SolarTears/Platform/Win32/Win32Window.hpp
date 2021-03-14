@@ -35,7 +35,10 @@ public:
 	uint32_t GetHeight() const;
 
 	void SetCursorVisible(bool cursorVisible);
+	void CenterCursor();
+
 	void SetMousePos(int32_t x, int32_t y);
+	void GetMousePos(int32_t* outX, int32_t* outY);
 
 	void RegisterResizeStartedCallback(ResizeStartedCallback callback);
 	void RegisterResizeFinishedCallback(ResizeFinishedCallback callback);

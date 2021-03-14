@@ -19,6 +19,8 @@ public:
 	float GetYDelta()     const;
 	float GetWheelDelta() const;
 
+	void Reset();
+
 private:
 	void InitKeyMap();
 
@@ -30,4 +32,7 @@ private:
 	float mXDelta;
 	float mYDelta;
 	float mWheelDelta;
+
+	int32_t mPrevMousePosX;
+	int32_t mPrevMousePosY;
 };

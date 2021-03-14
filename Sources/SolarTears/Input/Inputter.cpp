@@ -51,4 +51,6 @@ void Inputter::UpdateScene(float dt)
 	mAxis3Delta = DirectX::XMFLOAT2(0.0f,                       mMouseControl->GetWheelDelta());
 
 	mScene->UpdateScene(mInputKeyState, mAxis2Delta.x, mAxis2Delta.y, dt);
+
+	mMouseControl->Reset();
 }
