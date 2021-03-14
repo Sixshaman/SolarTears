@@ -1,6 +1,7 @@
 #include "Win32Window.hpp"
 #include <wil/result.h>
 #include <windowsx.h>
+#include <cassert>
 #include "Win32KeyboardKeyMap.hpp"
 #include "Win32MouseKeyMap.hpp"
 
@@ -80,6 +81,22 @@ void Window::SetMousePos(int32_t x, int32_t y)
 {
 	SetCursorPos(mWindowPosX + x, mWindowPosY + y);
 	mSetCursorPosFlag = true;
+}
+
+void Window::GetMousePos(int32_t* outX, int32_t* outY)
+{
+	assert(outX != nullptr && outY != nullptr);
+
+	POINT cursorPos;
+	GetCursorPos(&cursorPos);
+
+	*outX = cursorPos.x - mWindowPosX;
+	*outY = cursorPos.y - mWindowPosY;
+}
+
+void Window::CenterCursor()
+{
+	SetMousePos(mWindowWidth / 2, mWindowHeight / 2);
 }
 
 void Window::RegisterResizeStartedCallback(ResizeStartedCallback callback)

@@ -16,22 +16,20 @@ void MouseControl::AttachToWindow(Window* window)
 
 	window->RegisterMouseMoveCallback([](Window* window, int mousePosX, int mousePosY, void* userPtr)
 	{
-		int windowWidth  = window->GetWidth();
-		int windowHeight = window->GetHeight();
-
-		window->SetMousePos(windowWidth / 2, windowHeight / 2);
-
-		mousePosX; mousePosY;
-
 		MouseControl* that = reinterpret_cast<MouseControl*>(userPtr);
-		that->mXDelta = 0.0f; // (float)(mousePosX - windowWidth / 2);
-		that->mYDelta = 0.0f; // (float)(mousePosY - windowHeight / 2);
+		that->mXDelta = (float)(mousePosX - that->mPrevMousePosX);
+		that->mYDelta = (float)(mousePosY - that->mPrevMousePosY);
+
+		window->CenterCursor();
+		window->GetMousePos(&that->mPrevMousePosX, &that->mPrevMousePosY);
 	});
 
 	window->SetMouseKeyMap(mKeyMap.get());
 
 	window->SetCursorVisible(false);
-	window->SetMousePos(window->GetWidth() / 2, window->GetHeight() / 2);
+	window->CenterCursor();
+
+	window->GetMousePos(&mPrevMousePosX, &mPrevMousePosY);
 }
 
 uint32_t MouseControl::GetControlState() const
@@ -52,6 +50,12 @@ float MouseControl::GetYDelta() const
 float MouseControl::GetWheelDelta() const
 {
 	return mWheelDelta;
+}
+
+void MouseControl::Reset()
+{
+	mXDelta = 0.0f;
+	mYDelta = 0.0f;
 }
 
 void MouseControl::InitKeyMap()
