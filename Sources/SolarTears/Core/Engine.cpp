@@ -156,7 +156,7 @@ void Engine::CreateScene()
 		location->Pitch(-dy * dt);
 		location->Rotate(DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f), dx * dt);
 	};
-
+	 
 	cameraObject.SetInputComponent(cameraInputComponent);
 
 	mRenderingSystem->InitScene(&sceneDesc);
