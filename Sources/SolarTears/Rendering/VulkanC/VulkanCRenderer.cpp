@@ -196,7 +196,7 @@ void VulkanCBindings::Renderer::InitInstance()
 	appInfo.applicationVersion = VK_MAKE_VERSION(0, 0, 1); 
 	appInfo.pEngineName        = "SolarTears";
 	appInfo.engineVersion      = VK_MAKE_VERSION(0, 0, 1);
-	appInfo.apiVersion         = VK_MAKE_VERSION(1, 1, 0);
+	appInfo.apiVersion         = VK_API_VERSION_1_1;
 
 	VkInstanceCreateInfo& instanceCreateInfo   = instanceCreateInfoChain.GetChainHead();
 	instanceCreateInfo.flags                   = 0;
