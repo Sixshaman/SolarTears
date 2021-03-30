@@ -160,7 +160,6 @@ namespace VulkanCBindings
 		DeviceExtensionFlags mEnabledExtensionFlags;
 
 		VkPhysicalDeviceFeatures2                                 mFeatures;
-		VkPhysicalDeviceVulkan11Features                          mVulkan11Features;
 		VkPhysicalDeviceBlendOperationAdvancedFeaturesEXT         mBlendOperationAdvancedFeatures;
 		VkPhysicalDeviceBufferDeviceAddressFeatures               mBufferDeviceAddressFeatures;
 		VkPhysicalDeviceComputeShaderDerivativesFeaturesNV        mComputeShaderDerivativesFeatures;

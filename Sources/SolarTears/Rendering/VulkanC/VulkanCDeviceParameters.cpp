@@ -538,7 +538,6 @@ void VulkanCBindings::DeviceParameters::InvalidateDeviceParameters(const VkPhysi
 void VulkanCBindings::DeviceParameters::InvalidateDeviceExtensions(const VkPhysicalDevice& physicalDevice, std::vector<std::string>& outEnabledExtensions, vgs::StructureChainBlob<VkDeviceCreateInfo>& outStructureChain)
 {
 	outStructureChain.AppendToChain(mFeatures);
-	outStructureChain.AppendToChain(mVulkan11Features);
 
 	std::vector<vgs::GenericStruct> deviceFeatureStructures;
 	deviceFeatureStructures.push_back(vgs::TransmuteTypeToSType(mBlendOperationAdvancedFeatures));
@@ -917,7 +916,6 @@ const VkPhysicalDeviceProperties& VulkanCBindings::DeviceParameters::GetDevicePr
 void VulkanCBindings::DeviceParameters::InvalidateDeviceFeatures(VkPhysicalDevice physicalDevice)
 {
 	vgs::GenericStructureChain<VkPhysicalDeviceFeatures2> physicalDeviceFeaturesChain;
-	physicalDeviceFeaturesChain.AppendToChain(mVulkan11Features);
 	physicalDeviceFeaturesChain.AppendToChain(mBlendOperationAdvancedFeatures);
 	physicalDeviceFeaturesChain.AppendToChain(mBufferDeviceAddressFeatures);
 	physicalDeviceFeaturesChain.AppendToChain(mComputeShaderDerivativesFeatures);
