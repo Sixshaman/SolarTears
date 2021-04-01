@@ -6,6 +6,7 @@
 #include <mutex>
 
 //Based on https://vorbrodt.blog/2019/02/26/better-code-concurrency/
+//Maybe steal some ideas from https://github.com/dougbinks/enkiTS ? Hehehe
 class ThreadPool
 {
 	using JobFunc = void(*)(void*, uint32_t);

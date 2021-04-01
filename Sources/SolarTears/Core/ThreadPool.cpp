@@ -30,16 +30,19 @@ ThreadPool::ThreadPool(uint_fast16_t numOfThreads): mQueueMutexes(numOfThreads),
 					currentQueue = (currentQueue + 1) % numOfThreads;
 				}
 
-				if(!mThreadQueues[currentQueue].empty())
+				std::queue<JobParameters>& threadQueue = mThreadQueues[currentQueue];
+				if(!threadQueue.empty())
 				{
-					JobParameters jobParams = mThreadQueues[currentQueue].front();
-					mThreadQueues[currentQueue].pop();
-					mQueueMutexes[currentQueue].unlock();
-					
+					//Take the task and dispatch it
+					JobParameters jobParams = threadQueue.front();
+					threadQueue.pop();
+
+					mQueueMutexes[currentQueue].unlock();	
 					jobParams.JobFunction(jobParams.AdditionalData, (uint32_t)currentQueue);
 				}
 				else
 				{
+					//Let other system threads use this core
 					mQueueMutexes[currentQueue].unlock();
 					std::this_thread::yield();
 				}
