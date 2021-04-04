@@ -273,6 +273,9 @@
     <ClInclude Include="Platform\Win32\Win32MouseKeyMap.hpp">
       <Filter>Platform\Win32</Filter>
     </ClInclude>
+    <ClInclude Include="Core\WaitableObject.hpp">
+      <Filter>Core</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Platform\Win32\Win32Application.cpp">
@@ -421,6 +424,9 @@
     </ClCompile>
     <ClCompile Include="Input\MouseControl.cpp">
       <Filter>Input</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\WaitableObject.cpp">
+      <Filter>Core</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

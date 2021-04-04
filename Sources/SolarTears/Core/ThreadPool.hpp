@@ -4,9 +4,11 @@
 #include <vector>
 #include <queue>
 #include <mutex>
+#include <condition_variable>
+#include "WaitableObject.hpp"
 
 //Based on https://vorbrodt.blog/2019/02/26/better-code-concurrency/
-//Maybe steal some ideas from https://github.com/dougbinks/enkiTS ? Hehehe
+//Maybe steal some ideas from https://github.com/dougbinks/enkiTS ? Maybe leater
 class ThreadPool
 {
 	using JobFunc = void(*)(void*, uint32_t);
@@ -26,6 +28,9 @@ public:
 	uint32_t GetWorkerThreadCount() const;
 
 	void EnqueueWork(JobFunc func, void* userData, size_t userDataSize);
+
+	//The caller is to make sure WaitableObject lives long enough
+	void EnqueueWork(JobFunc func, void* userData, size_t userDataSize, WaitableObject* waitableObject);
 
 private:
 	std::vector<std::thread>               mThreads;

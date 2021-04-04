@@ -91,3 +91,37 @@ void ThreadPool::EnqueueWork(JobFunc func, void* userData, size_t userDataSize)
 
 	mQueueMutexes[currentQueue].unlock();
 }
+
+void ThreadPool::EnqueueWork(JobFunc func, void* userData, size_t userDataSize, WaitableObject* waitableObject)
+{
+	assert(userDataSize < sizeof(JobParameters) - sizeof(JobFunc) - sizeof(JobFunc) - sizeof(WaitableObject*));
+
+	waitableObject->RegisterUse();
+
+	JobFunc funcModified = [](void* data, uint32_t dataSize)
+	{
+		const uint32_t oldDataSize = dataSize - sizeof(JobFunc) - sizeof(WaitableObject*);
+
+		JobFunc         oldFunc  = (JobFunc)((std::byte*)data + oldDataSize);
+		WaitableObject* waitable = (WaitableObject*)((std::byte*)data + oldDataSize + sizeof(JobFunc));
+
+		oldFunc(data, oldDataSize);
+		waitable->Notify();
+	};
+
+	std::byte newData[56];
+	memcpy(newData,                                  userData,        userDataSize);
+	memcpy(newData + userDataSize,                   &func,           sizeof(JobFunc));
+	memcpy(newData + userDataSize + sizeof(JobFunc), &waitableObject, sizeof(WaitableObject*));
+
+	size_t currentQueue = (mLastTaskedThread + 1) % mQueueMutexes.size();
+	while (!mQueueMutexes[currentQueue].try_lock())
+	{
+		currentQueue = (currentQueue + 1) % mQueueMutexes.size();
+	}
+
+	mThreadQueues[currentQueue].push({funcModified});
+	memcpy(mThreadQueues[currentQueue].back().AdditionalData, newData, userDataSize + sizeof(JobFunc) + sizeof(WaitableObject*));
+
+	mQueueMutexes[currentQueue].unlock();
+}
