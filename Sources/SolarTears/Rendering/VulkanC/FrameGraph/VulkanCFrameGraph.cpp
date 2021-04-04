@@ -4,6 +4,7 @@
 #include "../VulkanCSwapChain.hpp"
 #include "../VulkanCDeviceQueues.hpp"
 #include "../../../Core/ThreadPool.hpp"
+#include "../../../Core/WaitableObject.hpp"
 #include <array>
 
 VulkanCBindings::FrameGraph::FrameGraph(VkDevice device, const FrameGraphConfig& frameGraphConfig): mDeviceRef(device)
@@ -59,108 +60,111 @@ void VulkanCBindings::FrameGraph::Traverse(const ThreadPool* threadPool, WorkerC
 
 	uint32_t renderPassIndex = 0;
 
-
 	VkSemaphore acquireSemaphore = swapChain->GetImageAcquiredSemaphore(currentFrameResourceIndex);
 	swapChain->AcquireImage(mDeviceRef, currentSwapchainImageIndex);
 
+	WaitableObject waitableObject;
+
 	VkSemaphore lastSemaphore = acquireSemaphore;
-	if(mGraphicsPassCount > 0)
-	{
-		VkSemaphore graphicsSemaphore = mGraphicsToComputeSemaphores[currentFrameResourceIndex];
+	//if(mGraphicsPassCount > 0)
+	//{
+	//	VkSemaphore graphicsSemaphore = mGraphicsToComputeSemaphores[currentFrameResourceIndex];
 
-		VkFence graphicsFence = nullptr;
-		if(mComputePassCount == 0)
-		{
-			graphicsFence = traverseFence; //Signal the fence after graphics command submission if there are no compute passes	
-		}
+	//	VkFence graphicsFence = nullptr;
+	//	if(mComputePassCount == 0)
+	//	{
+	//		graphicsFence = traverseFence; //Signal the fence after graphics command submission if there are no compute passes	
+	//	}
 
-		VkCommandBuffer graphicsCommandBuffer = commandBuffers->GetMainThreadGraphicsCommandBuffer(currentFrameResourceIndex);
-		VkCommandPool   graphicsCommandPool   = commandBuffers->GetMainThreadGraphicsCommandPool(currentFrameResourceIndex);
-		BeginCommandBuffer(graphicsCommandBuffer, graphicsCommandPool);
+	//	VkCommandBuffer graphicsCommandBuffer = commandBuffers->GetMainThreadGraphicsCommandBuffer(currentFrameResourceIndex);
+	//	VkCommandPool   graphicsCommandPool   = commandBuffers->GetMainThreadGraphicsCommandPool(currentFrameResourceIndex);
+	//	BeginCommandBuffer(graphicsCommandBuffer, graphicsCommandPool);
 
-		while(renderPassIndex < mGraphicsPassCount)
-		{
-			BarrierSpan barrierSpan            = mImageRenderPassBarriers[renderPassIndex];
-			uint32_t    beforePassBarrierCount = barrierSpan.BeforePassEnd - barrierSpan.BeforePassBegin;
-			uint32_t    afterPassBarrierCount  = barrierSpan.AfterPassEnd  - barrierSpan.AfterPassBegin;
+	//	while(renderPassIndex < mGraphicsPassCount)
+	//	{
+	//		BarrierSpan barrierSpan            = mImageRenderPassBarriers[renderPassIndex];
+	//		uint32_t    beforePassBarrierCount = barrierSpan.BeforePassEnd - barrierSpan.BeforePassBegin;
+	//		uint32_t    afterPassBarrierCount  = barrierSpan.AfterPassEnd  - barrierSpan.AfterPassBegin;
 
-			if(beforePassBarrierCount != 0)
-			{
-				const VkImageMemoryBarrier*  imageBarrierPointer  = mImageBarriers.data() + barrierSpan.BeforePassBegin;
-				const VkBufferMemoryBarrier* bufferBarrierPointer = nullptr;
-				const VkMemoryBarrier*       memoryBarrierPointer = nullptr;
+	//		if(beforePassBarrierCount != 0)
+	//		{
+	//			const VkImageMemoryBarrier*  imageBarrierPointer  = mImageBarriers.data() + barrierSpan.BeforePassBegin;
+	//			const VkBufferMemoryBarrier* bufferBarrierPointer = nullptr;
+	//			const VkMemoryBarrier*       memoryBarrierPointer = nullptr;
 
-				vkCmdPipelineBarrier(graphicsCommandBuffer, barrierSpan.beforeFlagsBegin, barrierSpan.beforeFlagsEnd, 0, 0, memoryBarrierPointer, 0, bufferBarrierPointer, beforePassBarrierCount, imageBarrierPointer);
-			}
+	//			vkCmdPipelineBarrier(graphicsCommandBuffer, barrierSpan.beforeFlagsBegin, barrierSpan.beforeFlagsEnd, 0, 0, memoryBarrierPointer, 0, bufferBarrierPointer, beforePassBarrierCount, imageBarrierPointer);
+	//		}
 
-			mRenderPasses[renderPassIndex]->RecordExecution(graphicsCommandBuffer, scene, mFrameGraphConfig);
+	//		mRenderPasses[renderPassIndex]->RecordExecution(graphicsCommandBuffer, scene, mFrameGraphConfig);
 
-			if(afterPassBarrierCount != 0)
-			{
-				const VkImageMemoryBarrier*  imageBarrierPointer  = mImageBarriers.data() + barrierSpan.AfterPassBegin;
-				const VkBufferMemoryBarrier* bufferBarrierPointer = nullptr;
-				const VkMemoryBarrier*       memoryBarrierPointer = nullptr;
+	//		if(afterPassBarrierCount != 0)
+	//		{
+	//			const VkImageMemoryBarrier*  imageBarrierPointer  = mImageBarriers.data() + barrierSpan.AfterPassBegin;
+	//			const VkBufferMemoryBarrier* bufferBarrierPointer = nullptr;
+	//			const VkMemoryBarrier*       memoryBarrierPointer = nullptr;
 
-				vkCmdPipelineBarrier(graphicsCommandBuffer, barrierSpan.afterFlagsBegin, barrierSpan.AfterPassEnd, 0, 0, memoryBarrierPointer, 0, bufferBarrierPointer, beforePassBarrierCount, imageBarrierPointer);
-			}
+	//			vkCmdPipelineBarrier(graphicsCommandBuffer, barrierSpan.afterFlagsBegin, barrierSpan.AfterPassEnd, 0, 0, memoryBarrierPointer, 0, bufferBarrierPointer, beforePassBarrierCount, imageBarrierPointer);
+	//		}
 
-			renderPassIndex++;
-		}
+	//		renderPassIndex++;
+	//	}
 
-		EndCommandBuffer(graphicsCommandBuffer);
+	//	EndCommandBuffer(graphicsCommandBuffer);
 
-		std::array graphicsCommandBuffers = {graphicsCommandBuffer};
-		deviceQueues->GraphicsQueueSubmit(graphicsCommandBuffers.data(), graphicsCommandBuffers.size(), VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, acquireSemaphore, graphicsSemaphore, graphicsFence);
+	//	std::array graphicsCommandBuffers = {graphicsCommandBuffer};
+	//	deviceQueues->GraphicsQueueSubmit(graphicsCommandBuffers.data(), graphicsCommandBuffers.size(), VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, acquireSemaphore, graphicsSemaphore, graphicsFence);
 
-		lastSemaphore = graphicsSemaphore;
-	}
+	//	lastSemaphore = graphicsSemaphore;
+	//}
 
-	if(mComputePassCount > 0)
-	{
-		VkSemaphore computeSemaphore = mComputeToPresentSemaphores[currentFrameResourceIndex];
+	//if(mComputePassCount > 0)
+	//{
+	//	VkSemaphore computeSemaphore = mComputeToPresentSemaphores[currentFrameResourceIndex];
 
-		VkFence computeFence = traverseFence;
+	//	VkFence computeFence = traverseFence;
 
-		VkCommandBuffer computeCommandBuffer = commandBuffers->GetMainThreadComputeCommandBuffer(currentFrameResourceIndex);
-		VkCommandPool   computeCommandPool   = commandBuffers->GetMainThreadComputeCommandPool(currentFrameResourceIndex);
-		BeginCommandBuffer(computeCommandBuffer, computeCommandPool);
+	//	VkCommandBuffer computeCommandBuffer = commandBuffers->GetMainThreadComputeCommandBuffer(currentFrameResourceIndex);
+	//	VkCommandPool   computeCommandPool   = commandBuffers->GetMainThreadComputeCommandPool(currentFrameResourceIndex);
+	//	BeginCommandBuffer(computeCommandBuffer, computeCommandPool);
 
-		while((renderPassIndex - mGraphicsPassCount) < mComputePassCount)
-		{
-			BarrierSpan barrierSpan            = mImageRenderPassBarriers[renderPassIndex];
-			uint32_t    beforePassBarrierCount = barrierSpan.BeforePassEnd - barrierSpan.BeforePassBegin;
-			uint32_t    afterPassBarrierCount  = barrierSpan.AfterPassEnd  - barrierSpan.AfterPassBegin;
+	//	while((renderPassIndex - mGraphicsPassCount) < mComputePassCount)
+	//	{
+	//		BarrierSpan barrierSpan            = mImageRenderPassBarriers[renderPassIndex];
+	//		uint32_t    beforePassBarrierCount = barrierSpan.BeforePassEnd - barrierSpan.BeforePassBegin;
+	//		uint32_t    afterPassBarrierCount  = barrierSpan.AfterPassEnd  - barrierSpan.AfterPassBegin;
 
-			if(beforePassBarrierCount != 0)
-			{
-				const VkImageMemoryBarrier*  imageBarrierPointer  = mImageBarriers.data() + barrierSpan.BeforePassBegin;
-				const VkBufferMemoryBarrier* bufferBarrierPointer = nullptr;
-				const VkMemoryBarrier*       memoryBarrierPointer = nullptr;
+	//		if(beforePassBarrierCount != 0)
+	//		{
+	//			const VkImageMemoryBarrier*  imageBarrierPointer  = mImageBarriers.data() + barrierSpan.BeforePassBegin;
+	//			const VkBufferMemoryBarrier* bufferBarrierPointer = nullptr;
+	//			const VkMemoryBarrier*       memoryBarrierPointer = nullptr;
 
-				vkCmdPipelineBarrier(computeCommandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, 0, memoryBarrierPointer, 0, bufferBarrierPointer, beforePassBarrierCount, imageBarrierPointer);
-			}
+	//			vkCmdPipelineBarrier(computeCommandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, 0, memoryBarrierPointer, 0, bufferBarrierPointer, beforePassBarrierCount, imageBarrierPointer);
+	//		}
 
-			mRenderPasses[renderPassIndex]->RecordExecution(computeCommandBuffer, scene, mFrameGraphConfig);
+	//		mRenderPasses[renderPassIndex]->RecordExecution(computeCommandBuffer, scene, mFrameGraphConfig);
 
-			if(afterPassBarrierCount != 0)
-			{
-				const VkImageMemoryBarrier*  imageBarrierPointer  = mImageBarriers.data() + barrierSpan.AfterPassBegin;
-				const VkBufferMemoryBarrier* bufferBarrierPointer = nullptr;
-				const VkMemoryBarrier*       memoryBarrierPointer = nullptr;
+	//		if(afterPassBarrierCount != 0)
+	//		{
+	//			const VkImageMemoryBarrier*  imageBarrierPointer  = mImageBarriers.data() + barrierSpan.AfterPassBegin;
+	//			const VkBufferMemoryBarrier* bufferBarrierPointer = nullptr;
+	//			const VkMemoryBarrier*       memoryBarrierPointer = nullptr;
 
-				vkCmdPipelineBarrier(computeCommandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, 0, memoryBarrierPointer, 0, bufferBarrierPointer, beforePassBarrierCount, imageBarrierPointer);
-			}
+	//			vkCmdPipelineBarrier(computeCommandBuffer, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0, 0, memoryBarrierPointer, 0, bufferBarrierPointer, beforePassBarrierCount, imageBarrierPointer);
+	//		}
 
-			renderPassIndex++;
-		}
+	//		renderPassIndex++;
+	//	}
 
-		EndCommandBuffer(computeCommandBuffer);
+	//	EndCommandBuffer(computeCommandBuffer);
 
-		std::array computeCommandBuffers = { computeCommandBuffer };
-		deviceQueues->ComputeQueueSubmit(computeCommandBuffers.data(), computeCommandBuffers.size(), VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, lastSemaphore, computeSemaphore, computeFence);
+	//	std::array computeCommandBuffers = { computeCommandBuffer };
+	//	deviceQueues->ComputeQueueSubmit(computeCommandBuffers.data(), computeCommandBuffers.size(), VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, lastSemaphore, computeSemaphore, computeFence);
 
-		lastSemaphore = computeSemaphore;
-	}
+	//	lastSemaphore = computeSemaphore;
+	//}
+
+	waitableObject.WaitForAll();
 
 	swapChain->Present(lastSemaphore);
 

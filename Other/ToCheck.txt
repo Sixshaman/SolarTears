@@ -14,6 +14,7 @@
 - Dedicated allocation (VkMemoryDedicatedRequirements::prefersDedicatedAllocation)
 - Try to compress vertices and compare compressed + uncompressed performance.
 - Depth prepass
+- Render scale parameter in each buffer of the frame graph
 - BATCH pipeline creation calls (maybe something like pipeline allocator will help? Instead of calling vkCreateGraphicsPipelines, schedule it to creation in allocator)
 - Pipeline cache (allocator again)
 - Fences after transit in frame graph and scene builders
