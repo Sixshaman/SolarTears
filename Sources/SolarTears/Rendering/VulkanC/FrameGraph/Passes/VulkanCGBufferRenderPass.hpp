@@ -14,7 +14,7 @@ namespace VulkanCBindings
 	public:
 		~GBufferPass();
 
-		void RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig) override;
+		void RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig) const override;
 
 		static void Register(FrameGraphBuilder* frameGraphBuilder, const std::string& passName);
 

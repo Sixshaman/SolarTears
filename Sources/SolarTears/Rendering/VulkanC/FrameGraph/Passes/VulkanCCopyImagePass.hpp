@@ -17,7 +17,7 @@ namespace VulkanCBindings
 		static void Register(FrameGraphBuilder* frameGraphBuilder, const std::string& passName);
 		~CopyImagePass();
 
-		void RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig) override;
+		void RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig) const override;
 
 	private:
 		CopyImagePass(VkDevice device, const FrameGraphBuilder* frameGraphBuilder, const std::string& currentPassName);

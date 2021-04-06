@@ -7,11 +7,8 @@
 #include "../../../Core/WaitableObject.hpp"
 #include <array>
 
-VulkanCBindings::FrameGraph::FrameGraph(VkDevice device, const FrameGraphConfig& frameGraphConfig): mDeviceRef(device)
+VulkanCBindings::FrameGraph::FrameGraph(VkDevice device, uint32_t maxWorkerThreads, const FrameGraphConfig& frameGraphConfig): mDeviceRef(device)
 {
-	mGraphicsPassCount = 0;
-	mComputePassCount  = 0;
-
 	mImageMemory = VK_NULL_HANDLE;
 
 	mLastSwapchainImageIndex = 0;
@@ -19,6 +16,15 @@ VulkanCBindings::FrameGraph::FrameGraph(VkDevice device, const FrameGraphConfig&
 	mFrameGraphConfig = frameGraphConfig;
 
 	CreateSemaphores();
+
+	mTrackedCommandBuffers.resize(maxWorkerThreads);
+	for(size_t i = 0; i < mTrackedCommandBuffers.size(); i++)
+	{
+		mTrackedCommandBuffers[i] = std::make_unique<ThreadCommandInfo>(ThreadCommandInfo{.CommandBuffer = VK_NULL_HANDLE, .DependencyLevel = 0});
+	}
+
+	mFrameRecordedCommandBuffers.resize(maxWorkerThreads + 1);
+	mRecordedCommandBufferCount = 0;
 }
 
 VulkanCBindings::FrameGraph::~FrameGraph()
@@ -50,11 +56,8 @@ VulkanCBindings::FrameGraph::~FrameGraph()
 	SafeDestroyObject(vkFreeMemory, mDeviceRef, mImageMemory);
 }
 
-void VulkanCBindings::FrameGraph::Traverse(const ThreadPool* threadPool, WorkerCommandBuffers* commandBuffers, RenderableScene* scene, SwapChain* swapChain, DeviceQueues* deviceQueues, VkFence traverseFence, uint32_t currentFrameResourceIndex, uint32_t currentSwapchainImageIndex)
+void VulkanCBindings::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommandBuffers* commandBuffers, RenderableScene* scene, SwapChain* swapChain, DeviceQueues* deviceQueues, VkFence traverseFence, uint32_t currentFrameResourceIndex, uint32_t currentSwapchainImageIndex)
 {
-	//TODO: multithreading (thread pools are too hard for me rn, I have to level up my multithreading/concurrency skills)
-	UNREFERENCED_PARAMETER(threadPool);
-
 	SwitchSwapchainPasses(currentSwapchainImageIndex);
 	SwitchSwapchainImages(currentSwapchainImageIndex);
 
@@ -66,56 +69,73 @@ void VulkanCBindings::FrameGraph::Traverse(const ThreadPool* threadPool, WorkerC
 	WaitableObject waitableObject;
 
 	VkSemaphore lastSemaphore = acquireSemaphore;
-	//if(mGraphicsPassCount > 0)
-	//{
-	//	VkSemaphore graphicsSemaphore = mGraphicsToComputeSemaphores[currentFrameResourceIndex];
+	if(mGraphicsPassSpans.size() > 0)
+	{
+		VkSemaphore graphicsSemaphore = mGraphicsToComputeSemaphores[currentFrameResourceIndex];
 
-	//	VkFence graphicsFence = nullptr;
-	//	if(mComputePassCount == 0)
-	//	{
-	//		graphicsFence = traverseFence; //Signal the fence after graphics command submission if there are no compute passes	
-	//	}
+		VkFence graphicsFence = nullptr;
+		if(mComputePassSpans.size() == 0)
+		{
+			graphicsFence = traverseFence; //Signal the fence after graphics command submission if there are no compute passes	
+		}
 
-	//	VkCommandBuffer graphicsCommandBuffer = commandBuffers->GetMainThreadGraphicsCommandBuffer(currentFrameResourceIndex);
-	//	VkCommandPool   graphicsCommandPool   = commandBuffers->GetMainThreadGraphicsCommandPool(currentFrameResourceIndex);
-	//	BeginCommandBuffer(graphicsCommandBuffer, graphicsCommandPool);
+		WaitableObject graphicsPassWriteWaitable;
+		for(size_t dependencyLevel = 0; dependencyLevel < mGraphicsPassSpans.size() - 1; dependencyLevel++)
+		{
+			struct JobData
+			{
+				const WorkerCommandBuffers*             CommandBuffers;
+				const FrameGraph*                       FrameGraph;
+				const VulkanCBindings::RenderableScene* Scene;
+				uint32_t                                DependencyLevel;
+				uint32_t                                FrameResourceIndex;
+			}
+			jobData =
+			{
+				.CommandBuffers     = commandBuffers,
+				.FrameGraph         = this,
+				.Scene              = scene,
+				.DependencyLevel    = dependencyLevel,
+				.FrameResourceIndex = currentFrameResourceIndex
+			};
 
-	//	while(renderPassIndex < mGraphicsPassCount)
-	//	{
-	//		BarrierSpan barrierSpan            = mImageRenderPassBarriers[renderPassIndex];
-	//		uint32_t    beforePassBarrierCount = barrierSpan.BeforePassEnd - barrierSpan.BeforePassBegin;
-	//		uint32_t    afterPassBarrierCount  = barrierSpan.AfterPassEnd  - barrierSpan.AfterPassBegin;
+			auto executePassJob = [](uint32_t threadIndex, void* userData, uint32_t userDataSize)
+			{
+				JobData* threadJobData = reinterpret_cast<JobData*>(userData);
+				const FrameGraph* that = threadJobData->FrameGraph;
 
-	//		if(beforePassBarrierCount != 0)
-	//		{
-	//			const VkImageMemoryBarrier*  imageBarrierPointer  = mImageBarriers.data() + barrierSpan.BeforePassBegin;
-	//			const VkBufferMemoryBarrier* bufferBarrierPointer = nullptr;
-	//			const VkMemoryBarrier*       memoryBarrierPointer = nullptr;
+				VkCommandBuffer graphicsCommandBuffer = threadJobData->CommandBuffers->GetThreadGraphicsCommandBuffer(threadIndex, threadJobData->FrameResourceIndex);
+				VkCommandPool   graphicsCommandPool   = threadJobData->CommandBuffers->GetThreadGraphicsCommandPool(threadIndex, threadJobData->FrameResourceIndex);
 
-	//			vkCmdPipelineBarrier(graphicsCommandBuffer, barrierSpan.beforeFlagsBegin, barrierSpan.beforeFlagsEnd, 0, 0, memoryBarrierPointer, 0, bufferBarrierPointer, beforePassBarrierCount, imageBarrierPointer);
-	//		}
+				that->RecordGraphicsPasses(graphicsCommandBuffer, graphicsCommandPool, threadJobData->Scene, threadJobData->DependencyLevel);
 
-	//		mRenderPasses[renderPassIndex]->RecordExecution(graphicsCommandBuffer, scene, mFrameGraphConfig);
+				//The graphicsPassWriteWaitable.WaitForAll() is guaranteed to happen-before the read of commandInfo. Therefore, the write here is thread-safe
+				ThreadCommandInfo* commandInfo = that->mTrackedCommandBuffers[threadIndex].get();
 
-	//		if(afterPassBarrierCount != 0)
-	//		{
-	//			const VkImageMemoryBarrier*  imageBarrierPointer  = mImageBarriers.data() + barrierSpan.AfterPassBegin;
-	//			const VkBufferMemoryBarrier* bufferBarrierPointer = nullptr;
-	//			const VkMemoryBarrier*       memoryBarrierPointer = nullptr;
+				commandInfo->CommandBuffer   = graphicsCommandBuffer;
+				commandInfo->DependencyLevel = threadJobData->DependencyLevel;
+			};
 
-	//			vkCmdPipelineBarrier(graphicsCommandBuffer, barrierSpan.afterFlagsBegin, barrierSpan.AfterPassEnd, 0, 0, memoryBarrierPointer, 0, bufferBarrierPointer, beforePassBarrierCount, imageBarrierPointer);
-	//		}
+			threadPool->EnqueueWork(executePassJob, &jobData, sizeof(JobData), &graphicsPassWriteWaitable);
+		}
 
-	//		renderPassIndex++;
-	//	}
+		VkCommandBuffer mainGraphicsCommandBuffer = commandBuffers->GetMainThreadGraphicsCommandBuffer(currentFrameResourceIndex);
+		VkCommandPool   mainGraphicsCommandPool   = commandBuffers->GetMainThreadGraphicsCommandPool(currentFrameResourceIndex);
+		
+		uint32_t lastDependencyLevel = mGraphicsPassSpans.size() - 1;
+		RecordGraphicsPasses(mainGraphicsCommandBuffer, mainGraphicsCommandPool, scene, lastDependencyLevel);
 
-	//	EndCommandBuffer(graphicsCommandBuffer);
+		graphicsPassWriteWaitable.WaitForAll();
 
-	//	std::array graphicsCommandBuffers = {graphicsCommandBuffer};
-	//	deviceQueues->GraphicsQueueSubmit(graphicsCommandBuffers.data(), graphicsCommandBuffers.size(), VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, acquireSemaphore, graphicsSemaphore, graphicsFence);
+		for(size_t i = 0; i < mTrackedCommandBuffers.size(); i++)
+		{
 
-	//	lastSemaphore = graphicsSemaphore;
-	//}
+		}
+
+		deviceQueues->GraphicsQueueSubmit(mFrameRecordedCommandBuffers.data(), mRecordedCommandBufferCount, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, acquireSemaphore, graphicsSemaphore, graphicsFence);
+
+		lastSemaphore = graphicsSemaphore;
+	}
 
 	//if(mComputePassCount > 0)
 	//{
@@ -164,10 +184,7 @@ void VulkanCBindings::FrameGraph::Traverse(const ThreadPool* threadPool, WorkerC
 	//	lastSemaphore = computeSemaphore;
 	//}
 
-	waitableObject.WaitForAll();
-
 	swapChain->Present(lastSemaphore);
-
 
 	mLastSwapchainImageIndex = currentSwapchainImageIndex;
 }
@@ -254,7 +271,7 @@ void VulkanCBindings::FrameGraph::UnsetSwapchainImages()
 	}
 }
 
-void VulkanCBindings::FrameGraph::BeginCommandBuffer(VkCommandBuffer cmdBuffer, VkCommandPool cmdPool)
+void VulkanCBindings::FrameGraph::BeginCommandBuffer(VkCommandBuffer cmdBuffer, VkCommandPool cmdPool) const
 {
 	ThrowIfFailed(vkResetCommandPool(mDeviceRef, cmdPool, 0));
 
@@ -267,7 +284,42 @@ void VulkanCBindings::FrameGraph::BeginCommandBuffer(VkCommandBuffer cmdBuffer, 
 	ThrowIfFailed(vkBeginCommandBuffer(cmdBuffer, &cmdBufferBeginInfo));
 }
 
-void VulkanCBindings::FrameGraph::EndCommandBuffer(VkCommandBuffer cmdBuffer)
+void VulkanCBindings::FrameGraph::EndCommandBuffer(VkCommandBuffer cmdBuffer) const
 {
 	ThrowIfFailed(vkEndCommandBuffer(cmdBuffer));
+}
+
+void VulkanCBindings::FrameGraph::RecordGraphicsPasses(VkCommandBuffer graphicsCommandBuffer, VkCommandPool graphicsCommandPool, const RenderableScene* scene, uint32_t dependencyLevel) const
+{
+	BeginCommandBuffer(graphicsCommandBuffer, graphicsCommandPool);
+
+	DependencyLevelSpan levelSpan = mGraphicsPassSpans[dependencyLevel];
+	for (uint32_t renderPassIndex = levelSpan.DependencyLevelBegin; renderPassIndex < levelSpan.DependencyLevelEnd; renderPassIndex++)
+	{
+		BarrierSpan barrierSpan            = mImageRenderPassBarriers[renderPassIndex];
+		uint32_t    beforePassBarrierCount = barrierSpan.BeforePassEnd - barrierSpan.BeforePassBegin;
+		uint32_t    afterPassBarrierCount  = barrierSpan.AfterPassEnd - barrierSpan.AfterPassBegin;
+
+		if (beforePassBarrierCount != 0)
+		{
+			const VkImageMemoryBarrier*  imageBarrierPointer  = mImageBarriers.data() + barrierSpan.BeforePassBegin;
+			const VkBufferMemoryBarrier* bufferBarrierPointer = nullptr;
+			const VkMemoryBarrier*       memoryBarrierPointer = nullptr;
+
+			vkCmdPipelineBarrier(graphicsCommandBuffer, barrierSpan.beforeFlagsBegin, barrierSpan.beforeFlagsEnd, 0, 0, memoryBarrierPointer, 0, bufferBarrierPointer, beforePassBarrierCount, imageBarrierPointer);
+		}
+
+		mRenderPasses[renderPassIndex]->RecordExecution(graphicsCommandBuffer, scene, mFrameGraphConfig);
+
+		if (afterPassBarrierCount != 0)
+		{
+			const VkImageMemoryBarrier*  imageBarrierPointer  = mImageBarriers.data() + barrierSpan.AfterPassBegin;
+			const VkBufferMemoryBarrier* bufferBarrierPointer = nullptr;
+			const VkMemoryBarrier*       memoryBarrierPointer = nullptr;
+
+			vkCmdPipelineBarrier(graphicsCommandBuffer, barrierSpan.afterFlagsBegin, barrierSpan.AfterPassEnd, 0, 0, memoryBarrierPointer, 0, bufferBarrierPointer, beforePassBarrierCount, imageBarrierPointer);
+		}
+	}
+
+	EndCommandBuffer(graphicsCommandBuffer);
 }

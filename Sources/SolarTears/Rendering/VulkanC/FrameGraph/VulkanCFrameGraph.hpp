@@ -32,11 +32,23 @@ namespace VulkanCBindings
 			VkPipelineStageFlags afterFlagsEnd;
 		};
 
+		struct DependencyLevelSpan
+		{
+			uint32_t DependencyLevelBegin;
+			uint32_t DependencyLevelEnd;
+		};
+
+		struct ThreadCommandInfo
+		{
+			VkCommandBuffer CommandBuffer;
+			uint32_t        DependencyLevel;
+		};
+
 	public:
-		FrameGraph(VkDevice device, const FrameGraphConfig& frameGraphConfig);
+		FrameGraph(VkDevice device, uint32_t maxWorkerThreads, const FrameGraphConfig& frameGraphConfig);
 		~FrameGraph();
 
-		void Traverse(const ThreadPool* threadPool, WorkerCommandBuffers* commandBuffers, RenderableScene* scene, SwapChain* swapChain, DeviceQueues* deviceQueues, VkFence traverseFence, uint32_t currentFrameResourceIndex, uint32_t currentSwapchainImageIndex);
+		void Traverse(ThreadPool* threadPool, WorkerCommandBuffers* commandBuffers, RenderableScene* scene, SwapChain* swapChain, DeviceQueues* deviceQueues, VkFence traverseFence, uint32_t currentFrameResourceIndex, uint32_t currentSwapchainImageIndex);
 
 	private:
 		void CreateSemaphores();
@@ -47,18 +59,17 @@ namespace VulkanCBindings
 		void UnsetSwapchainPasses();
 		void UnsetSwapchainImages();
 
-		void BeginCommandBuffer(VkCommandBuffer cmdBuffer, VkCommandPool cmdPool);
-		void EndCommandBuffer(VkCommandBuffer cmdBuffer);
+		void BeginCommandBuffer(VkCommandBuffer cmdBuffer, VkCommandPool cmdPool) const;
+		void EndCommandBuffer(VkCommandBuffer cmdBuffer)                          const;
+
+		void RecordGraphicsPasses(VkCommandBuffer graphicsCommandBuffer, VkCommandPool graphicsCommandPool, const RenderableScene* scene, uint32_t dependencyLevel) const;
 
 	private:
 		const VkDevice mDeviceRef;
 
 		FrameGraphConfig mFrameGraphConfig;
-	
-		uint32_t mGraphicsPassCount;
-		uint32_t mComputePassCount;
 
-		std::vector<std::unique_ptr<RenderPass>> mRenderPasses;           //All currently used render passes
+		std::vector<std::unique_ptr<RenderPass>> mRenderPasses;           //All currently used render passes (sorted by dependency level)
 		std::vector<std::unique_ptr<RenderPass>> mSwapchainRenderPasses;  //All render passes that use swapchain images (replaced every frame)
 
 		std::vector<VkImage>     mImages;
@@ -86,5 +97,14 @@ namespace VulkanCBindings
 
 		VkSemaphore mGraphicsToComputeSemaphores[VulkanUtils::InFlightFrameCount];
 		VkSemaphore mComputeToPresentSemaphores[VulkanUtils::InFlightFrameCount];
+
+		std::vector<uint32_t>            mPassDependencyLevels;
+		std::vector<DependencyLevelSpan> mGraphicsPassSpans;
+		std::vector<DependencyLevelSpan> mComputePassSpans;
+
+		//Used to track the command buffers that were used to record render passes
+		std::vector<std::unique_ptr<ThreadCommandInfo>> mTrackedCommandBuffers;
+		std::vector<VkCommandBuffer>                    mFrameRecordedCommandBuffers; //TODO: how it behaves when the thread count is less, more, the same as the dependency level count? Shouldn't each thread have a NUMBER of dependency levels written?
+		uint32_t                                        mRecordedCommandBufferCount;
 	};
 }
