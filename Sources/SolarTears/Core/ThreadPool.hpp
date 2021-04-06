@@ -11,7 +11,7 @@
 //Maybe steal some ideas from https://github.com/dougbinks/enkiTS ? Maybe leater
 class ThreadPool
 {
-	using JobFunc = void(*)(void*, uint32_t);
+	using JobFunc = void(*)(uint32_t, void*, uint32_t);
 
 	struct JobParameters
 	{

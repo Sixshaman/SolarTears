@@ -39,7 +39,7 @@ namespace VulkanCBindings
 		RenderPass& operator=(RenderPass&& right) = default;
 
 	public:
-		virtual void RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig) = 0;
+		virtual void RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig) const = 0;
 
 	protected:
 		const VkDevice mDeviceRef;
