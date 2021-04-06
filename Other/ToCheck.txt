@@ -4,6 +4,7 @@
 - Correct event driven controls: all movements and stuff should be updated constantly and be equal some value once a key pressed and equal 0 when released.
 - Automatic subresource format tracking. If resource A gets copied into resource B, and it's known that resource B has format F, then resource A should also have format F.
 - CMake
+- OWNDC
 - Revise scene world structure - maybe do principal XYZ axes instead of scale+rotation+translation? Google it
 - Right-handed instead of left-handed
 - Blit pass
@@ -20,6 +21,7 @@
 - Fences after transit in frame graph and scene builders
 - Try to do VERTEX PULLING
 - Uint16 or Uint32 indices?
+- Infinite projection matrices with reversed depth
 - Separate descriptor sets
 - INSTANCING
 - VulkanSH.h и VulkanSH.cpp
@@ -31,6 +33,7 @@
 - VECTORCALL functions in user code
 - Scene controls abstraction: the perfect way would be to use a class that has std::function bound to each user input event. This way Scene could use it instead of ugly member functions to control camera.
 - More on input: it should be handled by a finite state machine. This finite state machine should be outside of input class (because input class doesn't know about states)
+- Different allocation and management for static and dynamic buffers and textures
 - Reverse depth
 - Profile cache usage
 - #include <system_error>
