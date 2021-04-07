@@ -62,7 +62,7 @@ namespace VulkanCBindings
 		void BeginCommandBuffer(VkCommandBuffer cmdBuffer, VkCommandPool cmdPool) const;
 		void EndCommandBuffer(VkCommandBuffer cmdBuffer)                          const;
 
-		void RecordGraphicsPasses(VkCommandBuffer graphicsCommandBuffer, VkCommandPool graphicsCommandPool, const RenderableScene* scene, uint32_t dependencyLevelSpanIndex) const;
+		void RecordGraphicsPasses(VkCommandBuffer graphicsCommandBuffer, const RenderableScene* scene, uint32_t dependencyLevelSpanIndex) const;
 
 	private:
 		const VkDevice mDeviceRef;

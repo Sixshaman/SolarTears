@@ -90,7 +90,9 @@ void VulkanCBindings::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommand
 				VkCommandBuffer graphicsCommandBuffer = threadJobData->CommandBuffers->GetThreadGraphicsCommandBuffer(threadJobData->DependencyLevelSpanIndex, threadJobData->FrameResourceIndex);
 				VkCommandPool   graphicsCommandPool   = threadJobData->CommandBuffers->GetThreadGraphicsCommandPool(threadJobData->DependencyLevelSpanIndex, threadJobData->FrameResourceIndex);
 
-				that->RecordGraphicsPasses(graphicsCommandBuffer, graphicsCommandPool, threadJobData->Scene, threadJobData->DependencyLevelSpanIndex);
+				that->BeginCommandBuffer(graphicsCommandBuffer, graphicsCommandPool);
+				that->RecordGraphicsPasses(graphicsCommandBuffer, threadJobData->Scene, threadJobData->DependencyLevelSpanIndex);
+				that->EndCommandBuffer(graphicsCommandBuffer);
 			};
 
 			threadPool->EnqueueWork(executePassJob, &jobData, sizeof(JobData), &graphicsPassWriteWaitable);
@@ -99,8 +101,9 @@ void VulkanCBindings::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommand
 		VkCommandBuffer mainGraphicsCommandBuffer = commandBuffers->GetMainThreadGraphicsCommandBuffer(currentFrameResourceIndex);
 		VkCommandPool   mainGraphicsCommandPool   = commandBuffers->GetMainThreadGraphicsCommandPool(currentFrameResourceIndex);
 		
-		uint32_t lastDependencyLevel = (uint32_t)(mGraphicsPassSpans.size() - 1);
-		RecordGraphicsPasses(mainGraphicsCommandBuffer, mainGraphicsCommandPool, scene, lastDependencyLevel);
+		BeginCommandBuffer(mainGraphicsCommandBuffer, mainGraphicsCommandPool);
+		RecordGraphicsPasses(mainGraphicsCommandBuffer, scene, (uint32_t)(mGraphicsPassSpans.size() - 1));
+		EndCommandBuffer(mainGraphicsCommandBuffer);
 
 		graphicsPassWriteWaitable.WaitForAll();
 
@@ -219,10 +222,8 @@ void VulkanCBindings::FrameGraph::EndCommandBuffer(VkCommandBuffer cmdBuffer) co
 	ThrowIfFailed(vkEndCommandBuffer(cmdBuffer));
 }
 
-void VulkanCBindings::FrameGraph::RecordGraphicsPasses(VkCommandBuffer graphicsCommandBuffer, VkCommandPool graphicsCommandPool, const RenderableScene* scene, uint32_t dependencyLevelSpanIndex) const
+void VulkanCBindings::FrameGraph::RecordGraphicsPasses(VkCommandBuffer graphicsCommandBuffer, const RenderableScene* scene, uint32_t dependencyLevelSpanIndex) const
 {
-	BeginCommandBuffer(graphicsCommandBuffer, graphicsCommandPool);
-
 	DependencyLevelSpan levelSpan = mGraphicsPassSpans[dependencyLevelSpanIndex];
 	for(uint32_t renderPassIndex = levelSpan.DependencyLevelBegin; renderPassIndex < levelSpan.DependencyLevelEnd; renderPassIndex++)
 	{
@@ -250,6 +251,4 @@ void VulkanCBindings::FrameGraph::RecordGraphicsPasses(VkCommandBuffer graphicsC
 			vkCmdPipelineBarrier(graphicsCommandBuffer, barrierSpan.afterFlagsBegin, barrierSpan.AfterPassEnd, 0, 0, memoryBarrierPointer, 0, bufferBarrierPointer, beforePassBarrierCount, imageBarrierPointer);
 		}
 	}
-
-	EndCommandBuffer(graphicsCommandBuffer);
 }
