@@ -7,7 +7,7 @@
 #include "../../../Core/WaitableObject.hpp"
 #include <array>
 
-VulkanCBindings::FrameGraph::FrameGraph(VkDevice device, uint32_t maxWorkerThreads, const FrameGraphConfig& frameGraphConfig): mDeviceRef(device)
+VulkanCBindings::FrameGraph::FrameGraph(VkDevice device, const FrameGraphConfig& frameGraphConfig): mDeviceRef(device)
 {
 	mImageMemory = VK_NULL_HANDLE;
 
@@ -16,12 +16,6 @@ VulkanCBindings::FrameGraph::FrameGraph(VkDevice device, uint32_t maxWorkerThrea
 	mFrameGraphConfig = frameGraphConfig;
 
 	CreateSemaphores();
-
-	mTrackedCommandBuffers.resize(maxWorkerThreads);
-	for(size_t i = 0; i < mTrackedCommandBuffers.size(); i++)
-	{
-		mTrackedCommandBuffers[i] = std::make_unique<ThreadCommandInfo>(ThreadCommandInfo{.CommandBuffer = VK_NULL_HANDLE, .DependencyLevelSpanIndex = 0});
-	}
 }
 
 VulkanCBindings::FrameGraph::~FrameGraph()
@@ -58,9 +52,7 @@ void VulkanCBindings::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommand
 	SwitchSwapchainImages(currentSwapchainImageIndex);
 
 	VkSemaphore acquireSemaphore = swapChain->GetImageAcquiredSemaphore(currentFrameResourceIndex);
-		swapChain->AcquireImage(mDeviceRef, currentSwapchainImageIndex);
-
-	WaitableObject waitableObject;
+	swapChain->AcquireImage(mDeviceRef, currentSwapchainImageIndex);
 
 	VkSemaphore lastSemaphore = acquireSemaphore;
 	if(mGraphicsPassSpans.size() > 0)
@@ -68,7 +60,7 @@ void VulkanCBindings::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommand
 		VkSemaphore graphicsSemaphore = mGraphicsToPresentSemaphores[currentFrameResourceIndex];
 		VkFence     graphicsFence     = traverseFence; //Signal the fence after graphics command submission if there are no compute passes afterwards (which is always true for now)
 
-		WaitableObject graphicsPassWriteWaitable;
+		WaitableObject graphicsPassWriteWaitable((uint32_t)(mGraphicsPassSpans.size() - 1));
 		for(size_t dependencyLevelSpanIndex = 0; dependencyLevelSpanIndex < mGraphicsPassSpans.size() - 1; dependencyLevelSpanIndex++)
 		{
 			struct JobData
@@ -88,23 +80,17 @@ void VulkanCBindings::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommand
 				.FrameResourceIndex       = currentFrameResourceIndex
 			};
 
-			auto executePassJob = [](uint32_t threadIndex, void* userData, uint32_t userDataSize)
+			auto executePassJob = [](void* userData, uint32_t userDataSize)
 			{
 				UNREFERENCED_PARAMETER(userDataSize);
 
 				JobData* threadJobData = reinterpret_cast<JobData*>(userData);
 				const FrameGraph* that = threadJobData->FrameGraph;
 
-				VkCommandBuffer graphicsCommandBuffer = threadJobData->CommandBuffers->GetThreadGraphicsCommandBuffer(threadIndex, threadJobData->FrameResourceIndex);
-				VkCommandPool   graphicsCommandPool   = threadJobData->CommandBuffers->GetThreadGraphicsCommandPool(threadIndex, threadJobData->FrameResourceIndex);
+				VkCommandBuffer graphicsCommandBuffer = threadJobData->CommandBuffers->GetThreadGraphicsCommandBuffer(threadJobData->DependencyLevelSpanIndex, threadJobData->FrameResourceIndex);
+				VkCommandPool   graphicsCommandPool   = threadJobData->CommandBuffers->GetThreadGraphicsCommandPool(threadJobData->DependencyLevelSpanIndex, threadJobData->FrameResourceIndex);
 
 				that->RecordGraphicsPasses(graphicsCommandBuffer, graphicsCommandPool, threadJobData->Scene, threadJobData->DependencyLevelSpanIndex);
-
-				//The graphicsPassWriteWaitable.WaitForAll() is guaranteed to happen-before the read of commandInfo. Therefore, the write here is thread-safe
-				ThreadCommandInfo* commandInfo = that->mTrackedCommandBuffers[threadIndex].get();
-
-				commandInfo->CommandBuffer            = graphicsCommandBuffer;
-				commandInfo->DependencyLevelSpanIndex = threadJobData->DependencyLevelSpanIndex;
 			};
 
 			threadPool->EnqueueWork(executePassJob, &jobData, sizeof(JobData), &graphicsPassWriteWaitable);
@@ -118,14 +104,9 @@ void VulkanCBindings::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommand
 
 		graphicsPassWriteWaitable.WaitForAll();
 
-		for(size_t i = 0; i < mTrackedCommandBuffers.size(); i++)
+		for(size_t i = 0; i < mGraphicsPassSpans.size() - 1; i++)
 		{
-			ThreadCommandInfo* commandInfo = mTrackedCommandBuffers[i].get();
-			if(commandInfo->CommandBuffer != VK_NULL_HANDLE)
-			{
-				mFrameRecordedGraphicsCommandBuffers[commandInfo->DependencyLevelSpanIndex] = commandInfo->CommandBuffer; //Ensure the proper order
-				commandInfo->CommandBuffer = VK_NULL_HANDLE;                                                              //Zero out
-			}
+			mFrameRecordedGraphicsCommandBuffers[i] = commandBuffers->GetThreadGraphicsCommandBuffer((uint32_t)i, currentFrameResourceIndex); //The command buffer that was used to record the command
 		}
 
 		mFrameRecordedGraphicsCommandBuffers[mGraphicsPassSpans.size() - 1] = mainGraphicsCommandBuffer;

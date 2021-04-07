@@ -38,7 +38,7 @@ ThreadPool::ThreadPool(uint_fast16_t numOfThreads): mQueueMutexes(numOfThreads),
 					threadQueue.pop();
 
 					mQueueMutexes[currentQueue].unlock();	
-					jobParams.JobFunction(threadIndex, jobParams.AdditionalData, jobParams.AdditionalDataSize);
+					jobParams.JobFunction(jobParams.AdditionalData, jobParams.AdditionalDataSize);
 				}
 				else
 				{
@@ -96,17 +96,15 @@ void ThreadPool::EnqueueWork(JobFunc func, void* userData, size_t userDataSize, 
 {
 	assert(userDataSize + sizeof(JobFunc) + sizeof(WaitableObject*) < sizeof(JobParameters::AdditionalData));
 
-	waitableObject->RegisterUse();
-
-	JobFunc funcModified = [](uint32_t threadIndex, void* data, uint32_t dataSize)
+	JobFunc funcModified = [](void* data, uint32_t dataSize)
 	{
 		const uint32_t oldDataSize = dataSize - sizeof(JobFunc) - sizeof(WaitableObject*);
 
 		JobFunc         oldFunc  = (*(JobFunc*)((std::byte*)data + oldDataSize));
 		WaitableObject* waitable = (*(WaitableObject**)((std::byte*)data + oldDataSize + sizeof(JobFunc)));
 
-		oldFunc(threadIndex, data, oldDataSize);
-		waitable->Notify();
+		oldFunc(data, oldDataSize);
+		waitable->NotifyJobFinished();
 	};
 
 	std::byte newData[56];

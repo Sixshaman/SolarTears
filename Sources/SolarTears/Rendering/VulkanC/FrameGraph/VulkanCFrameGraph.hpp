@@ -45,7 +45,7 @@ namespace VulkanCBindings
 		};
 
 	public:
-		FrameGraph(VkDevice device, uint32_t maxWorkerThreads, const FrameGraphConfig& frameGraphConfig);
+		FrameGraph(VkDevice device, const FrameGraphConfig& frameGraphConfig);
 		~FrameGraph();
 
 		void Traverse(ThreadPool* threadPool, WorkerCommandBuffers* commandBuffers, RenderableScene* scene, SwapChain* swapChain, DeviceQueues* deviceQueues, VkFence traverseFence, uint32_t currentFrameResourceIndex, uint32_t currentSwapchainImageIndex);
@@ -100,7 +100,6 @@ namespace VulkanCBindings
 		VkSemaphore mGraphicsToPresentSemaphores[VulkanUtils::InFlightFrameCount];
 
 		//Used to track the command buffers that were used to record render passes
-		std::vector<std::unique_ptr<ThreadCommandInfo>> mTrackedCommandBuffers;
-		std::vector<VkCommandBuffer>                    mFrameRecordedGraphicsCommandBuffers;
+		std::vector<VkCommandBuffer> mFrameRecordedGraphicsCommandBuffers;
 	};
 }
