@@ -5,17 +5,15 @@
 class WaitableObject
 {
 public:
-	WaitableObject();
+	WaitableObject(uint32_t jobsToWait);
 	~WaitableObject();
 
-	void RegisterUse();
-	void Notify();
-
+	void NotifyJobFinished();
 	void WaitForAll();
 
 private:
-	std::atomic<uint32_t> mThreadCounter;
-	uint32_t              mWaitCounter;
+	const uint32_t mJobsToWait;
 
-	std::atomic_flag mFinishedFlag;
+	std::atomic<uint32_t> mFinishedJobsCounter;
+	std::atomic_flag      mFinishedFlag;
 };

@@ -1,6 +1,6 @@
 #include "WaitableObject.hpp"
 
-WaitableObject::WaitableObject(): mThreadCounter(0), mWaitCounter(0)
+WaitableObject::WaitableObject(uint32_t jobsToWait): mFinishedJobsCounter(0), mJobsToWait(jobsToWait)
 {
 }
 
@@ -8,14 +8,9 @@ WaitableObject::~WaitableObject()
 {
 }
 
-void WaitableObject::RegisterUse()
+void WaitableObject::NotifyJobFinished()
 {
-	mWaitCounter++;
-}
-
-void WaitableObject::Notify()
-{
-	if(++mThreadCounter >= mWaitCounter)
+	if(++mFinishedJobsCounter >= mJobsToWait)
 	{
 		mFinishedFlag.test_and_set();
 		mFinishedFlag.notify_all();
@@ -24,8 +19,8 @@ void WaitableObject::Notify()
 
 void WaitableObject::WaitForAll()
 {
-	//If you pass mThreadCounter >= mWaitCounter instead of just false, a deadlock can occur
+	//If you pass mFinishedJobsCounter >= mJobsToWait instead of just false, a deadlock can occur
 	//Consider a case: other thread has already set the flag. This way mFinishedFlag is already true.
-	//But mThreadCounter >= mWaitCounter is also true. This means the flag waits for the opposite thing
+	//But mFinishedJobsCounter >= mJobsToWait is also true. This means the flag waits for the opposite thing
 	mFinishedFlag.wait(false);
 }
