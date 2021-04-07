@@ -16,7 +16,8 @@ class ThreadPool
 	struct JobParameters
 	{
 		JobFunc   JobFunction;
-		std::byte AdditionalData[56];
+		uint32_t  AdditionalDataSize;
+		std::byte AdditionalData[52];
 	};
 
 public:

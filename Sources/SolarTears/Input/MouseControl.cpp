@@ -17,8 +17,8 @@ void MouseControl::AttachToWindow(Window* window)
 	window->RegisterMouseMoveCallback([](Window* window, int mousePosX, int mousePosY, void* userPtr)
 	{
 		MouseControl* that = reinterpret_cast<MouseControl*>(userPtr);
-		that->mXDelta = (float)(mousePosX - that->mPrevMousePosX);
-		that->mYDelta = (float)(mousePosY - that->mPrevMousePosY);
+		that->mXDelta += (float)(mousePosX - that->mPrevMousePosX);
+		that->mYDelta += (float)(mousePosY - that->mPrevMousePosY);
 
 		window->CenterCursor();
 		window->GetMousePos(&that->mPrevMousePosX, &that->mPrevMousePosY);

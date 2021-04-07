@@ -88,11 +88,11 @@ namespace VulkanCBindings
 		void AssignSubresourceName(const std::string_view passName, const std::string_view subresourceId, const std::string_view subresourceName);
 		void AssignBackbufferName(const std::string_view backbufferName);
 
-		void SetPassSubresourceFormat(const std::string_view passName, const std::string_view subresourceId, VkFormat format);
-		void SetPassSubresourceLayout(const std::string_view passName, const std::string_view subresourceId, VkImageLayout layout);
-		void SetPassSubresourceUsage(const std::string_view passName, const std::string_view subresourceId, VkImageUsageFlags usage);
+		void SetPassSubresourceFormat(const std::string_view passName,      const std::string_view subresourceId, VkFormat format);
+		void SetPassSubresourceLayout(const std::string_view passName,      const std::string_view subresourceId, VkImageLayout layout);
+		void SetPassSubresourceUsage(const std::string_view passName,       const std::string_view subresourceId, VkImageUsageFlags usage);
 		void SetPassSubresourceAspectFlags(const std::string_view passName, const std::string_view subresourceId, VkImageAspectFlags aspect);
-		void SetPassSubresourceStageFlags(const std::string_view passName, const std::string_view subresourceId, VkPipelineStageFlags stage);
+		void SetPassSubresourceStageFlags(const std::string_view passName,  const std::string_view subresourceId, VkPipelineStageFlags stage);
 		void SetPassSubresourceAccessFlags(const std::string_view passName, const std::string_view subresourceId, VkAccessFlags accessFlags);
 
 		void EnableSubresourceAutoBarrier(const std::string_view passName, const std::string_view subresourceId, bool autoBaarrier = true);
@@ -102,24 +102,24 @@ namespace VulkanCBindings
 		const ShaderManager*    GetShaderManager()    const;
 		const FrameGraphConfig* GetConfig()           const;
 
-		VkImage              GetRegisteredResource(const std::string_view passName, const std::string_view subresourceId) const;
-		VkImageView          GetRegisteredSubresource(const std::string_view passName, const std::string_view subresourceId) const;
-		VkFormat             GetRegisteredSubresourceFormat(const std::string_view passName, const std::string_view subresourceId) const;
-		VkImageLayout        GetRegisteredSubresourceLayout(const std::string_view passName, const std::string_view subresourceId) const;
-		VkImageUsageFlags    GetRegisteredSubresourceUsage(const std::string_view passName, const std::string_view subresourceId) const;
-		VkPipelineStageFlags GetRegisteredSubresourceStageFlags(const std::string_view passName, const std::string_view subresourceId) const;
+		VkImage              GetRegisteredResource(const std::string_view passName,               const std::string_view subresourceId) const;
+		VkImageView          GetRegisteredSubresource(const std::string_view passName,            const std::string_view subresourceId) const;
+		VkFormat             GetRegisteredSubresourceFormat(const std::string_view passName,      const std::string_view subresourceId) const;
+		VkImageLayout        GetRegisteredSubresourceLayout(const std::string_view passName,      const std::string_view subresourceId) const;
+		VkImageUsageFlags    GetRegisteredSubresourceUsage(const std::string_view passName,       const std::string_view subresourceId) const;
+		VkPipelineStageFlags GetRegisteredSubresourceStageFlags(const std::string_view passName,  const std::string_view subresourceId) const;
 		VkImageAspectFlags   GetRegisteredSubresourceAspectFlags(const std::string_view passName, const std::string_view subresourceId) const;
 		VkAccessFlags        GetRegisteredSubresourceAccessFlags(const std::string_view passName, const std::string_view subresourceId) const;
 
-		VkImageLayout        GetPreviousPassSubresourceLayout(const std::string_view passName, const std::string_view subresourceId) const;
-		VkImageUsageFlags    GetPreviousPassSubresourceUsage(const std::string_view passName, const std::string_view subresourceId) const;
-		VkPipelineStageFlags GetPreviousPassSubresourceStageFlags(const std::string_view passName, const std::string_view subresourceId) const;
+		VkImageLayout        GetPreviousPassSubresourceLayout(const std::string_view passName,      const std::string_view subresourceId) const;
+		VkImageUsageFlags    GetPreviousPassSubresourceUsage(const std::string_view passName,       const std::string_view subresourceId) const;
+		VkPipelineStageFlags GetPreviousPassSubresourceStageFlags(const std::string_view passName,  const std::string_view subresourceId) const;
 		VkImageAspectFlags   GetPreviousPassSubresourceAspectFlags(const std::string_view passName, const std::string_view subresourceId) const;
 		VkAccessFlags        GetPreviousPassSubresourceAccessFlags(const std::string_view passName, const std::string_view subresourceId) const;
 
-		VkImageLayout        GetNextPassSubresourceLayout(const std::string_view passName, const std::string_view subresourceId) const;
-		VkImageUsageFlags    GetNextPassSubresourceUsage(const std::string_view passName, const std::string_view subresourceId) const;
-		VkPipelineStageFlags GetNextPassSubresourceStageFlags(const std::string_view passName, const std::string_view subresourceId) const;
+		VkImageLayout        GetNextPassSubresourceLayout(const std::string_view passName,      const std::string_view subresourceId) const;
+		VkImageUsageFlags    GetNextPassSubresourceUsage(const std::string_view passName,       const std::string_view subresourceId) const;
+		VkPipelineStageFlags GetNextPassSubresourceStageFlags(const std::string_view passName,  const std::string_view subresourceId) const;
 		VkImageAspectFlags   GetNextPassSubresourceAspectFlags(const std::string_view passName, const std::string_view subresourceId) const;
 		VkAccessFlags        GetNextPassSubresourceAccessFlags(const std::string_view passName, const std::string_view subresourceId) const;
 
@@ -127,16 +127,19 @@ namespace VulkanCBindings
 
 	private:
 		//Builds frame graph adjacency list
-		void BuildAdjacencyList(std::vector<std::unordered_set<size_t>>& adjacencyList);
+		void BuildAdjacencyList(std::unordered_map<RenderPassName, std::unordered_set<RenderPassName>>& adjacencyList);
 
-		//Sorts frame graph passes
-		void SortRenderPasses(const std::vector<std::unordered_set<size_t>>& adjacencyList);
+		//Sorts frame graph passes topologically
+		void SortRenderPassesTopological(const std::unordered_map<RenderPassName, std::unordered_set<RenderPassName>>& adjacencyList, std::vector<RenderPassName>& unsortedPasses);
 
-		//Creates render pass queue affinities (compute vs graphics)
-		void BuildQueueAffinities(const DeviceQueues* deviceQueues, const SwapChain* swapChain);
+		//Sorts frame graph passes (already sorted topologically) by dependency level
+		void SortRenderPassesDependency(const std::unordered_map<RenderPassName, std::unordered_set<RenderPassName>>& adjacencyList, std::vector<RenderPassName>& topologicallySortedPasses);
+
+		//Builds render pass dependency levels
+		void BuildDependencyLevels(const DeviceQueues* deviceQueues, const SwapChain* swapChain);
 
 		//Recursively sort subtree topologically
-		void TopologicalSortNode(const std::vector<std::unordered_set<size_t>>& adjacencyList, std::vector<uint_fast8_t>& visited, std::vector<uint_fast8_t>& onStack, size_t passIndex, std::vector<size_t>& sortedPassIndices);
+		void TopologicalSortNode(const std::unordered_map<RenderPassName, std::unordered_set<RenderPassName>>& adjacencyList, std::unordered_set<RenderPassName>& visited, std::unordered_set<RenderPassName>& onStack, const RenderPassName& renderPassName, std::vector<RenderPassName>& sortedPassNames);
 
 		//Creates descriptions for resource creation
 		void BuildResourceCreateInfos(const std::vector<uint32_t>& defaultQueueIndices, std::unordered_map<SubresourceName, ImageResourceCreateInfo>& outImageCreateInfos, std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& outBackbufferCreateInfos, std::unordered_set<RenderPassName>& swapchainPassNames);
@@ -187,7 +190,7 @@ namespace VulkanCBindings
 		std::vector<RenderPassName>                              mRenderPassNames;
 		std::unordered_map<RenderPassName, RenderPassCreateFunc> mRenderPassCreateFunctions;
 		std::unordered_map<RenderPassName, RenderPassType>       mRenderPassTypes;
-		std::unordered_map<RenderPassName, uint32_t>             mRenderPassIndices;
+		std::unordered_map<RenderPassName, uint32_t>             mRenderPassDependencyLevels;
 		std::unordered_map<RenderPassName, uint32_t>             mRenderPassQueueFamilies;
 
 		std::unordered_map<RenderPassName, std::unordered_set<SubresourceId>> mRenderPassesReadSubresourceIds;

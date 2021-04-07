@@ -45,7 +45,7 @@ namespace VulkanCBindings
 		void CreateFrameGraph(uint32_t viewportWidth, uint32_t viewportHeight);
 
 	private:
-		const ThreadPool*   mThreadPoolRef;
+		ThreadPool*         mThreadPoolRef;
 		const FrameCounter* mFrameCounterRef;
 
 		VkInstance       mInstance;

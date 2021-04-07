@@ -15,5 +15,7 @@ public:
 
 private:
 	std::atomic<uint32_t> mThreadCounter;
-	uint32_t              mDesiredCounter;
+	uint32_t              mWaitCounter;
+
+	std::atomic_flag mFinishedFlag;
 };

@@ -24,6 +24,10 @@ void VulkanCBindings::DeviceQueues::InitQueueHandles(VkDevice device)
 	graphicsQueueInfo.queueFamilyIndex = mGraphicsQueueFamilyIndex;
 
 	vkGetDeviceQueue2(device, &graphicsQueueInfo, &mGraphicsQueue);
+	if(mGraphicsQueue == VK_NULL_HANDLE) //Some older AMD cards return NULL on vkGetDeviceQueue2
+	{
+		vkGetDeviceQueue(device, mGraphicsQueueFamilyIndex, 0, &mGraphicsQueue);
+	}
 
 
 	VkDeviceQueueInfo2 computeQueueInfo;
@@ -34,6 +38,10 @@ void VulkanCBindings::DeviceQueues::InitQueueHandles(VkDevice device)
 	computeQueueInfo.queueFamilyIndex = mComputeQueueFamilyIndex;
 
 	vkGetDeviceQueue2(device, &computeQueueInfo, &mComputeQueue);
+	if(mComputeQueue == VK_NULL_HANDLE) //Some older AMD cards return NULL on vkGetDeviceQueue2
+	{
+		vkGetDeviceQueue(device, mComputeQueueFamilyIndex, 0, &mComputeQueue);
+	}
 
 
 	VkDeviceQueueInfo2 transferQueueInfo;
@@ -44,6 +52,10 @@ void VulkanCBindings::DeviceQueues::InitQueueHandles(VkDevice device)
 	transferQueueInfo.queueFamilyIndex = mTransferQueueFamilyIndex;
 
 	vkGetDeviceQueue2(device, &transferQueueInfo, &mTransferQueue);
+	if(mTransferQueue == VK_NULL_HANDLE) //Some older AMD cards return NULL on vkGetDeviceQueue2
+	{
+		vkGetDeviceQueue(device, mTransferQueueFamilyIndex, 0, &mTransferQueue);
+	}
 }
 
 uint32_t VulkanCBindings::DeviceQueues::GetGraphicsQueueFamilyIndex() const

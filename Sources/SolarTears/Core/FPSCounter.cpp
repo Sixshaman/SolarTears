@@ -23,6 +23,6 @@ void FPSCounter::LogFPS(const FrameCounter* frameCounter, const Timer* timer, Lo
 		mLastMeasuredTime  = currMeasurementTime;
 		mLastMeasuredFrame = frameIndex;	 
 
-		logger->PostLogMessage("FPS: " + std::to_string(mLastMeasuredFPS) + ", mspf: " + std::to_string(1.0f / mLastMeasuredFPS));
+		logger->PostLogMessage("FPS: " + std::to_string(mLastMeasuredFPS) + ", mspf: " + std::to_string(1000.0f / mLastMeasuredFPS));
 	}
 }

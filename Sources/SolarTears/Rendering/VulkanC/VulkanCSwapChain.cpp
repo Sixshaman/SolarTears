@@ -80,11 +80,11 @@ void VulkanCBindings::SwapChain::AcquireImage(VkDevice device, uint32_t frameInF
 	acquireNextImageInfo.sType      = VK_STRUCTURE_TYPE_ACQUIRE_NEXT_IMAGE_INFO_KHR;
 	acquireNextImageInfo.pNext      = nullptr;
 	acquireNextImageInfo.swapchain  = mSwapchain;
-	acquireNextImageInfo.timeout    = 2000000;
+	acquireNextImageInfo.timeout    = 2000000000;
 	acquireNextImageInfo.semaphore  = mImageAcquiredSemaphores[frameInFlightIndex];
 	acquireNextImageInfo.fence      = nullptr;
 	acquireNextImageInfo.deviceMask = 0x01;
-
+	
 	ThrowIfFailed(vkAcquireNextImage2KHR(device, &acquireNextImageInfo, &mCurrentImageIndex));
 }
 
@@ -346,6 +346,7 @@ void VulkanCBindings::SwapChain::FindPresentQueueIndex(VkPhysicalDevice physical
 		if(presentationSupported)
 		{
 			presentQueueFamilyIndex = queueFamilyIndex;
+			break;
 		}
 	}
 
@@ -364,6 +365,10 @@ void VulkanCBindings::SwapChain::GetPresentQueue(VkDevice device, uint32_t prese
 	presentQueueInfo.queueFamilyIndex = presentIndex;
 
 	vkGetDeviceQueue2(device, &presentQueueInfo, &mPresentQueue);
+	if(mPresentQueue == nullptr)
+	{
+		vkGetDeviceQueue(device, presentIndex, 0, &mPresentQueue);
+	}
 }
 
 #if defined(_WIN32) && defined(VK_USE_PLATFORM_WIN32_KHR)
