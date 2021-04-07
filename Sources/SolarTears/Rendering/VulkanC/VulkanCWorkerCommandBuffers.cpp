@@ -76,65 +76,77 @@ void VulkanCBindings::WorkerCommandBuffers::InitCommandBuffers(uint32_t graphics
 VkCommandPool VulkanCBindings::WorkerCommandBuffers::GetMainThreadGraphicsCommandPool(uint32_t frameIndex) const
 {
 	//Main thread command buffers/pools are always at the end
-	return mCommandPools[(size_t)mWorkerThreadCount * frameIndex * mSeparateQueueCount + mCommandBufferIndexForGraphics];
+	size_t poolIndex = (size_t)(mWorkerThreadCount + 1) * (size_t)frameIndex * mSeparateQueueCount + mWorkerThreadCount * mSeparateQueueCount + mCommandBufferIndexForGraphics;
+	return mCommandPools[poolIndex];
 }
 
 VkCommandPool VulkanCBindings::WorkerCommandBuffers::GetMainThreadComputeCommandPool(uint32_t frameIndex) const
 {
 	//Main thread command buffers/pools are always at the end
-	return mCommandPools[(size_t)mWorkerThreadCount * frameIndex * mSeparateQueueCount + mCommandBufferIndexForCompute];
+	size_t poolIndex = (size_t)(mWorkerThreadCount + 1) * (size_t)frameIndex * mSeparateQueueCount + mWorkerThreadCount * mSeparateQueueCount + mCommandBufferIndexForCompute;
+	return mCommandPools[poolIndex];
 }
 
 VkCommandPool VulkanCBindings::WorkerCommandBuffers::GetMainThreadTransferCommandPool(uint32_t frameIndex) const
 {
 	//Main thread command buffers/pools are always at the end
-	return mCommandPools[(size_t)mWorkerThreadCount * frameIndex * mSeparateQueueCount + mCommandBufferIndexForTransfer];
+	size_t poolIndex = (size_t)(mWorkerThreadCount + 1) * (size_t)frameIndex * mSeparateQueueCount + mWorkerThreadCount * mSeparateQueueCount + mCommandBufferIndexForTransfer;
+	return mCommandPools[poolIndex];
 }
 
 VkCommandBuffer VulkanCBindings::WorkerCommandBuffers::GetMainThreadGraphicsCommandBuffer(uint32_t frameIndex) const
 {
 	//Main thread command buffers/pools are always at the end
-	return mCommandBuffers[(size_t)mWorkerThreadCount * frameIndex * mSeparateQueueCount + mCommandBufferIndexForGraphics];
+	size_t bufferIndex = (size_t)(mWorkerThreadCount + 1) * (size_t)frameIndex * mSeparateQueueCount + mWorkerThreadCount * mSeparateQueueCount + mCommandBufferIndexForGraphics;
+	return mCommandBuffers[bufferIndex];
 }
 
 VkCommandBuffer VulkanCBindings::WorkerCommandBuffers::GetMainThreadComputeCommandBuffer(uint32_t frameIndex) const
 {
 	//Main thread command buffers/pools are always at the end
-	return mCommandBuffers[(size_t)mWorkerThreadCount * frameIndex * mSeparateQueueCount + mCommandBufferIndexForCompute];
+	size_t bufferIndex = (size_t)(mWorkerThreadCount + 1) * (size_t)frameIndex * mSeparateQueueCount + mWorkerThreadCount * mSeparateQueueCount + mCommandBufferIndexForCompute;
+	return mCommandBuffers[bufferIndex];
 }
 
 VkCommandBuffer VulkanCBindings::WorkerCommandBuffers::GetMainThreadTransferCommandBuffer(uint32_t frameIndex) const
 {
 	//Main thread command buffers/pools are always at the end
-	return mCommandBuffers[(size_t)mWorkerThreadCount * frameIndex * mSeparateQueueCount + mCommandBufferIndexForTransfer];
+	size_t bufferIndex = (size_t)(mWorkerThreadCount + 1) * (size_t)frameIndex * mSeparateQueueCount + mWorkerThreadCount * mSeparateQueueCount + mCommandBufferIndexForTransfer;
+	return mCommandBuffers[bufferIndex];
 }
 
 VkCommandPool VulkanCBindings::WorkerCommandBuffers::GetThreadGraphicsCommandPool(uint32_t threadIndex, uint32_t frameIndex) const
 {
-	return mCommandPools[(size_t)threadIndex * frameIndex * mSeparateQueueCount + mCommandBufferIndexForGraphics];
+	size_t poolIndex = (size_t)(mWorkerThreadCount + 1) * (size_t)frameIndex * mSeparateQueueCount + threadIndex * mSeparateQueueCount + mCommandBufferIndexForGraphics;
+	return mCommandPools[poolIndex];
 }
 
 VkCommandPool VulkanCBindings::WorkerCommandBuffers::GetThreadComputeCommandPool(uint32_t threadIndex, uint32_t frameIndex) const
 {
-	return mCommandPools[(size_t)threadIndex * frameIndex * mSeparateQueueCount + mCommandBufferIndexForCompute];
+	size_t poolIndex = (size_t)(mWorkerThreadCount + 1) * (size_t)frameIndex * mSeparateQueueCount + threadIndex * mSeparateQueueCount + mCommandBufferIndexForCompute;
+	return mCommandPools[poolIndex];
 }
 
 VkCommandPool VulkanCBindings::WorkerCommandBuffers::GetThreadTransferCommandPool(uint32_t threadIndex, uint32_t frameIndex) const
 {
-	return mCommandPools[(size_t)threadIndex * frameIndex * mSeparateQueueCount + mCommandBufferIndexForTransfer];
+	size_t poolIndex = (size_t)(mWorkerThreadCount + 1) * (size_t)frameIndex * mSeparateQueueCount + threadIndex * mSeparateQueueCount + mCommandBufferIndexForTransfer;
+	return mCommandPools[poolIndex];
 }
 
 VkCommandBuffer VulkanCBindings::WorkerCommandBuffers::GetThreadGraphicsCommandBuffer(uint32_t threadIndex, uint32_t frameIndex) const
 {
-	return mCommandBuffers[(size_t)threadIndex * frameIndex * mSeparateQueueCount + mCommandBufferIndexForGraphics];
+	size_t bufferIndex = (size_t)(mWorkerThreadCount + 1) * (size_t)frameIndex * mSeparateQueueCount + threadIndex * mSeparateQueueCount + mCommandBufferIndexForGraphics;
+	return mCommandBuffers[bufferIndex];
 }
 
 VkCommandBuffer VulkanCBindings::WorkerCommandBuffers::GetThreadComputeCommandBuffer(uint32_t threadIndex, uint32_t frameIndex) const
 {
-	return mCommandBuffers[(size_t)threadIndex * frameIndex * mSeparateQueueCount + mCommandBufferIndexForCompute];
+	size_t bufferIndex = (size_t)(mWorkerThreadCount + 1) * (size_t)frameIndex * mSeparateQueueCount + threadIndex * mSeparateQueueCount + mCommandBufferIndexForCompute;
+	return mCommandBuffers[bufferIndex];
 }
 
 VkCommandBuffer VulkanCBindings::WorkerCommandBuffers::GetThreadTransferCommandBuffer(uint32_t threadIndex, uint32_t frameIndex) const
 {
-	return mCommandBuffers[(size_t)threadIndex * frameIndex * mSeparateQueueCount + mCommandBufferIndexForTransfer];
+	size_t bufferIndex = (size_t)(mWorkerThreadCount + 1) * (size_t)frameIndex * mSeparateQueueCount + threadIndex * mSeparateQueueCount + mCommandBufferIndexForTransfer;
+	return mCommandBuffers[bufferIndex];
 }

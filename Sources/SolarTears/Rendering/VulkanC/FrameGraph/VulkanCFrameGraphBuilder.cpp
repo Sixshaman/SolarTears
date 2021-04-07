@@ -494,11 +494,15 @@ void VulkanCBindings::FrameGraphBuilder::Build(const DeviceQueues* deviceQueues,
 		swapchainImages[i] = swapChain->GetSwapchainImage(i);
 	}
 
-	std::vector<std::unordered_set<size_t>> adjacencyList;
+	std::unordered_map<RenderPassName, std::unordered_set<RenderPassName>> adjacencyList;
 	BuildAdjacencyList(adjacencyList);
-	SortRenderPasses(adjacencyList);
 
-	BuildQueueAffinities(deviceQueues, swapChain);
+	std::vector<RenderPassName> sortedPassNames;
+	SortRenderPassesTopological(adjacencyList, sortedPassNames);
+	SortRenderPassesDependency(adjacencyList, sortedPassNames);
+	mRenderPassNames = std::move(sortedPassNames);
+
+	BuildDependencyLevels(deviceQueues, swapChain);
 
 	ValidateSubresourceLinks();
 	ValidateSubresourceQueues();
@@ -515,92 +519,111 @@ void VulkanCBindings::FrameGraphBuilder::Build(const DeviceQueues* deviceQueues,
 	BarrierImages(deviceQueues, workerCommandBuffers, defaultQueueIndex);
 }
 
-void VulkanCBindings::FrameGraphBuilder::BuildAdjacencyList(std::vector<std::unordered_set<size_t>>& adjacencyList)
+void VulkanCBindings::FrameGraphBuilder::BuildAdjacencyList(std::unordered_map<RenderPassName, std::unordered_set<RenderPassName>>& adjacencyList)
 {
 	adjacencyList.clear();
 
-	for(size_t i = 0; i < mRenderPassNames.size(); i++)
+	for(const RenderPassName& renderPassName: mRenderPassNames)
 	{
-		adjacencyList.emplace_back();
-
-		for(size_t j = 0; j < mRenderPassNames.size(); j++)
+		std::unordered_set<RenderPassName> renderPassAdjacentPasses;
+		for(const RenderPassName& otherPassName: mRenderPassNames)
 		{
-			if(i == j)
+			if(renderPassName == otherPassName)
 			{
 				continue;
 			}
 
-			if(PassesIntersect(mRenderPassNames[i], mRenderPassNames[j]))
+			if(PassesIntersect(renderPassName, otherPassName))
 			{
-				adjacencyList[i].insert(j);
+				renderPassAdjacentPasses.insert(otherPassName);
+			}
+		}
+
+		adjacencyList[renderPassName] = std::move(renderPassAdjacentPasses);
+	}
+}
+
+void VulkanCBindings::FrameGraphBuilder::SortRenderPassesTopological(const std::unordered_map<RenderPassName, std::unordered_set<RenderPassName>>& adjacencyList, std::vector<RenderPassName>& unsortedPasses)
+{
+	unsortedPasses.clear();
+	unsortedPasses.reserve(mRenderPassNames.size());
+
+	std::unordered_set<RenderPassName> visited;
+	std::unordered_set<RenderPassName> onStack;
+
+	for(const RenderPassName& renderPassName: mRenderPassNames)
+	{
+		TopologicalSortNode(adjacencyList, visited, onStack, renderPassName, unsortedPasses);
+	}
+
+	for(size_t i = 0; i < unsortedPasses.size() / 2; i++) //Reverse the order
+	{
+		std::swap(unsortedPasses[i], unsortedPasses[unsortedPasses.size() - i - 1]);
+	}
+}
+
+void VulkanCBindings::FrameGraphBuilder::SortRenderPassesDependency(const std::unordered_map<RenderPassName, std::unordered_set<RenderPassName>>& adjacencyList, std::vector<RenderPassName>& topologicallySortedPasses)
+{
+	mRenderPassDependencyLevels.clear();
+
+	for(const RenderPassName& renderPassName: topologicallySortedPasses)
+	{
+		mRenderPassDependencyLevels[renderPassName] = 0;
+	}
+
+	for(const RenderPassName& renderPassName: topologicallySortedPasses)
+	{
+		uint32_t& mainPassDependencyLevel = mRenderPassDependencyLevels[renderPassName];
+
+		const auto& adjacentPassNames = adjacencyList.at(renderPassName);
+		for(const RenderPassName& adjacentPassName: adjacentPassNames)
+		{
+			uint32_t& adjacentPassDependencyLevel = mRenderPassDependencyLevels[adjacentPassName];
+
+			if(adjacentPassDependencyLevel < mainPassDependencyLevel + 1)
+			{
+				adjacentPassDependencyLevel = mainPassDependencyLevel + 1;
 			}
 		}
 	}
+
+	std::stable_sort(topologicallySortedPasses.begin(), topologicallySortedPasses.end(), [this](const RenderPassName& left, const RenderPassName& right)
+	{
+		return mRenderPassDependencyLevels[left] < mRenderPassDependencyLevels[right];
+	});
 }
 
-void VulkanCBindings::FrameGraphBuilder::SortRenderPasses(const std::vector<std::unordered_set<size_t>>& adjacencyList)
+void VulkanCBindings::FrameGraphBuilder::BuildDependencyLevels(const DeviceQueues* deviceQueues, const SwapChain* swapChain)
 {
-	std::vector<size_t> sortedPassIndices;
+	mGraphToBuild->mGraphicsPassSpans.clear();
 
-	std::vector<uint_fast8_t> visited(mRenderPassNames.size(), false);
-	std::vector<uint_fast8_t> onStack(mRenderPassNames.size(), false);
-
+	uint32_t currentDependencyLevel = 0;
+	mGraphToBuild->mGraphicsPassSpans.push_back(FrameGraph::DependencyLevelSpan{.DependencyLevelBegin = 0, .DependencyLevelEnd = 0});
 	for(size_t passIndex = 0; passIndex < mRenderPassNames.size(); passIndex++)
 	{
-		TopologicalSortNode(adjacencyList, visited, onStack, passIndex, sortedPassIndices);
+		uint32_t dependencyLevel = mRenderPassDependencyLevels[mRenderPassNames[passIndex]];
+		if(currentDependencyLevel != dependencyLevel)
+		{
+			mGraphToBuild->mGraphicsPassSpans.push_back(FrameGraph::DependencyLevelSpan{.DependencyLevelBegin = dependencyLevel, .DependencyLevelEnd = dependencyLevel + 1});
+			currentDependencyLevel = dependencyLevel;
+		}
+		else
+		{
+			mGraphToBuild->mGraphicsPassSpans.back().DependencyLevelEnd++;
+		}
 	}
 
-	std::vector<RenderPassName> sortedRenderPassNames(mRenderPassNames.size());
-	for(size_t i = 0; i < mRenderPassNames.size(); i++)
-	{
-		sortedRenderPassNames[mRenderPassNames.size() - i - 1] = mRenderPassNames[sortedPassIndices[i]];
-	}
+	mGraphToBuild->mFrameRecordedGraphicsCommandBuffers.resize(mGraphToBuild->mGraphicsPassSpans.size());
 
-	mRenderPassNames = std::move(sortedRenderPassNames);
-
-	mRenderPassIndices.clear();
-	for(uint32_t i = 0; i < mRenderPassNames.size(); i++)
-	{
-		mRenderPassIndices[mRenderPassNames[i]] = i;
-	}
-}
-
-void VulkanCBindings::FrameGraphBuilder::BuildQueueAffinities(const DeviceQueues* deviceQueues, const SwapChain* swapChain)
-{
-	mGraphToBuild->mGraphicsPassCount = 0;
-	mGraphToBuild->mComputePassCount  = 0;
-
-	//Simple strategy: all compute passes in the end are executed on compute queue
-	//ACTUAL async compute is very dependent on the frame graph structure and requires much more precise resource management
+	//The loop will wrap around 0
 	size_t renderPassNameIndex = mRenderPassNames.size() - 1;
 	while(renderPassNameIndex < mRenderPassNames.size())
 	{
-		//Async compute
+		//Graphics queue only for now
+		//Async compute passes should be in the end of the frame. BUT! They should be executed AT THE START of THE PREVIOUS frame. Need to reorder stuff for that
 		RenderPassName renderPassName = mRenderPassNames[renderPassNameIndex];
-		if(mRenderPassTypes[renderPassName] != RenderPassType::COMPUTE)
-		{
-			break;
-		}
-
-		mRenderPassQueueFamilies[renderPassName] = deviceQueues->GetComputeQueueFamilyIndex();
-
-		mGraphToBuild->mComputePassCount++;
-		renderPassNameIndex--;
-	}
-
-	//Btw: the loop will wrap around 0
-	while(renderPassNameIndex < mRenderPassNames.size())
-	{
-		//Non-async compute/transfer, graphics
-		RenderPassName renderPassName = mRenderPassNames[renderPassNameIndex];
-		if(mRenderPassTypes[renderPassName] != RenderPassType::GRAPHICS && mRenderPassTypes[renderPassName] != RenderPassType::COMPUTE && mRenderPassTypes[renderPassName] != RenderPassType::TRANSFER)
-		{
-			break;
-		}
 
 		mRenderPassQueueFamilies[renderPassName] = deviceQueues->GetGraphicsQueueFamilyIndex();
-
-		mGraphToBuild->mGraphicsPassCount++;
 		renderPassNameIndex--;
 	}
 
@@ -608,23 +631,24 @@ void VulkanCBindings::FrameGraphBuilder::BuildQueueAffinities(const DeviceQueues
 	mRenderPassQueueFamilies[std::string(PresentPassName)] = swapChain->GetPresentQueueFamilyIndex();
 }
 
-void VulkanCBindings::FrameGraphBuilder::TopologicalSortNode(const std::vector<std::unordered_set<size_t>>& adjacencyList, std::vector<uint_fast8_t>& visited, std::vector<uint_fast8_t>& onStack, size_t passIndex, std::vector<size_t>& sortedPassIndices)
+void VulkanCBindings::FrameGraphBuilder::TopologicalSortNode(const std::unordered_map<RenderPassName, std::unordered_set<RenderPassName>>& adjacencyList, std::unordered_set<RenderPassName>& visited, std::unordered_set<RenderPassName>& onStack, const RenderPassName& renderPassName, std::vector<RenderPassName>& sortedPassNames)
 {
-	if(visited[passIndex])
+	if(visited.contains(renderPassName))
 	{
 		return;
 	}
 
-	onStack[passIndex] = true;
-	visited[passIndex] = true;
+	onStack.insert(renderPassName);
+	visited.insert(renderPassName);
 
-	for(size_t adjacentPassIndex: adjacencyList[passIndex])
+	const auto& adjacentPassNames = adjacencyList.at(renderPassName);
+	for(const RenderPassName& adjacentPassName: adjacentPassNames)
 	{
-		TopologicalSortNode(adjacencyList, visited, onStack, adjacentPassIndex, sortedPassIndices);
+		TopologicalSortNode(adjacencyList, visited, onStack, adjacentPassName, sortedPassNames);
 	}
 
-	onStack[passIndex] = false;
-	sortedPassIndices.push_back(passIndex);
+	onStack.erase(renderPassName);
+	sortedPassNames.push_back(renderPassName);
 }
 
 void VulkanCBindings::FrameGraphBuilder::ValidateSubresourceLinks()

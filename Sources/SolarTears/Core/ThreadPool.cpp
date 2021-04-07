@@ -38,7 +38,7 @@ ThreadPool::ThreadPool(uint_fast16_t numOfThreads): mQueueMutexes(numOfThreads),
 					threadQueue.pop();
 
 					mQueueMutexes[currentQueue].unlock();	
-					jobParams.JobFunction(threadIndex, jobParams.AdditionalData, (uint32_t)currentQueue);
+					jobParams.JobFunction(threadIndex, jobParams.AdditionalData, jobParams.AdditionalDataSize);
 				}
 				else
 				{
@@ -78,7 +78,7 @@ uint32_t ThreadPool::GetWorkerThreadCount() const
 
 void ThreadPool::EnqueueWork(JobFunc func, void* userData, size_t userDataSize)
 {
-	assert(userDataSize < sizeof(JobParameters) - sizeof(JobFunc));
+	assert(userDataSize < sizeof(JobParameters::AdditionalData));
 
 	size_t currentQueue = (mLastTaskedThread + 1) % mQueueMutexes.size();
 	while(!mQueueMutexes[currentQueue].try_lock())
@@ -86,7 +86,7 @@ void ThreadPool::EnqueueWork(JobFunc func, void* userData, size_t userDataSize)
 		currentQueue = (currentQueue + 1) % mQueueMutexes.size();
 	}
 
-	mThreadQueues[currentQueue].push({func});
+	mThreadQueues[currentQueue].push(JobParameters{.JobFunction = func, .AdditionalDataSize = (uint32_t)userDataSize});
 	memcpy(mThreadQueues[currentQueue].back().AdditionalData, userData, userDataSize);
 
 	mQueueMutexes[currentQueue].unlock();
@@ -94,7 +94,7 @@ void ThreadPool::EnqueueWork(JobFunc func, void* userData, size_t userDataSize)
 
 void ThreadPool::EnqueueWork(JobFunc func, void* userData, size_t userDataSize, WaitableObject* waitableObject)
 {
-	assert(userDataSize < sizeof(JobParameters) - sizeof(JobFunc) - sizeof(JobFunc) - sizeof(WaitableObject*));
+	assert(userDataSize + sizeof(JobFunc) + sizeof(WaitableObject*) < sizeof(JobParameters::AdditionalData));
 
 	waitableObject->RegisterUse();
 
@@ -102,8 +102,8 @@ void ThreadPool::EnqueueWork(JobFunc func, void* userData, size_t userDataSize, 
 	{
 		const uint32_t oldDataSize = dataSize - sizeof(JobFunc) - sizeof(WaitableObject*);
 
-		JobFunc         oldFunc  = (JobFunc)((std::byte*)data + oldDataSize);
-		WaitableObject* waitable = (WaitableObject*)((std::byte*)data + oldDataSize + sizeof(JobFunc));
+		JobFunc         oldFunc  = (*(JobFunc*)((std::byte*)data + oldDataSize));
+		WaitableObject* waitable = (*(WaitableObject**)((std::byte*)data + oldDataSize + sizeof(JobFunc)));
 
 		oldFunc(threadIndex, data, oldDataSize);
 		waitable->Notify();
@@ -114,14 +114,16 @@ void ThreadPool::EnqueueWork(JobFunc func, void* userData, size_t userDataSize, 
 	memcpy(newData + userDataSize,                   &func,           sizeof(JobFunc));
 	memcpy(newData + userDataSize + sizeof(JobFunc), &waitableObject, sizeof(WaitableObject*));
 
+	size_t newDataSize = userDataSize + sizeof(JobFunc) + sizeof(WaitableObject*);
+
 	size_t currentQueue = (mLastTaskedThread + 1) % mQueueMutexes.size();
 	while (!mQueueMutexes[currentQueue].try_lock())
 	{
 		currentQueue = (currentQueue + 1) % mQueueMutexes.size();
 	}
 
-	mThreadQueues[currentQueue].push({funcModified});
-	memcpy(mThreadQueues[currentQueue].back().AdditionalData, newData, userDataSize + sizeof(JobFunc) + sizeof(WaitableObject*));
+	mThreadQueues[currentQueue].push(JobParameters{ .JobFunction = funcModified, .AdditionalDataSize = (uint32_t)newDataSize});
+	memcpy(mThreadQueues[currentQueue].back().AdditionalData, newData, newDataSize);
 
 	mQueueMutexes[currentQueue].unlock();
 }

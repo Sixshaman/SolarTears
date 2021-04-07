@@ -135,7 +135,7 @@ void VulkanCBindings::Renderer::CreateFrameGraph(uint32_t viewportWidth, uint32_
 	FrameGraphConfig frameGraphConfig;
 	frameGraphConfig.SetScreenSize((uint16_t)viewportWidth, (uint16_t)viewportHeight);
 
-	mFrameGraph = std::make_unique<VulkanCBindings::FrameGraph>(mDevice, frameGraphConfig);
+	mFrameGraph = std::make_unique<VulkanCBindings::FrameGraph>(mDevice, mThreadPoolRef->GetWorkerThreadCount(), frameGraphConfig);
 
 	VulkanCBindings::FrameGraphBuilder frameGraphBuilder(mFrameGraph.get(), mScene.get(), &mInstanceParameters, &mDeviceParameters, mShaderManager.get());
 
