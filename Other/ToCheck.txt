@@ -11,6 +11,7 @@
 - Blit pass
 - More fine-grained barriers (no TOP_OF_PIPE/BOTTOM_OF_PIPE)
 - Async compute: Async compute passes should be in the end of the frame. BUT! They should be executed AT THE START of THE PREVIOUS frame. Need to reorder stuff for that
+- Some sort of extension picker for Vulkan?
 - Async compute: cross-queue barriers
 - Scene subobjects
 - String views and vector ranges
