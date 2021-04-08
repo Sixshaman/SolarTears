@@ -91,6 +91,9 @@
     <Filter Include="Input">
       <UniqueIdentifier>{4af8c876-b523-4a5d-b063-c5cb7158234a}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Rendering\D3D12">
+      <UniqueIdentifier>{47b1c20b-c0e2-47ba-a555-de66759bd0e2}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Platform\Win32\Win32Application.hpp">
@@ -267,6 +270,12 @@
     <ClInclude Include="Input\ControlState.hpp">
       <Filter>Input</Filter>
     </ClInclude>
+    <ClInclude Include="Rendering\D3D12\D3D12Renderer.hpp">
+      <Filter>Rendering\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\D3D12\D3D12Utils.hpp">
+      <Filter>Rendering\D3D12</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Platform\Win32\Win32Application.cpp">
@@ -409,6 +418,12 @@
     </ClCompile>
     <ClCompile Include="Core\WaitableObject.cpp">
       <Filter>Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\D3D12\D3D12Renderer.cpp">
+      <Filter>Rendering\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\D3D12\D3D12Utils.cpp">
+      <Filter>Rendering\D3D12</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
