@@ -51,4 +51,6 @@ void KeyboardControl::InitKeyMap()
 	mKeyMap->MapKey(KeyCode::A, ControlCode::MoveLeft);
 	mKeyMap->MapKey(KeyCode::S, ControlCode::MoveBack);
 	mKeyMap->MapKey(KeyCode::D, ControlCode::MoveRight);
+
+	mKeyMap->MapKey(KeyCode::Esc, ControlCode::Pause);
 }

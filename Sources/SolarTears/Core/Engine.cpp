@@ -54,14 +54,21 @@ void Engine::BindToWindow(Window* window)
 
 void Engine::Update()
 {
+	const uint32_t maxLogMessagesPerTick = 10;
+	mLoggerQueue->FeedMessages(mLogger.get(), maxLogMessagesPerTick);
+
+	mInputSystem->UpdateControls();
+	if(mInputSystem->GetKeyStateChange(ControlCode::Pause))
+	{
+		mPaused = !mPaused;
+		mInputSystem->SetPaused(mPaused);
+	}
+
 	if(!mPaused)
 	{
 		mTimer->Tick();
 
-		const uint32_t maxLogMessagesPerTick = 10;
-		mLoggerQueue->FeedMessages(mLogger.get(), maxLogMessagesPerTick);
-
-		mInputSystem->UpdateScene(mTimer->GetDeltaTime());
+		mScene->ProcessControls(mInputSystem.get(), mTimer->GetDeltaTime());
 
 		mScene->UpdateScene();
 		mRenderingSystem->RenderScene();
@@ -128,39 +135,7 @@ void Engine::CreateScene()
 	meshComponent.TextureFilename = L"Test1.dds";
 	sceneObject.SetMeshComponent(meshComponent);
 
-	SceneDescriptionObject& cameraObject = sceneDesc.GetCameraSceneObject();
-	
-	SceneDescriptionObject::InputComponent cameraInputComponent;
-	std::fill(cameraInputComponent.KeyPressedCallbacks, cameraInputComponent.KeyPressedCallbacks + (uint8_t)ControlCode::Count, nullptr);
-	cameraInputComponent.AxisMoveCallback1 = nullptr;
-	cameraInputComponent.AxisMoveCallback3 = nullptr;
-
-	cameraInputComponent.KeyPressedCallbacks[(uint8_t)ControlCode::MoveForward] = [](InputControlLocation* location, float dt)
-	{
-		location->Walk(10.0f * dt);
-	};
-	cameraInputComponent.KeyPressedCallbacks[(uint8_t)ControlCode::MoveBack] = [](InputControlLocation* location, float dt)
-	{
-		location->Walk(-10.0f * dt);
-	};
-	cameraInputComponent.KeyPressedCallbacks[(uint8_t)ControlCode::MoveLeft] = [](InputControlLocation* location, float dt)
-	{
-		location->Strafe(-10.0f * dt);
-	};
-	cameraInputComponent.KeyPressedCallbacks[(uint8_t)ControlCode::MoveRight] = [](InputControlLocation* location, float dt)
-	{
-		location->Strafe(10.0f * dt);
-	};
-	cameraInputComponent.AxisMoveCallback2 = [](InputControlLocation* location, float dx, float dy, float dt)
-	{
-		location->Pitch(-dy * dt);
-		location->Rotate(DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f), dx * dt);
-	};
-	 
-	cameraObject.SetInputComponent(cameraInputComponent);
-
 	mRenderingSystem->InitScene(&sceneDesc);
-	mInputSystem->InitScene(&sceneDesc);
 
 	sceneDesc.BuildScene(mScene.get());
 }

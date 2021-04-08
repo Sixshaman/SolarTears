@@ -34,6 +34,8 @@ public:
 	uint32_t GetWidth()  const;
 	uint32_t GetHeight() const;
 
+	bool IsCursorVisible() const;
+
 	void SetCursorVisible(bool cursorVisible);
 	void CenterCursor();
 
@@ -70,6 +72,7 @@ private:
 
 	bool mResizingFlag;
 	bool mSetCursorPosFlag;
+	bool mCursorVisible;
 
 	ResizeStartedCallback  mResizeStartedCallback;
 	ResizeFinishedCallback mResizeFinishedCallback;

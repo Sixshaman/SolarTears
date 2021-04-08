@@ -88,7 +88,6 @@ void SceneDescription::BuildScene(Scene* scene)
 		sceneObject.Location.Scale = mSceneObjects[i].GetScale();
 		
 		sceneObject.RenderableHandle = mSceneEntityMeshes[mSceneObjects[i].GetEntityId()];
-		sceneObject.InputHandle      = mSceneInputControls[mSceneObjects[i].GetEntityId()];
 
 		sceneObject.DirtyFlag = true;
 
@@ -99,7 +98,6 @@ void SceneDescription::BuildScene(Scene* scene)
 	scene->mCamera.SetProjectionParameters(mCameraVerticalFov, (float)mCameraViewportWidth / (float)mCameraViewportHeight, 0.01f, 100.0f);
 
 	scene->mRenderableComponentRef = mRenderableSceneRef;
-	scene->mInputComponentRef      = mInputSceneRef;
 }
 
 void SceneDescription::BuildRenderableComponent(RenderableSceneBuilderBase* renderableSceneBuilder)
@@ -136,51 +134,4 @@ void SceneDescription::BuildRenderableComponent(RenderableSceneBuilderBase* rend
 void SceneDescription::BindRenderableComponent(RenderableSceneBase* renderableScene)
 {
 	mRenderableSceneRef = renderableScene;
-}
-
-void SceneDescription::BuildInputComponent(InputSceneBuilder* inputSceneBuilder)
-{
-	for(size_t i = 0; i < mSceneObjects.size(); i++)
-	{
-		SceneDescriptionObject::InputComponent* inputComponent = mSceneObjects[i].GetInputComponent();
-		if(inputComponent != nullptr)
-		{
-			SceneObjectLocation objectLocation;
-
-			DirectX::XMStoreFloat3(&objectLocation.Position,           mSceneObjects[i].GetPosition());
-			DirectX::XMStoreFloat4(&objectLocation.RotationQuaternion, mSceneObjects[i].GetRotation());
-			objectLocation.Scale = mSceneObjects[i].GetScale();
-
-			InputSceneControlHandle inputHandle = inputSceneBuilder->AddInputObject(objectLocation);
-			for(uint8_t key = 0; key < (uint8_t)(ControlCode::Count); key++)
-			{
-				if(inputComponent->KeyPressedCallbacks[key] != nullptr)
-				{
-					inputSceneBuilder->SetInputObjectKeyCallback(inputHandle, (ControlCode)(key), inputComponent->KeyPressedCallbacks[key]);
-				}
-			}
-
-			if(inputComponent->AxisMoveCallback1 != nullptr)
-			{
-				inputSceneBuilder->SetInputObjectAxis1Callback(inputHandle, inputComponent->AxisMoveCallback1);
-			}
-
-			if(inputComponent->AxisMoveCallback2 != nullptr)
-			{
-				inputSceneBuilder->SetInputObjectAxis2Callback(inputHandle, inputComponent->AxisMoveCallback2);
-			}
-
-			if(inputComponent->AxisMoveCallback3 != nullptr)
-			{
-				inputSceneBuilder->SetInputObjectAxis3Callback(inputHandle, inputComponent->AxisMoveCallback3);
-			}
-
-			mSceneInputControls[mSceneObjects[i].GetEntityId()] = inputHandle;
-		}
-	}
-}
-
-void SceneDescription::BindInputComponent(InputScene* inputScene)
-{
-	mInputSceneRef = inputScene;
 }

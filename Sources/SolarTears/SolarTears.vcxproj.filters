@@ -240,12 +240,6 @@
     <ClInclude Include="Input\ControlCodes.hpp">
       <Filter>Input</Filter>
     </ClInclude>
-    <ClInclude Include="Input\InputSceneMisc.hpp">
-      <Filter>Input</Filter>
-    </ClInclude>
-    <ClInclude Include="Input\InputScene.hpp">
-      <Filter>Input</Filter>
-    </ClInclude>
     <ClInclude Include="Input\KeyboardControl.hpp">
       <Filter>Input</Filter>
     </ClInclude>
@@ -256,12 +250,6 @@
       <Filter>Input</Filter>
     </ClInclude>
     <ClInclude Include="Input\Inputter.hpp">
-      <Filter>Input</Filter>
-    </ClInclude>
-    <ClInclude Include="Input\InputSceneBuilder.hpp">
-      <Filter>Input</Filter>
-    </ClInclude>
-    <ClInclude Include="Input\InputControlLocation.hpp">
       <Filter>Input</Filter>
     </ClInclude>
     <ClInclude Include="Input\MouseControl.hpp">
@@ -275,6 +263,9 @@
     </ClInclude>
     <ClInclude Include="Core\WaitableObject.hpp">
       <Filter>Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Input\ControlState.hpp">
+      <Filter>Input</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -401,9 +392,6 @@
     <ClCompile Include="Core\FPSCounter.cpp">
       <Filter>Core</Filter>
     </ClCompile>
-    <ClCompile Include="Input\InputScene.cpp">
-      <Filter>Input</Filter>
-    </ClCompile>
     <ClCompile Include="Platform\Win32\Win32KeyboardKeyMap.cpp">
       <Filter>Platform\Win32</Filter>
     </ClCompile>
@@ -411,12 +399,6 @@
       <Filter>Input</Filter>
     </ClCompile>
     <ClCompile Include="Input\KeyboardControl.cpp">
-      <Filter>Input</Filter>
-    </ClCompile>
-    <ClCompile Include="Input\InputSceneBuilder.cpp">
-      <Filter>Input</Filter>
-    </ClCompile>
-    <ClCompile Include="Input\InputControlLocation.cpp">
       <Filter>Input</Filter>
     </ClCompile>
     <ClCompile Include="Platform\Win32\Win32MouseKeyMap.cpp">

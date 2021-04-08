@@ -40,11 +40,8 @@
     <ClInclude Include="Core\WaitableObject.hpp" />
     <ClInclude Include="Core\Window.hpp" />
     <ClInclude Include="Input\ControlCodes.hpp" />
-    <ClInclude Include="Input\InputControlLocation.hpp" />
-    <ClInclude Include="Input\InputScene.hpp" />
-    <ClInclude Include="Input\InputSceneBuilder.hpp" />
+    <ClInclude Include="Input\ControlState.hpp" />
     <ClInclude Include="Input\Inputter.hpp" />
-    <ClInclude Include="Input\InputSceneMisc.hpp" />
     <ClInclude Include="Input\KeyboardControl.hpp" />
     <ClInclude Include="Input\KeyboardKeyCodes.hpp" />
     <ClInclude Include="Input\KeyboardKeyMap.hpp" />
@@ -96,9 +93,6 @@
     <ClCompile Include="Core\Timer.cpp" />
     <ClCompile Include="Core\Util.cpp" />
     <ClCompile Include="Core\WaitableObject.cpp" />
-    <ClCompile Include="Input\InputControlLocation.cpp" />
-    <ClCompile Include="Input\InputScene.cpp" />
-    <ClCompile Include="Input\InputSceneBuilder.cpp" />
     <ClCompile Include="Input\Inputter.cpp" />
     <ClCompile Include="Input\KeyboardControl.cpp" />
     <ClCompile Include="Input\MouseControl.cpp" />

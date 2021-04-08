@@ -2,14 +2,13 @@
 
 #include <memory>
 #include "ControlCodes.hpp"
-#include "../../3rd party/DirectXMath/Inc/DirectXMath.h"
+#include "ControlState.hpp"
 
 class Window;
-class SceneDescription;
 class LoggerQueue;
 class KeyboardControl;
 class MouseControl;
-class InputScene;
+class Engine;
 
 class Inputter
 {
@@ -19,21 +18,20 @@ public:
 
 	void AttachToWindow(Window* window);
 
-	bool GetKeyState(ControlCode key);
+	bool GetKeyState(ControlCode key)       const;
+	bool GetKeyStateChange(ControlCode key) const;
 
-	void InitScene(SceneDescription* sceneDescription);
-	void UpdateScene(float dt);
+	DirectX::XMFLOAT2 GetAxis2Delta() const;
+
+	void SetPaused(bool paused);
+
+	void UpdateControls();
 
 private:
 	LoggerQueue* mLoggingBoard;
 
-	std::unique_ptr<InputScene> mScene;
-
 	std::unique_ptr<KeyboardControl> mKeyboardControl;
 	std::unique_ptr<MouseControl>    mMouseControl;
 
-	DirectX::XMFLOAT2 mAxis1Delta;
-	DirectX::XMFLOAT2 mAxis2Delta;
-	DirectX::XMFLOAT2 mAxis3Delta;
-	uint32_t          mInputKeyState;
+	ControlState mCurrentControlState;
 };

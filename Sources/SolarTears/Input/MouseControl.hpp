@@ -21,6 +21,8 @@ public:
 
 	void Reset();
 
+	void SetPaused(bool paused);
+
 private:
 	void InitKeyMap();
 
@@ -35,4 +37,6 @@ private:
 
 	int32_t mPrevMousePosX;
 	int32_t mPrevMousePosY;
+
+	bool mPaused;
 };
