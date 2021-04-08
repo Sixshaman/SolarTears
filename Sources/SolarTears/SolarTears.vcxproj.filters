@@ -94,6 +94,9 @@
     <Filter Include="Rendering\D3D12">
       <UniqueIdentifier>{47b1c20b-c0e2-47ba-a555-de66759bd0e2}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Rendering\D3D12\Scene">
+      <UniqueIdentifier>{a0adac80-abf3-4169-8192-9532c70e2f10}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Platform\Win32\Win32Application.hpp">
@@ -276,6 +279,12 @@
     <ClInclude Include="Rendering\D3D12\D3D12Utils.hpp">
       <Filter>Rendering\D3D12</Filter>
     </ClInclude>
+    <ClInclude Include="Rendering\D3D12\Scene\D3D12SceneBuilder.hpp">
+      <Filter>Rendering\D3D12\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\D3D12\Scene\D3D12Scene.hpp">
+      <Filter>Rendering\D3D12\Scene</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Platform\Win32\Win32Application.cpp">
@@ -425,6 +434,12 @@
     <ClCompile Include="Rendering\D3D12\D3D12Utils.cpp">
       <Filter>Rendering\D3D12</Filter>
     </ClCompile>
+    <ClCompile Include="Rendering\D3D12\Scene\D3D12SceneBuilder.cpp">
+      <Filter>Rendering\D3D12\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\D3D12\Scene\D3D12Scene.cpp">
+      <Filter>Rendering\D3D12\Scene</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="Platform\Win32\Win32Util.inl">
@@ -438,6 +453,9 @@
     </None>
     <None Include="Core\Scene\SceneObjectLocation.hpp">
       <Filter>Core\Scene</Filter>
+    </None>
+    <None Include="Rendering\D3D12\Scene\D3D12SceneBuilder.inl">
+      <Filter>Rendering\D3D12\Scene</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>

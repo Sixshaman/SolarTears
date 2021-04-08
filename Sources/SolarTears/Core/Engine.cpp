@@ -5,6 +5,7 @@
 #include "Scene/Scene.hpp"
 #include "../Input/Inputter.hpp"
 #include "../Rendering/VulkanC/VulkanCRenderer.hpp"
+#include "../Rendering/D3D12/D3D12Renderer.hpp"
 #include "../Logging/LoggerQueue.hpp"
 #include "../Logging/VisualStudioDebugLogger.hpp"
 
@@ -19,7 +20,7 @@ Engine::Engine(): mPaused(false)
 	mFrameCounter = std::make_unique<FrameCounter>();
 	mFPSCounter   = std::make_unique<FPSCounter>();
 
-	mRenderingSystem = std::make_unique<VulkanCBindings::Renderer>(mLoggerQueue.get(), mFrameCounter.get(), mThreadPool.get());
+	mRenderingSystem = std::make_unique<D3D12::Renderer>(mLoggerQueue.get(), mFrameCounter.get(), mThreadPool.get());
 	mInputSystem     = std::make_unique<Inputter>(mLoggerQueue.get());
 
 	CreateScene();

@@ -12,6 +12,8 @@ class FrameCounter;
 
 namespace D3D12
 {
+	class RenderableScene;
+
 	class Renderer: public ::Renderer
 	{
 	public:
@@ -25,10 +27,18 @@ namespace D3D12
 		void RenderScene()                                 override;
 
 	private:
+		void CreateFactory();
+		void CreateAdapter(IDXGIAdapter4** outAdapter);
+
+		void CreateDevice(IDXGIAdapter4* adapter);
+
+	private:
 		ThreadPool*         mThreadPoolRef;
 		const FrameCounter* mFrameCounterRef;
 
-		wil::com_ptr<IDXGIFactory4> mFactory;
-		wil::com_ptr<ID3D12Device>  mDevice;
+		wil::com_ptr_nothrow<IDXGIFactory4> mFactory;
+		wil::com_ptr_nothrow<ID3D12Device8> mDevice;
+
+		std::unique_ptr<RenderableScene> mScene;
 	};
 }
