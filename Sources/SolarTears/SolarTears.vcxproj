@@ -54,6 +54,8 @@
     <ClInclude Include="Platform\Win32\Win32KeyboardKeyMap.hpp" />
     <ClInclude Include="Platform\Win32\Win32MouseKeyMap.hpp" />
     <ClInclude Include="Platform\Win32\Win32Window.hpp" />
+    <ClInclude Include="Rendering\D3D12\D3D12Renderer.hpp" />
+    <ClInclude Include="Rendering\D3D12\D3D12Utils.hpp" />
     <ClInclude Include="Rendering\RenderableSceneBase.hpp" />
     <ClInclude Include="Rendering\RenderableSceneBuilderBase.hpp" />
     <ClInclude Include="Rendering\RenderableSceneMisc.hpp" />
@@ -104,6 +106,8 @@
     <ClCompile Include="Platform\Win32\Win32KeyboardKeyMap.cpp" />
     <ClCompile Include="Platform\Win32\Win32MouseKeyMap.cpp" />
     <ClCompile Include="Platform\Win32\Win32Window.cpp" />
+    <ClCompile Include="Rendering\D3D12\D3D12Renderer.cpp" />
+    <ClCompile Include="Rendering\D3D12\D3D12Utils.cpp" />
     <ClCompile Include="Rendering\RenderableSceneBase.cpp" />
     <ClCompile Include="Rendering\RenderableSceneBuilderBase.cpp" />
     <ClCompile Include="Rendering\Renderer.cpp" />
