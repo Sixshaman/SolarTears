@@ -3,7 +3,7 @@ std::string ConvertWstringToUTF8(const std::wstring& str)
 	std::string result;
 	int charCount = WideCharToMultiByte(CP_UTF8, WC_COMPOSITECHECK, str.c_str(), -1, nullptr, 0, nullptr, nullptr);
 
-	result.resize(charCount);
+	result.resize(charCount - 1);
 	WideCharToMultiByte(CP_UTF8, WC_COMPOSITECHECK, str.c_str(), -1, result.data(), (int)result.size(), nullptr, nullptr);
 
 	return result;
