@@ -2,7 +2,7 @@
 #include "MouseKeyMap.hpp"
 #include "../Core/Window.hpp"
 
-MouseControl::MouseControl(): mControlState(0), mXDelta(0.0f), mYDelta(0.0f), mWheelDelta(0.0f)
+MouseControl::MouseControl(): mControlState(0), mXDelta(0.0f), mYDelta(0.0f), mWheelDelta(0.0f), mPaused(false)
 {
 }
 
@@ -17,17 +17,33 @@ void MouseControl::AttachToWindow(Window* window)
 	window->RegisterMouseMoveCallback([](Window* window, int mousePosX, int mousePosY, void* userPtr)
 	{
 		MouseControl* that = reinterpret_cast<MouseControl*>(userPtr);
-		that->mXDelta += (float)(mousePosX - that->mPrevMousePosX);
-		that->mYDelta += (float)(mousePosY - that->mPrevMousePosY);
+		if(!that->mPaused)
+		{
+			[[unlikely]]
+			if(window->IsCursorVisible())
+			{
+				window->SetCursorVisible(false);
+			}
 
-		window->CenterCursor();
-		window->GetMousePos(&that->mPrevMousePosX, &that->mPrevMousePosY);
+			that->mXDelta += (float)(mousePosX - that->mPrevMousePosX);
+			that->mYDelta += (float)(mousePosY - that->mPrevMousePosY);
+
+			window->CenterCursor();
+			window->GetMousePos(&that->mPrevMousePosX, &that->mPrevMousePosY);
+		}
+		else
+		{
+			[[unlikely]]
+			if(!window->IsCursorVisible())
+			{
+				window->SetCursorVisible(true);
+			}
+		}
 	});
 
-	window->SetMouseKeyMap(mKeyMap.get());
-
 	window->SetCursorVisible(false);
-	window->CenterCursor();
+
+	window->SetMouseKeyMap(mKeyMap.get());
 
 	window->GetMousePos(&mPrevMousePosX, &mPrevMousePosY);
 }
@@ -56,6 +72,11 @@ void MouseControl::Reset()
 {
 	mXDelta = 0.0f;
 	mYDelta = 0.0f;
+}
+
+void MouseControl::SetPaused(bool paused)
+{
+	mPaused = paused;
 }
 
 void MouseControl::InitKeyMap()

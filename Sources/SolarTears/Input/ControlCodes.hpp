@@ -13,6 +13,8 @@ enum class ControlCode : uint8_t
 	Action2,
 	Action3,
 
+	Pause,
+
 	Count,
 	Nothing = Count,
 };

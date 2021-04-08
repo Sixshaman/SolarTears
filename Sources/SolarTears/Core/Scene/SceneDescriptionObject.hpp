@@ -24,14 +24,6 @@ public:
 		std::wstring                   TextureFilename;
 	};
 
-	struct InputComponent
-	{
-		InputControlPressedCallback KeyPressedCallbacks[(uint8_t)ControlCode::Count];
-		InputAxisMoveCallback       AxisMoveCallback1;
-		InputAxisMoveCallback       AxisMoveCallback2;
-		InputAxisMoveCallback       AxisMoveCallback3;
-	};
-
 public:
 	SceneDescriptionObject(uint64_t entityId);
 	~SceneDescriptionObject();
@@ -53,16 +45,13 @@ public:
 	float GetScale()                const;
 
 	void SetMeshComponent(const MeshComponent& meshComponent);
-	void SetInputComponent(const InputComponent& inputComponent);
 
-	MeshComponent*  GetMeshComponent()  const;
-	InputComponent* GetInputComponent() const;
+	MeshComponent* GetMeshComponent() const;
 
 private:
 	uint64_t mEntityId;
 
 	SceneObjectLocation mLocation;
 
-	std::unique_ptr<MeshComponent>  mMeshComponent;
-	std::unique_ptr<InputComponent> mInputComponent;
+	std::unique_ptr<MeshComponent> mMeshComponent;
 };

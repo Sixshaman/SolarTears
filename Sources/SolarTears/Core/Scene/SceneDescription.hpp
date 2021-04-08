@@ -5,7 +5,6 @@
 #include <unordered_map>
 #include "SceneDescriptionObject.hpp"
 #include "../../Rendering/RenderableSceneBuilderBase.hpp"
-#include "../../Input/InputSceneBuilder.hpp"
 
 class SceneDescription
 {
@@ -29,17 +28,12 @@ public:
 	void BuildRenderableComponent(RenderableSceneBuilderBase* renderableSceneBuilder);
 	void BindRenderableComponent(RenderableSceneBase* renderableScene);
 
-	void BuildInputComponent(InputSceneBuilder* inputSceneBuilder);
-	void BindInputComponent(InputScene* inputScene);
-
 private:
 	std::vector<SceneDescriptionObject> mSceneObjects;
 
 	std::unordered_map<uint64_t, RenderableSceneMeshHandle> mSceneEntityMeshes;
-	std::unordered_map<uint64_t, InputSceneControlHandle>   mSceneInputControls;
 
 	RenderableSceneBase* mRenderableSceneRef;
-	InputScene*          mInputSceneRef;
 
 	size_t mCameraObjectIndex;
 

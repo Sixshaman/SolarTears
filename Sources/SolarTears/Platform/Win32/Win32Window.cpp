@@ -72,9 +72,15 @@ uint32_t Window::GetHeight() const
 	return mWindowHeight;
 }
 
+bool Window::IsCursorVisible() const
+{
+	return mCursorVisible;
+}
+
 void Window::SetCursorVisible(bool cursorVisible)
 {
-	ShowCursor(cursorVisible);
+	mCursorVisible = cursorVisible;
+	while(cursorVisible != (bool)(ShowCursor(cursorVisible) + 1)) {};
 }
 
 void Window::SetMousePos(int32_t x, int32_t y)
@@ -252,6 +258,8 @@ void Window::CreateMainWindow(HINSTANCE hInstance, const std::wstring& title, in
 
 	UpdateWindow(mMainWindowHandle.get());
 	ShowWindow(mMainWindowHandle.get(), SW_SHOW);
+
+	SetCursorVisible(true);
 }
 
 LRESULT Window::WindowProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
