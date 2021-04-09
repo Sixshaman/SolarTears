@@ -68,6 +68,7 @@ void VulkanCBindings::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommand
 				const WorkerCommandBuffers*             CommandBuffers;
 				const FrameGraph*                       FrameGraph;
 				const VulkanCBindings::RenderableScene* Scene;
+				WaitableObject*                         Waitable;
 				uint32_t                                DependencyLevelSpanIndex;
 				uint32_t                                FrameResourceIndex;
 			}
@@ -76,6 +77,7 @@ void VulkanCBindings::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommand
 				.CommandBuffers           = commandBuffers,
 				.FrameGraph               = this,
 				.Scene                    = scene,
+				.Waitable                 = &graphicsPassWriteWaitable,
 				.DependencyLevelSpanIndex = (uint32_t)dependencyLevelSpanIndex,
 				.FrameResourceIndex       = currentFrameResourceIndex
 			};
@@ -93,9 +95,11 @@ void VulkanCBindings::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommand
 				that->BeginCommandBuffer(graphicsCommandBuffer, graphicsCommandPool);
 				that->RecordGraphicsPasses(graphicsCommandBuffer, threadJobData->Scene, threadJobData->DependencyLevelSpanIndex);
 				that->EndCommandBuffer(graphicsCommandBuffer);
+
+				threadJobData->Waitable->NotifyJobFinished();
 			};
 
-			threadPool->EnqueueWork(executePassJob, &jobData, sizeof(JobData), &graphicsPassWriteWaitable);
+			threadPool->EnqueueWork(executePassJob, &jobData, sizeof(JobData));
 		}
 
 		VkCommandBuffer mainGraphicsCommandBuffer = commandBuffers->GetMainThreadGraphicsCommandBuffer(currentFrameResourceIndex);

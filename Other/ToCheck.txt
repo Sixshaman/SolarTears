@@ -27,6 +27,7 @@
 - Infinite projection matrices with reversed depth
 - Separate descriptor sets
 - INSTANCING
+- Real HDR
 - Use std::string_view in most places of frame graph builder
 - VulkanSH.h и VulkanSH.cpp
 - Compare HOST_VISIBLE-only memory with cached DEVICE_LOCAL copy (yes, it influences descriptor sets too!)
@@ -44,6 +45,9 @@
 - Allocators
 - Separate render pass allocators
 - Camera component?
+- Fullscreen
 
 - DX12: Dedicated present queue is good (https://gpuopen.com/performance/)
 - DX12: Use DXC with /Zpr option
+- DX12: DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING
+- DX12: GBV
