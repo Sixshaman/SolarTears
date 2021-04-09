@@ -29,9 +29,6 @@ public:
 
 	void EnqueueWork(JobFunc func, void* userData, size_t userDataSize);
 
-	//The caller is to make sure WaitableObject lives long enough
-	void EnqueueWork(JobFunc func, void* userData, size_t userDataSize, WaitableObject* waitableObject);
-
 private:
 	std::vector<std::thread>               mThreads;
 	std::vector<std::queue<JobParameters>> mThreadQueues;

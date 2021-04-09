@@ -1,6 +1,8 @@
 #pragma once
 
 #include "../Renderer.hpp"
+#include "D3D12SwapChain.hpp"
+#include "D3D12DeviceQueues.hpp"
 #include <d3d12.h>
 #include <dxgi1_6.h>
 #include <unordered_set>
@@ -30,7 +32,11 @@ namespace D3D12
 		void CreateFactory();
 		void CreateAdapter(IDXGIAdapter4** outAdapter);
 
+		void EnableDebugMode();
 		void CreateDevice(IDXGIAdapter4* adapter);
+
+	private:
+		void InitializeSwapchainImages();
 
 	private:
 		ThreadPool*         mThreadPoolRef;
@@ -40,5 +46,8 @@ namespace D3D12
 		wil::com_ptr_nothrow<ID3D12Device8> mDevice;
 
 		std::unique_ptr<RenderableScene> mScene;
+
+		std::unique_ptr<SwapChain>    mSwapChain;
+		std::unique_ptr<DeviceQueues> mDeviceQueues;
 	};
 }
