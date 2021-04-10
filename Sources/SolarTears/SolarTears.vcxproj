@@ -54,6 +54,7 @@
     <ClInclude Include="Platform\Win32\Win32KeyboardKeyMap.hpp" />
     <ClInclude Include="Platform\Win32\Win32MouseKeyMap.hpp" />
     <ClInclude Include="Platform\Win32\Win32Window.hpp" />
+    <ClInclude Include="Rendering\D3D12\D3D12DeviceFeatures.hpp" />
     <ClInclude Include="Rendering\D3D12\D3D12DeviceQueues.hpp" />
     <ClInclude Include="Rendering\D3D12\D3D12Renderer.hpp" />
     <ClInclude Include="Rendering\D3D12\D3D12SwapChain.hpp" />
@@ -110,6 +111,7 @@
     <ClCompile Include="Platform\Win32\Win32KeyboardKeyMap.cpp" />
     <ClCompile Include="Platform\Win32\Win32MouseKeyMap.cpp" />
     <ClCompile Include="Platform\Win32\Win32Window.cpp" />
+    <ClCompile Include="Rendering\D3D12\D3D12DeviceFeatures.cpp" />
     <ClCompile Include="Rendering\D3D12\D3D12DeviceQueues.cpp" />
     <ClCompile Include="Rendering\D3D12\D3D12Renderer.cpp" />
     <ClCompile Include="Rendering\D3D12\D3D12SwapChain.cpp" />

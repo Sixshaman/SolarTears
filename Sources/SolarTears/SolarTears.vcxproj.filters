@@ -291,6 +291,9 @@
     <ClInclude Include="Rendering\D3D12\D3D12DeviceQueues.hpp">
       <Filter>Rendering\D3D12</Filter>
     </ClInclude>
+    <ClInclude Include="Rendering\D3D12\D3D12DeviceFeatures.hpp">
+      <Filter>Rendering\D3D12</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Platform\Win32\Win32Application.cpp">
@@ -450,6 +453,9 @@
       <Filter>Rendering\D3D12</Filter>
     </ClCompile>
     <ClCompile Include="Rendering\D3D12\D3D12DeviceQueues.cpp">
+      <Filter>Rendering\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\D3D12\D3D12DeviceFeatures.cpp">
       <Filter>Rendering\D3D12</Filter>
     </ClCompile>
   </ItemGroup>

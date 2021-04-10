@@ -3,6 +3,7 @@
 #include "../Renderer.hpp"
 #include "D3D12SwapChain.hpp"
 #include "D3D12DeviceQueues.hpp"
+#include "D3D12DeviceFeatures.hpp"
 #include <d3d12.h>
 #include <dxgi1_6.h>
 #include <unordered_set>
@@ -49,5 +50,7 @@ namespace D3D12
 
 		std::unique_ptr<SwapChain>    mSwapChain;
 		std::unique_ptr<DeviceQueues> mDeviceQueues;
+
+		std::unique_ptr<DeviceFeatures> mDeviceFeatures;
 	};
 }
