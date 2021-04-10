@@ -15,6 +15,8 @@ D3D12::Renderer::Renderer(LoggerQueue* loggerQueue, FrameCounter* frameCounter, 
 
 	CreateDevice(adapter.get());
 
+	mDeviceFeatures = std::make_unique<DeviceFeatures>(mDevice.get());
+
 	mDeviceQueues = std::make_unique<DeviceQueues>(mDevice.get());
 	mSwapChain    = std::make_unique<SwapChain>(mLoggingBoard);
 }

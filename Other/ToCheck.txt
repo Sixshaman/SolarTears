@@ -51,3 +51,4 @@
 - DX12: Use DXC with /Zpr option
 - DX12: DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING
 - DX12: GBV
+- DX12: METACOMMANDS! They seem like another world of possibilities.
