@@ -267,9 +267,6 @@
     <ClInclude Include="Platform\Win32\Win32MouseKeyMap.hpp">
       <Filter>Platform\Win32</Filter>
     </ClInclude>
-    <ClInclude Include="Core\WaitableObject.hpp">
-      <Filter>Core</Filter>
-    </ClInclude>
     <ClInclude Include="Input\ControlState.hpp">
       <Filter>Input</Filter>
     </ClInclude>
@@ -433,9 +430,6 @@
     </ClCompile>
     <ClCompile Include="Input\MouseControl.cpp">
       <Filter>Input</Filter>
-    </ClCompile>
-    <ClCompile Include="Core\WaitableObject.cpp">
-      <Filter>Core</Filter>
     </ClCompile>
     <ClCompile Include="Rendering\D3D12\D3D12Renderer.cpp">
       <Filter>Rendering\D3D12</Filter>

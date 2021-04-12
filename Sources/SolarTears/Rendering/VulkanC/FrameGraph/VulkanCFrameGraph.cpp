@@ -4,8 +4,8 @@
 #include "../VulkanCSwapChain.hpp"
 #include "../VulkanCDeviceQueues.hpp"
 #include "../../../Core/ThreadPool.hpp"
-#include "../../../Core/WaitableObject.hpp"
 #include <array>
+#include <latch>
 
 VulkanCBindings::FrameGraph::FrameGraph(VkDevice device, const FrameGraphConfig& frameGraphConfig): mDeviceRef(device)
 {
@@ -60,7 +60,7 @@ void VulkanCBindings::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommand
 		VkSemaphore graphicsSemaphore = mGraphicsToPresentSemaphores[currentFrameResourceIndex];
 		VkFence     graphicsFence     = traverseFence; //Signal the fence after graphics command submission if there are no compute passes afterwards (which is always true for now)
 
-		WaitableObject graphicsPassWriteWaitable((uint32_t)(mGraphicsPassSpans.size() - 1));
+		std::latch graphicsPassLatch((uint32_t)(mGraphicsPassSpans.size() - 1));
 		for(size_t dependencyLevelSpanIndex = 0; dependencyLevelSpanIndex < mGraphicsPassSpans.size() - 1; dependencyLevelSpanIndex++)
 		{
 			struct JobData
@@ -68,7 +68,7 @@ void VulkanCBindings::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommand
 				const WorkerCommandBuffers*             CommandBuffers;
 				const FrameGraph*                       FrameGraph;
 				const VulkanCBindings::RenderableScene* Scene;
-				WaitableObject*                         Waitable;
+				std::latch*                             Waitable;
 				uint32_t                                DependencyLevelSpanIndex;
 				uint32_t                                FrameResourceIndex;
 			}
@@ -77,7 +77,7 @@ void VulkanCBindings::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommand
 				.CommandBuffers           = commandBuffers,
 				.FrameGraph               = this,
 				.Scene                    = scene,
-				.Waitable                 = &graphicsPassWriteWaitable,
+				.Waitable                 = &graphicsPassLatch,
 				.DependencyLevelSpanIndex = (uint32_t)dependencyLevelSpanIndex,
 				.FrameResourceIndex       = currentFrameResourceIndex
 			};
@@ -96,7 +96,7 @@ void VulkanCBindings::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommand
 				that->RecordGraphicsPasses(graphicsCommandBuffer, threadJobData->Scene, threadJobData->DependencyLevelSpanIndex);
 				that->EndCommandBuffer(graphicsCommandBuffer);
 
-				threadJobData->Waitable->NotifyJobFinished();
+				threadJobData->Waitable->count_down();
 			};
 
 			threadPool->EnqueueWork(executePassJob, &jobData, sizeof(JobData));
@@ -109,7 +109,7 @@ void VulkanCBindings::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommand
 		RecordGraphicsPasses(mainGraphicsCommandBuffer, scene, (uint32_t)(mGraphicsPassSpans.size() - 1));
 		EndCommandBuffer(mainGraphicsCommandBuffer);
 
-		graphicsPassWriteWaitable.WaitForAll();
+		graphicsPassLatch.wait();
 
 		for(size_t i = 0; i < mGraphicsPassSpans.size() - 1; i++)
 		{

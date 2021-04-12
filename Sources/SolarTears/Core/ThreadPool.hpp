@@ -5,7 +5,6 @@
 #include <queue>
 #include <mutex>
 #include <condition_variable>
-#include "WaitableObject.hpp"
 
 //Based on https://vorbrodt.blog/2019/02/26/better-code-concurrency/
 class ThreadPool
