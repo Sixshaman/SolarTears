@@ -37,7 +37,6 @@
     <ClInclude Include="Core\ThreadPool.hpp" />
     <ClInclude Include="Core\Timer.hpp" />
     <ClInclude Include="Core\Util.hpp" />
-    <ClInclude Include="Core\WaitableObject.hpp" />
     <ClInclude Include="Core\Window.hpp" />
     <ClInclude Include="Input\ControlCodes.hpp" />
     <ClInclude Include="Input\ControlState.hpp" />
@@ -99,7 +98,6 @@
     <ClCompile Include="Core\ThreadPool.cpp" />
     <ClCompile Include="Core\Timer.cpp" />
     <ClCompile Include="Core\Util.cpp" />
-    <ClCompile Include="Core\WaitableObject.cpp" />
     <ClCompile Include="Input\Inputter.cpp" />
     <ClCompile Include="Input\KeyboardControl.cpp" />
     <ClCompile Include="Input\MouseControl.cpp" />
