@@ -97,6 +97,12 @@
     <Filter Include="Rendering\D3D12\Scene">
       <UniqueIdentifier>{a0adac80-abf3-4169-8192-9532c70e2f10}</UniqueIdentifier>
     </Filter>
+    <Filter Include="3rdParty\DirectXTex">
+      <UniqueIdentifier>{b2bc5b19-8d85-4ab2-bd72-7657ffc4af93}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="3rdParty\DirectXTex\DDSTextureLoader">
+      <UniqueIdentifier>{e1bcf95f-52d2-4a8a-af54-338fc0ad8c2c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Platform\Win32\Win32Application.hpp">
@@ -291,6 +297,9 @@
     <ClInclude Include="Rendering\D3D12\D3D12DeviceFeatures.hpp">
       <Filter>Rendering\D3D12</Filter>
     </ClInclude>
+    <ClInclude Include="..\3rd party\DirectXTex\DDSTextureLoader\DDSTextureLoader12.h">
+      <Filter>3rdParty\DirectXTex\DDSTextureLoader</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Platform\Win32\Win32Application.cpp">
@@ -451,6 +460,9 @@
     </ClCompile>
     <ClCompile Include="Rendering\D3D12\D3D12DeviceFeatures.cpp">
       <Filter>Rendering\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rd party\DirectXTex\DDSTextureLoader\DDSTextureLoader12.cpp">
+      <Filter>3rdParty\DirectXTex\DDSTextureLoader</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

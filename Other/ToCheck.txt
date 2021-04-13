@@ -33,7 +33,8 @@
 - Compare HOST_VISIBLE-only memory with cached DEVICE_LOCAL copy (yes, it influences descriptor sets too!)
 - Anisotropic filtering
 - CHECK GAMMA CORRECTION
-- std::hardware_destructive_interference_size and std::hardware_constructive_interference_size 
+- std::hardware_destructive_interference_size and std::hardware_constructive_interference_size
+- Use std::bit_cast in place of reinterpret_cast in many places
 - Object data updating: memcpy() data for eah object or batch updates for sequentional objects (harder because of alignment)
 - VECTORCALL functions in user code
 - Scene controls abstraction: the perfect way would be to use a class that has std::function bound to each user input event. This way Scene could use it instead of ugly member functions to control camera.
@@ -45,6 +46,7 @@
 - Allocators
 - Separate render pass allocators
 - Camera component?
+- How can I merge some D3D12 and Vulkan classes? Some things like CreateSceneMeshMetadata() can be in base classes and it changes nothing
 - Fullscreen
 
 - DX12: Dedicated present queue is good (https://gpuopen.com/performance/)

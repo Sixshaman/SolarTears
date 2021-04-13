@@ -3,6 +3,7 @@
 #include <d3d12.h>
 #include <vector>
 #include <string>
+#include <wil/com.h>
 #include "../../RenderableSceneBase.hpp"
 #include "../../../Core/FrameCounter.hpp"
 
@@ -38,7 +39,22 @@ namespace D3D12
 		//Created from inside
 		const FrameCounter* mFrameCounterRef;
 
+		uint32_t mGBufferObjectChunkDataSize;
+		uint32_t mGBufferFrameChunkDataSize;
+
 	private:
 		//Created from outside
+		std::vector<MeshSubobjectRange> mSceneMeshes;
+		std::vector<SceneSubobject>     mSceneSubobjects;
+
+		wil::com_ptr_nothrow<ID3D12Resource> mSceneVertexBuffer;
+		wil::com_ptr_nothrow<ID3D12Resource> mSceneIndexBuffer;
+
+		wil::com_ptr_nothrow<ID3D12Resource> mSceneConstantBuffer; //Common buffer for all constant buffer data
+
+		wil::com_ptr_nothrow<ID3D12Heap1> mHeapForBuffers;
+
+		UINT64 mSceneDataConstantObjectBufferOffset;
+		UINT64 mSceneDataConstantFrameBufferOffset;
 	};
 }
