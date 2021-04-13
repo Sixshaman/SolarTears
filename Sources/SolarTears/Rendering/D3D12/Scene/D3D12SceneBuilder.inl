@@ -1,3 +1,4 @@
+#include "D3D12SceneBuilder.hpp"
 constexpr size_t D3D12::RenderableSceneBuilder::GetVertexSize()
 {
 	return sizeof(RenderableSceneVertex);
