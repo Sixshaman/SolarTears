@@ -33,13 +33,13 @@ void VulkanCBindings::RenderableSceneBuilder::BakeSceneFirstPart(const DeviceQue
 	std::vector<std::wstring> sceneTexturesVec;
 	CreateSceneMeshMetadata(sceneTexturesVec);
 
-	VkDeviceSize intermediateBufferOffset = 0;
+	VkDeviceSize intermediateBufferSize = 0;
 
 	//Create buffers for model and uniform data
-	CreateSceneDataBuffers(deviceQueues, &intermediateBufferOffset);
+	intermediateBufferSize = CreateSceneDataBuffers(deviceQueues, intermediateBufferSize);
 
 	//Load texture images
-	LoadTextureImages(sceneTexturesVec, deviceParameters, &intermediateBufferOffset);
+	intermediateBufferSize = LoadTextureImages(sceneTexturesVec, deviceParameters, intermediateBufferSize);
 
 	//Allocate memory for images and buffers
 	AllocateImageMemory(memoryAllocator);
@@ -48,8 +48,7 @@ void VulkanCBindings::RenderableSceneBuilder::BakeSceneFirstPart(const DeviceQue
 	CreateImageViews();
 
 	//Create intermediate buffers
-	VkDeviceSize currentIntermediateBufferSize = intermediateBufferOffset; //The size of current data is the offset to write new data, simple
-	CreateIntermediateBuffer(deviceQueues, memoryAllocator, currentIntermediateBufferSize);
+	CreateIntermediateBuffer(deviceQueues, memoryAllocator, intermediateBufferSize);
 
 	//Fill intermediate buffers
 	FillIntermediateBufferData();
@@ -300,12 +299,15 @@ void VulkanCBindings::RenderableSceneBuilder::CreateSceneMeshMetadata(std::vecto
 	mSceneToBuild->mFrameDataScheduledUpdateIndex = (uint32_t)(-1);
 }
 
-void VulkanCBindings::RenderableSceneBuilder::CreateSceneDataBuffers(const DeviceQueues* deviceQueues, VkDeviceSize* currentIntermediateBufferOffset)
+VkDeviceSize VulkanCBindings::RenderableSceneBuilder::CreateSceneDataBuffers(const DeviceQueues* deviceQueues, VkDeviceSize currentIntermediateBuffeSize)
 {
 	SafeDestroyObject(vkDestroyBuffer, mSceneToBuild->mDeviceRef, mSceneToBuild->mSceneVertexBuffer);
 	SafeDestroyObject(vkDestroyBuffer, mSceneToBuild->mDeviceRef, mSceneToBuild->mSceneIndexBuffer);
 	SafeDestroyObject(vkDestroyBuffer, mSceneToBuild->mDeviceRef, mSceneToBuild->mSceneUniformBuffer);
-		
+
+
+	VkDeviceSize intermediateBufferSize = currentIntermediateBuffeSize;
+
 	std::array bufferQueueFamilies = {deviceQueues->GetGraphicsQueueFamilyIndex()};
 
 	const VkDeviceSize vertexDataSize = mVertexBufferData.size() * sizeof(RenderableSceneVertex);
@@ -324,8 +326,8 @@ void VulkanCBindings::RenderableSceneBuilder::CreateSceneDataBuffers(const Devic
 
 	ThrowIfFailed(vkCreateBuffer(mSceneToBuild->mDeviceRef, &vertexBufferCreateInfo, nullptr, &mSceneToBuild->mSceneVertexBuffer));
 
-	mIntermediateBufferVertexDataOffset = *currentIntermediateBufferOffset;
-	*currentIntermediateBufferOffset    = mIntermediateBufferVertexDataOffset + vertexDataSize;
+	mIntermediateBufferVertexDataOffset = intermediateBufferSize;
+	intermediateBufferSize             += vertexDataSize;
 
 
 	const VkDeviceSize indexDataSize = mIndexBufferData.size() * sizeof(RenderableSceneIndex);
@@ -344,8 +346,8 @@ void VulkanCBindings::RenderableSceneBuilder::CreateSceneDataBuffers(const Devic
 
 	ThrowIfFailed(vkCreateBuffer(mSceneToBuild->mDeviceRef, &indexBufferCreateInfo, nullptr, &mSceneToBuild->mSceneIndexBuffer));
 
-	mIntermediateBufferIndexDataOffset = *currentIntermediateBufferOffset;
-	*currentIntermediateBufferOffset   = mIntermediateBufferIndexDataOffset + indexDataSize;
+	mIntermediateBufferIndexDataOffset = intermediateBufferSize;
+	intermediateBufferSize            += indexDataSize;
 
 
 	VkDeviceSize uniformPerObjectDataSize = mSceneToBuild->mScenePerObjectData.size() * mSceneToBuild->mGBufferObjectChunkDataSize * VulkanUtils::InFlightFrameCount;
@@ -367,17 +369,21 @@ void VulkanCBindings::RenderableSceneBuilder::CreateSceneDataBuffers(const Devic
 
 	mSceneToBuild->mSceneDataUniformObjectBufferOffset = 0;
 	mSceneToBuild->mSceneDataUniformFrameBufferOffset  = mSceneToBuild->mSceneDataUniformObjectBufferOffset + uniformPerObjectDataSize;
+
+
+	return intermediateBufferSize;
 }
 
-void VulkanCBindings::RenderableSceneBuilder::LoadTextureImages(const std::vector<std::wstring>& sceneTextures, const DeviceParameters& deviceParameters, VkDeviceSize* currentIntermediateBufferOffset)
+VkDeviceSize VulkanCBindings::RenderableSceneBuilder::LoadTextureImages(const std::vector<std::wstring>& sceneTextures, const DeviceParameters& deviceParameters, VkDeviceSize currentIntermediateBufferSize)
 {
-	mIntermediateBufferTextureDataOffset = *currentIntermediateBufferOffset;
+	VkDeviceSize intermediateBufferSize  = currentIntermediateBufferSize;
+	mIntermediateBufferTextureDataOffset = intermediateBufferSize;
 
 	DDSTextureLoaderVk::SetVkCreateImageFuncPtr(vkCreateImage);
 
 	mTextureData.clear();
 
-	VkDeviceSize currentOffset = *currentIntermediateBufferOffset;
+	VkDeviceSize currentOffset = currentIntermediateBufferSize;
 	for(size_t i = 0; i < sceneTextures.size(); i++)
 	{
 		std::unique_ptr<uint8_t[]>                             texData;
@@ -413,7 +419,7 @@ void VulkanCBindings::RenderableSceneBuilder::LoadTextureImages(const std::vecto
 		}
 	}
 
-	*currentIntermediateBufferOffset = mIntermediateBufferTextureDataOffset + mTextureData.size() * sizeof(uint8_t);
+	return mIntermediateBufferTextureDataOffset + mTextureData.size() * sizeof(uint8_t);
 }
 
 void VulkanCBindings::RenderableSceneBuilder::AllocateImageMemory(const MemoryManager* memoryAllocator)

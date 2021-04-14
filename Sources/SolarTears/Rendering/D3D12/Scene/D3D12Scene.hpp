@@ -47,10 +47,14 @@ namespace D3D12
 		std::vector<MeshSubobjectRange> mSceneMeshes;
 		std::vector<SceneSubobject>     mSceneSubobjects;
 
+		void* mSceneConstantDataBufferPointer; //Constant buffer is persistently mapped
+
 		wil::com_ptr_nothrow<ID3D12Resource> mSceneVertexBuffer;
 		wil::com_ptr_nothrow<ID3D12Resource> mSceneIndexBuffer;
 
 		wil::com_ptr_nothrow<ID3D12Resource> mSceneConstantBuffer; //Common buffer for all constant buffer data
+
+		std::vector<wil::com_ptr_nothrow<ID3D12Resource>> mSceneTextures;
 
 		wil::com_ptr_nothrow<ID3D12Heap> mHeapForGpuBuffers;
 		wil::com_ptr_nothrow<ID3D12Heap> mHeapForCpuVisibleBuffers;

@@ -16,3 +16,6 @@
 [submodule "Sources/3rd party/SPIRV-Reflect"]
 	path = Sources/3rd party/SPIRV-Reflect
 	url = https://github.com/KhronosGroup/SPIRV-Reflect
+[submodule "Sources/3rd party/DirectX-Headers"]
+	path = Sources/3rd party/DirectX-Headers
+	url = https://github.com/microsoft/DirectX-Headers.git

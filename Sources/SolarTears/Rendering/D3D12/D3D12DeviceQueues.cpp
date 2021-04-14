@@ -18,7 +18,7 @@ D3D12::DeviceQueues::DeviceQueues(ID3D12Device* device)
 
 	mGraphicsFenceCompletionEvent = wil::unique_event(CreateEventEx(nullptr, L"Graphics fence wait", 0, EVENT_ALL_ACCESS));
 	mComputeFenceCompletionEvent  = wil::unique_event(CreateEventEx(nullptr, L"Compute fence wait",  0, EVENT_ALL_ACCESS));
-	mCopyFenceCompletionEvent    = wil::unique_event(CreateEventEx(nullptr, L"Copy fence wait",     0, EVENT_ALL_ACCESS));
+	mCopyFenceCompletionEvent     = wil::unique_event(CreateEventEx(nullptr, L"Copy fence wait",     0, EVENT_ALL_ACCESS));
 }
 
 ID3D12CommandQueue* D3D12::DeviceQueues::GraphicsQueueHandle() const

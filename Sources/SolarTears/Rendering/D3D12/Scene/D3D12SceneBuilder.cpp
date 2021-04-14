@@ -15,36 +15,32 @@ D3D12::RenderableSceneBuilder::~RenderableSceneBuilder()
 {
 }
 
-void D3D12::RenderableSceneBuilder::BakeSceneFirstPart(ID3D12Device8* device, const DeviceQueues* deviceQueues, const MemoryManager* memoryAllocator)
+void D3D12::RenderableSceneBuilder::BakeSceneFirstPart(ID3D12Device8* device, const MemoryManager* memoryAllocator)
 {
 	//Create scene subobjects
 	std::vector<std::wstring> sceneTexturesVec;
 	CreateSceneMeshMetadata(sceneTexturesVec);
 
-	UINT64 intermediateBufferOffset = 0;
+	UINT64 intermediateBufferSize = 0;
 
 	//Create buffers for model and uniform data
-	CreateSceneDataBufferDescs();
+	intermediateBufferSize = CreateSceneDataBufferDescs(intermediateBufferSize);
 
 	//Load texture images
-	LoadTextureImages(device, sceneTexturesVec);
+	intermediateBufferSize = LoadTextureImages(device, sceneTexturesVec, intermediateBufferSize);
 
 	//Allocate memory for images and buffers
 	AllocateTexturesHeap(device, memoryAllocator);
 	AllocateBuffersHeap(device, memoryAllocator);
 
-	CreateImageViews();
+	CreateBuffers(device);
+	CreateTextures(device);
 
 	//Create intermediate buffers
-	VkDeviceSize currentIntermediateBufferSize = intermediateBufferOffset; //The size of current data is the offset to write new data, simple
-	CreateIntermediateBuffer(deviceQueues, memoryAllocator, currentIntermediateBufferSize);
+	CreateIntermediateBuffer(device, intermediateBufferSize);
 
 	//Fill intermediate buffers
 	FillIntermediateBufferData();
-
-	CreateDescriptorPool();
-	AllocateDescriptorSets();
-	FillDescriptorSets(shaderManager);
 }
 
 void D3D12::RenderableSceneBuilder::CreateSceneMeshMetadata(std::vector<std::wstring>& sceneTexturesVec)
@@ -93,72 +89,85 @@ void D3D12::RenderableSceneBuilder::CreateSceneMeshMetadata(std::vector<std::wst
 	mSceneToBuild->mFrameDataScheduledUpdateIndex = (uint32_t)(-1);
 }
 
-void D3D12::RenderableSceneBuilder::CreateSceneDataBufferDescs()
+UINT64 D3D12::RenderableSceneBuilder::CreateSceneDataBufferDescs(UINT64 currentIntermediateBufferSize)
 {
+	UINT64 intermediateBufferSize = currentIntermediateBufferSize;
+
+
 	const UINT64 vertexDataSize = mVertexBufferData.size() * sizeof(RenderableSceneVertex);
 
-	D3D12_RESOURCE_DESC1 vertexBufferDesc;
-	vertexBufferDesc.Dimension                       = D3D12_RESOURCE_DIMENSION_BUFFER;
-	vertexBufferDesc.Alignment                       = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
-	vertexBufferDesc.Width                           = vertexDataSize;
-	vertexBufferDesc.Height                          = 1;
-	vertexBufferDesc.DepthOrArraySize                = 1;
-	vertexBufferDesc.MipLevels                       = 1;
-	vertexBufferDesc.Format                          = DXGI_FORMAT_UNKNOWN;
-	vertexBufferDesc.SampleDesc.Count                = 1;
-	vertexBufferDesc.SampleDesc.Quality              = 0;
-	vertexBufferDesc.Layout                          = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-	vertexBufferDesc.Flags                           = D3D12_RESOURCE_FLAG_NONE;
-	vertexBufferDesc.SamplerFeedbackMipRegion.Width  = 1;
-	vertexBufferDesc.SamplerFeedbackMipRegion.Height = 1;
-	vertexBufferDesc.SamplerFeedbackMipRegion.Depth  = 1;
+	mVertexBufferDesc.Dimension                       = D3D12_RESOURCE_DIMENSION_BUFFER;
+	mVertexBufferDesc.Alignment                       = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+	mVertexBufferDesc.Width                           = vertexDataSize;
+	mVertexBufferDesc.Height                          = 1;
+	mVertexBufferDesc.DepthOrArraySize                = 1;
+	mVertexBufferDesc.MipLevels                       = 1;
+	mVertexBufferDesc.Format                          = DXGI_FORMAT_UNKNOWN;
+	mVertexBufferDesc.SampleDesc.Count                = 1;
+	mVertexBufferDesc.SampleDesc.Quality              = 0;
+	mVertexBufferDesc.Layout                          = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	mVertexBufferDesc.Flags                           = D3D12_RESOURCE_FLAG_NONE;
+	mVertexBufferDesc.SamplerFeedbackMipRegion.Width  = 0;
+	mVertexBufferDesc.SamplerFeedbackMipRegion.Height = 0;
+	mVertexBufferDesc.SamplerFeedbackMipRegion.Depth  = 0;
+
+	mIntermediateBufferVertexDataOffset = intermediateBufferSize;
+	intermediateBufferSize             += vertexDataSize;
 
 
 	const UINT64 indexDataSize = mIndexBufferData.size() * sizeof(RenderableSceneIndex);
 
-	D3D12_RESOURCE_DESC1 indexBufferDesc;
-	indexBufferDesc.Dimension                       = D3D12_RESOURCE_DIMENSION_BUFFER;
-	indexBufferDesc.Alignment                       = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
-	indexBufferDesc.Width                           = indexDataSize;
-	indexBufferDesc.Height                          = 1;
-	indexBufferDesc.DepthOrArraySize                = 1;
-	indexBufferDesc.MipLevels                       = 1;
-	indexBufferDesc.Format                          = DXGI_FORMAT_UNKNOWN;
-	indexBufferDesc.SampleDesc.Count                = 1;
-	indexBufferDesc.SampleDesc.Quality              = 0;
-	indexBufferDesc.Layout                          = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-	indexBufferDesc.Flags                           = D3D12_RESOURCE_FLAG_NONE;
-	indexBufferDesc.SamplerFeedbackMipRegion.Width  = 1;
-	indexBufferDesc.SamplerFeedbackMipRegion.Height = 1;
-	indexBufferDesc.SamplerFeedbackMipRegion.Depth  = 1;
+	mIndexBufferDesc.Dimension                       = D3D12_RESOURCE_DIMENSION_BUFFER;
+	mIndexBufferDesc.Alignment                       = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+	mIndexBufferDesc.Width                           = indexDataSize;
+	mIndexBufferDesc.Height                          = 1;
+	mIndexBufferDesc.DepthOrArraySize                = 1;
+	mIndexBufferDesc.MipLevels                       = 1;
+	mIndexBufferDesc.Format                          = DXGI_FORMAT_UNKNOWN;
+	mIndexBufferDesc.SampleDesc.Count                = 1;
+	mIndexBufferDesc.SampleDesc.Quality              = 0;
+	mIndexBufferDesc.Layout                          = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	mIndexBufferDesc.Flags                           = D3D12_RESOURCE_FLAG_NONE;
+	mIndexBufferDesc.SamplerFeedbackMipRegion.Width  = 1;
+	mIndexBufferDesc.SamplerFeedbackMipRegion.Height = 1;
+	mIndexBufferDesc.SamplerFeedbackMipRegion.Depth  = 1;
+
+	mIntermediateBufferIndexDataOffset = intermediateBufferSize;
+	intermediateBufferSize            += indexDataSize;
 
 
 	const UINT64 constantPerObjectDataSize = mSceneToBuild->mScenePerObjectData.size() * mSceneToBuild->mGBufferObjectChunkDataSize * D3D12Utils::InFlightFrameCount;
 	const UINT64 constantPerFrameDataSize  = mSceneToBuild->mGBufferFrameChunkDataSize * D3D12Utils::InFlightFrameCount;
 
-	D3D12_RESOURCE_DESC1 constantBufferDesc;
-	constantBufferDesc.Dimension                       = D3D12_RESOURCE_DIMENSION_BUFFER;
-	constantBufferDesc.Alignment                       = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
-	constantBufferDesc.Width                           = constantPerObjectDataSize + constantPerFrameDataSize;
-	constantBufferDesc.Height                          = 1;
-	constantBufferDesc.DepthOrArraySize                = 1;
-	constantBufferDesc.MipLevels                       = 1;
-	constantBufferDesc.Format                          = DXGI_FORMAT_UNKNOWN;
-	constantBufferDesc.SampleDesc.Count                = 1;
-	constantBufferDesc.SampleDesc.Quality              = 0;
-	constantBufferDesc.Layout                          = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-	constantBufferDesc.Flags                           = D3D12_RESOURCE_FLAG_NONE;
-	constantBufferDesc.SamplerFeedbackMipRegion.Width  = 1;
-	constantBufferDesc.SamplerFeedbackMipRegion.Height = 1;
-	constantBufferDesc.SamplerFeedbackMipRegion.Depth  = 1;
+	mConstantBufferDesc.Dimension                       = D3D12_RESOURCE_DIMENSION_BUFFER;
+	mConstantBufferDesc.Alignment                       = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+	mConstantBufferDesc.Width                           = constantPerObjectDataSize + constantPerFrameDataSize;
+	mConstantBufferDesc.Height                          = 1;
+	mConstantBufferDesc.DepthOrArraySize                = 1;
+	mConstantBufferDesc.MipLevels                       = 1;
+	mConstantBufferDesc.Format                          = DXGI_FORMAT_UNKNOWN;
+	mConstantBufferDesc.SampleDesc.Count                = 1;
+	mConstantBufferDesc.SampleDesc.Quality              = 0;
+	mConstantBufferDesc.Layout                          = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	mConstantBufferDesc.Flags                           = D3D12_RESOURCE_FLAG_NONE;
+	mConstantBufferDesc.SamplerFeedbackMipRegion.Width  = 1;
+	mConstantBufferDesc.SamplerFeedbackMipRegion.Height = 1;
+	mConstantBufferDesc.SamplerFeedbackMipRegion.Depth  = 1;
 
 	mSceneToBuild->mSceneDataConstantObjectBufferOffset = 0;
 	mSceneToBuild->mSceneDataConstantFrameBufferOffset = mSceneToBuild->mSceneDataConstantObjectBufferOffset + constantPerObjectDataSize;
+
+	return intermediateBufferSize;
 }
 
-void D3D12::RenderableSceneBuilder::LoadTextureImages(ID3D12Device* device, const std::vector<std::wstring>& sceneTextures)
+UINT64 D3D12::RenderableSceneBuilder::LoadTextureImages(ID3D12Device8* device, const std::vector<std::wstring>& sceneTextures, UINT64 currentIntermediateBufferSize)
 {
+	UINT64 intermediateBufferSize = currentIntermediateBufferSize;
+	mIntermediateBufferTextureDataOffset = intermediateBufferSize;
+
 	mTextureData.clear();
+	mSceneTextureDescs.clear();
+
 	for (size_t i = 0; i < sceneTextures.size(); i++)
 	{
 		std::unique_ptr<uint8_t[]>          textureData;
@@ -180,11 +189,11 @@ void D3D12::RenderableSceneBuilder::LoadTextureImages(ID3D12Device* device, cons
 		texDesc1.SampleDesc                      = texDesc.SampleDesc;
 		texDesc1.Layout                          = texDesc.Layout;
 		texDesc1.Flags                           = texDesc.Flags;
-		texDesc1.SamplerFeedbackMipRegion.Width  = 1;
-		texDesc1.SamplerFeedbackMipRegion.Height = 1;
-		texDesc1.SamplerFeedbackMipRegion.Depth  = 1;
+		texDesc1.SamplerFeedbackMipRegion.Width  = 0;
+		texDesc1.SamplerFeedbackMipRegion.Height = 0;
+		texDesc1.SamplerFeedbackMipRegion.Depth  = 0;
 
-		mTextureDescs.push_back(texDesc1);
+		mSceneTextureDescs.push_back(texDesc1);
 
 		texCommited.reset();
 
@@ -193,16 +202,14 @@ void D3D12::RenderableSceneBuilder::LoadTextureImages(ID3D12Device* device, cons
 		std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> footprints(subresources.size());
 		std::vector<UINT>                               footprintHeights(subresources.size());
 		std::vector<UINT64>                             footprintByteWidths(subresources.size());
-		device->GetCopyableFootprints(&texDesc, 0, subresources.size(), 0, footprints.data(), footprintHeights.data(), footprintByteWidths.data(), &textureByteSize);
+		device->GetCopyableFootprints1(&texDesc1, 0, (UINT)subresources.size(), intermediateBufferSize, footprints.data(), footprintHeights.data(), footprintByteWidths.data(), &textureByteSize);
+
+		intermediateBufferSize += textureByteSize;
 
 		size_t currentTextureOffset = mTextureData.size();
 		mTextureData.resize(mTextureData.size() + textureByteSize);
 		for(size_t j = 0; j < subresources.size(); j++)
 		{
-			D3D12_PLACED_SUBRESOURCE_FOOTPRINT offsetedFootprint;
-			offsetedFootprint.Offset    = currentTextureOffset + footprints[j].Offset;
-			offsetedFootprint.Footprint = footprints[j].Footprint;
-
 			//Mips are 256 byte aligned on a per-row basis
 			if(footprintByteWidths[j] != footprints[j].Footprint.RowPitch)
 			{
@@ -222,6 +229,8 @@ void D3D12::RenderableSceneBuilder::LoadTextureImages(ID3D12Device* device, cons
 			}
 		}
 	}
+
+	return intermediateBufferSize;
 }
 
 void D3D12::RenderableSceneBuilder::AllocateBuffersHeap(ID3D12Device8* device, const MemoryManager* memoryAllocator)
@@ -229,31 +238,126 @@ void D3D12::RenderableSceneBuilder::AllocateBuffersHeap(ID3D12Device8* device, c
 	mSceneToBuild->mHeapForGpuBuffers.reset();
 	mSceneToBuild->mHeapForCpuVisibleBuffers.reset();
 
-	std::vector gpuBufferDescs = {mVertexBufferDesc, mIndexBufferDesc};
+	std::vector gpuBufferDescs          = {mVertexBufferDesc,        mIndexBufferDesc};
+	std::vector gpuBufferOffsetPointers = {&mVertexBufferHeapOffset, &mIndexBufferHeapOffset};
+	
+	assert(gpuBufferDescs.size() == gpuBufferOffsetPointers.size()); //Just in case I add a new one and forget to add the other one
 
 	std::vector<UINT64> gpuBufferOffsets;
 	memoryAllocator->AllocateBuffersMemory(device, gpuBufferDescs, MemoryManager::BufferAllocationType::GPU_LOCAL, gpuBufferOffsets, mSceneToBuild->mHeapForGpuBuffers.put());
 
+	for(size_t i = 0; i < gpuBufferOffsets.size(); i++)
+	{
+		*gpuBufferOffsetPointers[i] = gpuBufferOffsets[i];
+	}
 
-	std::vector hostVisibleBufferDescs = {mConstantBufferDesc};
+
+	std::vector cpuVisibleBufferDescs          = {mConstantBufferDesc};
+	std::vector cpuVisibleBufferOffsetPointers = {&mConstantBufferHeapOffset};
 
 	std::vector<UINT64> cpuVisibleBufferOffsets;
-	memoryAllocator->AllocateBuffersMemory(device, hostVisibleBufferDescs, MemoryManager::BufferAllocationType::CPU_VISIBLE, cpuVisibleBufferOffsets, mSceneToBuild->mHeapForCpuVisibleBuffers.put());
-}
+	memoryAllocator->AllocateBuffersMemory(device, cpuVisibleBufferDescs, MemoryManager::BufferAllocationType::CPU_VISIBLE, cpuVisibleBufferOffsets, mSceneToBuild->mHeapForCpuVisibleBuffers.put());
 
-void D3D12::RenderableSceneBuilder::CreateTextures(ID3D12Device8* device, const std::vector<D3D12_RESOURCE_DESC1>& textureDescs)
-{
-	for(const D3D12_RESOURCE_DESC1& textureDesc: textureDescs)
+	for(size_t i = 0; i < cpuVisibleBufferOffsets.size(); i++)
 	{
-		THROW_IF_FAILED(device->CreatePlacedResource1(mSceneToBuild->mHeapForTextures, ))
+		*cpuVisibleBufferOffsetPointers[i] = cpuVisibleBufferOffsets[i];
 	}
 }
 
-void D3D12::RenderableSceneBuilder::AllocateTexturesHeap(ID3D12Device8* device, const MemoryManager* memoryAllocator, std::vector<D3D12_RESOURCE_DESC1>& outTextureDescs)
+void D3D12::RenderableSceneBuilder::AllocateTexturesHeap(ID3D12Device8* device, const MemoryManager* memoryAllocator)
 {
-	outTextureDescs.clear();
+	mSceneTextureHeapOffsets.clear();
 	mSceneToBuild->mHeapForTextures.reset();
 
-	std::vector<UINT64> textureHeapOffsets;
-	memoryAllocator->AllocateTextureMemory(device, outTextureDescs, textureHeapOffsets, mSceneToBuild->mHeapForTextures.put());
+	memoryAllocator->AllocateTextureMemory(device, mSceneTextureDescs, mSceneTextureHeapOffsets, mSceneToBuild->mHeapForTextures.put());
+}
+
+void D3D12::RenderableSceneBuilder::CreateTextures(ID3D12Device8* device)
+{
+	assert(mSceneTextureDescs.size() == mSceneTextureHeapOffsets.size());
+
+	mSceneToBuild->mSceneTextures.reserve(mSceneTextureDescs.size());
+	for(size_t i = 0; i < mSceneTextureDescs.size(); i++)
+	{
+		mSceneToBuild->mSceneTextures.emplace_back();
+		THROW_IF_FAILED(device->CreatePlacedResource1(mSceneToBuild->mHeapForTextures.get(), mSceneTextureHeapOffsets[i], &mSceneTextureDescs[i], D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, nullptr, IID_PPV_ARGS(mSceneToBuild->mSceneTextures.back().put())));
+	}
+}
+
+void D3D12::RenderableSceneBuilder::CreateBuffers(ID3D12Device8* device)
+{
+	std::array gpuBufferPointers    = {mSceneToBuild->mSceneVertexBuffer.put(),         mSceneToBuild->mSceneIndexBuffer.put()};
+	std::array gpuBufferDescs       = {mVertexBufferDesc,                               mIndexBufferDesc};
+	std::array gpuBufferHeapOffsets = {mVertexBufferHeapOffset,                         mIndexBufferHeapOffset};
+	std::array gpuBufferStates      = {D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, D3D12_RESOURCE_STATE_INDEX_BUFFER};
+	for (size_t i = 0; i < gpuBufferPointers.size(); i++)
+	{
+		THROW_IF_FAILED(device->CreatePlacedResource1(mSceneToBuild->mHeapForGpuBuffers.get(), gpuBufferHeapOffsets[i], &gpuBufferDescs[i], gpuBufferStates[i], nullptr, IID_PPV_ARGS(gpuBufferPointers[i])));
+	}
+
+
+	std::array cpuVisibleBufferPointers    = {mSceneToBuild->mSceneConstantBuffer.put()};
+	std::array cpuVisibleBufferDescs       = {mConstantBufferDesc};
+	std::array cpuVisibleBufferHeapOffsets = {mConstantBufferHeapOffset};
+	std::array cpuVisibleBufferStates      = {D3D12_RESOURCE_STATE_GENERIC_READ};
+	for (size_t i = 0; i < cpuVisibleBufferPointers.size(); i++)
+	{
+		THROW_IF_FAILED(device->CreatePlacedResource1(mSceneToBuild->mHeapForCpuVisibleBuffers.get(), cpuVisibleBufferHeapOffsets[i], &cpuVisibleBufferDescs[i], cpuVisibleBufferStates[i], nullptr, IID_PPV_ARGS(cpuVisibleBufferPointers[i])));
+	}
+
+	
+	D3D12_RANGE readRange;
+	readRange.Begin = 0;
+	readRange.End   = 0;
+	THROW_IF_FAILED(mSceneToBuild->mSceneConstantBuffer->Map(0, &readRange, &mSceneToBuild->mSceneConstantDataBufferPointer));
+}
+
+void D3D12::RenderableSceneBuilder::CreateIntermediateBuffer(ID3D12Device8* device, UINT64 intermediateBufferSize)
+{
+	D3D12_RESOURCE_DESC1 intermediateBufferDesc;
+	intermediateBufferDesc.Dimension                       = D3D12_RESOURCE_DIMENSION_BUFFER;
+	intermediateBufferDesc.Alignment                       = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+	intermediateBufferDesc.Width                           = intermediateBufferSize;
+	intermediateBufferDesc.Height                          = 1;
+	intermediateBufferDesc.DepthOrArraySize                = 1;
+	intermediateBufferDesc.MipLevels                       = 1;
+	intermediateBufferDesc.Format                          = DXGI_FORMAT_UNKNOWN;
+	intermediateBufferDesc.SampleDesc.Count                = 1;
+	intermediateBufferDesc.SampleDesc.Quality              = 0;
+	intermediateBufferDesc.Layout                          = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+	intermediateBufferDesc.Flags                           = D3D12_RESOURCE_FLAG_NONE;
+	intermediateBufferDesc.SamplerFeedbackMipRegion.Width  = 1;
+	intermediateBufferDesc.SamplerFeedbackMipRegion.Height = 1;
+	intermediateBufferDesc.SamplerFeedbackMipRegion.Depth  = 1;
+
+	//TODO: mGPU?
+	D3D12_HEAP_PROPERTIES intermediateBufferHeapProperties;
+	intermediateBufferHeapProperties.Type                 = D3D12_HEAP_TYPE_UPLOAD;
+	intermediateBufferHeapProperties.CPUPageProperty      = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+	intermediateBufferHeapProperties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+	intermediateBufferHeapProperties.CreationNodeMask     = 0;
+	intermediateBufferHeapProperties.VisibleNodeMask      = 0;
+
+	THROW_IF_FAILED(device->CreateCommittedResource2(&intermediateBufferHeapProperties, D3D12_HEAP_FLAG_NONE, &intermediateBufferDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, nullptr, IID_PPV_ARGS(mIntermediateBuffer.put())));
+}
+
+void D3D12::RenderableSceneBuilder::FillIntermediateBufferData()
+{
+	const UINT64 textureDataSize = mTextureData.size()      * sizeof(uint8_t);
+	const UINT64 vertexDataSize  = mVertexBufferData.size() * sizeof(RenderableSceneVertex);
+	const UINT64 indexDataSize   = mIndexBufferData.size()  * sizeof(RenderableSceneIndex);
+
+	D3D12_RANGE readRange;
+	readRange.Begin = 0;
+	readRange.End   = 0;
+
+	void* bufferData = nullptr;
+	THROW_IF_FAILED(mIntermediateBuffer->Map(0, &readRange, &bufferData));
+
+	std::byte* bufferDataBytes = reinterpret_cast<std::byte*>(bufferData);
+	memcpy(bufferDataBytes + mIntermediateBufferVertexDataOffset,  mVertexBufferData.data(), vertexDataSize);
+	memcpy(bufferDataBytes + mIntermediateBufferIndexDataOffset,   mIndexBufferData.data(),  indexDataSize);
+	memcpy(bufferDataBytes + mIntermediateBufferTextureDataOffset, mTextureData.data(),      textureDataSize);
+
+	mIntermediateBuffer->Unmap(0, nullptr);
 }

@@ -16,6 +16,7 @@ class FrameCounter;
 namespace D3D12
 {
 	class RenderableScene;
+	class MemoryManager;
 
 	class Renderer: public ::Renderer
 	{
@@ -37,9 +38,6 @@ namespace D3D12
 		void CreateDevice(IDXGIAdapter4* adapter);
 
 	private:
-		void InitializeSwapchainImages();
-
-	private:
 		ThreadPool*         mThreadPoolRef;
 		const FrameCounter* mFrameCounterRef;
 
@@ -52,5 +50,7 @@ namespace D3D12
 		std::unique_ptr<DeviceQueues> mDeviceQueues;
 
 		std::unique_ptr<DeviceFeatures> mDeviceFeatures;
+
+		std::unique_ptr<MemoryManager> mMemoryAllocator;
 	};
 }

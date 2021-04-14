@@ -19,7 +19,7 @@ namespace D3D12
 		RenderableSceneBuilder(RenderableScene* sceneToBuild);
 		~RenderableSceneBuilder();
 
-		void BakeSceneFirstPart(ID3D12Device8* device, const DeviceQueues* deviceQueues, const MemoryManager* memoryAllocator);
+		void BakeSceneFirstPart(ID3D12Device8* device, const MemoryManager* memoryAllocator);
 		void BakeSceneSecondPart(DeviceQueues* deviceQueues);
 
 	public:
@@ -36,14 +36,17 @@ namespace D3D12
 	private:
 		void CreateSceneMeshMetadata(std::vector<std::wstring>& sceneTexturesVec);
 
-		void CreateSceneDataBufferDescs();
-		void LoadTextureImages(ID3D12Device* device, const std::vector<std::wstring>& sceneTextures);
+		UINT64 CreateSceneDataBufferDescs(UINT64 currentIntermediateBufferSize);
+		UINT64 LoadTextureImages(ID3D12Device8* device, const std::vector<std::wstring>& sceneTextures, UINT64 currentIntermediateBufferSize);
 
-		void AllocateTexturesHeap(ID3D12Device8* device, const MemoryManager* memoryAllocator, std::vector<D3D12_RESOURCE_DESC1>& outTextureDescs, std::vector<D3D12_RESOURCE_DESC1>& outTextureDescs);
+		void AllocateTexturesHeap(ID3D12Device8* device, const MemoryManager* memoryAllocator);
 		void AllocateBuffersHeap(ID3D12Device8* device, const MemoryManager* memoryAllocator);
 
-		void CreateTextures(ID3D12Device8* device, const std::vector<D3D12_RESOURCE_DESC1>& textureDescs);
+		void CreateTextures(ID3D12Device8* device);
 		void CreateBuffers(ID3D12Device8* device);
+
+		void CreateIntermediateBuffer(ID3D12Device8* device, UINT64 intermediateBufferSize);
+		void FillIntermediateBufferData();
 
 	private:
 		RenderableScene* mSceneToBuild;
@@ -56,8 +59,14 @@ namespace D3D12
 		D3D12_RESOURCE_DESC1 mIndexBufferDesc;
 		D3D12_RESOURCE_DESC1 mConstantBufferDesc;
 
+		UINT64 mVertexBufferHeapOffset;
+		UINT64 mIndexBufferHeapOffset;
+		UINT64 mConstantBufferHeapOffset;
+
+		std::vector<D3D12_RESOURCE_DESC1> mSceneTextureDescs;
+		std::vector<UINT64>               mSceneTextureHeapOffsets;
+
 		wil::com_ptr_nothrow<ID3D12Resource> mIntermediateBuffer;
-		wil::com_ptr_nothrow<ID3D12Heap1>    mIntermediateBufferHeap;
 
 		UINT64 mIntermediateBufferVertexDataOffset;
 		UINT64 mIntermediateBufferIndexDataOffset;
