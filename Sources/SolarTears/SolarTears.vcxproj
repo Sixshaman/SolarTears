@@ -59,6 +59,7 @@
     <ClInclude Include="Rendering\D3D12\D3D12DeviceQueues.hpp" />
     <ClInclude Include="Rendering\D3D12\D3D12Memory.hpp" />
     <ClInclude Include="Rendering\D3D12\D3D12Renderer.hpp" />
+    <ClInclude Include="Rendering\D3D12\D3D12Shaders.hpp" />
     <ClInclude Include="Rendering\D3D12\D3D12SwapChain.hpp" />
     <ClInclude Include="Rendering\D3D12\D3D12Utils.hpp" />
     <ClInclude Include="Rendering\D3D12\D3D12WorkerCommandLists.hpp" />
@@ -118,6 +119,7 @@
     <ClCompile Include="Rendering\D3D12\D3D12DeviceQueues.cpp" />
     <ClCompile Include="Rendering\D3D12\D3D12Memory.cpp" />
     <ClCompile Include="Rendering\D3D12\D3D12Renderer.cpp" />
+    <ClCompile Include="Rendering\D3D12\D3D12Shaders.cpp" />
     <ClCompile Include="Rendering\D3D12\D3D12SwapChain.cpp" />
     <ClCompile Include="Rendering\D3D12\D3D12Utils.cpp" />
     <ClCompile Include="Rendering\D3D12\D3D12WorkerCommandLists.cpp" />
@@ -170,6 +172,11 @@
     </CustomBuild>
     <None Include="Rendering\D3D12\Scene\D3D12SceneBuilder.inl" />
     <None Include="Rendering\VulkanC\Scene\VulkanCSceneBuilder.inl" />
+    <None Include="Shaders\D3D12\GBuffer\GBufferInclude.hlsli" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="Shaders\D3D12\GBuffer\GBufferDrawPS.hlsl" />
+    <FxCompile Include="Shaders\D3D12\GBuffer\GBufferDrawVS.hlsl" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
@@ -294,13 +301,17 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <AdditionalHeaderUnitDependencies>
       </AdditionalHeaderUnitDependencies>
-      <AdditionalIncludeDirectories>$(SolutionDir)3rd party\DirectX-Headers\include\directx;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)3rdParty\DirectX-Headers\include\directx;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>vulkan-1.lib;d3d12.lib;dxgi.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PreBuildEvent>
+      <Command>
+      </Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>

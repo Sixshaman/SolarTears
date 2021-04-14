@@ -106,6 +106,12 @@
     <Filter Include="3rdParty\DirectX-Headers">
       <UniqueIdentifier>{de40bd3d-5f42-4bf3-9a5d-5b26293ab70b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Shaders\D3D12">
+      <UniqueIdentifier>{af709c5f-a2b3-43c7-9901-8f5a3712208b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shaders\D3D12\GBuffer">
+      <UniqueIdentifier>{811dc09f-98bc-4327-a069-bf7d58375797}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Platform\Win32\Win32Application.hpp">
@@ -312,6 +318,9 @@
     <ClInclude Include="Rendering\D3D12\D3D12WorkerCommandLists.hpp">
       <Filter>Rendering\D3D12</Filter>
     </ClInclude>
+    <ClInclude Include="Rendering\D3D12\D3D12Shaders.hpp">
+      <Filter>Rendering\D3D12</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Platform\Win32\Win32Application.cpp">
@@ -482,6 +491,9 @@
     <ClCompile Include="Rendering\D3D12\D3D12WorkerCommandLists.cpp">
       <Filter>Rendering\D3D12</Filter>
     </ClCompile>
+    <ClCompile Include="Rendering\D3D12\D3D12Shaders.cpp">
+      <Filter>Rendering\D3D12</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="Platform\Win32\Win32Util.inl">
@@ -499,6 +511,9 @@
     <None Include="Rendering\D3D12\Scene\D3D12SceneBuilder.inl">
       <Filter>Rendering\D3D12\Scene</Filter>
     </None>
+    <None Include="Shaders\D3D12\GBuffer\GBufferInclude.hlsli">
+      <Filter>Shaders\D3D12\GBuffer</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="Shaders\Vulkan\GBuffer\GBufferDraw.frag">
@@ -507,5 +522,13 @@
     <CustomBuild Include="Shaders\Vulkan\GBuffer\GBufferDraw.vert">
       <Filter>Shaders\Vulkan\GBuffer</Filter>
     </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="Shaders\D3D12\GBuffer\GBufferDrawPS.hlsl">
+      <Filter>Shaders\D3D12\GBuffer</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\D3D12\GBuffer\GBufferDrawVS.hlsl">
+      <Filter>Shaders\D3D12\GBuffer</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

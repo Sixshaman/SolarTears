@@ -42,6 +42,9 @@ namespace D3D12
 		uint32_t mGBufferObjectChunkDataSize;
 		uint32_t mGBufferFrameChunkDataSize;
 
+		UINT64 CalculatePerObjectDataOffset(uint32_t objectIndex, uint32_t currentFrameResourceIndex);
+		UINT64 CalculatePerFrameDataOffset(uint32_t currentFrameResourceIndex);
+
 	private:
 		//Created from outside
 		std::vector<MeshSubobjectRange> mSceneMeshes;

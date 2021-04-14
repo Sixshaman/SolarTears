@@ -16,6 +16,7 @@ namespace D3D12
 {
 	class RenderableScene;
 	class MemoryManager;
+	class ShaderManager;
 	class DeviceQueues;
 	class WorkerCommandLists;
 
@@ -54,5 +55,6 @@ namespace D3D12
 		std::unique_ptr<DeviceFeatures> mDeviceFeatures;
 
 		std::unique_ptr<MemoryManager> mMemoryAllocator;
+		std::unique_ptr<ShaderManager> mShaderManager;
 	};
 }
