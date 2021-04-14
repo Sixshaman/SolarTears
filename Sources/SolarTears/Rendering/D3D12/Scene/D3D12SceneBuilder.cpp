@@ -1,12 +1,16 @@
 #include "D3D12SceneBuilder.hpp"
 #include "../D3D12Utils.hpp"
 #include "../D3D12Memory.hpp"
+#include "../D3D12DeviceQueues.hpp"
+#include "../D3D12WorkerCommandLists.hpp"
 #include "../../../../3rd party/DirectXTex/DDSTextureLoader/DDSTextureLoader12.h"
 #include <array>
 #include <cassert>
 #include <vector>
 
-D3D12::RenderableSceneBuilder::RenderableSceneBuilder(RenderableScene* sceneToBuild): mSceneToBuild(sceneToBuild)
+D3D12::RenderableSceneBuilder::RenderableSceneBuilder(RenderableScene* sceneToBuild): mSceneToBuild(sceneToBuild), mVertexBufferDesc({}), mIndexBufferDesc({}), mConstantBufferDesc({}),
+                                                                                      mVertexBufferHeapOffset(0), mIndexBufferHeapOffset(0), mConstantBufferHeapOffset(0),
+	                                                                                  mIntermediateBufferVertexDataOffset(0), mIntermediateBufferIndexDataOffset(0), mIntermediateBufferTextureDataOffset(0)
 {
 	assert(sceneToBuild != nullptr);
 }
@@ -43,8 +47,84 @@ void D3D12::RenderableSceneBuilder::BakeSceneFirstPart(ID3D12Device8* device, co
 	FillIntermediateBufferData();
 }
 
-void D3D12::RenderableSceneBuilder::BakeSceneSecondPart(DeviceQueues* deviceQueues)
+void D3D12::RenderableSceneBuilder::BakeSceneSecondPart(DeviceQueues* deviceQueues, const WorkerCommandLists* commandLists)
 {
+	ID3D12CommandAllocator*    commandAllocator = commandLists->GetMainThreadDirectCommandAllocator(0);
+	ID3D12GraphicsCommandList* commandList      = commandLists->GetMainThreadDirectCommandList();
+
+	//Baking
+	THROW_IF_FAILED(commandAllocator->Reset());
+	THROW_IF_FAILED(commandList->Reset(commandAllocator, nullptr));
+	
+	for(size_t i = 0; i < mSceneToBuild->mSceneTextures.size(); i++)
+	{
+		for(size_t j = 0; j < mSceneTextureSubresourceFootprints[i].size(); j++)
+		{
+			D3D12_TEXTURE_COPY_LOCATION dstLocation;
+			dstLocation.pResource        = mSceneToBuild->mSceneTextures[i].get();
+			dstLocation.Type             = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+			dstLocation.SubresourceIndex = (UINT)j;
+
+			D3D12_TEXTURE_COPY_LOCATION srcLocation;
+			srcLocation.pResource       = mIntermediateBuffer.get();
+			srcLocation.Type            = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+			srcLocation.PlacedFootprint = mSceneTextureSubresourceFootprints[i][j];
+
+			commandList->CopyTextureRegion(&dstLocation, 0, 0, 0, &srcLocation, nullptr);
+		}
+	}
+
+
+	std::array sceneBuffers           = {mSceneToBuild->mSceneVertexBuffer.get(),                  mSceneToBuild->mSceneIndexBuffer.get()};
+	std::array sceneBufferDataOffsets = {mIntermediateBufferVertexDataOffset,                      mIntermediateBufferIndexDataOffset};
+	std::array sceneBufferDataSizes   = {mVertexBufferData.size() * sizeof(RenderableSceneVertex), mIndexBufferData.size() * sizeof(RenderableSceneIndex)};
+	std::array sceneBufferStates      = {D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER,          D3D12_RESOURCE_STATE_INDEX_BUFFER};
+	for(size_t i = 0; i < sceneBuffers.size(); i++)
+	{
+		commandList->CopyBufferRegion(sceneBuffers[i], 0, mIntermediateBuffer.get(), sceneBufferDataOffsets[i], sceneBufferDataSizes[i]);
+	}
+
+
+	std::vector<D3D12_RESOURCE_BARRIER> barriers;
+	barriers.reserve(mSceneToBuild->mSceneTextures.size() + sceneBuffers.size());
+	for(int i = 0; i < mSceneToBuild->mSceneTextures.size(); i++)
+	{
+		D3D12_RESOURCE_BARRIER textureBarrier;
+		textureBarrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		textureBarrier.Flags                  = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+		textureBarrier.Transition.pResource   = mSceneToBuild->mSceneTextures[i].get();
+		textureBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		textureBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+		textureBarrier.Transition.StateAfter  = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+
+		barriers.push_back(textureBarrier);
+	}
+
+	for(int i = 0; i < sceneBuffers.size(); i++)
+	{
+		D3D12_RESOURCE_BARRIER textureBarrier;
+		textureBarrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		textureBarrier.Flags                  = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+		textureBarrier.Transition.pResource   = sceneBuffers[i];
+		textureBarrier.Transition.Subresource = 0;
+		textureBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+		textureBarrier.Transition.StateAfter  = sceneBufferStates[i];
+
+		barriers.push_back(textureBarrier);
+	}
+
+	commandList->ResourceBarrier((UINT)barriers.size(), barriers.data());
+
+
+	THROW_IF_FAILED(commandList->Close());
+
+	ID3D12CommandQueue* graphicsQueue = deviceQueues->GraphicsQueueHandle();
+
+	std::array commandListsToExecute = {reinterpret_cast<ID3D12CommandList*>(commandList)};
+	graphicsQueue->ExecuteCommandLists((UINT)commandListsToExecute.size(), commandListsToExecute.data());
+
+	UINT64 waitFenceValue = deviceQueues->GraphicsFenceSignal();
+	deviceQueues->GraphicsQueueCpuWait(waitFenceValue);
 }
 
 void D3D12::RenderableSceneBuilder::CreateSceneMeshMetadata(std::vector<std::wstring>& sceneTexturesVec)
@@ -233,6 +313,8 @@ UINT64 D3D12::RenderableSceneBuilder::LoadTextureImages(ID3D12Device8* device, c
 				currentTextureOffset += subresources[j].SlicePitch * texDesc.DepthOrArraySize;
 			}
 		}
+
+		mSceneTextureSubresourceFootprints.push_back(footprints);
 	}
 
 	return intermediateBufferSize;
@@ -285,16 +367,16 @@ void D3D12::RenderableSceneBuilder::CreateTextures(ID3D12Device8* device)
 	for(size_t i = 0; i < mSceneTextureDescs.size(); i++)
 	{
 		mSceneToBuild->mSceneTextures.emplace_back();
-		THROW_IF_FAILED(device->CreatePlacedResource1(mSceneToBuild->mHeapForTextures.get(), mSceneTextureHeapOffsets[i], &mSceneTextureDescs[i], D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, nullptr, IID_PPV_ARGS(mSceneToBuild->mSceneTextures.back().put())));
+		THROW_IF_FAILED(device->CreatePlacedResource1(mSceneToBuild->mHeapForTextures.get(), mSceneTextureHeapOffsets[i], &mSceneTextureDescs[i], D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(mSceneToBuild->mSceneTextures.back().put())));
 	}
 }
 
 void D3D12::RenderableSceneBuilder::CreateBuffers(ID3D12Device8* device)
 {
-	std::array gpuBufferPointers    = {mSceneToBuild->mSceneVertexBuffer.put(),         mSceneToBuild->mSceneIndexBuffer.put()};
-	std::array gpuBufferDescs       = {mVertexBufferDesc,                               mIndexBufferDesc};
-	std::array gpuBufferHeapOffsets = {mVertexBufferHeapOffset,                         mIndexBufferHeapOffset};
-	std::array gpuBufferStates      = {D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, D3D12_RESOURCE_STATE_INDEX_BUFFER};
+	std::array gpuBufferPointers    = {mSceneToBuild->mSceneVertexBuffer.put(), mSceneToBuild->mSceneIndexBuffer.put()};
+	std::array gpuBufferDescs       = {mVertexBufferDesc,                       mIndexBufferDesc};
+	std::array gpuBufferHeapOffsets = {mVertexBufferHeapOffset,                 mIndexBufferHeapOffset};
+	std::array gpuBufferStates      = {D3D12_RESOURCE_STATE_COPY_DEST,          D3D12_RESOURCE_STATE_COPY_DEST};
 	for (size_t i = 0; i < gpuBufferPointers.size(); i++)
 	{
 		THROW_IF_FAILED(device->CreatePlacedResource1(mSceneToBuild->mHeapForGpuBuffers.get(), gpuBufferHeapOffsets[i], &gpuBufferDescs[i], gpuBufferStates[i], nullptr, IID_PPV_ARGS(gpuBufferPointers[i])));

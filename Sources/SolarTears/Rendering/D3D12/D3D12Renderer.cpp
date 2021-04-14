@@ -1,7 +1,10 @@
 #include "D3D12Renderer.hpp"
 #include "D3D12Memory.hpp"
+#include "D3D12DeviceQueues.hpp"
+#include "D3D12WorkerCommandLists.hpp"
 #include "Scene/D3D12Scene.hpp"
 #include "Scene/D3D12SceneBuilder.hpp"
+#include "../../Core/ThreadPool.hpp"
 
 D3D12::Renderer::Renderer(LoggerQueue* loggerQueue, FrameCounter* frameCounter, ThreadPool* threadPool): ::Renderer(loggerQueue), mFrameCounterRef(frameCounter), mThreadPoolRef(threadPool)
 {
@@ -18,8 +21,9 @@ D3D12::Renderer::Renderer(LoggerQueue* loggerQueue, FrameCounter* frameCounter, 
 
 	mDeviceFeatures = std::make_unique<DeviceFeatures>(mDevice.get());
 
-	mDeviceQueues = std::make_unique<DeviceQueues>(mDevice.get());
-	mSwapChain    = std::make_unique<SwapChain>(mLoggingBoard);
+	mDeviceQueues       = std::make_unique<DeviceQueues>(mDevice.get());
+	mSwapChain          = std::make_unique<SwapChain>(mLoggingBoard);
+	mWorkerCommandLists = std::make_unique<WorkerCommandLists>(mDevice.get(), threadPool->GetWorkerThreadCount());
 
 	mMemoryAllocator = std::make_unique<MemoryManager>(mLoggingBoard);
 }
@@ -41,7 +45,7 @@ void D3D12::Renderer::ResizeWindowBuffers(Window* window)
 
 void D3D12::Renderer::InitScene(SceneDescription* sceneDescription)
 {
-	mDeviceQueues->AllQueuesWait();
+	mDeviceQueues->AllQueuesWaitStrong();
 
 	mScene = std::make_unique<D3D12::RenderableScene>(mFrameCounterRef);
 	sceneDescription->BindRenderableComponent(mScene.get());
@@ -50,7 +54,7 @@ void D3D12::Renderer::InitScene(SceneDescription* sceneDescription)
 	sceneDescription->BuildRenderableComponent(&sceneBuilder);
 
 	sceneBuilder.BakeSceneFirstPart(mDevice.get(), mMemoryAllocator.get());
-	sceneBuilder.BakeSceneSecondPart(mDeviceQueues.get(), mCommandBuffers.get());
+	sceneBuilder.BakeSceneSecondPart(mDeviceQueues.get(), mWorkerCommandLists.get());
 }
 
 void D3D12::Renderer::RenderScene()

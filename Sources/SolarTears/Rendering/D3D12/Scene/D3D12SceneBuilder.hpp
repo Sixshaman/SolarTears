@@ -6,12 +6,13 @@
 #include <memory>
 #include "D3D12Scene.hpp"
 #include "../D3D12Utils.hpp"
-#include "../D3D12DeviceQueues.hpp"
 #include "../../RenderableSceneBuilderBase.hpp"
 
 namespace D3D12
 {
 	class MemoryManager;
+	class WorkerCommandLists;
+	class DeviceQueues;
 
 	class RenderableSceneBuilder: public RenderableSceneBuilderBase
 	{
@@ -20,7 +21,7 @@ namespace D3D12
 		~RenderableSceneBuilder();
 
 		void BakeSceneFirstPart(ID3D12Device8* device, const MemoryManager* memoryAllocator);
-		void BakeSceneSecondPart(DeviceQueues* deviceQueues);
+		void BakeSceneSecondPart(DeviceQueues* deviceQueues, const WorkerCommandLists* commandBuffers);
 
 	public:
 		static constexpr size_t GetVertexSize();
@@ -63,8 +64,9 @@ namespace D3D12
 		UINT64 mIndexBufferHeapOffset;
 		UINT64 mConstantBufferHeapOffset;
 
-		std::vector<D3D12_RESOURCE_DESC1> mSceneTextureDescs;
-		std::vector<UINT64>               mSceneTextureHeapOffsets;
+		std::vector<D3D12_RESOURCE_DESC1>                            mSceneTextureDescs;
+		std::vector<UINT64>                                          mSceneTextureHeapOffsets;
+		std::vector<std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT>> mSceneTextureSubresourceFootprints;
 
 		wil::com_ptr_nothrow<ID3D12Resource> mIntermediateBuffer;
 

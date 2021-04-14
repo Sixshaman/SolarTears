@@ -4,10 +4,10 @@
 #include <unordered_set>
 #include <array>
 
-D3D12::WorkerCommandLists::WorkerCommandLists(ID3D12Device8* device, uint32_t workerThreadCount, const DeviceQueues* deviceQueues): mWorkerThreadCount(workerThreadCount),
-	                                                                                                                                mCommandListIndexForGraphics((uint32_t)(-1)), 
-	                                                                                                                                mCommandListIndexForCompute((uint32_t)(-1)),
-	                                                                                                                                mCommandListIndexForCopy((uint32_t)(-1))
+D3D12::WorkerCommandLists::WorkerCommandLists(ID3D12Device8* device, uint32_t workerThreadCount): mWorkerThreadCount(workerThreadCount),
+	                                                                                              mCommandListIndexForGraphics((uint32_t)(-1)), 
+	                                                                                              mCommandListIndexForCompute((uint32_t)(-1)),
+	                                                                                              mCommandListIndexForCopy((uint32_t)(-1))
 {
 	InitCommandLists(device);
 }
@@ -35,9 +35,12 @@ void D3D12::WorkerCommandLists::InitCommandLists(ID3D12Device8* device)
 				mCommandAllocators.emplace_back();
 				THROW_IF_FAILED(device->CreateCommandAllocator(commandListType, IID_PPV_ARGS(mCommandAllocators.back().put())));
 			}
+			
+			wil::com_ptr_nothrow<ID3D12GraphicsCommandList> commandList;
+			THROW_IF_FAILED(device->CreateCommandList1(0, commandListType, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(commandList.put())));
 
 			mCommandLists.emplace_back();
-			THROW_IF_FAILED(device->CreateCommandList1(0, commandListType, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(mCommandLists.back().put())));
+			THROW_IF_FAILED(commandList.query_to(mCommandLists.back().put()));
 		}
 	}
 
@@ -46,80 +49,80 @@ void D3D12::WorkerCommandLists::InitCommandLists(ID3D12Device8* device)
 	mCommandListIndexForCopy     = 2;
 }
 
-ID3D12CommandAllocator* D3D12::WorkerCommandLists::GetMainThreadGraphicsCommandAllocator(uint32_t frameIndex) const
+ID3D12CommandAllocator* D3D12::WorkerCommandLists::GetMainThreadDirectCommandAllocator(uint32_t frameIndex) const
 {
 	//Main thread command buffers/pools are always at the end
-	size_t alligatorIndex = (size_t)(mWorkerThreadCount + 1) * mSeparateQueueCount * (size_t)frameIndex  + mWorkerThreadCount * mSeparateQueueCount + mCommandListIndexForGraphics;
-	return mCommandPools[poolIndex];
+	size_t alligatorIndex = (size_t)mWorkerThreadCount * mSeparateQueueCount * (size_t)D3D12::D3D12Utils::InFlightFrameCount + mCommandListIndexForGraphics * D3D12::D3D12Utils::InFlightFrameCount + frameIndex;
+	return mCommandAllocators[alligatorIndex].get();
 }
 
 ID3D12CommandAllocator* D3D12::WorkerCommandLists::GetMainThreadComputeCommandAllocator(uint32_t frameIndex) const
 {
 	//Main thread command buffers/pools are always at the end
-	size_t allocatorIndex = (size_t)(mWorkerThreadCount + 1) * (size_t)frameIndex * mSeparateQueueCount + mWorkerThreadCount * mSeparateQueueCount + mCommandListIndexForCompute;
-	return mCommandPools[poolIndex];
+	size_t allocatorIndex = (size_t)mWorkerThreadCount * mSeparateQueueCount * (size_t)D3D12::D3D12Utils::InFlightFrameCount + mCommandListIndexForCompute * D3D12::D3D12Utils::InFlightFrameCount + frameIndex;
+	return mCommandAllocators[allocatorIndex].get();
 }
 
 ID3D12CommandAllocator* D3D12::WorkerCommandLists::GetMainThreadCopyCommandAllocator(uint32_t frameIndex) const
 {
 	//Main thread command buffers/pools are always at the end
-	size_t allocatorIndex = (size_t)(mWorkerThreadCount + 1) * (size_t)frameIndex * mSeparateQueueCount + mWorkerThreadCount * mSeparateQueueCount + mCommandListIndexForCopy;
-	return mCommandPools[poolIndex];
+	size_t allocatorIndex = (size_t)mWorkerThreadCount * mSeparateQueueCount * (size_t)D3D12::D3D12Utils::InFlightFrameCount + mCommandListIndexForCopy * D3D12::D3D12Utils::InFlightFrameCount + frameIndex;
+	return mCommandAllocators[allocatorIndex].get();
 }
 
-ID3D12CommandList* D3D12::WorkerCommandLists::GetMainThreadGraphicsCommandList() const
+ID3D12GraphicsCommandList6* D3D12::WorkerCommandLists::GetMainThreadDirectCommandList() const
 {
 	//Main thread command buffers/pools are always at the end
-	size_t listIndex = (size_t)(mWorkerThreadCount + 1) * (size_t)frameIndex * mSeparateQueueCount + mWorkerThreadCount * mSeparateQueueCount + mCommandListIndexForGraphics;
-	return mCommandBuffers[bufferIndex];
+	size_t listIndex = (size_t)mWorkerThreadCount * mSeparateQueueCount + mCommandListIndexForGraphics;
+	return mCommandLists[listIndex].get();
 }
 
-ID3D12CommandList* D3D12::WorkerCommandLists::GetMainThreadComputeCommandList() const
+ID3D12GraphicsCommandList6* D3D12::WorkerCommandLists::GetMainThreadComputeCommandList() const
 {
 	//Main thread command buffers/pools are always at the end
-	size_t listIndex = (size_t)(mWorkerThreadCount + 1) * (size_t)frameIndex * mSeparateQueueCount + mWorkerThreadCount * mSeparateQueueCount + mCommandListIndexForCompute;
-	return mCommandBuffers[bufferIndex];
+	size_t listIndex = (size_t)mWorkerThreadCount * mSeparateQueueCount + mCommandListIndexForCompute;
+	return mCommandLists[listIndex].get();
 }
 
-ID3D12CommandList* D3D12::WorkerCommandLists::GetMainThreadCopyCommandList() const
+ID3D12GraphicsCommandList6* D3D12::WorkerCommandLists::GetMainThreadCopyCommandList() const
 {
 	//Main thread command buffers/pools are always at the end
-	size_t listIndex = (size_t)(mWorkerThreadCount + 1) * (size_t)frameIndex * mSeparateQueueCount + mWorkerThreadCount * mSeparateQueueCount + mCommandListIndexForCopy;
-	return mCommandBuffers[bufferIndex];
+	size_t listIndex = (size_t)mWorkerThreadCount * mSeparateQueueCount + mCommandListIndexForCopy;
+	return mCommandLists[listIndex].get();
 }
 
-ID3D12CommandAllocator* D3D12::WorkerCommandLists::GetThreadGraphicsCommandAllocator(uint32_t threadIndex, uint32_t frameIndex) const
+ID3D12CommandAllocator* D3D12::WorkerCommandLists::GetThreadDirectCommandAllocator(uint32_t threadIndex, uint32_t frameIndex) const
 {
-	size_t allocatorIndex = (size_t)(mWorkerThreadCount + 1) * (size_t)frameIndex * mSeparateQueueCount + threadIndex * mSeparateQueueCount + mCommandListIndexForGraphics;
-	return mCommandPools[poolIndex];
+	size_t allocatorIndex = (size_t)threadIndex * mSeparateQueueCount * (size_t)D3D12::D3D12Utils::InFlightFrameCount + mCommandListIndexForGraphics * D3D12::D3D12Utils::InFlightFrameCount + frameIndex;
+	return mCommandAllocators[allocatorIndex].get();
 }
 
 ID3D12CommandAllocator* D3D12::WorkerCommandLists::GetThreadComputeCommandAllocator(uint32_t threadIndex, uint32_t frameIndex) const
 {
-	size_t allocatorIndex = (size_t)(mWorkerThreadCount + 1) * (size_t)frameIndex * mSeparateQueueCount + threadIndex * mSeparateQueueCount + mCommandListIndexForCompute;
-	return mCommandPools[poolIndex];
+	size_t allocatorIndex = (size_t)threadIndex * mSeparateQueueCount * (size_t)D3D12::D3D12Utils::InFlightFrameCount + mCommandListIndexForCompute * D3D12::D3D12Utils::InFlightFrameCount + frameIndex;
+	return mCommandAllocators[allocatorIndex].get();
 }
 
 ID3D12CommandAllocator* D3D12::WorkerCommandLists::GetThreadCopyCommandAllocator(uint32_t threadIndex, uint32_t frameIndex) const
 {
-	size_t allocatorIndex = (size_t)(mWorkerThreadCount + 1) * (size_t)frameIndex * mSeparateQueueCount + threadIndex * mSeparateQueueCount + mCommandListIndexForCopy;
-	return mCommandPools[poolIndex];
+	size_t allocatorIndex = (size_t)threadIndex * mSeparateQueueCount * (size_t)D3D12::D3D12Utils::InFlightFrameCount + mCommandListIndexForCopy * D3D12::D3D12Utils::InFlightFrameCount + frameIndex;
+	return mCommandAllocators[allocatorIndex].get();
 }
 
-ID3D12CommandList* D3D12::WorkerCommandLists::GetThreadGraphicsCommandList(uint32_t threadIndex) const
+ID3D12GraphicsCommandList6* D3D12::WorkerCommandLists::GetThreadDirectCommandList(uint32_t threadIndex) const
 {
-	size_t listIndex = (size_t)(mWorkerThreadCount + 1) * (size_t)frameIndex * mSeparateQueueCount + threadIndex * mSeparateQueueCount + mCommandListIndexForGraphics;
-	return mCommandBuffers[bufferIndex];
+	size_t listIndex = (size_t)threadIndex * mSeparateQueueCount + mCommandListIndexForGraphics;
+	return mCommandLists[listIndex].get();
 }
 
-ID3D12CommandList* D3D12::WorkerCommandLists::GetThreadComputeCommandList(uint32_t threadIndex) const
+ID3D12GraphicsCommandList6* D3D12::WorkerCommandLists::GetThreadComputeCommandList(uint32_t threadIndex) const
 {
-	size_t listIndex = (size_t)(mWorkerThreadCount + 1) * (size_t)frameIndex * mSeparateQueueCount + threadIndex * mSeparateQueueCount + mCommandListIndexForCompute;
-	return mCommandBuffers[bufferIndex];
+	size_t listIndex = (size_t)threadIndex * mSeparateQueueCount + mCommandListIndexForCompute;
+	return mCommandLists[listIndex].get();
 }
 
-ID3D12CommandList* D3D12::WorkerCommandLists::GetThreadCopyCommandList(uint32_t threadIndex) const
+ID3D12GraphicsCommandList6* D3D12::WorkerCommandLists::GetThreadCopyCommandList(uint32_t threadIndex) const
 {
-	size_t listIndex = (size_t)(mWorkerThreadCount + 1) * (size_t)frameIndex * mSeparateQueueCount + threadIndex * mSeparateQueueCount + mCommandListIndexForCopy;
-	return mCommandBuffers[bufferIndex];
+	size_t listIndex = (size_t)threadIndex * mSeparateQueueCount + mCommandListIndexForCopy;
+	return mCommandLists[listIndex].get();
 }

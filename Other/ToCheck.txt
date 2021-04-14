@@ -51,6 +51,7 @@
 - Command buffer allocators
 - How can I merge some D3D12 and Vulkan classes? Some things like CreateSceneMeshMetadata() can be in base classes and it changes nothing
 - Fullscreen
+- In scene builders replace vector of vectors for flat vector + vector of spans 
 
 - DX12: Dedicated present queue is good (https://gpuopen.com/performance/)
 - DX12: Use DXC with /Zpr option
