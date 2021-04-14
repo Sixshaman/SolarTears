@@ -1,24 +1,24 @@
 [submodule "Sources/3rd party/VulkanGenericStructures"]
-	path = Sources/3rd party/VulkanGenericStructures
+	path = Sources/3rdParty/VulkanGenericStructures
 	url = https://github.com/Sixshaman/VulkanGenericStructures
 [submodule "Sources/3rd party/DirectXMath"]
-	path = Sources/3rd party/DirectXMath
+	path = Sources/3rdParty/DirectXMath
 	url = https://github.com/microsoft/DirectXMath
 [submodule "Sources/3rd party/DirectXTK12"]
-	path = Sources/3rd party/DirectXTK12
+	path = Sources/3rdParty/DirectXTK12
 	url = https://github.com/microsoft/DirectXTK12
 [submodule "Sources/3rd party/DirectXTex"]
-	path = Sources/3rd party/DirectXTex
+	path = Sources/3rdParty/DirectXTex
 	url = https://github.com/microsoft/DirectXTex
 [submodule "Sources/3rd party/DDSTextureLoaderVk"]
-	path = Sources/3rd party/DDSTextureLoaderVk
+	path = Sources/3rdParty/DDSTextureLoaderVk
 	url = https://github.com/Sixshaman/DDSTextureLoaderVk
 [submodule "Sources/3rd party/SPIRV-Reflect"]
-	path = Sources/3rd party/SPIRV-Reflect
+	path = Sources/3rdParty/SPIRV-Reflect
 	url = https://github.com/KhronosGroup/SPIRV-Reflect
 [submodule "Sources/3rd party/DirectX-Headers"]
-	path = Sources/3rd party/DirectX-Headers
+	path = Sources/3rdParty/DirectX-Headers
 	url = https://github.com/microsoft/DirectX-Headers.git
 [submodule "Sources/3rd party/DirectXShaderCompiler"]
-	path = Sources/3rd party/DirectXShaderCompiler
+	path = Sources/3rdParty/DirectXShaderCompiler
 	url = https://github.com/microsoft/DirectXShaderCompiler.git
