@@ -1,3 +1,4 @@
 cd ../Sources/3rdParty/DirectXShaderCompiler
-"utils/hct/hctstart.cmd" ./ ../../../BuildUtils/DirectXShaderCompiler.bin
-hctbuild
+"utils/hct/hctstart.cmd" ./ ../../../UtilsBuild/DirectXShaderCompiler.bin
+hctbuild -Debug
+hctbuild -Release
