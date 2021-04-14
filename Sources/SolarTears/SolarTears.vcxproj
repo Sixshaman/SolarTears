@@ -61,6 +61,7 @@
     <ClInclude Include="Rendering\D3D12\D3D12Renderer.hpp" />
     <ClInclude Include="Rendering\D3D12\D3D12SwapChain.hpp" />
     <ClInclude Include="Rendering\D3D12\D3D12Utils.hpp" />
+    <ClInclude Include="Rendering\D3D12\D3D12WorkerCommandLists.hpp" />
     <ClInclude Include="Rendering\D3D12\Scene\D3D12Scene.hpp" />
     <ClInclude Include="Rendering\D3D12\Scene\D3D12SceneBuilder.hpp" />
     <ClInclude Include="Rendering\RenderableSceneBase.hpp" />
@@ -119,6 +120,7 @@
     <ClCompile Include="Rendering\D3D12\D3D12Renderer.cpp" />
     <ClCompile Include="Rendering\D3D12\D3D12SwapChain.cpp" />
     <ClCompile Include="Rendering\D3D12\D3D12Utils.cpp" />
+    <ClCompile Include="Rendering\D3D12\D3D12WorkerCommandLists.cpp" />
     <ClCompile Include="Rendering\D3D12\Scene\D3D12Scene.cpp" />
     <ClCompile Include="Rendering\D3D12\Scene\D3D12SceneBuilder.cpp" />
     <ClCompile Include="Rendering\RenderableSceneBase.cpp" />
