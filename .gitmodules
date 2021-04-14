@@ -19,3 +19,6 @@
 [submodule "Sources/3rd party/DirectX-Headers"]
 	path = Sources/3rd party/DirectX-Headers
 	url = https://github.com/microsoft/DirectX-Headers.git
+[submodule "Sources/3rd party/DirectXShaderCompiler"]
+	path = Sources/3rd party/DirectXShaderCompiler
+	url = https://github.com/microsoft/DirectXShaderCompiler.git
