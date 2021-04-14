@@ -247,8 +247,8 @@ UINT64 D3D12::RenderableSceneBuilder::CreateSceneDataBufferDescs(UINT64 currentI
 
 UINT64 D3D12::RenderableSceneBuilder::LoadTextureImages(ID3D12Device8* device, const std::vector<std::wstring>& sceneTextures, UINT64 currentIntermediateBufferSize)
 {
-	UINT64 intermediateBufferSize = currentIntermediateBufferSize;
-	mIntermediateBufferTextureDataOffset = intermediateBufferSize;
+	mIntermediateBufferTextureDataOffset = D3D12Utils::AlignMemory(currentIntermediateBufferSize, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
+	UINT64 intermediateBufferSize        = mIntermediateBufferTextureDataOffset;
 
 	mTextureData.clear();
 	mSceneTextureDescs.clear();

@@ -83,7 +83,7 @@ void D3D12::Renderer::CreateAdapter(IDXGIAdapter4** outAdapter)
 void D3D12::Renderer::EnableDebugMode()
 {
 	wil::com_ptr_nothrow<ID3D12Debug1> debugController;
-	THROW_IF_FAILED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)));
+	THROW_IF_FAILED(D3D12GetDebugInterface(IID_PPV_ARGS(debugController.put())));
 
 	debugController->EnableDebugLayer();
 	debugController->SetEnableGPUBasedValidation(true);
@@ -97,5 +97,5 @@ void D3D12::Renderer::CreateDevice(IDXGIAdapter4* adapter)
 	mLoggingBoard->PostLogMessage(std::wstring(L"GPU: ") + adapterDesc.Description);
 	mLoggingBoard->PostLogMessage(L"");
 
-	THROW_IF_FAILED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_11_1, IID_PPV_ARGS(mDevice.put())));
+	THROW_IF_FAILED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(mDevice.put())));
 }
