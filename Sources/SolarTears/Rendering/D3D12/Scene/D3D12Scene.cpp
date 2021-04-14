@@ -4,7 +4,7 @@
 #include "../../RenderableSceneMisc.hpp"
 #include <array>
 
-D3D12::RenderableScene::RenderableScene(const FrameCounter* frameCounter) :RenderableSceneBase(D3D12Utils::InFlightFrameCount), mFrameCounterRef(frameCounter)
+D3D12::RenderableScene::RenderableScene(const FrameCounter* frameCounter) :RenderableSceneBase(D3D12Utils::InFlightFrameCount), mFrameCounterRef(frameCounter), mSceneDataConstantObjectBufferOffset(0)
 {
 	mScheduledSceneUpdates.push_back(RenderableSceneBase::ScheduledSceneUpdate());
 	mObjectDataScheduledUpdateIndices.push_back(0);
