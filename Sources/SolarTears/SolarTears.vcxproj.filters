@@ -103,6 +103,9 @@
     <Filter Include="3rdParty\DirectXTex\DDSTextureLoader">
       <UniqueIdentifier>{e1bcf95f-52d2-4a8a-af54-338fc0ad8c2c}</UniqueIdentifier>
     </Filter>
+    <Filter Include="3rdParty\DirectX-Headers">
+      <UniqueIdentifier>{de40bd3d-5f42-4bf3-9a5d-5b26293ab70b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Platform\Win32\Win32Application.hpp">
@@ -302,6 +305,9 @@
     </ClInclude>
     <ClInclude Include="Rendering\D3D12\D3D12Memory.hpp">
       <Filter>Rendering\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rd party\DirectX-Headers\include\directx\d3dx12.h">
+      <Filter>3rdParty\DirectX-Headers</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

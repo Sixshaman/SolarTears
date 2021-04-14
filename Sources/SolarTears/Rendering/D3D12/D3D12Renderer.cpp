@@ -1,4 +1,5 @@
 #include "D3D12Renderer.hpp"
+#include "D3D12Memory.hpp"
 #include "Scene/D3D12Scene.hpp"
 #include "Scene/D3D12SceneBuilder.hpp"
 
@@ -19,6 +20,8 @@ D3D12::Renderer::Renderer(LoggerQueue* loggerQueue, FrameCounter* frameCounter, 
 
 	mDeviceQueues = std::make_unique<DeviceQueues>(mDevice.get());
 	mSwapChain    = std::make_unique<SwapChain>(mLoggingBoard);
+
+	mMemoryAllocator = std::make_unique<MemoryManager>(mLoggingBoard);
 }
 
 D3D12::Renderer::~Renderer()
@@ -29,8 +32,6 @@ void D3D12::Renderer::AttachToWindow(Window* window)
 {
 	assert(mDevice != nullptr);
 	mSwapChain->BindToWindow(mFactory.get(), mDeviceQueues.get(), window);
-
-	InitializeSwapchainImages();
 }
 
 void D3D12::Renderer::ResizeWindowBuffers(Window* window)
@@ -40,11 +41,16 @@ void D3D12::Renderer::ResizeWindowBuffers(Window* window)
 
 void D3D12::Renderer::InitScene(SceneDescription* sceneDescription)
 {
+	mDeviceQueues->AllQueuesWait();
+
 	mScene = std::make_unique<D3D12::RenderableScene>(mFrameCounterRef);
 	sceneDescription->BindRenderableComponent(mScene.get());
 
 	D3D12::RenderableSceneBuilder sceneBuilder(mScene.get());
 	sceneDescription->BuildRenderableComponent(&sceneBuilder);
+
+	sceneBuilder.BakeSceneFirstPart(mDevice.get(), mMemoryAllocator.get());
+	sceneBuilder.BakeSceneSecondPart(mDeviceQueues.get(), mCommandBuffers.get());
 }
 
 void D3D12::Renderer::RenderScene()
@@ -76,7 +82,7 @@ void D3D12::Renderer::EnableDebugMode()
 	THROW_IF_FAILED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)));
 
 	debugController->EnableDebugLayer();
-	//debugController->SetEnableGPUBasedValidation(true);
+	debugController->SetEnableGPUBasedValidation(true);
 }
 
 void D3D12::Renderer::CreateDevice(IDXGIAdapter4* adapter)
@@ -87,10 +93,5 @@ void D3D12::Renderer::CreateDevice(IDXGIAdapter4* adapter)
 	mLoggingBoard->PostLogMessage(std::wstring(L"GPU: ") + adapterDesc.Description);
 	mLoggingBoard->PostLogMessage(L"");
 
-	THROW_IF_FAILED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(mDevice.put())));
-}
-
-void D3D12::Renderer::InitializeSwapchainImages()
-{
-	
+	THROW_IF_FAILED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_11_1, IID_PPV_ARGS(mDevice.put())));
 }

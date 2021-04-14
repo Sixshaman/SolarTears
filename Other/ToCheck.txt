@@ -1,5 +1,6 @@
 - AFTER FIXING TEXTURES, READ BEST PRACTICES AND WRITE NOTES!
 - Also try tools like RMV. And turns out NSight has A LOT of interesting profiling tools, including memory workload analysis!
+- Also check the code with static code analyzer!
 
 - Correct event driven controls: all movements and stuff should be updated constantly and be equal some value once a key pressed and equal 0 when released.
 - Automatic subresource format tracking. If resource A gets copied into resource B, and it's known that resource B has format F, then resource A should also have format F.
@@ -47,6 +48,7 @@
 - Some places like AllocateBuffersMemory use std::vector only to pass the data into functions. Maybe use span instead?
 - Separate render pass allocators
 - Camera component?
+- Command buffer allocators
 - How can I merge some D3D12 and Vulkan classes? Some things like CreateSceneMeshMetadata() can be in base classes and it changes nothing
 - Fullscreen
 
