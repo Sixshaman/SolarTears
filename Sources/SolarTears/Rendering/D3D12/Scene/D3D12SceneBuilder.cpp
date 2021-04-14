@@ -43,11 +43,16 @@ void D3D12::RenderableSceneBuilder::BakeSceneFirstPart(ID3D12Device8* device, co
 	FillIntermediateBufferData();
 }
 
+void D3D12::RenderableSceneBuilder::BakeSceneSecondPart(DeviceQueues* deviceQueues)
+{
+}
+
 void D3D12::RenderableSceneBuilder::CreateSceneMeshMetadata(std::vector<std::wstring>& sceneTexturesVec)
 {
 	mVertexBufferData.clear();
 	mIndexBufferData.clear();
 
+	mSceneToBuild->mSceneMeshes.clear();
 	mSceneToBuild->mSceneMeshes.clear();
 	mSceneToBuild->mSceneSubobjects.clear();
 
