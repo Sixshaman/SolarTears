@@ -52,13 +52,13 @@ void D3D12::DeviceQueues::AllQueuesWaitStrong()
 
 UINT64 D3D12::DeviceQueues::GraphicsFenceSignal()
 {
-	THROW_IF_FAILED(mGraphicsQueue->Signal(mCopyFence.get(), ++mGraphicsFenceValue));
+	THROW_IF_FAILED(mGraphicsQueue->Signal(mGraphicsFence.get(), ++mGraphicsFenceValue));
 	return mGraphicsFenceValue;
 }
 
 UINT64 D3D12::DeviceQueues::ComputeFenceSignal()
 {
-	THROW_IF_FAILED(mComputeQueue->Signal(mCopyFence.get(), ++mComputeFenceValue));
+	THROW_IF_FAILED(mComputeQueue->Signal(mComputeFence.get(), ++mComputeFenceValue));
 	return mComputeFenceValue;
 }
 

@@ -59,3 +59,4 @@
 - DX12: GBV
 - DX12: METACOMMANDS! They seem like another world of possibilities.
 - DX12: UMA optimizations for heaps. Also other CUSTOM heaps
+- DX12: Debug callback!

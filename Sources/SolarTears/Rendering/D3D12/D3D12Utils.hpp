@@ -37,5 +37,8 @@ namespace D3D12
 
 		template<>
 		static constexpr DXGI_FORMAT FormatForIndexType<uint8_t> = DXGI_FORMAT_R8_UINT;
+
+
+		UINT64 AlignMemory(UINT64 value, UINT64 alignment);
 	}
 }
