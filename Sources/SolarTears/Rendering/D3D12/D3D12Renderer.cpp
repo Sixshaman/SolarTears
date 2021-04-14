@@ -26,6 +26,7 @@ D3D12::Renderer::Renderer(LoggerQueue* loggerQueue, FrameCounter* frameCounter, 
 	mWorkerCommandLists = std::make_unique<WorkerCommandLists>(mDevice.get(), threadPool->GetWorkerThreadCount());
 
 	mMemoryAllocator = std::make_unique<MemoryManager>(mLoggingBoard);
+	mShaderManager   = std::make_unique<ShaderManager>(mLoggingBoard);
 }
 
 D3D12::Renderer::~Renderer()
@@ -55,6 +56,8 @@ void D3D12::Renderer::InitScene(SceneDescription* sceneDescription)
 
 	sceneBuilder.BakeSceneFirstPart(mDevice.get(), mMemoryAllocator.get());
 	sceneBuilder.BakeSceneSecondPart(mDeviceQueues.get(), mWorkerCommandLists.get());
+
+	//D3D12::SceneDescriprorBuilder sceneDescriptorBuilder(mScene.get());
 }
 
 void D3D12::Renderer::RenderScene()

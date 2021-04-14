@@ -58,7 +58,7 @@ void Inputter::UpdateControls()
 	mCurrentControlState.KeyStateChangeFlags = mCurrentControlState.CurrentKeyStates & (PreviousInputKeyStates ^ mCurrentControlState.CurrentKeyStates);
 
 	mCurrentControlState.Axis1Delta = DirectX::XMFLOAT2(0.0f, 0.0f);
-	mCurrentControlState.Axis2Delta = DirectX::XMFLOAT2(mMouseControl->GetXDelta(), -mMouseControl->GetYDelta());
+	mCurrentControlState.Axis2Delta = DirectX::XMFLOAT2(2.0f * mMouseControl->GetXDelta(), -4.0f * mMouseControl->GetYDelta());
 	mCurrentControlState.Axis3Delta = DirectX::XMFLOAT2(0.0f, mMouseControl->GetWheelDelta());
 
 	mMouseControl->Reset();
