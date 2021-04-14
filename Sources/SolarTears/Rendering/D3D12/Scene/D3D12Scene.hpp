@@ -52,7 +52,9 @@ namespace D3D12
 
 		wil::com_ptr_nothrow<ID3D12Resource> mSceneConstantBuffer; //Common buffer for all constant buffer data
 
-		wil::com_ptr_nothrow<ID3D12Heap1> mHeapForBuffers;
+		wil::com_ptr_nothrow<ID3D12Heap> mHeapForGpuBuffers;
+		wil::com_ptr_nothrow<ID3D12Heap> mHeapForCpuVisibleBuffers;
+		wil::com_ptr_nothrow<ID3D12Heap> mHeapForTextures;
 
 		UINT64 mSceneDataConstantObjectBufferOffset;
 		UINT64 mSceneDataConstantFrameBufferOffset;

@@ -11,14 +11,16 @@
 
 namespace D3D12
 {
+	class MemoryManager;
+
 	class RenderableSceneBuilder: public RenderableSceneBuilderBase
 	{
 	public:
 		RenderableSceneBuilder(RenderableScene* sceneToBuild);
 		~RenderableSceneBuilder();
 
-		void BakeSceneFirstPart(ID3D12Device8* device, const DeviceQueues* deviceQueues, const MemoryManager* memoryAllocator, const ShaderManager* shaderManager);
-		void BakeSceneSecondPart(DeviceQueues* deviceQueues, WorkerCommandBuffers* workerCommandBuffers);
+		void BakeSceneFirstPart(ID3D12Device8* device, const DeviceQueues* deviceQueues, const MemoryManager* memoryAllocator);
+		void BakeSceneSecondPart(DeviceQueues* deviceQueues);
 
 	public:
 		static constexpr size_t GetVertexSize();
@@ -37,10 +39,14 @@ namespace D3D12
 		void CreateSceneDataBufferDescs();
 		void LoadTextureImages(ID3D12Device* device, const std::vector<std::wstring>& sceneTextures);
 
+		void AllocateTexturesHeap(ID3D12Device8* device, const MemoryManager* memoryAllocator, std::vector<D3D12_RESOURCE_DESC1>& outTextureDescs, std::vector<D3D12_RESOURCE_DESC1>& outTextureDescs);
+		void AllocateBuffersHeap(ID3D12Device8* device, const MemoryManager* memoryAllocator);
+
+		void CreateTextures(ID3D12Device8* device, const std::vector<D3D12_RESOURCE_DESC1>& textureDescs);
+		void CreateBuffers(ID3D12Device8* device);
+
 	private:
 		RenderableScene* mSceneToBuild;
-
-		std::vector<D3D12_RESOURCE_DESC1> mSceneTextureDescs;
 
 		std::vector<uint8_t>               mTextureData;
 		std::vector<RenderableSceneVertex> mVertexBufferData;
@@ -49,8 +55,6 @@ namespace D3D12
 		D3D12_RESOURCE_DESC1 mVertexBufferDesc;
 		D3D12_RESOURCE_DESC1 mIndexBufferDesc;
 		D3D12_RESOURCE_DESC1 mConstantBufferDesc;
-		
-		std::vector<D3D12_RESOURCE_DESC> mTextureDescs;
 
 		wil::com_ptr_nothrow<ID3D12Resource> mIntermediateBuffer;
 		wil::com_ptr_nothrow<ID3D12Heap1>    mIntermediateBufferHeap;

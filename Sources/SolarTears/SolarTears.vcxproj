@@ -56,6 +56,7 @@
     <ClInclude Include="Platform\Win32\Win32Window.hpp" />
     <ClInclude Include="Rendering\D3D12\D3D12DeviceFeatures.hpp" />
     <ClInclude Include="Rendering\D3D12\D3D12DeviceQueues.hpp" />
+    <ClInclude Include="Rendering\D3D12\D3D12Memory.hpp" />
     <ClInclude Include="Rendering\D3D12\D3D12Renderer.hpp" />
     <ClInclude Include="Rendering\D3D12\D3D12SwapChain.hpp" />
     <ClInclude Include="Rendering\D3D12\D3D12Utils.hpp" />
@@ -113,6 +114,7 @@
     <ClCompile Include="Platform\Win32\Win32Window.cpp" />
     <ClCompile Include="Rendering\D3D12\D3D12DeviceFeatures.cpp" />
     <ClCompile Include="Rendering\D3D12\D3D12DeviceQueues.cpp" />
+    <ClCompile Include="Rendering\D3D12\D3D12Memory.cpp" />
     <ClCompile Include="Rendering\D3D12\D3D12Renderer.cpp" />
     <ClCompile Include="Rendering\D3D12\D3D12SwapChain.cpp" />
     <ClCompile Include="Rendering\D3D12\D3D12Utils.cpp" />
