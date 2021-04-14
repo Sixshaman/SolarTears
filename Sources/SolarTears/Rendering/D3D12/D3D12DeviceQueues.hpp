@@ -14,11 +14,15 @@ namespace D3D12
 		ID3D12CommandQueue* ComputeQueueHandle()  const;
 		ID3D12CommandQueue* CopyQueueHandle()     const;
 
-		void GraphicsQueueWait();
-		void ComputeQueueWait();
-		void CopyQueueWait();
+		void AllQueuesWaitStrong();
 
-		void AllQueuesWait();
+		UINT64 GraphicsFenceSignal();
+		UINT64 ComputeFenceSignal();
+		UINT64 CopyFenceSignal();
+
+		void GraphicsQueueCpuWait(UINT64 fenceValue);
+		void ComputeQueueCpuWait(UINT64 fenceValue);
+		void CopyQueueCpuWait(UINT64 fenceValue);
 
 	private:
 		void CreateQueueObjects(ID3D12Device* device);

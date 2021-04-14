@@ -2,7 +2,6 @@
 
 #include "../Renderer.hpp"
 #include "D3D12SwapChain.hpp"
-#include "D3D12DeviceQueues.hpp"
 #include "D3D12DeviceFeatures.hpp"
 #include <d3d12.h>
 #include <dxgi1_6.h>
@@ -17,6 +16,8 @@ namespace D3D12
 {
 	class RenderableScene;
 	class MemoryManager;
+	class DeviceQueues;
+	class WorkerCommandLists;
 
 	class Renderer: public ::Renderer
 	{
@@ -46,8 +47,9 @@ namespace D3D12
 
 		std::unique_ptr<RenderableScene> mScene;
 
-		std::unique_ptr<SwapChain>    mSwapChain;
-		std::unique_ptr<DeviceQueues> mDeviceQueues;
+		std::unique_ptr<SwapChain>          mSwapChain;
+		std::unique_ptr<DeviceQueues>       mDeviceQueues;
+		std::unique_ptr<WorkerCommandLists> mWorkerCommandLists;
 
 		std::unique_ptr<DeviceFeatures> mDeviceFeatures;
 

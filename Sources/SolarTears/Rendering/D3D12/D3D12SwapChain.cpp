@@ -12,7 +12,7 @@ D3D12::SwapChain::~SwapChain()
 
 void D3D12::SwapChain::BindToWindow(IDXGIFactory4* factory, DeviceQueues* deviceQueues, Window* window)
 {
-	deviceQueues->AllQueuesWait();
+	deviceQueues->AllQueuesWaitStrong();
 
 	mSwapchain.reset();
 	CreateSwapChain(factory, deviceQueues->GraphicsQueueHandle(), window);
@@ -25,7 +25,7 @@ void D3D12::SwapChain::BindToWindow(IDXGIFactory4* factory, DeviceQueues* device
 
 void D3D12::SwapChain::Resize(DeviceQueues* deviceQueues, Window* window)
 {
-	deviceQueues->AllQueuesWait();
+	deviceQueues->AllQueuesWaitStrong();
 
 	for(uint32_t i = 0; i < SwapchainImageCount; i++)
 	{
