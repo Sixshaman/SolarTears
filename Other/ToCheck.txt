@@ -44,6 +44,7 @@
 - Profile cache usage
 - #include <system_error>
 - Allocators
+- Some places like AllocateBuffersMemory use std::vector only to pass the data into functions. Maybe use span instead?
 - Separate render pass allocators
 - Camera component?
 - How can I merge some D3D12 and Vulkan classes? Some things like CreateSceneMeshMetadata() can be in base classes and it changes nothing
@@ -54,3 +55,4 @@
 - DX12: DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING
 - DX12: GBV
 - DX12: METACOMMANDS! They seem like another world of possibilities.
+- DX12: UMA optimizations for heaps. Also other CUSTOM heaps

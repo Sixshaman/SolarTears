@@ -300,6 +300,9 @@
     <ClInclude Include="..\3rd party\DirectXTex\DDSTextureLoader\DDSTextureLoader12.h">
       <Filter>3rdParty\DirectXTex\DDSTextureLoader</Filter>
     </ClInclude>
+    <ClInclude Include="Rendering\D3D12\D3D12Memory.hpp">
+      <Filter>Rendering\D3D12</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Platform\Win32\Win32Application.cpp">
@@ -463,6 +466,9 @@
     </ClCompile>
     <ClCompile Include="..\3rd party\DirectXTex\DDSTextureLoader\DDSTextureLoader12.cpp">
       <Filter>3rdParty\DirectXTex\DDSTextureLoader</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\D3D12\D3D12Memory.cpp">
+      <Filter>Rendering\D3D12</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

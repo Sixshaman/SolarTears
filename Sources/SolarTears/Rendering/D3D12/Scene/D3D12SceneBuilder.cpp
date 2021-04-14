@@ -1,5 +1,6 @@
 #include "D3D12SceneBuilder.hpp"
 #include "../D3D12Utils.hpp"
+#include "../D3D12Memory.hpp"
 #include "../../../../3rd party/DirectXTex/DDSTextureLoader/DDSTextureLoader12.h"
 #include <array>
 #include <cassert>
@@ -14,7 +15,7 @@ D3D12::RenderableSceneBuilder::~RenderableSceneBuilder()
 {
 }
 
-void D3D12::RenderableSceneBuilder::BakeSceneFirstPart(const DeviceQueues* deviceQueues, const MemoryManager* memoryAllocator, const ShaderManager* shaderManager)
+void D3D12::RenderableSceneBuilder::BakeSceneFirstPart(ID3D12Device8* device, const DeviceQueues* deviceQueues, const MemoryManager* memoryAllocator)
 {
 	//Create scene subobjects
 	std::vector<std::wstring> sceneTexturesVec;
@@ -26,11 +27,11 @@ void D3D12::RenderableSceneBuilder::BakeSceneFirstPart(const DeviceQueues* devic
 	CreateSceneDataBufferDescs();
 
 	//Load texture images
-	LoadTextureImages(sceneTexturesVec, deviceParameters, &intermediateBufferOffset);
+	LoadTextureImages(device, sceneTexturesVec);
 
 	//Allocate memory for images and buffers
-	AllocateImageMemory(memoryAllocator);
-	AllocateBuffersMemory(memoryAllocator);
+	AllocateTexturesHeap(device, memoryAllocator);
+	AllocateBuffersHeap(device, memoryAllocator);
 
 	CreateImageViews();
 
@@ -167,7 +168,23 @@ void D3D12::RenderableSceneBuilder::LoadTextureImages(ID3D12Device* device, cons
 		THROW_IF_FAILED(DirectX::LoadDDSTextureFromFile(device, sceneTextures[i].c_str(), texCommited.put(), textureData, subresources));
 
 		D3D12_RESOURCE_DESC texDesc = texCommited->GetDesc();
-		mTextureDescs.push_back(texDesc);
+
+		D3D12_RESOURCE_DESC1 texDesc1;
+		texDesc1.Dimension                       = texDesc.Dimension;
+		texDesc1.Alignment                       = texDesc.Alignment;
+		texDesc1.Width                           = texDesc.Width;
+		texDesc1.Height                          = texDesc.Height;
+		texDesc1.DepthOrArraySize                = texDesc.DepthOrArraySize;
+		texDesc1.MipLevels                       = texDesc.MipLevels;
+		texDesc1.Format                          = texDesc.Format;
+		texDesc1.SampleDesc                      = texDesc.SampleDesc;
+		texDesc1.Layout                          = texDesc.Layout;
+		texDesc1.Flags                           = texDesc.Flags;
+		texDesc1.SamplerFeedbackMipRegion.Width  = 1;
+		texDesc1.SamplerFeedbackMipRegion.Height = 1;
+		texDesc1.SamplerFeedbackMipRegion.Depth  = 1;
+
+		mTextureDescs.push_back(texDesc1);
 
 		texCommited.reset();
 
@@ -178,29 +195,21 @@ void D3D12::RenderableSceneBuilder::LoadTextureImages(ID3D12Device* device, cons
 		std::vector<UINT64>                             footprintByteWidths(subresources.size());
 		device->GetCopyableFootprints(&texDesc, 0, subresources.size(), 0, footprints.data(), footprintHeights.data(), footprintByteWidths.data(), &textureByteSize);
 
-		size_t currentFootprintOffset = mTextureData.size();
-		for(size_t j = 0; j < footprints.size(); j++)
-		{
-			D3D12_PLACED_SUBRESOURCE_FOOTPRINT offsetedFootprint;
-			offsetedFootprint.Offset    = currentFootprintOffset + footprints[j].Offset;
-			offsetedFootprint.Footprint = footprints[j].Footprint;
-
-			textureResourcesToInit.push_back(texture.Get());
-			textureSubresourceIndices.push_back(j);
-			textureSubresourceFootprints.push_back(offsetedFootprint);
-		}
-
-		size_t currentTextureOffset = textureDataBlob.size();
-		textureDataBlob.resize(textureDataBlob.size() + textureByteSize);
+		size_t currentTextureOffset = mTextureData.size();
+		mTextureData.resize(mTextureData.size() + textureByteSize);
 		for(size_t j = 0; j < subresources.size(); j++)
 		{
+			D3D12_PLACED_SUBRESOURCE_FOOTPRINT offsetedFootprint;
+			offsetedFootprint.Offset    = currentTextureOffset + footprints[j].Offset;
+			offsetedFootprint.Footprint = footprints[j].Footprint;
+
 			//Mips are 256 byte aligned on a per-row basis
 			if(footprintByteWidths[j] != footprints[j].Footprint.RowPitch)
 			{
 				size_t rowOffset = 0;
 				for(size_t y = 0; y < footprintHeights[j]; y++)
 				{
-					memcpy(textureDataBlob.data() + currentTextureOffset + rowOffset, (uint8_t*)subresources[j].pData + y * subresources[j].RowPitch, subresources[j].RowPitch);
+					memcpy(mTextureData.data() + currentTextureOffset + rowOffset, (uint8_t*)subresources[j].pData + y * subresources[j].RowPitch, subresources[j].RowPitch);
 					rowOffset += footprints[j].Footprint.RowPitch;
 				}
 
@@ -208,43 +217,43 @@ void D3D12::RenderableSceneBuilder::LoadTextureImages(ID3D12Device* device, cons
 			}
 			else
 			{
-				memcpy(textureDataBlob.data() + currentTextureOffset, (uint8_t*)subresources[j].pData, subresources[j].SlicePitch * texDesc.DepthOrArraySize);
+				memcpy(mTextureData.data() + currentTextureOffset, (uint8_t*)subresources[j].pData, subresources[j].SlicePitch * texDesc.DepthOrArraySize);
 				currentTextureOffset += subresources[j].SlicePitch * texDesc.DepthOrArraySize;
 			}
 		}
-
-		std::unique_ptr<uint8_t[]>                             texData;
-		std::vector<DDSTextureLoaderVk::LoadedSubresourceData> texSubresources;
-
-		VkImage texture = VK_NULL_HANDLE;
-		VkImageCreateInfo textureCreateInfo;
-		DDSTextureLoaderVk::LoadDDSTextureFromFile(mSceneToBuild->mDeviceRef, sceneTextures[i].c_str(), &texture, texData, texSubresources, deviceParameters.GetDeviceProperties().limits.maxImageDimension2D, &textureCreateInfo);
-
-		mSceneToBuild->mSceneTextures.push_back(texture);
-		mSceneTextureCreateInfos.push_back(std::move(textureCreateInfo));
-
-		mSceneTextureCopyInfos.push_back(std::vector<VkBufferImageCopy>());
-		for (size_t j = 0; j < texSubresources.size(); j++)
-		{
-			currentOffset = mTextureData.size();
-			mTextureData.insert(mTextureData.end(), texSubresources[j].PData, texSubresources[j].PData + texSubresources[j].DataByteSize);
-
-			VkBufferImageCopy copyRegion;
-			copyRegion.bufferOffset = currentOffset + mIntermediateBufferTextureDataOffset;
-			copyRegion.bufferRowLength = 0;
-			copyRegion.bufferImageHeight = 0;
-			copyRegion.imageSubresource.aspectMask = texSubresources[j].SubresourceSlice.aspectMask;
-			copyRegion.imageSubresource.mipLevel = texSubresources[j].SubresourceSlice.mipLevel;
-			copyRegion.imageSubresource.baseArrayLayer = texSubresources[j].SubresourceSlice.arrayLayer;
-			copyRegion.imageSubresource.layerCount = 1;
-			copyRegion.imageOffset.x = 0;
-			copyRegion.imageOffset.y = 0;
-			copyRegion.imageOffset.z = 0;
-			copyRegion.imageExtent = texSubresources[j].Extent;
-
-			mSceneTextureCopyInfos.back().push_back(copyRegion);
-		}
 	}
+}
 
-	*currentIntermediateBufferOffset = mIntermediateBufferTextureDataOffset + mTextureData.size() * sizeof(uint8_t);
+void D3D12::RenderableSceneBuilder::AllocateBuffersHeap(ID3D12Device8* device, const MemoryManager* memoryAllocator)
+{
+	mSceneToBuild->mHeapForGpuBuffers.reset();
+	mSceneToBuild->mHeapForCpuVisibleBuffers.reset();
+
+	std::vector gpuBufferDescs = {mVertexBufferDesc, mIndexBufferDesc};
+
+	std::vector<UINT64> gpuBufferOffsets;
+	memoryAllocator->AllocateBuffersMemory(device, gpuBufferDescs, MemoryManager::BufferAllocationType::GPU_LOCAL, gpuBufferOffsets, mSceneToBuild->mHeapForGpuBuffers.put());
+
+
+	std::vector hostVisibleBufferDescs = {mConstantBufferDesc};
+
+	std::vector<UINT64> cpuVisibleBufferOffsets;
+	memoryAllocator->AllocateBuffersMemory(device, hostVisibleBufferDescs, MemoryManager::BufferAllocationType::CPU_VISIBLE, cpuVisibleBufferOffsets, mSceneToBuild->mHeapForCpuVisibleBuffers.put());
+}
+
+void D3D12::RenderableSceneBuilder::CreateTextures(ID3D12Device8* device, const std::vector<D3D12_RESOURCE_DESC1>& textureDescs)
+{
+	for(const D3D12_RESOURCE_DESC1& textureDesc: textureDescs)
+	{
+		THROW_IF_FAILED(device->CreatePlacedResource1(mSceneToBuild->mHeapForTextures, ))
+	}
+}
+
+void D3D12::RenderableSceneBuilder::AllocateTexturesHeap(ID3D12Device8* device, const MemoryManager* memoryAllocator, std::vector<D3D12_RESOURCE_DESC1>& outTextureDescs)
+{
+	outTextureDescs.clear();
+	mSceneToBuild->mHeapForTextures.reset();
+
+	std::vector<UINT64> textureHeapOffsets;
+	memoryAllocator->AllocateTextureMemory(device, outTextureDescs, textureHeapOffsets, mSceneToBuild->mHeapForTextures.put());
 }
