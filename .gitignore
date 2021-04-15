@@ -54,3 +54,9 @@
 *.pdb~Stashed changes_0
 /UtilsBuild/DirectXShaderCompiler.bin
 DXC
+/Utils/DirectXShaderCompiler/Debug/lib
+/Utils/DirectXShaderCompiler/Release/lib
+/Compiled/Bin_Debug/Shaders/Vulkan/GBuffer
+/Compiled/Bin_Debug/Shaders/D3D12/GBuffer/GBufferDrawPS.cso
+*.cso
+/Compiled/Bin_Debug/SolarTearsd.ilk

@@ -94,6 +94,9 @@
     <Filter Include="3rdParty\DDSTextureLoader12">
       <UniqueIdentifier>{d7c5ab3f-98db-4925-83c0-0d4113f978fd}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Rendering\D3D12\FrameGraph">
+      <UniqueIdentifier>{88f74e64-a01c-4d40-9547-71d612bd30ca}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Platform\Win32\Win32Application.hpp">
@@ -173,9 +176,6 @@
     </ClInclude>
     <ClInclude Include="Rendering\VulkanC\FrameGraph\Passes\VulkanCCopyImagePass.hpp">
       <Filter>Rendering\VulkanC\FrameGraph\Passes</Filter>
-    </ClInclude>
-    <ClInclude Include="Rendering\VulkanC\FrameGraph\VulkanCFrameGraphConfig.hpp">
-      <Filter>Rendering\VulkanC\FrameGraph</Filter>
     </ClInclude>
     <ClInclude Include="Rendering\VulkanC\FrameGraph\Passes\VulkanCGBufferRenderPass.hpp">
       <Filter>Rendering\VulkanC\FrameGraph\Passes</Filter>
@@ -294,6 +294,21 @@
     <ClInclude Include="..\3rdParty\SPIRV-Reflect\include\spirv\unified1\spirv.h">
       <Filter>3rdParty\SPIRV-Reflect\include\spirv\unified1</Filter>
     </ClInclude>
+    <ClInclude Include="Rendering\D3D12\D3D12DescriptorManager.hpp">
+      <Filter>Rendering\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\D3D12\Scene\D3D12SceneDescriptorCreator.hpp">
+      <Filter>Rendering\D3D12\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\D3D12\FrameGraph\D3D12FrameGraphDescriptorCreator.hpp">
+      <Filter>Rendering\D3D12\FrameGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\D3D12\FrameGraph\D3D12FrameGraph.hpp">
+      <Filter>Rendering\D3D12\FrameGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\FrameGraphConfig.hpp">
+      <Filter>Rendering</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Platform\Win32\Win32Application.cpp">
@@ -392,9 +407,6 @@
     <ClCompile Include="Rendering\RenderableSceneBase.cpp">
       <Filter>Rendering</Filter>
     </ClCompile>
-    <ClCompile Include="Rendering\VulkanC\FrameGraph\VulkanCFrameGraphConfig.cpp">
-      <Filter>Rendering\VulkanC\FrameGraph</Filter>
-    </ClCompile>
     <ClCompile Include="Rendering\VulkanC\Scene\VulkanCSceneBuilder.cpp">
       <Filter>Rendering\VulkanC\Scene</Filter>
     </ClCompile>
@@ -466,6 +478,21 @@
     </ClCompile>
     <ClCompile Include="..\3rdParty\SPIRV-Reflect\spirv_reflect.c">
       <Filter>3rdParty\SPIRV-Reflect</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\D3D12\Scene\D3D12SceneDescriptorCreator.cpp">
+      <Filter>Rendering\D3D12\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\D3D12\D3D12DescriptorManager.cpp">
+      <Filter>Rendering\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\D3D12\FrameGraph\D3D12FrameGraph.cpp">
+      <Filter>Rendering\D3D12\FrameGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\FrameGraphConfig.cpp">
+      <Filter>Rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\D3D12\FrameGraph\D3D12FrameGraphDescriptorCreator.cpp">
+      <Filter>Rendering\D3D12\FrameGraph</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

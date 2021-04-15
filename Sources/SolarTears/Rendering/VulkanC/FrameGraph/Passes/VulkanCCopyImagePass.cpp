@@ -1,6 +1,6 @@
 #include "VulkanCCopyImagePass.hpp"
 #include "../../VulkanCFunctions.hpp"
-#include "../VulkanCFrameGraphConfig.hpp"
+#include "../../../FrameGraphConfig.hpp"
 #include "../VulkanCFrameGraphBuilder.hpp"
 #include <array>
 

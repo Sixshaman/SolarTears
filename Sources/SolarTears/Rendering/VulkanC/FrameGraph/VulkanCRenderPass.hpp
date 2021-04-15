@@ -6,10 +6,10 @@
 #include "../Scene/VulkanCScene.hpp"
 
 class LoggerQueue;
+class FrameGraphConfig;
 
 namespace VulkanCBindings
 {
-	class FrameGraphConfig;
 	class FrameGraphBuilder;
 
 	enum class RenderPassType : uint32_t

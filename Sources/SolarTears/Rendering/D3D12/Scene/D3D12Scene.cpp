@@ -2,6 +2,7 @@
 #include "../D3D12Utils.hpp"
 #include "../../../Core/Scene/SceneDescription.hpp"
 #include "../../RenderableSceneMisc.hpp"
+#include "../D3D12Shaders.hpp"
 #include <array>
 
 D3D12::RenderableScene::RenderableScene(const FrameCounter* frameCounter): RenderableSceneBase(D3D12Utils::InFlightFrameCount), mFrameCounterRef(frameCounter), 
@@ -78,12 +79,44 @@ void D3D12::RenderableScene::FinalizeSceneUpdating()
 	mScheduledSceneUpdatesCount = freeSpaceIndex;
 }
 
-UINT64 D3D12::RenderableScene::CalculatePerObjectDataOffset(uint32_t objectIndex, uint32_t currentFrameResourceIndex)
+void D3D12::RenderableScene::DrawObjectsOntoGBuffer(ID3D12GraphicsCommandList* commandList, const ShaderManager* shaderManager) const
+{
+	std::array sceneVertexBuffers = {mSceneVertexBufferView};
+	commandList->IASetVertexBuffers(0, (UINT)sceneVertexBuffers.size(), sceneVertexBuffers.data());
+
+	commandList->IASetIndexBuffer(&mSceneIndexBufferView);
+
+	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	D3D12_GPU_VIRTUAL_ADDRESS constantBufferAddress = mSceneConstantBuffer->GetGPUVirtualAddress();
+
+	uint32_t frameResourceIndex = mFrameCounterRef->GetFrameCount() % D3D12Utils::InFlightFrameCount;
+	UINT64 PerFrameOffset = CalculatePerFrameDataOffset(frameResourceIndex);
+
+	commandList->SetGraphicsRootConstantBufferView(shaderManager->GetGBufferPerFrameBufferBinding(), constantBufferAddress + PerFrameOffset);
+	for(size_t meshIndex = 0; meshIndex < mSceneMeshes.size(); meshIndex++)
+	{
+		UINT64 PerObjectOffset = CalculatePerObjectDataOffset((uint32_t)meshIndex, frameResourceIndex);
+
+		for(uint32_t subobjectIndex = mSceneMeshes[meshIndex].FirstSubobjectIndex; subobjectIndex < mSceneMeshes[meshIndex].AfterLastSubobjectIndex; subobjectIndex++)
+		{
+			//Bind ROOT CONSTANTS for material index
+
+			//TODO: bindless
+			commandList->SetGraphicsRootConstantBufferView(shaderManager->GetGBufferPerObjectBufferBinding(), constantBufferAddress + PerObjectOffset);
+			commandList->SetGraphicsRootDescriptorTable(shaderManager->GetGBufferTextureBinding(), mSceneTextureDescriptors[mSceneSubobjects[subobjectIndex].TextureDescriptorSetIndex]);
+
+			commandList->DrawIndexedInstanced(mSceneSubobjects[subobjectIndex].IndexCount, 1, mSceneSubobjects[subobjectIndex].FirstIndex, mSceneSubobjects[subobjectIndex].VertexOffset, 0);
+		}
+	}
+}
+
+UINT64 D3D12::RenderableScene::CalculatePerObjectDataOffset(uint32_t objectIndex, uint32_t currentFrameResourceIndex) const
 {
 	return mSceneDataConstantObjectBufferOffset + (mScenePerObjectData.size() * currentFrameResourceIndex + objectIndex) * mGBufferObjectChunkDataSize;
 }
 
-UINT64 D3D12::RenderableScene::CalculatePerFrameDataOffset(uint32_t currentFrameResourceIndex)
+UINT64 D3D12::RenderableScene::CalculatePerFrameDataOffset(uint32_t currentFrameResourceIndex) const
 {
 	return mSceneDataConstantFrameBufferOffset + currentFrameResourceIndex * mGBufferFrameChunkDataSize;
 }

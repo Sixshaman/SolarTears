@@ -46,6 +46,8 @@ namespace D3D12
 		void CreateTextures(ID3D12Device8* device);
 		void CreateBuffers(ID3D12Device8* device);
 
+		void CreateBufferViews();
+
 		void CreateIntermediateBuffer(ID3D12Device8* device, UINT64 intermediateBufferSize);
 		void FillIntermediateBufferData();
 
