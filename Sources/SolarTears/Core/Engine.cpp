@@ -133,7 +133,7 @@ void Engine::CreateScene()
 		0, 2, 3
 	};
 
-	meshComponent.TextureFilename = L"Test1.dds";
+	meshComponent.TextureFilename = L"../Assets/Textures/Test1.dds";
 	sceneObject.SetMeshComponent(meshComponent);
 
 	mRenderingSystem->InitScene(&sceneDesc);

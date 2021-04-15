@@ -1,3 +1,5 @@
+- Sort this exact file
+
 - AFTER FIXING TEXTURES, READ BEST PRACTICES AND WRITE NOTES!
 - Also try tools like RMV. And turns out NSight has A LOT of interesting profiling tools, including memory workload analysis!
 - Also check the code with static code analyzer!
@@ -61,3 +63,5 @@
 - DX12: UMA optimizations for heaps. Also other CUSTOM heaps
 - DX12: Debug callback!
 - DX12: D3D12EnableExperimentalFeatures!
+- DX12: Descriptor indexing (seriously, not using bindless in 2021?)
+- DX12: DRED

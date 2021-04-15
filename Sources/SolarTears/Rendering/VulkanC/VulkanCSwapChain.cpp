@@ -1,5 +1,5 @@
 #include "VulkanCSwapChain.hpp"
-#include "../../../3rd party/VulkanGenericStructures/Include/VulkanGenericStructures.h"
+#include <VulkanGenericStructures.h>
 #include "VulkanCFunctions.hpp"
 #include "VulkanCUtils.hpp"
 #include <unordered_set>

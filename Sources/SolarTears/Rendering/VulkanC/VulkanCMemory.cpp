@@ -1,7 +1,7 @@
 #include "VulkanCMemory.hpp"
 #include "VulkanCFunctions.hpp"
 #include "VulkanCUtils.hpp"
-#include "../../../3rd party/VulkanGenericStructures/Include/VulkanGenericStructures.h"
+#include <VulkanGenericStructures.h>
 #include <cassert>
 
 VulkanCBindings::MemoryManager::MemoryManager(LoggerQueue* logger, VkPhysicalDevice physicalDevice, const DeviceParameters& deviceParameters): mLogger(logger)

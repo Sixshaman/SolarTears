@@ -3,9 +3,9 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include <DirectXMath.h>
 #include "Scene.hpp"
 #include "../../Input/ControlCodes.hpp"
-#include "../../../3rd party/DirectXMath/Inc/DirectXMath.h"
 
 class SceneDescriptionObject
 {

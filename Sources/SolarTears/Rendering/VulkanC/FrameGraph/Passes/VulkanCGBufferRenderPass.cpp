@@ -1,5 +1,4 @@
 #include "VulkanCGBufferRenderPass.hpp"
-#include "../../../../../3rd party/VulkanGenericStructures/Include/VulkanGenericStructures.h"
 #include "../../VulkanCFunctions.hpp"
 #include "../../VulkanCDeviceParameters.hpp"
 #include "../../VulkanCShaders.hpp"
@@ -8,6 +7,7 @@
 #include "../VulkanCFrameGraphBuilder.hpp"
 #include "../VulkanCFrameGraphConfig.hpp"
 #include <array>
+#include <VulkanGenericStructures.h>
 
 VulkanCBindings::GBufferPass::GBufferPass(VkDevice device, const FrameGraphBuilder* frameGraphBuilder, const std::string& passName): RenderPass(device)
 {

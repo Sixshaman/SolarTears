@@ -1,11 +1,11 @@
 #include "GBufferInclude.hlsli"
 
-cbuffer cbPerObject: register(c0)
+cbuffer cbPerObject: register(b0)
 {
 	float4x4 WorldMatrix;
 }
 
-cbuffer cbPerFrame: register(c1)
+cbuffer cbPerFrame: register(b1)
 {
 	float4x4 ViewProjMatrix;
 }

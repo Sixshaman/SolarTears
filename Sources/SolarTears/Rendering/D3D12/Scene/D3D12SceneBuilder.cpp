@@ -3,7 +3,7 @@
 #include "../D3D12Memory.hpp"
 #include "../D3D12DeviceQueues.hpp"
 #include "../D3D12WorkerCommandLists.hpp"
-#include "../../../../3rd party/DirectXTex/DDSTextureLoader/DDSTextureLoader12.h"
+#include "../../../../3rdParty/DirectXTex/DDSTextureLoader/DDSTextureLoader12.h"
 #include <array>
 #include <cassert>
 #include <vector>
