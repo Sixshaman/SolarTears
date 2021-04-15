@@ -15,8 +15,10 @@ class FrameCounter;
 namespace D3D12
 {
 	class RenderableScene;
+	class FrameGraph;
 	class MemoryManager;
 	class ShaderManager;
+	class DescriptorManager;
 	class DeviceQueues;
 	class WorkerCommandLists;
 
@@ -47,6 +49,7 @@ namespace D3D12
 		wil::com_ptr_nothrow<ID3D12Device8> mDevice;
 
 		std::unique_ptr<RenderableScene> mScene;
+		std::unique_ptr<FrameGraph>      mFrameGraph;
 
 		std::unique_ptr<SwapChain>          mSwapChain;
 		std::unique_ptr<DeviceQueues>       mDeviceQueues;
@@ -54,7 +57,8 @@ namespace D3D12
 
 		std::unique_ptr<DeviceFeatures> mDeviceFeatures;
 
-		std::unique_ptr<MemoryManager> mMemoryAllocator;
-		std::unique_ptr<ShaderManager> mShaderManager;
+		std::unique_ptr<MemoryManager>     mMemoryAllocator;
+		std::unique_ptr<ShaderManager>     mShaderManager;
+		std::unique_ptr<DescriptorManager> mDescriptorManager;
 	};
 }

@@ -3,8 +3,11 @@
 #include "D3D12DeviceQueues.hpp"
 #include "D3D12WorkerCommandLists.hpp"
 #include "D3D12Shaders.hpp"
+#include "D3D12DescriptorManager.hpp"
 #include "Scene/D3D12Scene.hpp"
 #include "Scene/D3D12SceneBuilder.hpp"
+#include "Scene/D3D12SceneDescriptorCreator.hpp"
+#include "FrameGraph/D3D12FrameGraphDescriptorCreator.hpp"
 #include "../../Core/ThreadPool.hpp"
 
 D3D12::Renderer::Renderer(LoggerQueue* loggerQueue, FrameCounter* frameCounter, ThreadPool* threadPool): ::Renderer(loggerQueue), mFrameCounterRef(frameCounter), mThreadPoolRef(threadPool)
@@ -26,8 +29,9 @@ D3D12::Renderer::Renderer(LoggerQueue* loggerQueue, FrameCounter* frameCounter, 
 	mSwapChain          = std::make_unique<SwapChain>(mLoggingBoard);
 	mWorkerCommandLists = std::make_unique<WorkerCommandLists>(mDevice.get(), threadPool->GetWorkerThreadCount());
 
-	mMemoryAllocator = std::make_unique<MemoryManager>(mLoggingBoard);
-	mShaderManager   = std::make_unique<ShaderManager>(mLoggingBoard, mDevice.get());
+	mMemoryAllocator   = std::make_unique<MemoryManager>(mLoggingBoard);
+	mShaderManager     = std::make_unique<ShaderManager>(mLoggingBoard, mDevice.get());
+	mDescriptorManager = std::make_unique<DescriptorManager>(mDevice.get());
 }
 
 D3D12::Renderer::~Renderer()
@@ -58,7 +62,9 @@ void D3D12::Renderer::InitScene(SceneDescription* sceneDescription)
 	sceneBuilder.BakeSceneFirstPart(mDevice.get(), mMemoryAllocator.get());
 	sceneBuilder.BakeSceneSecondPart(mDeviceQueues.get(), mWorkerCommandLists.get());
 
-	//D3D12::SceneDescriprorBuilder sceneDescriptorBuilder(mScene.get());
+	SceneDescriptorCreator      sceneDescriptorCreator(mScene.get());
+	FrameGraphDescriptorCreator frameGraphDescriptorCreator(mFrameGraph.get());
+	mDescriptorManager->ValidateDescriptorHeaps(mDevice.get(), &sceneDescriptorCreator, &frameGraphDescriptorCreator, DescriptorManager::FLAG_FRAME_GRAPH_UNCHANGED);
 }
 
 void D3D12::Renderer::RenderScene()

@@ -1,5 +1,5 @@
 #include "VulkanCInstanceParameters.hpp"
-#include "../../../3rd party/VulkanGenericStructures/Include/VulkanGenericStructures.h"
+#include <VulkanGenericStructures.h>
 #include "VulkanCUtils.hpp"
 #include "VulkanCFunctions.hpp"
 #include <unordered_set>

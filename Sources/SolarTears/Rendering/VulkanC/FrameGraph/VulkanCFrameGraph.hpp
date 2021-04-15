@@ -4,7 +4,7 @@
 #include <memory>
 #include <unordered_set>
 #include "VulkanCRenderPass.hpp"
-#include "VulkanCFrameGraphConfig.hpp"
+#include "../../FrameGraphConfig.hpp"
 
 class ThreadPool;
 

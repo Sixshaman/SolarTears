@@ -60,8 +60,13 @@
     <ClInclude Include="Rendering\D3D12\D3D12SwapChain.hpp" />
     <ClInclude Include="Rendering\D3D12\D3D12Utils.hpp" />
     <ClInclude Include="Rendering\D3D12\D3D12WorkerCommandLists.hpp" />
+    <ClInclude Include="Rendering\D3D12\D3D12DescriptorManager.hpp" />
+    <ClInclude Include="Rendering\D3D12\FrameGraph\D3D12FrameGraph.hpp" />
+    <ClInclude Include="Rendering\D3D12\FrameGraph\D3D12FrameGraphDescriptorCreator.hpp" />
     <ClInclude Include="Rendering\D3D12\Scene\D3D12Scene.hpp" />
     <ClInclude Include="Rendering\D3D12\Scene\D3D12SceneBuilder.hpp" />
+    <ClInclude Include="Rendering\D3D12\Scene\D3D12SceneDescriptorCreator.hpp" />
+    <ClInclude Include="Rendering\FrameGraphConfig.hpp" />
     <ClInclude Include="Rendering\RenderableSceneBase.hpp" />
     <ClInclude Include="Rendering\RenderableSceneBuilderBase.hpp" />
     <ClInclude Include="Rendering\RenderableSceneMisc.hpp" />
@@ -70,7 +75,6 @@
     <ClInclude Include="Rendering\VulkanC\FrameGraph\Passes\VulkanCGBufferRenderPass.hpp" />
     <ClInclude Include="Rendering\VulkanC\FrameGraph\VulkanCFrameGraph.hpp" />
     <ClInclude Include="Rendering\VulkanC\FrameGraph\VulkanCFrameGraphBuilder.hpp" />
-    <ClInclude Include="Rendering\VulkanC\FrameGraph\VulkanCFrameGraphConfig.hpp" />
     <ClInclude Include="Rendering\VulkanC\FrameGraph\VulkanCRenderPass.hpp" />
     <ClInclude Include="Rendering\VulkanC\Scene\VulkanCScene.hpp" />
     <ClInclude Include="Rendering\VulkanC\Scene\VulkanCSceneBuilder.hpp" />
@@ -112,6 +116,7 @@
     <ClCompile Include="Platform\Win32\Win32KeyboardKeyMap.cpp" />
     <ClCompile Include="Platform\Win32\Win32MouseKeyMap.cpp" />
     <ClCompile Include="Platform\Win32\Win32Window.cpp" />
+    <ClCompile Include="Rendering\D3D12\D3D12DescriptorManager.cpp" />
     <ClCompile Include="Rendering\D3D12\D3D12DeviceFeatures.cpp" />
     <ClCompile Include="Rendering\D3D12\D3D12DeviceQueues.cpp" />
     <ClCompile Include="Rendering\D3D12\D3D12Memory.cpp" />
@@ -120,8 +125,12 @@
     <ClCompile Include="Rendering\D3D12\D3D12SwapChain.cpp" />
     <ClCompile Include="Rendering\D3D12\D3D12Utils.cpp" />
     <ClCompile Include="Rendering\D3D12\D3D12WorkerCommandLists.cpp" />
+    <ClCompile Include="Rendering\D3D12\FrameGraph\D3D12FrameGraph.cpp" />
+    <ClCompile Include="Rendering\D3D12\FrameGraph\D3D12FrameGraphDescriptorCreator.cpp" />
     <ClCompile Include="Rendering\D3D12\Scene\D3D12Scene.cpp" />
     <ClCompile Include="Rendering\D3D12\Scene\D3D12SceneBuilder.cpp" />
+    <ClCompile Include="Rendering\D3D12\Scene\D3D12SceneDescriptorCreator.cpp" />
+    <ClCompile Include="Rendering\FrameGraphConfig.cpp" />
     <ClCompile Include="Rendering\RenderableSceneBase.cpp" />
     <ClCompile Include="Rendering\RenderableSceneBuilderBase.cpp" />
     <ClCompile Include="Rendering\Renderer.cpp" />
@@ -129,7 +138,6 @@
     <ClCompile Include="Rendering\VulkanC\FrameGraph\Passes\VulkanCGBufferRenderPass.cpp" />
     <ClCompile Include="Rendering\VulkanC\FrameGraph\VulkanCFrameGraph.cpp" />
     <ClCompile Include="Rendering\VulkanC\FrameGraph\VulkanCFrameGraphBuilder.cpp" />
-    <ClCompile Include="Rendering\VulkanC\FrameGraph\VulkanCFrameGraphConfig.cpp" />
     <ClCompile Include="Rendering\VulkanC\FrameGraph\VulkanCRenderPass.cpp" />
     <ClCompile Include="Rendering\VulkanC\Scene\VulkanCScene.cpp" />
     <ClCompile Include="Rendering\VulkanC\Scene\VulkanCSceneBuilder.cpp" />
@@ -319,8 +327,7 @@
       <AdditionalDependencies>vulkan-1.lib;d3d12.lib;dxgi.lib;dxguid.lib;dxcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
-      <Command>
-      </Command>
+      <Command>if not exist "$(SolutionDir)..\Utils\DXC\Debug\bin\dxc.exe" "$(SolutionDir)..\BuildUtils\BuildDXC_Debug.cmd"</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">

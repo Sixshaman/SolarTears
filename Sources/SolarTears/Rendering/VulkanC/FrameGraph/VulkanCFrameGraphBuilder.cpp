@@ -235,7 +235,7 @@ const VulkanCBindings::ShaderManager* VulkanCBindings::FrameGraphBuilder::GetSha
 	return mShaderManager;
 }
 
-const VulkanCBindings::FrameGraphConfig* VulkanCBindings::FrameGraphBuilder::GetConfig() const
+const FrameGraphConfig* VulkanCBindings::FrameGraphBuilder::GetConfig() const
 {
 	return &mGraphToBuild->mFrameGraphConfig;
 }

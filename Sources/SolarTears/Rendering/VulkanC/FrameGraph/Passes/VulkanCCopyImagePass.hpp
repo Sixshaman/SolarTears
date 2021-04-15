@@ -2,9 +2,10 @@
 
 #include "../VulkanCRenderPass.hpp"
 
+class FrameGraphConfig;
+
 namespace VulkanCBindings
 {
-	class FrameGraphConfig;	
 	class FrameGraphBuilder;
 
 	class CopyImagePass: public RenderPass

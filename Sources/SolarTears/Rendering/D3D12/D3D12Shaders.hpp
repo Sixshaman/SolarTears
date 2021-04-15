@@ -14,11 +14,23 @@ namespace D3D12
 {
 	class ShaderManager
 	{
+		struct GBufferBindings
+		{
+			UINT PerObjectBufferBinding;
+			UINT PerFrameBufferBinding;
+			UINT ObjectTextureBinding;
+		};
+
 		static constexpr uint32_t StaticSamplerCount = 2;
 
 	public:
 		ShaderManager(LoggerQueue* logger, ID3D12Device* device);
 		~ShaderManager();
+
+	public:
+		UINT GetGBufferPerObjectBufferBinding() const;
+		UINT GetGBufferPerFrameBufferBinding()  const;
+		UINT GetGBufferTextureBinding()         const;
 
 	private:
 		void LoadShaderData(ID3D12Device* device);
@@ -31,5 +43,6 @@ namespace D3D12
 		LoggerQueue* mLogger;
 
 		wil::com_ptr_nothrow<ID3D12RootSignature> mGBufferRootSignature;
+		GBufferBindings                           mGBufferRootBindings;
 	};
 }

@@ -15,6 +15,21 @@ D3D12::ShaderManager::~ShaderManager()
 {
 }
 
+UINT D3D12::ShaderManager::GetGBufferPerObjectBufferBinding() const
+{
+	return mGBufferRootBindings.PerObjectBufferBinding;
+}
+
+UINT D3D12::ShaderManager::GetGBufferPerFrameBufferBinding() const
+{
+	return mGBufferRootBindings.PerFrameBufferBinding;
+}
+
+UINT D3D12::ShaderManager::GetGBufferTextureBinding() const
+{
+	return mGBufferRootBindings.ObjectTextureBinding;
+}
+
 void D3D12::ShaderManager::LoadShaderData(ID3D12Device* device)
 {
 	wil::com_ptr_nothrow<IDxcUtils> dxcUtils;
@@ -55,9 +70,18 @@ void D3D12::ShaderManager::CreateReflectionData(IDxcUtils* dxcUtils, IDxcBlobEnc
 
 void D3D12::ShaderManager::BuildGBufferRootSignature(ID3D12Device* device, ID3D12ShaderReflection* vsReflection, ID3D12ShaderReflection* psReflection)
 {
-	//Gather regular inputs
-	std::array shaderInputs  = {"cbPerObject", "gObjectTexture", "cbPerFrame"}; //Sorted from least frequent to most frequent
+	//Sorted from least frequent to most frequent
+	mGBufferRootBindings.PerObjectBufferBinding = 0;
+	mGBufferRootBindings.ObjectTextureBinding   = 1;
+	mGBufferRootBindings.PerFrameBufferBinding  = 2;
 
+	std::array<std::string_view, 3> shaderInputs;
+	shaderInputs[mGBufferRootBindings.PerObjectBufferBinding] = "cbPerObject";
+	shaderInputs[mGBufferRootBindings.ObjectTextureBinding]   = "gObjectTexture";
+	shaderInputs[mGBufferRootBindings.PerFrameBufferBinding]  = "cbPerFrame";
+
+
+	//Gather regular inputs
 	std::vector<D3D12_SHADER_INPUT_BIND_DESC> shaderInputBindings;
 	std::vector<D3D12_SHADER_VISIBILITY>      shaderVisibilities;
 	for(size_t i = 0; i < shaderInputs.size(); i++)
@@ -66,7 +90,7 @@ void D3D12::ShaderManager::BuildGBufferRootSignature(ID3D12Device* device, ID3D1
 
 		D3D12_SHADER_INPUT_BIND_DESC inputBindDesc;
 
-		if(SUCCEEDED(vsReflection->GetResourceBindingDescByName(shaderInputs[i], &inputBindDesc)))
+		if(SUCCEEDED(vsReflection->GetResourceBindingDescByName(shaderInputs[i].data(), &inputBindDesc)))
 		{
 			if(shaderVisibility == 0)
 			{
@@ -76,7 +100,7 @@ void D3D12::ShaderManager::BuildGBufferRootSignature(ID3D12Device* device, ID3D1
 			shaderVisibility |= D3D12_SHADER_VISIBILITY_VERTEX;
 		}
 
-		if(SUCCEEDED(psReflection->GetResourceBindingDescByName(shaderInputs[i], &inputBindDesc)))
+		if(SUCCEEDED(psReflection->GetResourceBindingDescByName(shaderInputs[i].data(), &inputBindDesc)))
 		{
 			if(shaderVisibility == 0)
 			{

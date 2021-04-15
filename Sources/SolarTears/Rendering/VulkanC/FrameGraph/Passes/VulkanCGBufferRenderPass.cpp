@@ -5,7 +5,7 @@
 #include "../../Scene/VulkanCSceneBuilder.hpp"
 #include "../VulkanCFrameGraph.hpp"
 #include "../VulkanCFrameGraphBuilder.hpp"
-#include "../VulkanCFrameGraphConfig.hpp"
+#include "../../../FrameGraphConfig.hpp"
 #include <array>
 #include <VulkanGenericStructures.h>
 

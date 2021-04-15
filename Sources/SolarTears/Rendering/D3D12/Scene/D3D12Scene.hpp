@@ -9,9 +9,12 @@
 
 namespace D3D12
 {
+	class ShaderManager;
+
 	class RenderableScene: public RenderableSceneBase
 	{
 		friend class RenderableSceneBuilder;
+		friend class SceneDescriptorCreator;
 
 		struct SceneSubobject
 		{
@@ -35,6 +38,9 @@ namespace D3D12
 
 		void FinalizeSceneUpdating() override;
 
+	public:
+		void DrawObjectsOntoGBuffer(ID3D12GraphicsCommandList* commandList, const ShaderManager* shaderManager) const;
+
 	private:
 		//Created from inside
 		const FrameCounter* mFrameCounterRef;
@@ -42,8 +48,8 @@ namespace D3D12
 		uint32_t mGBufferObjectChunkDataSize;
 		uint32_t mGBufferFrameChunkDataSize;
 
-		UINT64 CalculatePerObjectDataOffset(uint32_t objectIndex, uint32_t currentFrameResourceIndex);
-		UINT64 CalculatePerFrameDataOffset(uint32_t currentFrameResourceIndex);
+		UINT64 CalculatePerObjectDataOffset(uint32_t objectIndex, uint32_t currentFrameResourceIndex) const;
+		UINT64 CalculatePerFrameDataOffset(uint32_t currentFrameResourceIndex)                        const;
 
 	private:
 		//Created from outside
@@ -55,9 +61,13 @@ namespace D3D12
 		wil::com_ptr_nothrow<ID3D12Resource> mSceneVertexBuffer;
 		wil::com_ptr_nothrow<ID3D12Resource> mSceneIndexBuffer;
 
+		D3D12_VERTEX_BUFFER_VIEW mSceneVertexBufferView;
+		D3D12_INDEX_BUFFER_VIEW  mSceneIndexBufferView;
+
 		wil::com_ptr_nothrow<ID3D12Resource> mSceneConstantBuffer; //Common buffer for all constant buffer data
 
 		std::vector<wil::com_ptr_nothrow<ID3D12Resource>> mSceneTextures;
+		std::vector<D3D12_GPU_DESCRIPTOR_HANDLE>          mSceneTextureDescriptors;
 
 		wil::com_ptr_nothrow<ID3D12Heap> mHeapForGpuBuffers;
 		wil::com_ptr_nothrow<ID3D12Heap> mHeapForCpuVisibleBuffers;

@@ -40,6 +40,8 @@ void D3D12::RenderableSceneBuilder::BakeSceneFirstPart(ID3D12Device8* device, co
 	CreateBuffers(device);
 	CreateTextures(device);
 
+	CreateBufferViews();
+
 	//Create intermediate buffers
 	CreateIntermediateBuffer(device, intermediateBufferSize);
 
@@ -397,6 +399,17 @@ void D3D12::RenderableSceneBuilder::CreateBuffers(ID3D12Device8* device)
 	readRange.Begin = 0;
 	readRange.End   = 0;
 	THROW_IF_FAILED(mSceneToBuild->mSceneConstantBuffer->Map(0, &readRange, &mSceneToBuild->mSceneConstantDataBufferPointer));
+}
+
+void D3D12::RenderableSceneBuilder::CreateBufferViews()
+{
+	mSceneToBuild->mSceneVertexBufferView.BufferLocation = mSceneToBuild->mSceneVertexBuffer->GetGPUVirtualAddress();
+	mSceneToBuild->mSceneVertexBufferView.SizeInBytes    = (UINT)mVertexBufferDesc.Width;
+	mSceneToBuild->mSceneVertexBufferView.StrideInBytes  = (UINT)sizeof(RenderableSceneVertex);
+
+	mSceneToBuild->mSceneIndexBufferView.BufferLocation = mSceneToBuild->mSceneIndexBuffer->GetGPUVirtualAddress();
+	mSceneToBuild->mSceneIndexBufferView.SizeInBytes    = (UINT)mIndexBufferDesc.Width;
+	mSceneToBuild->mSceneIndexBufferView.Format         = D3D12Utils::FormatForIndexType<RenderableSceneIndex>;
 }
 
 void D3D12::RenderableSceneBuilder::CreateIntermediateBuffer(ID3D12Device8* device, UINT64 intermediateBufferSize)
