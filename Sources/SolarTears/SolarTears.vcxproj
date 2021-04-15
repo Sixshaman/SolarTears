@@ -19,13 +19,10 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\3rd party\DDSTextureLoaderVk\DDSTextureLoaderVk.h" />
-    <ClInclude Include="..\3rd party\DirectX-Headers\include\directx\d3dx12.h" />
-    <ClInclude Include="..\3rd party\DirectXMath\Inc\DirectXMath.h" />
-    <ClInclude Include="..\3rd party\DirectXTex\DDSTextureLoader\DDSTextureLoader12.h" />
-    <ClInclude Include="..\3rd party\SPIRV-Reflect\include\spirv\unified1\spirv.h" />
-    <ClInclude Include="..\3rd party\SPIRV-Reflect\spirv_reflect.h" />
-    <ClInclude Include="..\3rd party\VulkanGenericStructures\Include\VulkanGenericStructures.h" />
+    <ClInclude Include="..\3rdParty\DDSTextureLoaderVk\DDSTextureLoaderVk.h" />
+    <ClInclude Include="..\3rdParty\DirectXTex\DDSTextureLoader\DDSTextureLoader12.h" />
+    <ClInclude Include="..\3rdParty\SPIRV-Reflect\include\spirv\unified1\spirv.h" />
+    <ClInclude Include="..\3rdParty\SPIRV-Reflect\spirv_reflect.h" />
     <ClInclude Include="Core\Allocators\StackAllocator.hpp" />
     <ClInclude Include="Core\Application.hpp" />
     <ClInclude Include="Core\DataStructures\SmallVector.hpp" />
@@ -90,9 +87,9 @@
     <ClInclude Include="Rendering\VulkanC\VulkanCWorkerCommandBuffers.hpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\3rd party\DDSTextureLoaderVk\DDSTextureLoaderVk.cpp" />
-    <ClCompile Include="..\3rd party\DirectXTex\DDSTextureLoader\DDSTextureLoader12.cpp" />
-    <ClCompile Include="..\3rd party\SPIRV-Reflect\spirv_reflect.c" />
+    <ClCompile Include="..\3rdParty\DDSTextureLoaderVk\DDSTextureLoaderVk.cpp" />
+    <ClCompile Include="..\3rdParty\DirectXTex\DDSTextureLoader\DDSTextureLoader12.cpp" />
+    <ClCompile Include="..\3rdParty\SPIRV-Reflect\spirv_reflect.c" />
     <ClCompile Include="Core\Allocators\StackAllocator.cpp" />
     <ClCompile Include="Core\Engine.cpp" />
     <ClCompile Include="Core\FPSCounter.cpp" />
@@ -172,11 +169,24 @@
     </CustomBuild>
     <None Include="Rendering\D3D12\Scene\D3D12SceneBuilder.inl" />
     <None Include="Rendering\VulkanC\Scene\VulkanCSceneBuilder.inl" />
+    <None Include="Shaders\D3D12\CommonHeader.hlsli" />
     <None Include="Shaders\D3D12\GBuffer\GBufferInclude.hlsli" />
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="Shaders\D3D12\GBuffer\GBufferDrawPS.hlsl" />
-    <FxCompile Include="Shaders\D3D12\GBuffer\GBufferDrawVS.hlsl" />
+    <CustomBuild Include="Shaders\D3D12\GBuffer\GBufferDrawPS.hlsl">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)..\Utils\DXC\Debug\bin\dxc.exe -Od -T ps_6_5 -E "main" -Zi -Zpr -Fo "$(OutDir)Shaders\D3D12\GBuffer\%(Filename).cso" -Fd "$(OutDir)Shaders\D3D12\GBuffer\%(Filename).pdb" "%(Identity)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling %(Identity): %(Command)</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Shaders\D3D12\GBuffer\%(Filename).cso;$(OutDir)Shaders\D3D12\GBuffer\%(Filename).pdb</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="Shaders\D3D12\GBuffer\GBufferDrawVS.hlsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+      </ExcludedFromBuild>
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)..\Utils\DXC\Debug\bin\dxc.exe -Od -T vs_6_5 -E "main" -Zi -Zpr -Fo "$(OutDir)Shaders\D3D12\GBuffer\%(Filename).cso" -Fd "$(OutDir)Shaders\D3D12\GBuffer\%(Filename).pdb" "%(Identity)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling %(Identity): %(Command)</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Shaders\D3D12\GBuffer\%(Filename).cso;$(OutDir)Shaders\D3D12\GBuffer\%(Filename).pdb</Outputs>
+    </CustomBuild>
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
@@ -240,9 +250,9 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>$(VULKAN_SDK)\Include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(VULKAN_SDK)\Lib;$(LibraryPath)</LibraryPath>
-    <OutDir>$(SolutionDir)..\Compiled\</OutDir>
+    <IncludePath>$(VULKAN_SDK)\Include;$(SolutionDir)3rdParty\DirectX-Headers\include\directx;$(SolutionDir)3rdParty\DirectXShaderCompiler\include;$(SolutionDir)\3rdParty\DirectXMath\Inc;$(SolutionDir)\3rdParty\VulkanGenericStructures\Include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(VULKAN_SDK)\Lib;$(SolutionDir)..\Utils\DXC\Debug\lib;$(LibraryPath)</LibraryPath>
+    <OutDir>$(SolutionDir)..\Compiled\Bin_Debug\</OutDir>
     <TargetName>$(ProjectName)d</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -301,12 +311,12 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <AdditionalHeaderUnitDependencies>
       </AdditionalHeaderUnitDependencies>
-      <AdditionalIncludeDirectories>$(SolutionDir)3rdParty\DirectX-Headers\include\directx;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>vulkan-1.lib;d3d12.lib;dxgi.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>vulkan-1.lib;d3d12.lib;dxgi.lib;dxguid.lib;dxcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
       <Command>

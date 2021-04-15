@@ -2,6 +2,7 @@
 #include "D3D12Memory.hpp"
 #include "D3D12DeviceQueues.hpp"
 #include "D3D12WorkerCommandLists.hpp"
+#include "D3D12Shaders.hpp"
 #include "Scene/D3D12Scene.hpp"
 #include "Scene/D3D12SceneBuilder.hpp"
 #include "../../Core/ThreadPool.hpp"
@@ -26,7 +27,7 @@ D3D12::Renderer::Renderer(LoggerQueue* loggerQueue, FrameCounter* frameCounter, 
 	mWorkerCommandLists = std::make_unique<WorkerCommandLists>(mDevice.get(), threadPool->GetWorkerThreadCount());
 
 	mMemoryAllocator = std::make_unique<MemoryManager>(mLoggingBoard);
-	mShaderManager   = std::make_unique<ShaderManager>(mLoggingBoard);
+	mShaderManager   = std::make_unique<ShaderManager>(mLoggingBoard, mDevice.get());
 }
 
 D3D12::Renderer::~Renderer()

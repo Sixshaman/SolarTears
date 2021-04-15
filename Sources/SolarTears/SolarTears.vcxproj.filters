@@ -73,20 +73,8 @@
     <Filter Include="3rdParty\SPIRV-Reflect\include\spirv\unified1">
       <UniqueIdentifier>{dcf891f2-8d68-4e69-9625-37e2ad6a1035}</UniqueIdentifier>
     </Filter>
-    <Filter Include="3rdParty\VulkanGenericStructures">
-      <UniqueIdentifier>{c698b880-ea67-4c0f-a57d-2e4c8bdbedd9}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="3rdParty\VulkanGenericStructures\Include">
-      <UniqueIdentifier>{357c4dcc-c8c6-49db-a35c-782f60cc176a}</UniqueIdentifier>
-    </Filter>
     <Filter Include="3rdParty\DDSTextureLoaderVk">
       <UniqueIdentifier>{5f59595e-8e1f-45b4-bac0-d71fc1609ac9}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="3rdParty\DirectXMath">
-      <UniqueIdentifier>{03798935-8b2c-422d-8306-a58df226ad6a}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="3rdParty\DirectXMath\Inc">
-      <UniqueIdentifier>{e2962605-bbf7-48cd-8771-ba5709a77bd1}</UniqueIdentifier>
     </Filter>
     <Filter Include="Input">
       <UniqueIdentifier>{4af8c876-b523-4a5d-b063-c5cb7158234a}</UniqueIdentifier>
@@ -97,20 +85,14 @@
     <Filter Include="Rendering\D3D12\Scene">
       <UniqueIdentifier>{a0adac80-abf3-4169-8192-9532c70e2f10}</UniqueIdentifier>
     </Filter>
-    <Filter Include="3rdParty\DirectXTex">
-      <UniqueIdentifier>{b2bc5b19-8d85-4ab2-bd72-7657ffc4af93}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="3rdParty\DirectXTex\DDSTextureLoader">
-      <UniqueIdentifier>{e1bcf95f-52d2-4a8a-af54-338fc0ad8c2c}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="3rdParty\DirectX-Headers">
-      <UniqueIdentifier>{de40bd3d-5f42-4bf3-9a5d-5b26293ab70b}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Shaders\D3D12">
       <UniqueIdentifier>{af709c5f-a2b3-43c7-9901-8f5a3712208b}</UniqueIdentifier>
     </Filter>
     <Filter Include="Shaders\D3D12\GBuffer">
       <UniqueIdentifier>{811dc09f-98bc-4327-a069-bf7d58375797}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="3rdParty\DDSTextureLoader12">
+      <UniqueIdentifier>{d7c5ab3f-98db-4925-83c0-0d4113f978fd}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -228,21 +210,6 @@
     <ClInclude Include="Rendering\VulkanC\FrameGraph\VulkanCFrameGraphBuilder.hpp">
       <Filter>Rendering\VulkanC\FrameGraph</Filter>
     </ClInclude>
-    <ClInclude Include="..\3rd party\SPIRV-Reflect\spirv_reflect.h">
-      <Filter>3rdParty\SPIRV-Reflect</Filter>
-    </ClInclude>
-    <ClInclude Include="..\3rd party\SPIRV-Reflect\include\spirv\unified1\spirv.h">
-      <Filter>3rdParty\SPIRV-Reflect\include\spirv\unified1</Filter>
-    </ClInclude>
-    <ClInclude Include="..\3rd party\VulkanGenericStructures\Include\VulkanGenericStructures.h">
-      <Filter>3rdParty\VulkanGenericStructures\Include</Filter>
-    </ClInclude>
-    <ClInclude Include="..\3rd party\DDSTextureLoaderVk\DDSTextureLoaderVk.h">
-      <Filter>3rdParty\DDSTextureLoaderVk</Filter>
-    </ClInclude>
-    <ClInclude Include="..\3rd party\DirectXMath\Inc\DirectXMath.h">
-      <Filter>3rdParty\DirectXMath\Inc</Filter>
-    </ClInclude>
     <ClInclude Include="Rendering\VulkanC\VulkanCDeviceQueues.hpp">
       <Filter>Rendering\VulkanC</Filter>
     </ClInclude>
@@ -306,20 +273,26 @@
     <ClInclude Include="Rendering\D3D12\D3D12DeviceFeatures.hpp">
       <Filter>Rendering\D3D12</Filter>
     </ClInclude>
-    <ClInclude Include="..\3rd party\DirectXTex\DDSTextureLoader\DDSTextureLoader12.h">
-      <Filter>3rdParty\DirectXTex\DDSTextureLoader</Filter>
-    </ClInclude>
     <ClInclude Include="Rendering\D3D12\D3D12Memory.hpp">
       <Filter>Rendering\D3D12</Filter>
-    </ClInclude>
-    <ClInclude Include="..\3rd party\DirectX-Headers\include\directx\d3dx12.h">
-      <Filter>3rdParty\DirectX-Headers</Filter>
     </ClInclude>
     <ClInclude Include="Rendering\D3D12\D3D12WorkerCommandLists.hpp">
       <Filter>Rendering\D3D12</Filter>
     </ClInclude>
     <ClInclude Include="Rendering\D3D12\D3D12Shaders.hpp">
       <Filter>Rendering\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdParty\DDSTextureLoaderVk\DDSTextureLoaderVk.h">
+      <Filter>3rdParty\DDSTextureLoaderVk</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdParty\DirectXTex\DDSTextureLoader\DDSTextureLoader12.h">
+      <Filter>3rdParty\DDSTextureLoader12</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdParty\SPIRV-Reflect\spirv_reflect.h">
+      <Filter>3rdParty\SPIRV-Reflect</Filter>
+    </ClInclude>
+    <ClInclude Include="..\3rdParty\SPIRV-Reflect\include\spirv\unified1\spirv.h">
+      <Filter>3rdParty\SPIRV-Reflect\include\spirv\unified1</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -431,12 +404,6 @@
     <ClCompile Include="Rendering\VulkanC\FrameGraph\VulkanCFrameGraphBuilder.cpp">
       <Filter>Rendering\VulkanC\FrameGraph</Filter>
     </ClCompile>
-    <ClCompile Include="..\3rd party\SPIRV-Reflect\spirv_reflect.c">
-      <Filter>3rdParty\SPIRV-Reflect</Filter>
-    </ClCompile>
-    <ClCompile Include="..\3rd party\DDSTextureLoaderVk\DDSTextureLoaderVk.cpp">
-      <Filter>3rdParty\DDSTextureLoaderVk</Filter>
-    </ClCompile>
     <ClCompile Include="Rendering\VulkanC\VulkanCDeviceQueues.cpp">
       <Filter>Rendering\VulkanC</Filter>
     </ClCompile>
@@ -482,9 +449,6 @@
     <ClCompile Include="Rendering\D3D12\D3D12DeviceFeatures.cpp">
       <Filter>Rendering\D3D12</Filter>
     </ClCompile>
-    <ClCompile Include="..\3rd party\DirectXTex\DDSTextureLoader\DDSTextureLoader12.cpp">
-      <Filter>3rdParty\DirectXTex\DDSTextureLoader</Filter>
-    </ClCompile>
     <ClCompile Include="Rendering\D3D12\D3D12Memory.cpp">
       <Filter>Rendering\D3D12</Filter>
     </ClCompile>
@@ -493,6 +457,15 @@
     </ClCompile>
     <ClCompile Include="Rendering\D3D12\D3D12Shaders.cpp">
       <Filter>Rendering\D3D12</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdParty\DDSTextureLoaderVk\DDSTextureLoaderVk.cpp">
+      <Filter>3rdParty\DDSTextureLoaderVk</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdParty\DirectXTex\DDSTextureLoader\DDSTextureLoader12.cpp">
+      <Filter>3rdParty\DDSTextureLoader12</Filter>
+    </ClCompile>
+    <ClCompile Include="..\3rdParty\SPIRV-Reflect\spirv_reflect.c">
+      <Filter>3rdParty\SPIRV-Reflect</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -514,6 +487,9 @@
     <None Include="Shaders\D3D12\GBuffer\GBufferInclude.hlsli">
       <Filter>Shaders\D3D12\GBuffer</Filter>
     </None>
+    <None Include="Shaders\D3D12\CommonHeader.hlsli">
+      <Filter>Shaders\D3D12</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="Shaders\Vulkan\GBuffer\GBufferDraw.frag">
@@ -522,13 +498,11 @@
     <CustomBuild Include="Shaders\Vulkan\GBuffer\GBufferDraw.vert">
       <Filter>Shaders\Vulkan\GBuffer</Filter>
     </CustomBuild>
-  </ItemGroup>
-  <ItemGroup>
-    <FxCompile Include="Shaders\D3D12\GBuffer\GBufferDrawPS.hlsl">
+    <CustomBuild Include="Shaders\D3D12\GBuffer\GBufferDrawPS.hlsl">
       <Filter>Shaders\D3D12\GBuffer</Filter>
-    </FxCompile>
-    <FxCompile Include="Shaders\D3D12\GBuffer\GBufferDrawVS.hlsl">
+    </CustomBuild>
+    <CustomBuild Include="Shaders\D3D12\GBuffer\GBufferDrawVS.hlsl">
       <Filter>Shaders\D3D12\GBuffer</Filter>
-    </FxCompile>
+    </CustomBuild>
   </ItemGroup>
 </Project>

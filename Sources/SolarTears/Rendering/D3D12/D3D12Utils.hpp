@@ -3,7 +3,7 @@
 #include <d3d12.h>
 #include <string>
 #include <vector>
-#include "../../../3rd party/DirectXMath/Inc/DirectXMath.h"
+#include <DirectXMath.h>
 
 class LoggerQueue;
 

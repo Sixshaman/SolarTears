@@ -3,7 +3,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
-#include "../../3rd party/DirectXMath/Inc/DirectXMath.h"
+#include <DirectXMath.h>
 
 struct RenderableSceneVertex
 {

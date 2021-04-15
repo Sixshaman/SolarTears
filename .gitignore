@@ -53,3 +53,4 @@
 *.ipdb~Stashed changes_0
 *.pdb~Stashed changes_0
 /UtilsBuild/DirectXShaderCompiler.bin
+DXC

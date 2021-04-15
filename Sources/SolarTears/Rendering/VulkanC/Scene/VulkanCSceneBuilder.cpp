@@ -5,7 +5,7 @@
 #include "../VulkanCShaders.hpp"
 #include "../VulkanCDeviceQueues.hpp"
 #include "../VulkanCWorkerCommandBuffers.hpp"
-#include "../../../../3rd party/DDSTextureLoaderVk/DDSTextureLoaderVk.h"
+#include "../../../../3rdParty/DDSTextureLoaderVk/DDSTextureLoaderVk.h"
 #include <array>
 #include <cassert>
 

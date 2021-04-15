@@ -3,7 +3,7 @@
 #include "../VulkanCMemory.hpp"
 #include "../VulkanCFunctions.hpp"
 #include "../VulkanCShaders.hpp"
-#include "../../../../3rd party/SPIRV-Reflect/spirv_reflect.h"
+#include "../../../../3rdParty/SPIRV-Reflect/spirv_reflect.h"
 #include "../../../Core/Scene/SceneDescription.hpp"
 #include "../../RenderableSceneMisc.hpp"
 #include <array>

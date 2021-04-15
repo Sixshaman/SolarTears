@@ -14,7 +14,7 @@
 #include "../../Core/Util.hpp"
 #include "../../Core/ThreadPool.hpp"
 #include "../../Core/FrameCounter.hpp"
-#include "../../../3rd party/VulkanGenericStructures/Include/VulkanGenericStructures.h"
+#include <VulkanGenericStructures.h>
 #include <array>
 #include <unordered_set>
 

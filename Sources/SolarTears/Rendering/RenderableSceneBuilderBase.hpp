@@ -5,7 +5,7 @@
 #include <unordered_set>
 #include "RenderableSceneBase.hpp"
 #include "RenderableSceneMisc.hpp"
-#include "../../3rd party/DirectXMath/Inc/DirectXMath.h"
+#include <DirectXMath.h>
 
 class RenderableSceneBuilderBase
 {

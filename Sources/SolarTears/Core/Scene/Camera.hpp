@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../../../3rd party/DirectXMath/Inc/DirectXMath.h"
-#include "../../../3rd party/DirectXMath/Inc/DirectXCollision.h"
+#include <DirectXMath.h>
+#include <DirectXCollision.h>
 
 class Camera //Detached fron any positional data
 {
