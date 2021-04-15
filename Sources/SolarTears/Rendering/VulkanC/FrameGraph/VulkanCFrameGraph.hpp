@@ -38,12 +38,6 @@ namespace VulkanCBindings
 			uint32_t DependencyLevelEnd;
 		};
 
-		struct ThreadCommandInfo
-		{
-			VkCommandBuffer CommandBuffer;
-			uint32_t        DependencyLevelSpanIndex;
-		};
-
 	public:
 		FrameGraph(VkDevice device, const FrameGraphConfig& frameGraphConfig);
 		~FrameGraph();
