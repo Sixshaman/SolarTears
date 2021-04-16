@@ -309,6 +309,12 @@
     <ClInclude Include="Rendering\FrameGraphConfig.hpp">
       <Filter>Rendering</Filter>
     </ClInclude>
+    <ClInclude Include="Rendering\D3D12\FrameGraph\D3D12RenderPass.hpp">
+      <Filter>Rendering\D3D12\FrameGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\D3D12\FrameGraph\D3D12FrameGraphBuilder.hpp">
+      <Filter>Rendering\D3D12\FrameGraph</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Platform\Win32\Win32Application.cpp">
@@ -492,6 +498,12 @@
       <Filter>Rendering</Filter>
     </ClCompile>
     <ClCompile Include="Rendering\D3D12\FrameGraph\D3D12FrameGraphDescriptorCreator.cpp">
+      <Filter>Rendering\D3D12\FrameGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\D3D12\FrameGraph\D3D12RenderPass.cpp">
+      <Filter>Rendering\D3D12\FrameGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\D3D12\FrameGraph\D3D12FrameGraphBuilder.cpp">
       <Filter>Rendering\D3D12\FrameGraph</Filter>
     </ClCompile>
   </ItemGroup>

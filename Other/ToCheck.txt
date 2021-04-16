@@ -16,6 +16,7 @@
 - Async compute: Async compute passes should be in the end of the frame. BUT! They should be executed AT THE START of THE PREVIOUS frame. Need to reorder stuff for that
 - Some sort of extension picker for Vulkan?
 - Async compute: cross-queue barriers
+- Begin-end barriers
 - Scene subobjects
 - String views and vector ranges
 - Dedicated allocation (VkMemoryDedicatedRequirements::prefersDedicatedAllocation)
@@ -51,7 +52,7 @@
 - Separate render pass allocators
 - Camera component?
 - Command buffer allocators
-- How can I merge some D3D12 and Vulkan classes? Some things like CreateSceneMeshMetadata() can be in base classes and it changes nothing
+- How can I merge some D3D12 and Vulkan classes? Some things like CreateSceneMeshMetadata() or half of frame graph builder can be common in base classes and it changes nothing
 - Fullscreen
 - In scene builders replace vector of vectors for flat vector + vector of spans 
 
