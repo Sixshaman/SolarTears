@@ -15,19 +15,19 @@ D3D12::ShaderManager::~ShaderManager()
 {
 }
 
-UINT D3D12::ShaderManager::GetGBufferPerObjectBufferBinding() const
+constexpr UINT D3D12::ShaderManager::GetGBufferPerObjectBufferBinding()
 {
-	return mGBufferRootBindings.PerObjectBufferBinding;
+	return 0;
 }
 
-UINT D3D12::ShaderManager::GetGBufferPerFrameBufferBinding() const
+constexpr UINT D3D12::ShaderManager::GetGBufferPerFrameBufferBinding()
 {
-	return mGBufferRootBindings.PerFrameBufferBinding;
+	return 1;
 }
 
-UINT D3D12::ShaderManager::GetGBufferTextureBinding() const
+constexpr UINT D3D12::ShaderManager::GetGBufferTextureBinding()
 {
-	return mGBufferRootBindings.ObjectTextureBinding;
+	return 2;
 }
 
 void D3D12::ShaderManager::LoadShaderData(ID3D12Device* device)
@@ -71,15 +71,10 @@ void D3D12::ShaderManager::CreateReflectionData(IDxcUtils* dxcUtils, IDxcBlobEnc
 void D3D12::ShaderManager::BuildGBufferRootSignature(ID3D12Device* device, ID3D12ShaderReflection* vsReflection, ID3D12ShaderReflection* psReflection)
 {
 	//Sorted from least frequent to most frequent
-	mGBufferRootBindings.PerObjectBufferBinding = 0;
-	mGBufferRootBindings.ObjectTextureBinding   = 1;
-	mGBufferRootBindings.PerFrameBufferBinding  = 2;
-
 	std::array<std::string_view, 3> shaderInputs;
-	shaderInputs[mGBufferRootBindings.PerObjectBufferBinding] = "cbPerObject";
-	shaderInputs[mGBufferRootBindings.ObjectTextureBinding]   = "gObjectTexture";
-	shaderInputs[mGBufferRootBindings.PerFrameBufferBinding]  = "cbPerFrame";
-
+	shaderInputs[GetGBufferPerObjectBufferBinding()] = "cbPerObject";
+	shaderInputs[GetGBufferPerFrameBufferBinding()]  = "cbPerFrame";
+	shaderInputs[GetGBufferTextureBinding()]         = "gObjectTexture";
 
 	//Gather regular inputs
 	std::vector<D3D12_SHADER_INPUT_BIND_DESC> shaderInputBindings;

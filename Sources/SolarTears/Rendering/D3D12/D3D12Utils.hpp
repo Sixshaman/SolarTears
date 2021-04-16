@@ -40,5 +40,9 @@ namespace D3D12
 
 
 		UINT64 AlignMemory(UINT64 value, UINT64 alignment);
+
+		bool IsStateWriteable(D3D12_RESOURCE_STATES state);
+		bool IsStateComputeFriendly(D3D12_RESOURCE_STATES state);
+		bool IsStatePromoteableTo(D3D12_RESOURCE_STATES state);
 	}
 }

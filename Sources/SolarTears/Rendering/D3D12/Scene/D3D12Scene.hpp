@@ -66,8 +66,8 @@ namespace D3D12
 
 		wil::com_ptr_nothrow<ID3D12Resource> mSceneConstantBuffer; //Common buffer for all constant buffer data
 
-		std::vector<wil::com_ptr_nothrow<ID3D12Resource>> mSceneTextures;
-		std::vector<D3D12_GPU_DESCRIPTOR_HANDLE>          mSceneTextureDescriptors;
+		std::vector<wil::com_ptr_nothrow<ID3D12Resource2>> mSceneTextures;
+		std::vector<D3D12_GPU_DESCRIPTOR_HANDLE>           mSceneTextureDescriptors;
 
 		wil::com_ptr_nothrow<ID3D12Heap> mHeapForGpuBuffers;
 		wil::com_ptr_nothrow<ID3D12Heap> mHeapForCpuVisibleBuffers;

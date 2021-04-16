@@ -2,6 +2,7 @@
 
 #include <d3d12.h>
 #include <vector>
+#include "D3D12RenderPass.hpp"
 #include "../../FrameGraphConfig.hpp"
 
 class ThreadPool;
@@ -16,6 +17,7 @@ namespace D3D12
 	class FrameGraph
 	{
 		friend class FrameGraphDescriptorCreator;
+		friend class FrameGraphBuilder;
 
 		struct DependencyLevelSpan
 		{
@@ -36,6 +38,8 @@ namespace D3D12
 
 	private:
 		FrameGraphConfig mFrameGraphConfig;
+
+		std::vector<std::unique_ptr<RenderPass>> mRenderPasses; //All currently used render passes (sorted by dependency level)
 
 		std::vector<DependencyLevelSpan> mGraphicsPassSpans;
 
