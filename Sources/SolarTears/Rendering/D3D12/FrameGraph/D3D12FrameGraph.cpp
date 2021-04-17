@@ -138,9 +138,8 @@ void D3D12::FrameGraph::SwitchSwapchainPasses(uint32_t swapchainImageIndex)
 
 void D3D12::FrameGraph::SwitchSwapchainImages(uint32_t swapchainImageIndex)
 {
-	//Swap images
-	std::swap(mTextures[mBackbufferRefIndex], mSwapchainImageRefs[mLastSwapchainImageIndex]);
-	std::swap(mTextures[mBackbufferRefIndex], mSwapchainImageRefs[swapchainImageIndex]);
+	//Set images (no swapping unlike Vulkan)
+	mTextures[mBackbufferRefIndex] = mSwapchainImageRefs[swapchainImageIndex];
 
 
 	//Update barriers
@@ -150,22 +149,18 @@ void D3D12::FrameGraph::SwitchSwapchainImages(uint32_t swapchainImageIndex)
 	}
 
 
-	//Swap image views
+	//Set image views
 	uint32_t swapchainCpuDescriptorCount = (uint32_t)mSwapchainCpuDescriptors.size();
 	for (uint32_t i = 0; i < (uint32_t)mSwapchainCpuDescriptorSwapMap.size(); i += (swapchainCpuDescriptorCount + 1u))
 	{
-		uint32_t viewIndexToSwitch = mSwapchainCpuDescriptorSwapMap[i];
-
-		std::swap(mCpuDescriptors[viewIndexToSwitch], mSwapchainCpuDescriptors[mSwapchainCpuDescriptorSwapMap[i + mLastSwapchainImageIndex + 1]]);
-		std::swap(mCpuDescriptors[viewIndexToSwitch], mSwapchainCpuDescriptors[mSwapchainCpuDescriptorSwapMap[i + swapchainImageIndex + 1]]);
+		uint32_t viewIndexToSwitch         = mSwapchainCpuDescriptorSwapMap[i];
+		mCpuDescriptors[viewIndexToSwitch] = mSwapchainCpuDescriptors[mSwapchainCpuDescriptorSwapMap[i + swapchainImageIndex + 1]];
 	}
 
 	uint32_t swapchainGpuDescriptorCountCount = (uint32_t)mSwapchainGpuDescriptors.size();
 	for (uint32_t i = 0; i < (uint32_t)mSwapchainGpuDescriptorSwapMap.size(); i += (swapchainGpuDescriptorCountCount + 1u))
 	{
-		uint32_t viewIndexToSwitch = mSwapchainGpuDescriptorSwapMap[i];
-
-		std::swap(mGpuDescriptors[viewIndexToSwitch], mSwapchainGpuDescriptors[mSwapchainGpuDescriptorSwapMap[i + mLastSwapchainImageIndex + 1]]);
-		std::swap(mGpuDescriptors[viewIndexToSwitch], mSwapchainGpuDescriptors[mSwapchainGpuDescriptorSwapMap[i + swapchainImageIndex + 1]]);
+		uint32_t viewIndexToSwitch         = mSwapchainGpuDescriptorSwapMap[i];
+		mGpuDescriptors[viewIndexToSwitch] = mSwapchainGpuDescriptors[mSwapchainGpuDescriptorSwapMap[i + swapchainImageIndex + 1]];
 	}
 }

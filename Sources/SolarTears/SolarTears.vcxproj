@@ -65,6 +65,7 @@
     <ClInclude Include="Rendering\D3D12\FrameGraph\D3D12FrameGraphBuilder.hpp" />
     <ClInclude Include="Rendering\D3D12\FrameGraph\D3D12FrameGraphDescriptorCreator.hpp" />
     <ClInclude Include="Rendering\D3D12\FrameGraph\D3D12RenderPass.hpp" />
+    <ClInclude Include="Rendering\D3D12\FrameGraph\Passes\D3D12CopyImagePass.hpp" />
     <ClInclude Include="Rendering\D3D12\Scene\D3D12Scene.hpp" />
     <ClInclude Include="Rendering\D3D12\Scene\D3D12SceneBuilder.hpp" />
     <ClInclude Include="Rendering\D3D12\Scene\D3D12SceneDescriptorCreator.hpp" />
@@ -131,6 +132,7 @@
     <ClCompile Include="Rendering\D3D12\FrameGraph\D3D12FrameGraphBuilder.cpp" />
     <ClCompile Include="Rendering\D3D12\FrameGraph\D3D12FrameGraphDescriptorCreator.cpp" />
     <ClCompile Include="Rendering\D3D12\FrameGraph\D3D12RenderPass.cpp" />
+    <ClCompile Include="Rendering\D3D12\FrameGraph\Passes\D3D12CopyImagePass.cpp" />
     <ClCompile Include="Rendering\D3D12\Scene\D3D12Scene.cpp" />
     <ClCompile Include="Rendering\D3D12\Scene\D3D12SceneBuilder.cpp" />
     <ClCompile Include="Rendering\D3D12\Scene\D3D12SceneDescriptorCreator.cpp" />

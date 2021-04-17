@@ -284,7 +284,7 @@ void D3D12::FrameGraphBuilder::Build(ID3D12Device8* device, const MemoryManager*
 	ValidateCommonPromotion();
 
 	std::unordered_set<RenderPassName> backbufferPassNames; //All passes that use the backbuffer
-	BuildSubresources(device, memoryAllocator, swapchainImages, backbufferPassNames, swapChain->GetBackbufferFormat());
+	BuildSubresources(device, memoryAllocator, swapchainImages, backbufferPassNames);
 	BuildPassObjects(device, backbufferPassNames);
 
 	BuildBarriers();
@@ -611,7 +611,7 @@ void D3D12::FrameGraphBuilder::PropagateMetadatasFromImageViews(const std::unord
 	}
 }
 
-void D3D12::FrameGraphBuilder::BuildSubresources(ID3D12Device8* device, const MemoryManager* memoryAllocator, const std::vector<ID3D12Resource2*>& swapchainTextures, std::unordered_set<RenderPassName>& swapchainPassNames, DXGI_FORMAT swapchainFormat)
+void D3D12::FrameGraphBuilder::BuildSubresources(ID3D12Device8* device, const MemoryManager* memoryAllocator, const std::vector<ID3D12Resource2*>& swapchainTextures, std::unordered_set<RenderPassName>& swapchainPassNames)
 {
 	std::unordered_map<SubresourceName, TextureCreateInfo>    textureCreateInfos;
 	std::unordered_map<SubresourceName, BackbufferCreateInfo> backbufferCreateInfos;
@@ -1125,7 +1125,8 @@ void D3D12::FrameGraphBuilder::InitResourceInitialStatesAndClearValues(std::unor
 				textureCreateInfo.InitialState = metadata.ResourceState; //Replace until the final state
 
 				//If the resource already has optimized clear value, can't add a new one
-				assert((textureCreateInfo.OptimizedClearValue.Format == DXGI_FORMAT_UNKNOWN) || (metadata.ResourceState & (D3D12_RESOURCE_STATE_RENDER_TARGET | D3D12_RESOURCE_STATE_DEPTH_WRITE) == 0));
+				assert((textureCreateInfo.OptimizedClearValue.Format == DXGI_FORMAT_UNKNOWN) || ((metadata.ResourceState & (D3D12_RESOURCE_STATE_RENDER_TARGET | D3D12_RESOURCE_STATE_DEPTH_WRITE)) == 0));
+
 				if(metadata.ResourceState & D3D12_RESOURCE_STATE_RENDER_TARGET)
 				{
 					textureCreateInfo.OptimizedClearValue.Format   = metadata.Format;
@@ -1138,7 +1139,7 @@ void D3D12::FrameGraphBuilder::InitResourceInitialStatesAndClearValues(std::unor
 				{
 					textureCreateInfo.OptimizedClearValue.Format               = metadata.Format;
 					textureCreateInfo.OptimizedClearValue.DepthStencil.Depth   = 1.0f;
-					textureCreateInfo.OptimizedClearValue.DepthStencil.Stencil = 0.0f;
+					textureCreateInfo.OptimizedClearValue.DepthStencil.Stencil = 0;
 				}
 			}
 		}

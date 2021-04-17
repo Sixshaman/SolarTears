@@ -69,78 +69,10 @@ ID3D12Resource* D3D12::SwapChain::GetCurrentImage() const
 	return mSwapchainImages[currentImageIndex].get();
 }
 
-//void VulkanCBindings::SwapChain::AcquireImage(VkDevice device, uint32_t frameInFlightIndex)
-//{
-//	//TODO: mGPU?
-//	VkAcquireNextImageInfoKHR acquireNextImageInfo;
-//	acquireNextImageInfo.sType      = VK_STRUCTURE_TYPE_ACQUIRE_NEXT_IMAGE_INFO_KHR;
-//	acquireNextImageInfo.pNext      = nullptr;
-//	acquireNextImageInfo.swapchain  = mSwapchain;
-//	acquireNextImageInfo.timeout    = 2000000000;
-//	acquireNextImageInfo.semaphore  = mImageAcquiredSemaphores[frameInFlightIndex];
-//	acquireNextImageInfo.fence      = nullptr;
-//	acquireNextImageInfo.deviceMask = 0x01;
-//	
-//	ThrowIfFailed(vkAcquireNextImage2KHR(device, &acquireNextImageInfo, &mCurrentImageIndex));
-//}
-
-//VkSemaphore VulkanCBindings::SwapChain::GetImageAcquiredSemaphore(uint32_t frameInFlightIndex) const
-//{
-//	assert(frameInFlightIndex < SwapchainImageCount);
-//
-//	return mImageAcquiredSemaphores[frameInFlightIndex];
-//}
-//
-//void VulkanCBindings::SwapChain::Present(VkSemaphore presentSemaphore)
-//{
-//	std::array presentSemaphores = {presentSemaphore};
-//	std::array swapchains        = {mSwapchain};
-//	std::array imageIndices      = {mCurrentImageIndex};
-//
-//	VkPresentInfoKHR presentInfo;
-//	presentInfo.sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-//	presentInfo.pNext              = nullptr;
-//	presentInfo.waitSemaphoreCount = (uint32_t)presentSemaphores.size();
-//	presentInfo.pWaitSemaphores    = presentSemaphores.data();
-//	presentInfo.swapchainCount     = (uint32_t)swapchains.size();
-//	presentInfo.pSwapchains        = swapchains.data();
-//	presentInfo.pImageIndices      = imageIndices.data();
-//	presentInfo.pResults           = nullptr;
-//
-//	ThrowIfFailed(vkQueuePresentKHR(mPresentQueue, &presentInfo));
-//}
-//
-//uint32_t VulkanCBindings::SwapChain::GetPresentQueueFamilyIndex() const
-//{
-//	return mPresentQueueFamilyIndex;
-//}
-//
-//VkImage VulkanCBindings::SwapChain::GetSwapchainImage(uint32_t index) const
-//{
-//	assert(index < SwapchainImageCount);
-//
-//	return mSwapchainImages[index];
-//}
-//
-//VkImage VulkanCBindings::SwapChain::GetCurrentImage() const
-//{
-//	return mSwapchainImages[mCurrentImageIndex];
-//}
-//
-//VkFormat VulkanCBindings::SwapChain::GetBackbufferFormat() const
-//{
-//	return mSwapChainFormat;
-//}
-//
-//bool VulkanCBindings::SwapChain::IsBackbufferHDR() const
-//{
-//	return (mSwapChainColorSpace == VK_COLOR_SPACE_HDR10_HLG_EXT) || (mSwapChainColorSpace == VK_COLOR_SPACE_HDR10_ST2084_EXT) || (mSwapChainColorSpace == VK_COLOR_SPACE_DOLBYVISION_EXT);
-//}
-//
-//void VulkanCBindings::SwapChain::CreateSurface(VkInstance instance, Window* window)
-//{
-//	CreateSurface(instance, window->NativeHandle());
-//}
+DXGI_FORMAT D3D12::SwapChain::GetBackbufferFormat() const
+{
+	return mSwapChainFormat;
+}
 
 void D3D12::SwapChain::CreateSwapChain(IDXGIFactory4* factory, ID3D12CommandQueue* commandQueue, Window* window)
 {
