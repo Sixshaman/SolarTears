@@ -36,6 +36,9 @@ void D3D12::FrameGraphDescriptorCreator::RecreateFrameGraphSrvUavDescriptors(ID3
 	UNREFERENCED_PARAMETER(startDescriptorCpu);
 	UNREFERENCED_PARAMETER(startDescriptorGpu);
 	UNREFERENCED_PARAMETER(srvDescriptorSize);
+
+	//In case of TYPELESS textures:
+	//The format will be resolved inside Render Pass object via a special function
 }
 
 void D3D12::FrameGraphDescriptorCreator::RecreateFrameGraphRtvDescriptors(ID3D12Device* device, D3D12_CPU_DESCRIPTOR_HANDLE startDescriptorCpu, UINT rtvDescriptorSize)
@@ -43,6 +46,9 @@ void D3D12::FrameGraphDescriptorCreator::RecreateFrameGraphRtvDescriptors(ID3D12
 	UNREFERENCED_PARAMETER(device);
 	UNREFERENCED_PARAMETER(startDescriptorCpu);
 	UNREFERENCED_PARAMETER(rtvDescriptorSize);
+
+	//In case of TYPELESS textures:
+	//The format will be resolved inside Render Pass object via a special function
 }
 
 void D3D12::FrameGraphDescriptorCreator::RecreateFrameGraphDsvDescriptors(ID3D12Device* device, D3D12_CPU_DESCRIPTOR_HANDLE startDescriptorCpu, UINT dsvDescriptorSize)
@@ -50,4 +56,7 @@ void D3D12::FrameGraphDescriptorCreator::RecreateFrameGraphDsvDescriptors(ID3D12
 	UNREFERENCED_PARAMETER(device);
 	UNREFERENCED_PARAMETER(startDescriptorCpu);
 	UNREFERENCED_PARAMETER(dsvDescriptorSize);
+
+	//In case of TYPELESS textures:
+	//The format will be resolved inside Render Pass object via a special function
 }

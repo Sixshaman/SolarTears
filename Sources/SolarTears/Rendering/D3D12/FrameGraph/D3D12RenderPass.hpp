@@ -16,6 +16,7 @@ namespace D3D12
 		GRAPHICS = 0,
 		COMPUTE,
 		COPY,
+		PRESENT,
 
 		RENDER_PASS_TYPE_COUNT
 	};

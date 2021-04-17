@@ -93,7 +93,7 @@ void D3D12::RenderableScene::DrawObjectsOntoGBuffer(ID3D12GraphicsCommandList* c
 	uint32_t frameResourceIndex = mFrameCounterRef->GetFrameCount() % D3D12Utils::InFlightFrameCount;
 	UINT64 PerFrameOffset = CalculatePerFrameDataOffset(frameResourceIndex);
 
-	commandList->SetGraphicsRootConstantBufferView(shaderManager->GetGBufferPerFrameBufferBinding(), constantBufferAddress + PerFrameOffset);
+	commandList->SetGraphicsRootConstantBufferView(shaderManager->GBufferPerFrameBufferBinding, constantBufferAddress + PerFrameOffset);
 	for(size_t meshIndex = 0; meshIndex < mSceneMeshes.size(); meshIndex++)
 	{
 		UINT64 PerObjectOffset = CalculatePerObjectDataOffset((uint32_t)meshIndex, frameResourceIndex);
@@ -103,8 +103,8 @@ void D3D12::RenderableScene::DrawObjectsOntoGBuffer(ID3D12GraphicsCommandList* c
 			//Bind ROOT CONSTANTS for material index
 
 			//TODO: bindless
-			commandList->SetGraphicsRootConstantBufferView(shaderManager->GetGBufferPerObjectBufferBinding(), constantBufferAddress + PerObjectOffset);
-			commandList->SetGraphicsRootDescriptorTable(shaderManager->GetGBufferTextureBinding(), mSceneTextureDescriptors[mSceneSubobjects[subobjectIndex].TextureDescriptorSetIndex]);
+			commandList->SetGraphicsRootConstantBufferView(shaderManager->GBufferPerObjectBufferBinding, constantBufferAddress + PerObjectOffset);
+			commandList->SetGraphicsRootDescriptorTable(shaderManager->GBufferTextureBinding, mSceneTextureDescriptors[mSceneSubobjects[subobjectIndex].TextureDescriptorSetIndex]);
 
 			commandList->DrawIndexedInstanced(mSceneSubobjects[subobjectIndex].IndexCount, 1, mSceneSubobjects[subobjectIndex].FirstIndex, mSceneSubobjects[subobjectIndex].VertexOffset, 0);
 		}

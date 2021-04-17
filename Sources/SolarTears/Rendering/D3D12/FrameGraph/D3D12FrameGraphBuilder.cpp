@@ -6,493 +6,268 @@
 #include "../D3D12Shaders.hpp"
 #include "../D3D12SwapChain.hpp"
 #include "../D3D12DeviceQueues.hpp"
+#include "../../../Core/Util.hpp"
 #include <algorithm>
 
 D3D12::FrameGraphBuilder::FrameGraphBuilder(FrameGraph* graphToBuild, const RenderableScene* scene, const DeviceFeatures* deviceFeatures, const ShaderManager* shaderManager): mGraphToBuild(graphToBuild), mScene(scene), mDeviceFeatures(deviceFeatures), mShaderManager(shaderManager)
 {
-	//mSubresourceMetadataCounter = 0;
+	mSubresourceMetadataCounter = 0;
 
-	////Create present quasi-pass
-	//std::string acquirePassName(AcquirePassName);
-	//std::string presentPassName(PresentPassName);
+	//Create present quasi-pass
+	std::string presentPassName(PresentPassName);
 
-	//mRenderPassTypes[acquirePassName] = RenderPassType::PRESENT;
-	//mRenderPassTypes[presentPassName] = RenderPassType::PRESENT;
+	mRenderPassTypes[presentPassName] = RenderPassType::PRESENT;
 
-	//RegisterWriteSubresource(AcquirePassName, BackbufferAcquirePassId);
-	//RegisterReadSubresource(PresentPassName, BackbufferPresentPassId);
+	RegisterWriteSubresource(PresentPassName, BackbufferPresentPassId);
+	RegisterReadSubresource(PresentPassName, BackbufferPresentPassId);
 }
 
 D3D12::FrameGraphBuilder::~FrameGraphBuilder()
 {
 }
 
-//void VulkanCBindings::FrameGraphBuilder::RegisterRenderPass(const std::string_view passName, RenderPassCreateFunc createFunc, RenderPassType passType)
-//{
-//	RenderPassName renderPassName(passName);
-//	assert(!mRenderPassCreateFunctions.contains(renderPassName));
-//
-//	mRenderPassNames.push_back(renderPassName);
-//	mRenderPassCreateFunctions[renderPassName] = createFunc;
-//
-//	mRenderPassTypes[renderPassName] = passType;
-//}
-//
-//void VulkanCBindings::FrameGraphBuilder::RegisterReadSubresource(const std::string_view passName, const std::string_view subresourceId)
-//{
-//	RenderPassName renderPassName(passName);
-//
-//	if(!mRenderPassesReadSubresourceIds.contains(renderPassName))
-//	{
-//		mRenderPassesReadSubresourceIds[renderPassName] = std::unordered_set<SubresourceId>();
-//	}
-//
-//	SubresourceId subresId(subresourceId);
-//	assert(!mRenderPassesReadSubresourceIds[renderPassName].contains(subresId));
-//
-//	mRenderPassesReadSubresourceIds[renderPassName].insert(subresId);
-//
-//	if(!mRenderPassesSubresourceMetadatas.contains(renderPassName))
-//	{
-//		mRenderPassesSubresourceMetadatas[renderPassName] = std::unordered_map<SubresourceId, ImageSubresourceMetadata>();
-//	}
-//
-//	ImageSubresourceMetadata subresourceMetadata;
-//	subresourceMetadata.MetadataId           = mSubresourceMetadataCounter;
-//	subresourceMetadata.PrevPassMetadata     = nullptr;
-//	subresourceMetadata.NextPassMetadata     = nullptr;
-//	subresourceMetadata.MetadataFlags        = 0;
-//	subresourceMetadata.QueueFamilyOwnership = (uint32_t)(-1);
-//	subresourceMetadata.Format               = VK_FORMAT_UNDEFINED;
-//	subresourceMetadata.ImageIndex           = (uint32_t)(-1);
-//	subresourceMetadata.ImageViewIndex       = (uint32_t)(-1);
-//	subresourceMetadata.Layout               = VK_IMAGE_LAYOUT_GENERAL;
-//	subresourceMetadata.UsageFlags           = 0;
-//	subresourceMetadata.AspectFlags          = 0;
-//	subresourceMetadata.PipelineStageFlags   = 0;
-//	subresourceMetadata.AccessFlags          = 0;
-//
-//	mSubresourceMetadataCounter++;
-//
-//	mRenderPassesSubresourceMetadatas[renderPassName][subresId] = subresourceMetadata;
-//}
-//
-//void VulkanCBindings::FrameGraphBuilder::RegisterWriteSubresource(const std::string_view passName, const std::string_view subresourceId)
-//{
-//	RenderPassName renderPassName(passName);
-//
-//	if(!mRenderPassesWriteSubresourceIds.contains(renderPassName))
-//	{
-//		mRenderPassesWriteSubresourceIds[renderPassName] = std::unordered_set<SubresourceId>();
-//	}
-//
-//	SubresourceId subresId(subresourceId);
-//	assert(!mRenderPassesWriteSubresourceIds[renderPassName].contains(subresId));
-//
-//	mRenderPassesWriteSubresourceIds[renderPassName].insert(subresId);
-//
-//	if(!mRenderPassesSubresourceMetadatas.contains(renderPassName))
-//	{
-//		mRenderPassesSubresourceMetadatas[renderPassName] = std::unordered_map<SubresourceId, ImageSubresourceMetadata>();
-//	}
-//
-//	ImageSubresourceMetadata subresourceMetadata;
-//	subresourceMetadata.MetadataId           = mSubresourceMetadataCounter;
-//	subresourceMetadata.PrevPassMetadata     = nullptr;
-//	subresourceMetadata.NextPassMetadata     = nullptr;
-//	subresourceMetadata.MetadataFlags        = 0;
-//	subresourceMetadata.QueueFamilyOwnership = (uint32_t)(-1);
-//	subresourceMetadata.Format               = VK_FORMAT_UNDEFINED;
-//	subresourceMetadata.ImageIndex           = (uint32_t)(-1);
-//	subresourceMetadata.ImageViewIndex       = (uint32_t)(-1);
-//	subresourceMetadata.Layout               = VK_IMAGE_LAYOUT_UNDEFINED;
-//	subresourceMetadata.UsageFlags           = 0;
-//	subresourceMetadata.AspectFlags          = 0;
-//	subresourceMetadata.PipelineStageFlags   = 0;
-//	subresourceMetadata.AccessFlags          = 0;
-//
-//	mSubresourceMetadataCounter++;
-//
-//	mRenderPassesSubresourceMetadatas[renderPassName][subresId] = subresourceMetadata;
-//}
-//
-//void VulkanCBindings::FrameGraphBuilder::AssignSubresourceName(const std::string_view passName, const std::string_view subresourceId, const std::string_view subresourceName)
-//{
-//	RenderPassName  passNameStr(passName);
-//	SubresourceId   subresourceIdStr(subresourceId);
-//	SubresourceName subresourceNameStr(subresourceName);
-//
-//	auto readSubresIt  = mRenderPassesReadSubresourceIds.find(passNameStr);
-//	auto writeSubresIt = mRenderPassesWriteSubresourceIds.find(passNameStr);
-//
-//	assert(readSubresIt != mRenderPassesReadSubresourceIds.end() || writeSubresIt != mRenderPassesWriteSubresourceIds.end());
-//	mRenderPassesSubresourceNameIds[passNameStr][subresourceNameStr] = subresourceIdStr;
-//}
-//
-//void VulkanCBindings::FrameGraphBuilder::AssignBackbufferName(const std::string_view backbufferName)
-//{
-//	mBackbufferName = backbufferName;
-//
-//	AssignSubresourceName(AcquirePassName, BackbufferAcquirePassId, mBackbufferName);
-//	AssignSubresourceName(PresentPassName, BackbufferPresentPassId, mBackbufferName);
-//
-//	ImageSubresourceMetadata presentAcquirePassMetadata;
-//	presentAcquirePassMetadata.MetadataId           = mSubresourceMetadataCounter;
-//	presentAcquirePassMetadata.PrevPassMetadata     = nullptr;
-//	presentAcquirePassMetadata.NextPassMetadata     = nullptr;
-//	presentAcquirePassMetadata.MetadataFlags        = 0;
-//	presentAcquirePassMetadata.QueueFamilyOwnership = (uint32_t)(-1);
-//	presentAcquirePassMetadata.Format               = VK_FORMAT_UNDEFINED;
-//	presentAcquirePassMetadata.ImageIndex           = (uint32_t)(-1);
-//	presentAcquirePassMetadata.ImageViewIndex       = (uint32_t)(-1);
-//	presentAcquirePassMetadata.Layout               = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-//	presentAcquirePassMetadata.UsageFlags           = 0;
-//	presentAcquirePassMetadata.AspectFlags          = VK_IMAGE_ASPECT_COLOR_BIT;
-//	presentAcquirePassMetadata.PipelineStageFlags   = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-//	presentAcquirePassMetadata.AccessFlags          = 0;
-//
-//	mSubresourceMetadataCounter++;
-//
-//	mRenderPassesSubresourceMetadatas[std::string(AcquirePassName)][std::string(BackbufferAcquirePassId)] = presentAcquirePassMetadata;
-//	mRenderPassesSubresourceMetadatas[std::string(PresentPassName)][std::string(BackbufferPresentPassId)] = presentAcquirePassMetadata;
-//}
-//
-//void VulkanCBindings::FrameGraphBuilder::SetPassSubresourceFormat(const std::string_view passName, const std::string_view subresourceId, VkFormat format)
-//{
-//	RenderPassName passNameStr(passName);
-//	SubresourceId  subresourceIdStr(subresourceId);
-//
-//	mRenderPassesSubresourceMetadatas[passNameStr][subresourceIdStr].Format = format;
-//}
-//
-//void VulkanCBindings::FrameGraphBuilder::SetPassSubresourceLayout(const std::string_view passName, const std::string_view subresourceId, VkImageLayout layout)
-//{
-//	RenderPassName passNameStr(passName);
-//	SubresourceId  subresourceIdStr(subresourceId);
-//
-//	mRenderPassesSubresourceMetadatas[passNameStr][subresourceIdStr].Layout = layout;
-//}
-//
-//void VulkanCBindings::FrameGraphBuilder::SetPassSubresourceUsage(const std::string_view passName, const std::string_view subresourceId, VkImageUsageFlags usage)
-//{
-//	RenderPassName passNameStr(passName);
-//	SubresourceId  subresourceIdStr(subresourceId);
-//
-//	mRenderPassesSubresourceMetadatas[passNameStr][subresourceIdStr].UsageFlags = usage;
-//}
-//
-//void VulkanCBindings::FrameGraphBuilder::SetPassSubresourceAspectFlags(const std::string_view passName, const std::string_view subresourceId, VkImageAspectFlags aspect)
-//{
-//	RenderPassName passNameStr(passName);
-//	SubresourceId  subresourceIdStr(subresourceId);
-//
-//	mRenderPassesSubresourceMetadatas[passNameStr][subresourceIdStr].AspectFlags = aspect;
-//}
-//
-//void VulkanCBindings::FrameGraphBuilder::SetPassSubresourceStageFlags(const std::string_view passName, const std::string_view subresourceId, VkPipelineStageFlags stage)
-//{
-//	RenderPassName passNameStr(passName);
-//	SubresourceId  subresourceIdStr(subresourceId);
-//
-//	mRenderPassesSubresourceMetadatas[passNameStr][subresourceIdStr].PipelineStageFlags = stage;
-//}
-//
-//void VulkanCBindings::FrameGraphBuilder::SetPassSubresourceAccessFlags(const std::string_view passName, const std::string_view subresourceId, VkAccessFlags accessFlags)
-//{
-//	RenderPassName passNameStr(passName);
-//	SubresourceId  subresourceIdStr(subresourceId);
-//
-//	mRenderPassesSubresourceMetadatas[passNameStr][subresourceIdStr].AccessFlags = accessFlags;
-//}
-//
-//void VulkanCBindings::FrameGraphBuilder::EnableSubresourceAutoBarrier(const std::string_view passName, const std::string_view subresourceId, bool autoBaarrier)
-//{
-//	RenderPassName passNameStr(passName);
-//	SubresourceId  subresourceIdStr(subresourceId);
-//
-//	if(autoBaarrier)
-//	{
-//		mRenderPassesSubresourceMetadatas[passNameStr][subresourceIdStr].MetadataFlags |= ImageFlagAutoBarrier;
-//	}
-//	else
-//	{
-//		mRenderPassesSubresourceMetadatas[passNameStr][subresourceIdStr].MetadataFlags &= ~ImageFlagAutoBarrier;
-//	}
-//}
-//
-//const VulkanCBindings::RenderableScene* VulkanCBindings::FrameGraphBuilder::GetScene() const
-//{
-//	return mScene;
-//}
-//
-//const VulkanCBindings::DeviceParameters* VulkanCBindings::FrameGraphBuilder::GetDeviceParameters() const
-//{
-//	return mDeviceParameters;
-//}
-//
-//const VulkanCBindings::ShaderManager* VulkanCBindings::FrameGraphBuilder::GetShaderManager() const
-//{
-//	return mShaderManager;
-//}
-//
-//const FrameGraphConfig* VulkanCBindings::FrameGraphBuilder::GetConfig() const
-//{
-//	return &mGraphToBuild->mFrameGraphConfig;
-//}
-//
-//VkImage VulkanCBindings::FrameGraphBuilder::GetRegisteredResource(const std::string_view passName, const std::string_view subresourceId) const
-//{
-//	const RenderPassName passNameStr(passName);
-//	const SubresourceId  subresourceIdStr(subresourceId);
-//
-//	const ImageSubresourceMetadata metadata = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr);
-//	if(metadata.ImageIndex == (uint32_t)(-1))
-//	{
-//		return VK_NULL_HANDLE;
-//	}
-//	else
-//	{
-//		return mGraphToBuild->mImages[metadata.ImageIndex];
-//	}
-//}
-//
-//VkImageView VulkanCBindings::FrameGraphBuilder::GetRegisteredSubresource(const std::string_view passName, const std::string_view subresourceId) const
-//{
-//	const RenderPassName passNameStr(passName);
-//	const SubresourceId  subresourceIdStr(subresourceId);
-//
-//	const ImageSubresourceMetadata metadata = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr);
-//	if(metadata.ImageViewIndex == (uint32_t)(-1))
-//	{
-//		return VK_NULL_HANDLE;
-//	}
-//	else
-//	{
-//		return mGraphToBuild->mImageViews[metadata.ImageViewIndex];
-//	}
-//}
-//
-//VkFormat VulkanCBindings::FrameGraphBuilder::GetRegisteredSubresourceFormat(const std::string_view passName, const std::string_view subresourceId) const
-//{
-//	const RenderPassName passNameStr(passName);
-//	const SubresourceId  subresourceIdStr(subresourceId);
-//
-//	const ImageSubresourceMetadata metadata = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr);
-//	return metadata.Format;
-//}
-//
-//VkImageLayout VulkanCBindings::FrameGraphBuilder::GetRegisteredSubresourceLayout(const std::string_view passName, const std::string_view subresourceId) const
-//{
-//	const RenderPassName passNameStr(passName);
-//	const SubresourceId  subresourceIdStr(subresourceId);
-//
-//	const ImageSubresourceMetadata metadata = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr);
-//	return metadata.Layout;
-//}
-//
-//VkImageUsageFlags VulkanCBindings::FrameGraphBuilder::GetRegisteredSubresourceUsage(const std::string_view passName, const std::string_view subresourceId) const
-//{
-//	const RenderPassName passNameStr(passName);
-//	const SubresourceId  subresourceIdStr(subresourceId);
-//
-//	const ImageSubresourceMetadata metadata = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr);
-//	return metadata.UsageFlags;
-//}
-//
-//VkPipelineStageFlags VulkanCBindings::FrameGraphBuilder::GetRegisteredSubresourceStageFlags(const std::string_view passName, const std::string_view subresourceId) const
-//{
-//	const RenderPassName passNameStr(passName);
-//	const SubresourceId  subresourceIdStr(subresourceId);
-//
-//	const ImageSubresourceMetadata metadata = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr);
-//	return metadata.PipelineStageFlags;
-//}
-//
-//VkImageAspectFlags VulkanCBindings::FrameGraphBuilder::GetRegisteredSubresourceAspectFlags(const std::string_view passName, const std::string_view subresourceId) const
-//{
-//	const RenderPassName passNameStr(passName);
-//	const SubresourceId  subresourceIdStr(subresourceId);
-//
-//	const ImageSubresourceMetadata metadata = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr);
-//	return metadata.AspectFlags;
-//}
-//
-//VkAccessFlags VulkanCBindings::FrameGraphBuilder::GetRegisteredSubresourceAccessFlags(const std::string_view passName, const std::string_view subresourceId) const
-//{
-//	const RenderPassName passNameStr(passName);
-//	const SubresourceId  subresourceIdStr(subresourceId);
-//
-//	const ImageSubresourceMetadata metadata = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr);
-//	return metadata.AccessFlags;
-//}
-//
-//VkImageLayout VulkanCBindings::FrameGraphBuilder::GetPreviousPassSubresourceLayout(const std::string_view passName, const std::string_view subresourceId) const
-//{
-//	const RenderPassName passNameStr(passName);
-//	const SubresourceId  subresourceIdStr(subresourceId);
-//
-//	const ImageSubresourceMetadata metadata = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr);
-//	if(metadata.PrevPassMetadata != nullptr)
-//	{
-//		return metadata.PrevPassMetadata->Layout;
-//	}
-//	else
-//	{
-//		return VK_IMAGE_LAYOUT_UNDEFINED;
-//	}
-//}
-//
-//VkImageUsageFlags VulkanCBindings::FrameGraphBuilder::GetPreviousPassSubresourceUsage(const std::string_view passName, const std::string_view subresourceId) const
-//{
-//	const RenderPassName passNameStr(passName);
-//	const SubresourceId  subresourceIdStr(subresourceId);
-//
-//	const ImageSubresourceMetadata metadata = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr);
-//	if(metadata.PrevPassMetadata != nullptr)
-//	{
-//		return metadata.PrevPassMetadata->UsageFlags;
-//	}
-//	else
-//	{
-//		return 0;
-//	}
-//}
-//
-//VkPipelineStageFlags VulkanCBindings::FrameGraphBuilder::GetPreviousPassSubresourceStageFlags(const std::string_view passName, const std::string_view subresourceId) const
-//{
-//	const RenderPassName passNameStr(passName);
-//	const SubresourceId  subresourceIdStr(subresourceId);
-//
-//	const ImageSubresourceMetadata metadata = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr);
-//	if(metadata.PrevPassMetadata != nullptr)
-//	{
-//		return metadata.PrevPassMetadata->PipelineStageFlags;
-//	}
-//	else
-//	{
-//		return VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-//	}
-//}
-//
-//VkImageAspectFlags VulkanCBindings::FrameGraphBuilder::GetPreviousPassSubresourceAspectFlags(const std::string_view passName, const std::string_view subresourceId) const
-//{
-//	const RenderPassName passNameStr(passName);
-//	const SubresourceId  subresourceIdStr(subresourceId);
-//
-//	const ImageSubresourceMetadata metadata = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr);
-//	if(metadata.PrevPassMetadata)
-//	{
-//		return metadata.PrevPassMetadata->AspectFlags;
-//	}
-//	else
-//	{
-//		return 0;
-//	}
-//}
-//
-//VkAccessFlags VulkanCBindings::FrameGraphBuilder::GetPreviousPassSubresourceAccessFlags(const std::string_view passName, const std::string_view subresourceId) const
-//{
-//	const RenderPassName passNameStr(passName);
-//	const SubresourceId  subresourceIdStr(subresourceId);
-//
-//	const ImageSubresourceMetadata metadata = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr);
-//	if(metadata.PrevPassMetadata)
-//	{
-//		return metadata.PrevPassMetadata->AccessFlags;
-//	}
-//	else
-//	{
-//		return 0;
-//	}
-//}
-//
-//VkImageLayout VulkanCBindings::FrameGraphBuilder::GetNextPassSubresourceLayout(const std::string_view passName, const std::string_view subresourceId) const
-//{
-//	const RenderPassName passNameStr(passName);
-//	const SubresourceId  subresourceIdStr(subresourceId);
-//
-//	const ImageSubresourceMetadata metadata = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr);
-//	if(metadata.NextPassMetadata != nullptr)
-//	{
-//		return metadata.NextPassMetadata->Layout;
-//	}
-//	else
-//	{
-//		return VK_IMAGE_LAYOUT_UNDEFINED;
-//	}
-//}
-//
-//VkImageUsageFlags VulkanCBindings::FrameGraphBuilder::GetNextPassSubresourceUsage(const std::string_view passName, const std::string_view subresourceId) const
-//{
-//	const RenderPassName passNameStr(passName);
-//	const SubresourceId  subresourceIdStr(subresourceId);
-//
-//	const ImageSubresourceMetadata metadata = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr);
-//	if(metadata.NextPassMetadata != nullptr)
-//	{
-//		return metadata.NextPassMetadata->UsageFlags;
-//	}
-//	else
-//	{
-//		return 0;
-//	}
-//}
-//
-//VkPipelineStageFlags VulkanCBindings::FrameGraphBuilder::GetNextPassSubresourceStageFlags(const std::string_view passName, const std::string_view subresourceId) const
-//{
-//	const RenderPassName passNameStr(passName);
-//	const SubresourceId  subresourceIdStr(subresourceId);
-//
-//	const ImageSubresourceMetadata metadata = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr);
-//	if(metadata.NextPassMetadata != nullptr)
-//	{
-//		return metadata.NextPassMetadata->PipelineStageFlags;
-//	}
-//	else
-//	{
-//		return VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-//	}
-//}
-//
-//VkImageAspectFlags VulkanCBindings::FrameGraphBuilder::GetNextPassSubresourceAspectFlags(const std::string_view passName, const std::string_view subresourceId) const
-//{
-//	const RenderPassName passNameStr(passName);
-//	const SubresourceId  subresourceIdStr(subresourceId);
-//
-//	const ImageSubresourceMetadata metadata = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr);
-//	if(metadata.NextPassMetadata)
-//	{
-//		return metadata.NextPassMetadata->AspectFlags;
-//	}
-//	else
-//	{
-//		return 0;
-//	}
-//}
-//
-//VkAccessFlags VulkanCBindings::FrameGraphBuilder::GetNextPassSubresourceAccessFlags(const std::string_view passName, const std::string_view subresourceId) const
-//{
-//	const RenderPassName passNameStr(passName);
-//	const SubresourceId  subresourceIdStr(subresourceId);
-//
-//	const ImageSubresourceMetadata metadata = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr);
-//	if(metadata.NextPassMetadata)
-//	{
-//		return metadata.NextPassMetadata->AccessFlags;
-//	}
-//	else
-//	{
-//		return 0;
-//	}
-//}
-
-void D3D12::FrameGraphBuilder::Build(const DeviceQueues* deviceQueues, const WorkerCommandLists* workerCommandLists, const MemoryManager* memoryAllocator, const SwapChain* swapChain)
+void D3D12::FrameGraphBuilder::RegisterRenderPass(const std::string_view passName, RenderPassCreateFunc createFunc, RenderPassType passType)
 {
-	//std::vector<VkImage> swapchainImages(swapChain->SwapchainImageCount);
-	//for(uint32_t i = 0; i < swapChain->SwapchainImageCount; i++)
-	//{
-	//	swapchainImages[i] = swapChain->GetSwapchainImage(i);
-	//}
+	RenderPassName renderPassName(passName);
+	assert(!mRenderPassCreateFunctions.contains(renderPassName));
+
+	mRenderPassNames.push_back(renderPassName);
+	mRenderPassCreateFunctions[renderPassName] = createFunc;
+
+	mRenderPassTypes[renderPassName] = passType;
+}
+
+void D3D12::FrameGraphBuilder::RegisterReadSubresource(const std::string_view passName, const std::string_view subresourceId)
+{
+	RenderPassName renderPassName(passName);
+
+	if(!mRenderPassesReadSubresourceIds.contains(renderPassName))
+	{
+		mRenderPassesReadSubresourceIds[renderPassName] = std::unordered_set<SubresourceId>();
+	}
+
+	SubresourceId subresId(subresourceId);
+	assert(renderPassName == PresentPassName || !mRenderPassesReadSubresourceIds[renderPassName].contains(subresId));
+
+	mRenderPassesReadSubresourceIds[renderPassName].insert(subresId);
+
+	if(!mRenderPassesSubresourceMetadatas.contains(renderPassName))
+	{
+		mRenderPassesSubresourceMetadatas[renderPassName] = std::unordered_map<SubresourceId, TextureSubresourceMetadata>();
+	}
+
+	TextureSubresourceMetadata subresourceMetadata;
+	subresourceMetadata.MetadataId       = mSubresourceMetadataCounter;
+	subresourceMetadata.PrevPassMetadata = nullptr;
+	subresourceMetadata.NextPassMetadata = nullptr;
+	subresourceMetadata.MetadataFlags    = 0;
+	subresourceMetadata.QueueOwnership   = D3D12_COMMAND_LIST_TYPE_DIRECT;
+	subresourceMetadata.Format           = DXGI_FORMAT_UNKNOWN;
+	subresourceMetadata.ImageIndex       = (uint32_t)(-1);
+	subresourceMetadata.ResourceState    = D3D12_RESOURCE_STATE_COMMON;
+
+	mSubresourceMetadataCounter++;
+
+	mRenderPassesSubresourceMetadatas[renderPassName][subresId] = subresourceMetadata;
+}
+
+void D3D12::FrameGraphBuilder::RegisterWriteSubresource(const std::string_view passName, const std::string_view subresourceId)
+{
+	RenderPassName renderPassName(passName);
+
+	if(!mRenderPassesWriteSubresourceIds.contains(renderPassName))
+	{
+		mRenderPassesWriteSubresourceIds[renderPassName] = std::unordered_set<SubresourceId>();
+	}
+
+	SubresourceId subresId(subresourceId);
+	assert(renderPassName == PresentPassName || !mRenderPassesWriteSubresourceIds[renderPassName].contains(subresId));
+
+	mRenderPassesWriteSubresourceIds[renderPassName].insert(subresId);
+
+	if(!mRenderPassesSubresourceMetadatas.contains(renderPassName))
+	{
+		mRenderPassesSubresourceMetadatas[renderPassName] = std::unordered_map<SubresourceId, TextureSubresourceMetadata>();
+	}
+
+	TextureSubresourceMetadata subresourceMetadata;
+	subresourceMetadata.MetadataId       = mSubresourceMetadataCounter;
+	subresourceMetadata.PrevPassMetadata = nullptr;
+	subresourceMetadata.NextPassMetadata = nullptr;
+	subresourceMetadata.MetadataFlags    = 0;
+	subresourceMetadata.QueueOwnership   = D3D12_COMMAND_LIST_TYPE_DIRECT;
+	subresourceMetadata.Format           = DXGI_FORMAT_UNKNOWN;
+	subresourceMetadata.ImageIndex       = (uint32_t)(-1);
+	subresourceMetadata.ResourceState    = D3D12_RESOURCE_STATE_COMMON;
+
+	mSubresourceMetadataCounter++;
+
+	mRenderPassesSubresourceMetadatas[renderPassName][subresId] = subresourceMetadata;
+}
+
+void D3D12::FrameGraphBuilder::AssignSubresourceName(const std::string_view passName, const std::string_view subresourceId, const std::string_view subresourceName)
+{
+	RenderPassName  passNameStr(passName);
+	SubresourceId   subresourceIdStr(subresourceId);
+	SubresourceName subresourceNameStr(subresourceName);
+
+	auto readSubresIt  = mRenderPassesReadSubresourceIds.find(passNameStr);
+	auto writeSubresIt = mRenderPassesWriteSubresourceIds.find(passNameStr);
+
+	assert(readSubresIt != mRenderPassesReadSubresourceIds.end() || writeSubresIt != mRenderPassesWriteSubresourceIds.end());
+	mRenderPassesSubresourceNameIds[passNameStr][subresourceNameStr] = subresourceIdStr;
+}
+
+void D3D12::FrameGraphBuilder::AssignBackbufferName(const std::string_view backbufferName)
+{
+	mBackbufferName = backbufferName;
+
+	AssignSubresourceName(PresentPassName, BackbufferPresentPassId, mBackbufferName);
+
+	TextureSubresourceMetadata presentAcquirePassMetadata;
+	presentAcquirePassMetadata.MetadataId       = mSubresourceMetadataCounter;
+	presentAcquirePassMetadata.PrevPassMetadata = nullptr;
+	presentAcquirePassMetadata.NextPassMetadata = nullptr;
+	presentAcquirePassMetadata.MetadataFlags    = 0;
+	presentAcquirePassMetadata.QueueOwnership   = D3D12_COMMAND_LIST_TYPE_DIRECT;
+	presentAcquirePassMetadata.Format           = DXGI_FORMAT_UNKNOWN;
+	presentAcquirePassMetadata.ImageIndex       = (uint32_t)(-1);
+	presentAcquirePassMetadata.ResourceState    = D3D12_RESOURCE_STATE_COMMON;
+
+	mSubresourceMetadataCounter++;
+
+	mRenderPassesSubresourceMetadatas[std::string(PresentPassName)][std::string(BackbufferPresentPassId)] = presentAcquirePassMetadata;
+}
+
+void D3D12::FrameGraphBuilder::SetPassSubresourceFormat(const std::string_view passName, const std::string_view subresourceId, DXGI_FORMAT format)
+{
+	RenderPassName passNameStr(passName);
+	SubresourceId  subresourceIdStr(subresourceId);
+
+	mRenderPassesSubresourceMetadatas[passNameStr][subresourceIdStr].Format = format;
+}
+
+void D3D12::FrameGraphBuilder::SetPassSubresourceState(const std::string_view passName, const std::string_view subresourceId, D3D12_RESOURCE_STATES state)
+{
+	RenderPassName passNameStr(passName);
+	SubresourceId  subresourceIdStr(subresourceId);
+
+	mRenderPassesSubresourceMetadatas[passNameStr][subresourceIdStr].ResourceState = state;
+}
+
+void D3D12::FrameGraphBuilder::EnableSubresourceAutoBarrier(const std::string_view passName, const std::string_view subresourceId, bool autoBaarrier)
+{
+	RenderPassName passNameStr(passName);
+	SubresourceId  subresourceIdStr(subresourceId);
+
+	if(autoBaarrier)
+	{
+		mRenderPassesSubresourceMetadatas[passNameStr][subresourceIdStr].MetadataFlags |= TextureFlagAutoBarrier;
+	}
+	else
+	{
+		mRenderPassesSubresourceMetadatas[passNameStr][subresourceIdStr].MetadataFlags &= ~TextureFlagAutoBarrier;
+	}
+}
+
+const D3D12::RenderableScene* D3D12::FrameGraphBuilder::GetScene() const
+{
+	return mScene;
+}
+
+const D3D12::DeviceFeatures* D3D12::FrameGraphBuilder::GetDeviceFeatures() const
+{
+	return mDeviceFeatures;
+}
+
+const D3D12::ShaderManager* D3D12::FrameGraphBuilder::GetShaderManager() const
+{
+	return mShaderManager;
+}
+
+const FrameGraphConfig* D3D12::FrameGraphBuilder::GetConfig() const
+{
+	return &mGraphToBuild->mFrameGraphConfig;
+}
+
+ID3D12Resource2* D3D12::FrameGraphBuilder::GetRegisteredResource(const std::string_view passName, const std::string_view subresourceId) const
+{
+	const RenderPassName passNameStr(passName);
+	const SubresourceId  subresourceIdStr(subresourceId);
+
+	const TextureSubresourceMetadata& metadata = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr);
+	if(metadata.ImageIndex == (uint32_t)(-1))
+	{
+		return nullptr;
+	}
+	else
+	{
+		return mGraphToBuild->mTextures[metadata.ImageIndex];
+	}
+}
+
+DXGI_FORMAT D3D12::FrameGraphBuilder::GetRegisteredSubresourceFormat(const std::string_view passName, const std::string_view subresourceId) const
+{
+	const RenderPassName passNameStr(passName);
+	const SubresourceId  subresourceIdStr(subresourceId);
+
+	const TextureSubresourceMetadata& metadata = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr);
+	return metadata.Format;
+}
+
+D3D12_RESOURCE_STATES D3D12::FrameGraphBuilder::GetRegisteredSubresourceState(const std::string_view passName, const std::string_view subresourceId) const
+{
+	const RenderPassName passNameStr(passName);
+	const SubresourceId  subresourceIdStr(subresourceId);
+
+	const TextureSubresourceMetadata& metadata = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr);
+	return metadata.ResourceState;
+}
+
+D3D12_RESOURCE_STATES D3D12::FrameGraphBuilder::GetPreviousPassSubresourceState(const std::string_view passName, const std::string_view subresourceId) const
+{
+	const RenderPassName passNameStr(passName);
+	const SubresourceId  subresourceIdStr(subresourceId);
+
+	const TextureSubresourceMetadata& metadata = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr);
+	if(metadata.PrevPassMetadata != nullptr)
+	{
+		return metadata.PrevPassMetadata->ResourceState;
+	}
+	else
+	{
+		return D3D12_RESOURCE_STATE_COMMON;
+	}
+}
+
+D3D12_RESOURCE_STATES D3D12::FrameGraphBuilder::GetNextPassSubresourceState(const std::string_view passName, const std::string_view subresourceId) const
+{
+	const RenderPassName passNameStr(passName);
+	const SubresourceId  subresourceIdStr(subresourceId);
+
+	const TextureSubresourceMetadata& metadata = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr);
+	if(metadata.NextPassMetadata != nullptr)
+	{
+		return metadata.NextPassMetadata->ResourceState;
+	}
+	else
+	{
+		return D3D12_RESOURCE_STATE_COMMON;
+	}
+}
+
+void D3D12::FrameGraphBuilder::Build(ID3D12Device8* device, const MemoryManager* memoryAllocator, const SwapChain* swapChain)
+{
+	std::vector<wil::com_ptr_nothrow<ID3D12Resource2>> swapchainImageOwners(swapChain->SwapchainImageCount);
+
+	std::vector<ID3D12Resource2*> swapchainImages(swapChain->SwapchainImageCount);
+	for(uint32_t i = 0; i < swapChain->SwapchainImageCount; i++)
+	{
+		ID3D12Resource* swapchainImage = swapChain->GetSwapchainImage(i);
+		THROW_IF_FAILED(swapchainImage->QueryInterface(IID_PPV_ARGS(swapchainImageOwners[i].put())));
+
+		swapchainImages[i] = swapchainImageOwners[i].get();
+	}
 
 	std::unordered_map<RenderPassName, std::unordered_set<RenderPassName>> adjacencyList;
 	BuildAdjacencyList(adjacencyList);
@@ -502,21 +277,17 @@ void D3D12::FrameGraphBuilder::Build(const DeviceQueues* deviceQueues, const Wor
 	SortRenderPassesDependency(adjacencyList, sortedPassNames);
 	mRenderPassNames = std::move(sortedPassNames);
 
-	BuildDependencyLevels(deviceQueues, swapChain);
+	BuildDependencyLevels();
 
-	//ValidateSubresourceLinks();
-	//ValidateSubresourceQueues();
+	ValidateSubresourceLinks();
+	ValidateSubresourceCommandListTypes();
+	ValidateCommonPromotion();
 
-	//uint32_t defaultQueueIndex = deviceQueues->GetGraphicsQueueFamilyIndex(); //Default image queue ownership
+	std::unordered_set<RenderPassName> backbufferPassNames; //All passes that use the backbuffer
+	BuildSubresources(device, memoryAllocator, swapchainImages, backbufferPassNames, swapChain->GetBackbufferFormat());
+	BuildPassObjects(device, backbufferPassNames);
 
-	//std::unordered_set<RenderPassName> backbufferPassNames; //All passes that use the backbuffer
-	//BuildSubresources(memoryAllocator, swapchainImages, backbufferPassNames, swapChain->GetBackbufferFormat(), defaultQueueIndex);
-	//BuildPassObjects(backbufferPassNames);
-
-	//BuildDescriptors();
 	BuildBarriers();
-
-	//BarrierImages(deviceQueues, workerCommandBuffers, defaultQueueIndex);
 }
 
 void D3D12::FrameGraphBuilder::BuildAdjacencyList(std::unordered_map<RenderPassName, std::unordered_set<RenderPassName>>& adjacencyList)
@@ -593,7 +364,7 @@ void D3D12::FrameGraphBuilder::SortRenderPassesDependency(const std::unordered_m
 	});
 }
 
-void D3D12::FrameGraphBuilder::BuildDependencyLevels(const DeviceQueues* deviceQueues, const SwapChain* swapChain)
+void D3D12::FrameGraphBuilder::BuildDependencyLevels()
 {
 	mGraphToBuild->mGraphicsPassSpans.clear();
 
@@ -621,6 +392,7 @@ void D3D12::FrameGraphBuilder::BuildDependencyLevels(const DeviceQueues* deviceQ
 	{
 		//Graphics queue only for now
 		//Async compute passes should be in the end of the frame. BUT! They should be executed AT THE START of THE PREVIOUS frame. Need to reorder stuff for that
+		//Async copy passes should have all resources in COMMON state, which requires additional work
 		RenderPassName renderPassName = mRenderPassNames[renderPassNameIndex];
 
 		mRenderPassCommandListTypes[renderPassName] = D3D12_COMMAND_LIST_TYPE_DIRECT;
@@ -628,7 +400,6 @@ void D3D12::FrameGraphBuilder::BuildDependencyLevels(const DeviceQueues* deviceQ
 	}
 
 	//No present-from-compute
-	mRenderPassCommandListTypes[std::string(AcquirePassName)] = D3D12_COMMAND_LIST_TYPE_DIRECT;
 	mRenderPassCommandListTypes[std::string(PresentPassName)] = D3D12_COMMAND_LIST_TYPE_DIRECT;
 }
 
@@ -652,162 +423,251 @@ void D3D12::FrameGraphBuilder::TopologicalSortNode(const std::unordered_map<Rend
 	sortedPassNames.push_back(renderPassName);
 }
 
-//void VulkanCBindings::FrameGraphBuilder::ValidateSubresourceLinks()
-//{
-//	std::unordered_map<SubresourceName, RenderPassName> subresourceLastRenderPasses; 
-//
-//	//Build present pass links
-//	subresourceLastRenderPasses[mBackbufferName] = std::string(AcquirePassName);
-//
-//	for(size_t i = 0; i < mRenderPassNames.size(); i++)
-//	{
-//		RenderPassName renderPassName = mRenderPassNames[i];
-//		for(auto& subresourceNameId: mRenderPassesSubresourceNameIds[renderPassName])
-//		{
-//			SubresourceName           subresourceName     = subresourceNameId.first;
-//			ImageSubresourceMetadata& subresourceMetadata = mRenderPassesSubresourceMetadatas.at(renderPassName).at(subresourceNameId.second);
-//
-//			if(subresourceLastRenderPasses.contains(subresourceName))
-//			{
-//				RenderPassName prevPassName = subresourceLastRenderPasses.at(subresourceName);
-//				
-//				SubresourceId             prevSubresourceId       = mRenderPassesSubresourceNameIds.at(prevPassName).at(subresourceName);
-//				ImageSubresourceMetadata& prevSubresourceMetadata = mRenderPassesSubresourceMetadatas.at(prevPassName).at(prevSubresourceId);
-//
-//				prevSubresourceMetadata.NextPassMetadata = &subresourceMetadata;
-//				subresourceMetadata.PrevPassMetadata     = &prevSubresourceMetadata;
-//			}
-//
-//			subresourceLastRenderPasses[subresourceName] = renderPassName;
-//		}
-//	}
-//
-//	RenderPassName backbufferLastPassName = subresourceLastRenderPasses.at(mBackbufferName);
-//
-//	SubresourceId             backbufferLastSubresourceId          = mRenderPassesSubresourceNameIds.at(backbufferLastPassName).at(mBackbufferName);
-//	ImageSubresourceMetadata& backbufferLastSubresourceMetadata    = mRenderPassesSubresourceMetadatas.at(backbufferLastPassName).at(backbufferLastSubresourceId);
-//	ImageSubresourceMetadata& backbufferPresentSubresourceMetadata = mRenderPassesSubresourceMetadatas.at(std::string(PresentPassName)).at(std::string(BackbufferPresentPassId));
-//
-//	backbufferLastSubresourceMetadata.NextPassMetadata    = &backbufferPresentSubresourceMetadata;
-//	backbufferPresentSubresourceMetadata.PrevPassMetadata = &backbufferLastSubresourceMetadata;
-//
-//	//Validate cyclic links (so first pass knows what state to barrier from)
-//	for(size_t i = 0; i < mRenderPassNames.size(); i++)
-//	{
-//		RenderPassName renderPassName = mRenderPassNames[i];
-//		for(auto& subresourceNameId: mRenderPassesSubresourceNameIds[renderPassName])
-//		{
-//			ImageSubresourceMetadata& subresourceMetadata = mRenderPassesSubresourceMetadatas.at(renderPassName).at(subresourceNameId.second);
-//			if(subresourceMetadata.PrevPassMetadata == nullptr)
-//			{
-//				SubresourceName subresourceName = subresourceNameId.first;
-//
-//				RenderPassName prevPassName = subresourceLastRenderPasses.at(subresourceName);
-//
-//				SubresourceId             prevSubresourceId       = mRenderPassesSubresourceNameIds.at(prevPassName).at(subresourceName);
-//				ImageSubresourceMetadata& prevSubresourceMetadata = mRenderPassesSubresourceMetadatas.at(prevPassName).at(prevSubresourceId);
-//
-//              //No, the barriers should be circular
-//				subresourceMetadata.PrevPassMetadata     = &prevSubresourceMetadata; //Barrier from the last state at the beginning of frame
-//				prevSubresourceMetadata.NextPassMetadata = nullptr;                  //No barriers after the frame ends (except for present barrier)
-//			}
-//		}
-//	}
-//}
-//
-//void VulkanCBindings::FrameGraphBuilder::ValidateSubresourceQueues()
-//{
-//	//Queue families should be known
-//	assert(!mRenderPassQueueFamilies.empty());
-//
-//	std::string acquirePassName(AcquirePassName);
-//	std::string presentPassName(PresentPassName);
-//
-//	for(auto& subresourceNameId: mRenderPassesSubresourceNameIds[acquirePassName])
-//	{
-//		ImageSubresourceMetadata& subresourceMetadata = mRenderPassesSubresourceMetadatas.at(acquirePassName).at(subresourceNameId.second);
-//		subresourceMetadata.QueueFamilyOwnership      = mRenderPassQueueFamilies[acquirePassName];
-//	}
-//
-//	for(size_t i = 0; i < mRenderPassNames.size(); i++)
-//	{
-//		RenderPassName renderPassName = mRenderPassNames[i];
-//		for(auto& subresourceNameId: mRenderPassesSubresourceNameIds[renderPassName])
-//		{
-//			ImageSubresourceMetadata& subresourceMetadata = mRenderPassesSubresourceMetadatas.at(renderPassName).at(subresourceNameId.second);
-//			subresourceMetadata.QueueFamilyOwnership      = mRenderPassQueueFamilies[renderPassName];
-//		}
-//	}
-//
-//	for(auto& subresourceNameId: mRenderPassesSubresourceNameIds[presentPassName])
-//	{
-//		ImageSubresourceMetadata& subresourceMetadata = mRenderPassesSubresourceMetadatas.at(presentPassName).at(subresourceNameId.second);
-//		subresourceMetadata.QueueFamilyOwnership      = mRenderPassQueueFamilies[presentPassName];
-//	}
-//}
-//
-//void VulkanCBindings::FrameGraphBuilder::BuildSubresources(const MemoryManager* memoryAllocator, const std::vector<VkImage>& swapchainImages, std::unordered_set<RenderPassName>& swapchainPassNames, VkFormat swapchainFormat, uint32_t defaultQueueIndex)
-//{
-//	std::vector<uint32_t> defaultQueueIndices = {defaultQueueIndex};
-//
-//	std::unordered_map<SubresourceName, ImageResourceCreateInfo>      imageResourceCreateInfos;
-//	std::unordered_map<SubresourceName, BackbufferResourceCreateInfo> backbufferResourceCreateInfos;
-//	BuildResourceCreateInfos(defaultQueueIndices, imageResourceCreateInfos, backbufferResourceCreateInfos, swapchainPassNames);
-//
-//	PropagateMetadatasFromImageViews(imageResourceCreateInfos, backbufferResourceCreateInfos);
-//
-//	CreateImages(imageResourceCreateInfos, memoryAllocator);
-//	CreateImageViews(imageResourceCreateInfos);
-//
-//	SetSwapchainImages(backbufferResourceCreateInfos, swapchainImages);
-//	CreateSwapchainImageViews(backbufferResourceCreateInfos, swapchainFormat);
-//}
-//
-//void VulkanCBindings::FrameGraphBuilder::BuildPassObjects(const std::unordered_set<std::string>& swapchainPassNames)
-//{
-//	mGraphToBuild->mRenderPasses.clear();
-//	mGraphToBuild->mSwapchainRenderPasses.clear();
-//	mGraphToBuild->mSwapchainPassesSwapMap.clear();
-//
-//	for(const std::string& passName: mRenderPassNames)
-//	{
-//		if(swapchainPassNames.contains(passName))
-//		{
-//			//This pass uses swapchain images - create a copy of render pass for each swapchain image
-//			mGraphToBuild->mRenderPasses.emplace_back(nullptr);
-//
-//			//Fill in primary swap link (what to swap)
-//			mGraphToBuild->mSwapchainPassesSwapMap.push_back((uint32_t)(mGraphToBuild->mRenderPasses.size() - 1));
-//
-//			//Correctness is guaranteed as long as mLastSwapchainImageIndex is the last index in mSwapchainImageRefs
-//			const uint32_t swapchainImageCount = (uint32_t)mGraphToBuild->mSwapchainImageRefs.size();			
-//			for(uint32_t swapchainImageIndex = 0; swapchainImageIndex < mGraphToBuild->mSwapchainImageRefs.size(); swapchainImageIndex++)
-//			{
-//				//Create a separate render pass for each of swapchain images
-//				mGraphToBuild->SwitchSwapchainImages(swapchainImageIndex);
-//				mGraphToBuild->mSwapchainRenderPasses.push_back(mRenderPassCreateFunctions.at(passName)(mGraphToBuild->mDeviceRef, this, passName));
-//
-//				//Fill in secondary swap link (what to swap to)
-//				mGraphToBuild->mSwapchainPassesSwapMap.push_back((uint32_t)(mGraphToBuild->mSwapchainRenderPasses.size() - 1));
-//
-//				mGraphToBuild->mLastSwapchainImageIndex = swapchainImageIndex;
-//			}
-//		}
-//		else
-//		{
-//			//This pass does not use any swapchain images - can just create a single copy
-//			mGraphToBuild->mRenderPasses.push_back(mRenderPassCreateFunctions.at(passName)(mGraphToBuild->mDeviceRef, this, passName));
-//		}
-//	}
-//
-//	//Prepare for the first use
-//	uint32_t swapchainImageCount = (uint32_t)mGraphToBuild->mSwapchainImageRefs.size();
-//	for(uint32_t i = 0; i < (uint32_t)mGraphToBuild->mSwapchainPassesSwapMap.size(); i += (swapchainImageCount + 1u))
-//	{
-//		uint32_t passIndexToSwitch = mGraphToBuild->mSwapchainPassesSwapMap[i];
-//		mGraphToBuild->mRenderPasses[passIndexToSwitch].swap(mGraphToBuild->mSwapchainRenderPasses[mGraphToBuild->mSwapchainPassesSwapMap[i + mGraphToBuild->mLastSwapchainImageIndex + 1]]);
-//	}
-//}
+void D3D12::FrameGraphBuilder::ValidateSubresourceLinks()
+{
+	std::unordered_map<SubresourceName, RenderPassName> subresourceFirstRenderPasses; //The fisrt pass for each subresource
+	std::unordered_map<SubresourceName, RenderPassName> subresourceLastRenderPasses;  //The last pass for each subresource
+
+	//Connect previous passes
+	for(size_t i = 0; i < mRenderPassNames.size(); i++)
+	{
+		RenderPassName renderPassName = mRenderPassNames[i];
+		for(auto& subresourceNameId: mRenderPassesSubresourceNameIds[renderPassName])
+		{
+			SubresourceName             subresourceName     = subresourceNameId.first;
+			TextureSubresourceMetadata& subresourceMetadata = mRenderPassesSubresourceMetadatas.at(renderPassName).at(subresourceNameId.second);
+
+			if(subresourceLastRenderPasses.contains(subresourceName))
+			{
+				RenderPassName prevPassName = subresourceLastRenderPasses.at(subresourceName);
+				
+				SubresourceId               prevSubresourceId       = mRenderPassesSubresourceNameIds.at(prevPassName).at(subresourceName);
+				TextureSubresourceMetadata& prevSubresourceMetadata = mRenderPassesSubresourceMetadatas.at(prevPassName).at(prevSubresourceId);
+
+				prevSubresourceMetadata.NextPassMetadata = &subresourceMetadata;
+				subresourceMetadata.PrevPassMetadata     = &prevSubresourceMetadata;
+			}
+
+			if(!subresourceFirstRenderPasses.contains(subresourceName))
+			{
+				subresourceFirstRenderPasses[subresourceName] = renderPassName;
+			}
+
+			subresourceLastRenderPasses[subresourceName] = renderPassName;
+		}
+	}
+
+
+	//Validate backbuffer links
+	RenderPassName backbufferLastPassName  = subresourceLastRenderPasses.at(mBackbufferName);
+	RenderPassName backbufferFirstPassName = subresourceFirstRenderPasses.at(mBackbufferName);
+
+	SubresourceId backbufferLastSubresourceId  = mRenderPassesSubresourceNameIds.at(backbufferLastPassName).at(mBackbufferName);
+	SubresourceId backbufferFirstSubresourceId = mRenderPassesSubresourceNameIds.at(backbufferFirstPassName).at(mBackbufferName);
+
+	TextureSubresourceMetadata& backbufferFirstSubresourceMetadata = mRenderPassesSubresourceMetadatas.at(backbufferFirstPassName).at(backbufferFirstSubresourceId);
+	TextureSubresourceMetadata& backbufferLastSubresourceMetadata = mRenderPassesSubresourceMetadatas.at(backbufferLastPassName).at(backbufferLastSubresourceId);
+
+	TextureSubresourceMetadata& backbufferPresentSubresourceMetadata = mRenderPassesSubresourceMetadatas.at(std::string(PresentPassName)).at(std::string(BackbufferPresentPassId));
+
+	backbufferFirstSubresourceMetadata.PrevPassMetadata = &backbufferPresentSubresourceMetadata;
+	backbufferLastSubresourceMetadata.NextPassMetadata  = &backbufferPresentSubresourceMetadata;
+
+	backbufferPresentSubresourceMetadata.PrevPassMetadata = &backbufferLastSubresourceMetadata;
+	backbufferPresentSubresourceMetadata.NextPassMetadata = &backbufferFirstSubresourceMetadata;
+
+
+	//Validate cyclic links (so first pass knows what state to barrier from, and the last pass knows what state to barrier to)
+	for(size_t i = 0; i < mRenderPassNames.size(); i++)
+	{
+		RenderPassName renderPassName = mRenderPassNames[i];
+		for(auto& subresourceNameId: mRenderPassesSubresourceNameIds[renderPassName])
+		{
+			if(subresourceNameId.first == mBackbufferName) //Backbuffer is already processed
+			{
+				continue;
+			}
+
+			TextureSubresourceMetadata& subresourceMetadata = mRenderPassesSubresourceMetadatas.at(renderPassName).at(subresourceNameId.second);
+
+			if(subresourceMetadata.PrevPassMetadata == nullptr)
+			{
+				SubresourceName subresourceName = subresourceNameId.first;
+
+				RenderPassName prevPassName = subresourceLastRenderPasses.at(subresourceName);
+
+				SubresourceId               prevSubresourceId       = mRenderPassesSubresourceNameIds.at(prevPassName).at(subresourceName);
+				TextureSubresourceMetadata& prevSubresourceMetadata = mRenderPassesSubresourceMetadatas.at(prevPassName).at(prevSubresourceId);
+
+                //No, the barriers should be circular
+				subresourceMetadata.PrevPassMetadata     = &prevSubresourceMetadata; //Barrier from the last state at the beginning of frame
+				prevSubresourceMetadata.NextPassMetadata = &subresourceMetadata;
+			}
+
+			if(subresourceMetadata.NextPassMetadata == nullptr)
+			{
+				SubresourceName subresourceName = subresourceNameId.first;
+
+				RenderPassName nextPassName = subresourceFirstRenderPasses.at(subresourceName);
+
+				SubresourceId               nextSubresourceId       = mRenderPassesSubresourceNameIds.at(nextPassName).at(subresourceName);
+				TextureSubresourceMetadata& nextSubresourceMetadata = mRenderPassesSubresourceMetadatas.at(nextPassName).at(nextSubresourceId);
+
+                //No, the barriers should be circular
+				subresourceMetadata.NextPassMetadata     = &nextSubresourceMetadata; //Barrier from the last state at the beginning of frame
+				nextSubresourceMetadata.PrevPassMetadata = &subresourceMetadata;
+			}
+		}
+	}
+}
+
+void D3D12::FrameGraphBuilder::ValidateSubresourceCommandListTypes()
+{
+	//Command list types should be known
+	assert(!mRenderPassCommandListTypes.empty());
+
+	std::string presentPassName(PresentPassName);
+
+	for(auto& subresourceNameId: mRenderPassesSubresourceNameIds[presentPassName])
+	{
+		TextureSubresourceMetadata& subresourceMetadata = mRenderPassesSubresourceMetadatas.at(presentPassName).at(subresourceNameId.second);
+		subresourceMetadata.QueueOwnership              = mRenderPassCommandListTypes[presentPassName];
+	}
+
+	for(size_t i = 0; i < mRenderPassNames.size(); i++)
+	{
+		RenderPassName renderPassName = mRenderPassNames[i];
+		for(auto& subresourceNameId: mRenderPassesSubresourceNameIds[renderPassName])
+		{
+			TextureSubresourceMetadata& subresourceMetadata = mRenderPassesSubresourceMetadatas.at(renderPassName).at(subresourceNameId.second);
+			subresourceMetadata.QueueOwnership              = mRenderPassCommandListTypes[renderPassName];
+		}
+	}
+}
+
+void D3D12::FrameGraphBuilder::ValidateCommonPromotion()
+{
+	//Subresource links should be validated
+	for(size_t i = 0; i < mRenderPassNames.size(); i++)
+	{
+		RenderPassName renderPassName = mRenderPassNames[i];
+		for(auto& subresourceNameId: mRenderPassesSubresourceNameIds[renderPassName])
+		{
+			TextureSubresourceMetadata& subresourceMetadata     = mRenderPassesSubresourceMetadatas.at(renderPassName).at(subresourceNameId.second);
+			TextureSubresourceMetadata& prevSubresourceMetadata = *subresourceMetadata.PrevPassMetadata;
+
+			if(prevSubresourceMetadata.ResourceState == D3D12_RESOURCE_STATE_COMMON && D3D12Utils::IsStatePromoteableTo(subresourceMetadata.ResourceState)) //Promotion from common
+			{
+				subresourceMetadata.MetadataFlags |= TextureFlagStateAutoPromoted;
+			}
+			else if(prevSubresourceMetadata.QueueOwnership == subresourceMetadata.QueueOwnership) //Queue hasn't changed => ExecuteCommandLists wasn't called => No decay happened
+			{
+				if(prevSubresourceMetadata.ResourceState == subresourceMetadata.ResourceState) //Propagation of state promotion
+				{
+					subresourceMetadata.MetadataFlags |= TextureFlagStateAutoPromoted;
+				}
+			}
+			else
+			{
+				bool prevWasPromoted = (prevSubresourceMetadata.MetadataFlags & TextureFlagStateAutoPromoted);
+				if(prevWasPromoted && !D3D12Utils::IsStateWriteable(prevSubresourceMetadata.ResourceState)) //Read-only promoted state decays to COMMON after ECL call
+				{
+					if(D3D12Utils::IsStatePromoteableTo(subresourceMetadata.ResourceState)) //State promotes again
+					{
+						subresourceMetadata.MetadataFlags |= TextureFlagStateAutoPromoted;
+					}
+				}
+			}
+		}
+	}
+}
+
+void D3D12::FrameGraphBuilder::PropagateMetadatasFromImageViews(const std::unordered_map<SubresourceName, TextureCreateInfo>& textureCreateInfos, const std::unordered_map<SubresourceName, BackbufferCreateInfo>& backbufferCreateInfos)
+{
+	for(auto& nameWithCreateInfo: textureCreateInfos)
+	{
+		for(size_t i = 0; i < nameWithCreateInfo.second.ViewInfos.size(); i++)
+		{
+			DXGI_FORMAT format = nameWithCreateInfo.second.ViewInfos[i].Format;
+			for(size_t j = 0; j < nameWithCreateInfo.second.ViewInfos[i].ViewAddresses.size(); j++)
+			{
+				const SubresourceAddress& address = nameWithCreateInfo.second.ViewInfos[i].ViewAddresses[j];
+				mRenderPassesSubresourceMetadatas.at(address.PassName).at(address.SubresId).Format = format;
+			}
+		}
+	}
+
+	for(auto& nameWithCreateInfo: backbufferCreateInfos)
+	{
+		for(size_t i = 0; i < nameWithCreateInfo.second.ViewInfos.size(); i++)
+		{
+			DXGI_FORMAT format = nameWithCreateInfo.second.ViewInfos[i].Format;
+			for(size_t j = 0; j < nameWithCreateInfo.second.ViewInfos[i].ViewAddresses.size(); j++)
+			{
+				const SubresourceAddress& address = nameWithCreateInfo.second.ViewInfos[i].ViewAddresses[j];
+				mRenderPassesSubresourceMetadatas.at(address.PassName).at(address.SubresId).Format = format;
+			}
+		}
+	}
+}
+
+void D3D12::FrameGraphBuilder::BuildSubresources(ID3D12Device8* device, const MemoryManager* memoryAllocator, const std::vector<ID3D12Resource2*>& swapchainTextures, std::unordered_set<RenderPassName>& swapchainPassNames, DXGI_FORMAT swapchainFormat)
+{
+	std::unordered_map<SubresourceName, TextureCreateInfo>    textureCreateInfos;
+	std::unordered_map<SubresourceName, BackbufferCreateInfo> backbufferCreateInfos;
+	BuildResourceCreateInfos(textureCreateInfos, backbufferCreateInfos, swapchainPassNames);
+
+	PropagateMetadatasFromImageViews(textureCreateInfos, backbufferCreateInfos);
+
+	CreateTextures(device, textureCreateInfos, memoryAllocator);
+	SetSwapchainTextures(backbufferCreateInfos, swapchainTextures);
+}
+
+void D3D12::FrameGraphBuilder::BuildPassObjects(ID3D12Device8* device, const std::unordered_set<std::string>& swapchainPassNames)
+{
+	mGraphToBuild->mRenderPasses.clear();
+	mGraphToBuild->mSwapchainRenderPasses.clear();
+	mGraphToBuild->mSwapchainPassesSwapMap.clear();
+
+	for(const std::string& passName: mRenderPassNames)
+	{
+		if(swapchainPassNames.contains(passName))
+		{
+			//This pass uses swapchain images - create a copy of render pass for each swapchain image
+			mGraphToBuild->mRenderPasses.emplace_back(nullptr);
+
+			//Fill in primary swap link (what to swap)
+			mGraphToBuild->mSwapchainPassesSwapMap.push_back((uint32_t)(mGraphToBuild->mRenderPasses.size() - 1));
+
+			//Correctness is guaranteed as long as mLastSwapchainImageIndex is the last index in mSwapchainImageRefs
+			const uint32_t swapchainImageCount = (uint32_t)mGraphToBuild->mSwapchainImageRefs.size();			
+			for(uint32_t swapchainImageIndex = 0; swapchainImageIndex < mGraphToBuild->mSwapchainImageRefs.size(); swapchainImageIndex++)
+			{
+				//Create a separate render pass for each of swapchain images
+				mGraphToBuild->SwitchSwapchainImages(swapchainImageIndex);
+				mGraphToBuild->mSwapchainRenderPasses.push_back(mRenderPassCreateFunctions.at(passName)(device, this, passName));
+
+				//Fill in secondary swap link (what to swap to)
+				mGraphToBuild->mSwapchainPassesSwapMap.push_back((uint32_t)(mGraphToBuild->mSwapchainRenderPasses.size() - 1));
+
+				mGraphToBuild->mLastSwapchainImageIndex = swapchainImageIndex;
+			}
+		}
+		else
+		{
+			//This pass does not use any swapchain images - can just create a single copy
+			mGraphToBuild->mRenderPasses.push_back(mRenderPassCreateFunctions.at(passName)(device, this, passName));
+		}
+	}
+
+	//Prepare for the first use
+	uint32_t swapchainImageCount = (uint32_t)mGraphToBuild->mSwapchainImageRefs.size();
+	for(uint32_t i = 0; i < (uint32_t)mGraphToBuild->mSwapchainPassesSwapMap.size(); i += (swapchainImageCount + 1u))
+	{
+		uint32_t passIndexToSwitch = mGraphToBuild->mSwapchainPassesSwapMap[i];
+		mGraphToBuild->mRenderPasses[passIndexToSwitch].swap(mGraphToBuild->mSwapchainRenderPasses[mGraphToBuild->mSwapchainPassesSwapMap[i + mGraphToBuild->mLastSwapchainImageIndex + 1]]);
+	}
+}
 
 void D3D12::FrameGraphBuilder::BuildBarriers() //When present from compute is out, you're gonna have a fun time writing all the new rules lol
 {
@@ -834,7 +694,7 @@ void D3D12::FrameGraphBuilder::BuildBarriers() //When present from compute is ou
 			TextureSubresourceMetadata subresourceMetadata = idMetadataMap.at(subresourceId);
 			if(!(subresourceMetadata.MetadataFlags & TextureFlagAutoBarrier))
 			{
-				if(subresourceMetadata.PrevPassMetadata != nullptr)
+				
 				{
 					/*
 					*    Before barrier:
@@ -868,8 +728,8 @@ void D3D12::FrameGraphBuilder::BuildBarriers() //When present from compute is ou
 					const D3D12_COMMAND_LIST_TYPE prevStateQueue = subresourceMetadata.PrevPassMetadata->QueueOwnership;
 					const D3D12_COMMAND_LIST_TYPE nextStateQueue = subresourceMetadata.QueueOwnership;
 
-					const bool prevWasPromoted = (subresourceMetadata.PrevPassMetadata->MetadataFlags & StateWasPromoted);
-					const bool nextIsPromoted  = (subresourceMetadata.MetadataFlags & StateWasPromoted);
+					const bool prevWasPromoted = (subresourceMetadata.PrevPassMetadata->MetadataFlags & TextureFlagStateAutoPromoted);
+					const bool nextIsPromoted  = (subresourceMetadata.MetadataFlags & TextureFlagStateAutoPromoted);
 
 					if(prevStateQueue == nextStateQueue) //Rules 1, 2, 3
 					{
@@ -921,7 +781,7 @@ void D3D12::FrameGraphBuilder::BuildBarriers() //When present from compute is ou
 						ID3D12Resource2* barrieredTexture = nullptr;
 						if(subresourceMetadata.ImageIndex != mGraphToBuild->mBackbufferRefIndex)
 						{
-							barrieredTexture = mGraphToBuild->mTextures[subresourceMetadata.ImageIndex].get();
+							barrieredTexture = mGraphToBuild->mTextures[subresourceMetadata.ImageIndex];
 						}
 
 						D3D12_RESOURCE_BARRIER textureTransitionBarrier;
@@ -942,7 +802,7 @@ void D3D12::FrameGraphBuilder::BuildBarriers() //When present from compute is ou
 					}
 				}
 
-				if(subresourceMetadata.NextPassMetadata != nullptr)
+				
 				{
 					/*
 					*    After barrier:
@@ -977,8 +837,8 @@ void D3D12::FrameGraphBuilder::BuildBarriers() //When present from compute is ou
 					const D3D12_COMMAND_LIST_TYPE prevStateQueue = subresourceMetadata.QueueOwnership;
 					const D3D12_COMMAND_LIST_TYPE nextStateQueue = subresourceMetadata.NextPassMetadata->QueueOwnership;
 
-					const bool prevWasPromoted = (subresourceMetadata.MetadataFlags & StateWasPromoted);
-					const bool nextIsPromoted  = (subresourceMetadata.NextPassMetadata->MetadataFlags & StateWasPromoted);
+					const bool prevWasPromoted = (subresourceMetadata.MetadataFlags & TextureFlagStateAutoPromoted);
+					const bool nextIsPromoted  = (subresourceMetadata.NextPassMetadata->MetadataFlags & TextureFlagStateAutoPromoted);
 
 					if(prevStateQueue == nextStateQueue) //Rules 1, 2, 3, 4
 					{
@@ -1028,7 +888,7 @@ void D3D12::FrameGraphBuilder::BuildBarriers() //When present from compute is ou
 						ID3D12Resource2* barrieredTexture = nullptr;
 						if(subresourceMetadata.ImageIndex != mGraphToBuild->mBackbufferRefIndex)
 						{
-							barrieredTexture = mGraphToBuild->mTextures[subresourceMetadata.ImageIndex].get();
+							barrieredTexture = mGraphToBuild->mTextures[subresourceMetadata.ImageIndex];
 						}
 
 						D3D12_RESOURCE_BARRIER textureTransitionBarrier;
@@ -1079,478 +939,285 @@ void D3D12::FrameGraphBuilder::BuildBarriers() //When present from compute is ou
 	}
 }
  
-//void VulkanCBindings::FrameGraphBuilder::BarrierImages(const DeviceQueues* deviceQueues, const WorkerCommandBuffers* workerCommandBuffers, uint32_t defaultQueueIndex)
-//{
-//	//Transit to the last pass as if rendering just ended. That ensures correct barriers at the start of the frame
-//	std::vector<VkImageMemoryBarrier> imageMemoryBarriers;
-//
-//	std::unordered_map<SubresourceName, ImageSubresourceMetadata> imageLastMetadatas;
-//	for(size_t i = mRenderPassNames.size() - 1; i < mRenderPassNames.size(); i--) //The loop wraps around 0
-//	{
-//		const RenderPassName renderPassName = mRenderPassNames[i];
-//
-//		const auto& nameIdMap = mRenderPassesSubresourceNameIds[renderPassName];
-//		for(const auto& nameId: nameIdMap)
-//		{
-//			if(!imageLastMetadatas.contains(nameId.first) && nameId.first != mBackbufferName)
-//			{
-//				ImageSubresourceMetadata metadata = mRenderPassesSubresourceMetadatas[renderPassName][nameId.second];
-//				imageLastMetadatas[nameId.first] = metadata;
-//			}
-//		}
-//	}
-//
-//	std::vector<VkImageMemoryBarrier> imageBarriers;
-//	for(const auto& nameMetadata: imageLastMetadatas)
-//	{
-//		VkImageMemoryBarrier imageBarrier;
-//		imageBarrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-//		imageBarrier.pNext                           = nullptr;
-//		imageBarrier.srcAccessMask                   = 0;
-//		imageBarrier.dstAccessMask                   = nameMetadata.second.AccessFlags;
-//		imageBarrier.oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;
-//		imageBarrier.newLayout                       = nameMetadata.second.Layout;
-//		imageBarrier.srcQueueFamilyIndex             = defaultQueueIndex; //Resources were created with that queue ownership
-//		imageBarrier.dstQueueFamilyIndex             = nameMetadata.second.QueueFamilyOwnership;
-//		imageBarrier.image                           = mGraphToBuild->mImages[nameMetadata.second.ImageIndex];
-//		imageBarrier.subresourceRange.aspectMask     = nameMetadata.second.AspectFlags;
-//		imageBarrier.subresourceRange.baseMipLevel   = 0;
-//		imageBarrier.subresourceRange.levelCount     = VK_REMAINING_MIP_LEVELS;
-//		imageBarrier.subresourceRange.baseArrayLayer = 0;
-//		imageBarrier.subresourceRange.layerCount     = VK_REMAINING_ARRAY_LAYERS;
-//
-//		imageBarriers.push_back(imageBarrier);
-//	}
-//
-//	VkCommandPool   graphicsCommandPool   = workerCommandBuffers->GetMainThreadGraphicsCommandPool(0);
-//	VkCommandBuffer graphicsCommandBuffer = workerCommandBuffers->GetMainThreadGraphicsCommandBuffer(0);
-//
-//	ThrowIfFailed(vkResetCommandPool(mGraphToBuild->mDeviceRef, graphicsCommandPool, 0));
-//
-//	//TODO: mGPU?
-//	VkCommandBufferBeginInfo graphicsCmdBufferBeginInfo;
-//	graphicsCmdBufferBeginInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-//	graphicsCmdBufferBeginInfo.pNext            = nullptr;
-//	graphicsCmdBufferBeginInfo.flags            = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-//	graphicsCmdBufferBeginInfo.pInheritanceInfo = nullptr;
-//
-//	ThrowIfFailed(vkBeginCommandBuffer(graphicsCommandBuffer, &graphicsCmdBufferBeginInfo));
-//
-//	std::array<VkMemoryBarrier,       0> memoryBarriers;
-//	std::array<VkBufferMemoryBarrier, 0> bufferBarriers;
-//	vkCmdPipelineBarrier(graphicsCommandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0,
-//		                 (uint32_t)memoryBarriers.size(), memoryBarriers.data(),
-//		                 (uint32_t)bufferBarriers.size(), bufferBarriers.data(),
-//		                 (uint32_t)imageBarriers.size(),  imageBarriers.data());
-//
-//	ThrowIfFailed(vkEndCommandBuffer(graphicsCommandBuffer));
-//
-//	deviceQueues->GraphicsQueueSubmit(graphicsCommandBuffer);
-//	deviceQueues->GraphicsQueueWait();
-//}
-//
-//void VulkanCBindings::FrameGraphBuilder::BuildResourceCreateInfos(const std::vector<uint32_t>& defaultQueueIndices, std::unordered_map<SubresourceName, ImageResourceCreateInfo>& outImageCreateInfos, std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& outBackbufferCreateInfos, std::unordered_set<RenderPassName>& swapchainPassNames)
-//{
-//	for(const auto& renderPassName: mRenderPassNames)
-//	{
-//		const auto& nameIdMap = mRenderPassesSubresourceNameIds[renderPassName];
-//		for(const auto& nameId: nameIdMap)
-//		{
-//			const SubresourceName subresourceName = nameId.first;
-//			const SubresourceId   subresourceId   = nameId.second;
-//
-//			if(subresourceName == mBackbufferName)
-//			{
-//				ImageSubresourceMetadata metadata = mRenderPassesSubresourceMetadatas[renderPassName][subresourceId];
-//
-//				BackbufferResourceCreateInfo backbufferCreateInfo;
-//
-//				ImageViewInfo imageViewInfo;
-//				imageViewInfo.Format     = metadata.Format;
-//				imageViewInfo.AspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-//				imageViewInfo.ViewAddresses.push_back({.PassName = renderPassName, .SubresId = subresourceId});
-//
-//				backbufferCreateInfo.ImageViewInfos.push_back(imageViewInfo);
-//
-//				outBackbufferCreateInfos[subresourceName] = backbufferCreateInfo;
-//
-//				swapchainPassNames.insert(renderPassName);
-//			}
-//			else
-//			{
-//				ImageSubresourceMetadata metadata = mRenderPassesSubresourceMetadatas[renderPassName][subresourceId];
-//				if(!outImageCreateInfos.contains(subresourceName))
-//				{
-//					ImageResourceCreateInfo imageResourceCreateInfo;
-//
-//					//TODO: Multisampling
-//					VkImageCreateInfo imageCreateInfo;
-//					imageCreateInfo.sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-//					imageCreateInfo.pNext                 = nullptr;
-//					imageCreateInfo.flags                 = 0;
-//					imageCreateInfo.imageType             = VK_IMAGE_TYPE_2D;
-//					imageCreateInfo.format                = metadata.Format;
-//					imageCreateInfo.extent.width          = mGraphToBuild->mFrameGraphConfig.GetViewportWidth();
-//					imageCreateInfo.extent.height         = mGraphToBuild->mFrameGraphConfig.GetViewportHeight();
-//					imageCreateInfo.extent.depth          = 1;
-//					imageCreateInfo.mipLevels             = 1;
-//					imageCreateInfo.arrayLayers           = 1;
-//					imageCreateInfo.samples               = VK_SAMPLE_COUNT_1_BIT;
-//					imageCreateInfo.tiling                = VK_IMAGE_TILING_OPTIMAL;
-//					imageCreateInfo.usage                 = metadata.UsageFlags;
-//					imageCreateInfo.sharingMode           = VK_SHARING_MODE_EXCLUSIVE;
-//					imageCreateInfo.queueFamilyIndexCount = (uint32_t)(defaultQueueIndices.size());
-//					imageCreateInfo.pQueueFamilyIndices   = defaultQueueIndices.data();
-//					imageCreateInfo.initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED;
-//
-//					imageResourceCreateInfo.ImageCreateInfo = imageCreateInfo;
-//
-//					outImageCreateInfos[subresourceName] = imageResourceCreateInfo;
-//				}
-//
-//				auto& imageResourceCreateInfo = outImageCreateInfos[subresourceName];
-//				if(metadata.Format != VK_FORMAT_UNDEFINED)
-//				{
-//					if(imageResourceCreateInfo.ImageCreateInfo.format == VK_FORMAT_UNDEFINED)
-//					{
-//						//Not all passes specify the format
-//						imageResourceCreateInfo.ImageCreateInfo.format = metadata.Format;
-//					}
-//				}
-//
-//				//It's fine if format is UNDEFINED or AspectFlags is 0. It means it can be arbitrary and we'll fix it later based on other image view infos for this resource
-//				ImageViewInfo imageViewInfo;
-//				imageViewInfo.Format     = metadata.Format;
-//				imageViewInfo.AspectMask = metadata.AspectFlags;
-//				imageViewInfo.ViewAddresses.push_back({.PassName = renderPassName, .SubresId = subresourceId});
-//
-//				imageResourceCreateInfo.ImageViewInfos.push_back(imageViewInfo);
-//
-//				imageResourceCreateInfo.ImageCreateInfo.usage |= metadata.UsageFlags;
-//			}
-//		}
-//	}
-//
-//	MergeImageViewInfos(outImageCreateInfos);
-//}
-//
-//void VulkanCBindings::FrameGraphBuilder::MergeImageViewInfos(std::unordered_map<SubresourceName, ImageResourceCreateInfo>& inoutImageResourceCreateInfos)
-//{
-//	//Fix all "arbitrary" image view infos
-//	for(auto& nameWithCreateInfo: inoutImageResourceCreateInfos)
-//	{
-//		for(int i = 0; i < nameWithCreateInfo.second.ImageViewInfos.size(); i++)
-//		{
-//			if(nameWithCreateInfo.second.ImageViewInfos[i].Format == VK_FORMAT_UNDEFINED)
-//			{
-//				//Assign the closest non-UNDEFINED format
-//				for(int j = i + 1; j < (int)nameWithCreateInfo.second.ImageViewInfos.size(); j++)
-//				{
-//					if(nameWithCreateInfo.second.ImageViewInfos[j].Format != VK_FORMAT_UNDEFINED)
-//					{
-//						nameWithCreateInfo.second.ImageViewInfos[i].Format = nameWithCreateInfo.second.ImageViewInfos[j].Format;
-//						break;
-//					}
-//				}
-//
-//				//Still UNDEFINED? Try to find the format in elements before
-//				if(nameWithCreateInfo.second.ImageViewInfos[i].Format == VK_FORMAT_UNDEFINED)
-//				{
-//					for(int j = i - 1; j >= 0; j++)
-//					{
-//						if(nameWithCreateInfo.second.ImageViewInfos[j].Format != VK_FORMAT_UNDEFINED)
-//						{
-//							nameWithCreateInfo.second.ImageViewInfos[i].Format = nameWithCreateInfo.second.ImageViewInfos[j].Format;
-//							break;
-//						}
-//					}
-//				}
-//			}
-//
-//
-//			if(nameWithCreateInfo.second.ImageViewInfos[i].AspectMask == 0)
-//			{
-//				//Assign the closest non-0 aspect mask
-//				for(int j = i + 1; j < (int)nameWithCreateInfo.second.ImageViewInfos.size(); j++)
-//				{
-//					if(nameWithCreateInfo.second.ImageViewInfos[j].AspectMask != 0)
-//					{
-//						nameWithCreateInfo.second.ImageViewInfos[i].AspectMask = nameWithCreateInfo.second.ImageViewInfos[j].AspectMask;
-//						break;
-//					}
-//				}
-//
-//				//Still 0? Try to find the mask in elements before
-//				if(nameWithCreateInfo.second.ImageViewInfos[i].AspectMask == 0)
-//				{
-//					for(int j = i - 1; j >= 0; j++)
-//					{
-//						if(nameWithCreateInfo.second.ImageViewInfos[j].AspectMask != 0)
-//						{
-//							nameWithCreateInfo.second.ImageViewInfos[i].AspectMask = nameWithCreateInfo.second.ImageViewInfos[j].AspectMask;
-//							break;
-//						}
-//					}
-//				}
-//			}
-//
-//			assert(nameWithCreateInfo.second.ImageViewInfos[i].Format     != VK_FORMAT_UNDEFINED);
-//			assert(nameWithCreateInfo.second.ImageViewInfos[i].AspectMask != 0);
-//		}
-//
-//		//Merge all of the same image views into one
-//		std::sort(nameWithCreateInfo.second.ImageViewInfos.begin(), nameWithCreateInfo.second.ImageViewInfos.end(), [](const ImageViewInfo& left, const ImageViewInfo& right)
-//		{
-//			if(left.Format == right.Format)
-//			{
-//				return (uint64_t)left.AspectMask < (uint64_t)right.AspectMask;
-//			}
-//			else
-//			{
-//				return (uint64_t)left.Format < (uint64_t)right.Format;
-//			}
-//		});
-//
-//		std::vector<ImageViewInfo> newImageViewInfos;
-//
-//		VkFormat           currentFormat      = VK_FORMAT_UNDEFINED;
-//		VkImageAspectFlags currentAspectFlags = 0;
-//		for(size_t i = 0; i < nameWithCreateInfo.second.ImageViewInfos.size(); i++)
-//		{
-//			if(currentFormat != nameWithCreateInfo.second.ImageViewInfos[i].Format || currentAspectFlags != nameWithCreateInfo.second.ImageViewInfos[i].AspectMask)
-//			{
-//				ImageViewInfo imageViewInfo;
-//				imageViewInfo.Format     = nameWithCreateInfo.second.ImageViewInfos[i].Format;
-//				imageViewInfo.AspectMask = nameWithCreateInfo.second.ImageViewInfos[i].AspectMask;
-//				imageViewInfo.ViewAddresses.push_back({.PassName = nameWithCreateInfo.second.ImageViewInfos[i].ViewAddresses[0].PassName, .SubresId = nameWithCreateInfo.second.ImageViewInfos[i].ViewAddresses[0].SubresId});
-//
-//				newImageViewInfos.push_back(imageViewInfo);
-//			}
-//			else
-//			{
-//				newImageViewInfos.back().ViewAddresses.push_back({.PassName = nameWithCreateInfo.second.ImageViewInfos[i].ViewAddresses[0].PassName, .SubresId = nameWithCreateInfo.second.ImageViewInfos[i].ViewAddresses[0].SubresId});
-//			}
-//
-//			currentFormat      = nameWithCreateInfo.second.ImageViewInfos[i].Format;
-//			currentAspectFlags = nameWithCreateInfo.second.ImageViewInfos[i].AspectMask;
-//		}
-//
-//		nameWithCreateInfo.second.ImageViewInfos = newImageViewInfos;
-//	}
-//}
-//
-//void VulkanCBindings::FrameGraphBuilder::PropagateMetadatasFromImageViews(const std::unordered_map<SubresourceName, ImageResourceCreateInfo>& imageCreateInfos, const std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& backbufferCreateInfos)
-//{
-//	for(auto& nameWithCreateInfo: imageCreateInfos)
-//	{
-//		for(size_t i = 0; i < nameWithCreateInfo.second.ImageViewInfos.size(); i++)
-//		{
-//			VkFormat           format      = nameWithCreateInfo.second.ImageViewInfos[i].Format;
-//			VkImageAspectFlags aspectFlags = nameWithCreateInfo.second.ImageViewInfos[i].AspectMask;
-//
-//			for(size_t j = 0; j < nameWithCreateInfo.second.ImageViewInfos[i].ViewAddresses.size(); j++)
-//			{
-//				const SubresourceAddress& address = nameWithCreateInfo.second.ImageViewInfos[i].ViewAddresses[j];
-//				mRenderPassesSubresourceMetadatas.at(address.PassName).at(address.SubresId).Format      = format;
-//				mRenderPassesSubresourceMetadatas.at(address.PassName).at(address.SubresId).AspectFlags = aspectFlags;
-//			}
-//		}
-//	}
-//
-//	for(auto& nameWithCreateInfo: backbufferCreateInfos)
-//	{
-//		for(size_t i = 0; i < nameWithCreateInfo.second.ImageViewInfos.size(); i++)
-//		{
-//			VkFormat           format      = nameWithCreateInfo.second.ImageViewInfos[i].Format;
-//			VkImageAspectFlags aspectFlags = nameWithCreateInfo.second.ImageViewInfos[i].AspectMask;
-//
-//			for(size_t j = 0; j < nameWithCreateInfo.second.ImageViewInfos[i].ViewAddresses.size(); j++)
-//			{
-//				const SubresourceAddress& address = nameWithCreateInfo.second.ImageViewInfos[i].ViewAddresses[j];
-//				mRenderPassesSubresourceMetadatas.at(address.PassName).at(address.SubresId).Format      = format;
-//				mRenderPassesSubresourceMetadatas.at(address.PassName).at(address.SubresId).AspectFlags = aspectFlags;
-//			}
-//		}
-//	}
-//}
-//
-//void VulkanCBindings::FrameGraphBuilder::SetSwapchainImages(const std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& backbufferResourceCreateInfos, const std::vector<VkImage>& swapchainImages)
-//{
-//	mGraphToBuild->mSwapchainImageRefs.clear();
-//
-//	mGraphToBuild->mImages.push_back(VK_NULL_HANDLE);
-//	mGraphToBuild->mBackbufferRefIndex = (uint32_t)(mGraphToBuild->mImages.size() - 1);
-//
-//	for(size_t i = 0; i < swapchainImages.size(); i++)
-//	{
-//		mGraphToBuild->mSwapchainImageRefs.push_back(swapchainImages[i]);
-//	}
-//	
-//	for(const auto& nameWithCreateInfo: backbufferResourceCreateInfos)
-//	{
-//		//IMAGE VIEWS
-//		for(const auto& imageViewInfo: nameWithCreateInfo.second.ImageViewInfos)
-//		{
-//			for(const auto& viewAddress: imageViewInfo.ViewAddresses)
-//			{
-//				mRenderPassesSubresourceMetadatas[viewAddress.PassName][viewAddress.SubresId].ImageIndex = mGraphToBuild->mBackbufferRefIndex;
-//			}
-//		}
-//	}
-//}
-//
-//void VulkanCBindings::FrameGraphBuilder::CreateImages(const std::unordered_map<SubresourceName, ImageResourceCreateInfo>& imageResourceCreateInfos, const MemoryManager* memoryAllocator)
-//{
-//	mGraphToBuild->mImages.clear();
-//
-//	for(const auto& nameWithCreateInfo: imageResourceCreateInfos)
-//	{
-//		VkImage image = VK_NULL_HANDLE;
-//		ThrowIfFailed(vkCreateImage(mGraphToBuild->mDeviceRef, &nameWithCreateInfo.second.ImageCreateInfo, nullptr, &image));
-//
-//		mGraphToBuild->mImages.push_back(image);
-//		
-//		//IMAGE VIEWS
-//		for(const auto& imageViewInfo: nameWithCreateInfo.second.ImageViewInfos)
-//		{
-//			for(const auto& viewAddress: imageViewInfo.ViewAddresses)
-//			{
-//				mRenderPassesSubresourceMetadatas[viewAddress.PassName][viewAddress.SubresId].ImageIndex = (uint32_t)(mGraphToBuild->mImages.size() - 1);
-//			}
-//		}
-//		
-//		SetDebugObjectName(image, nameWithCreateInfo.first); //Only does something in debug
-//	}
-//
-//	SafeDestroyObject(vkFreeMemory, mGraphToBuild->mDeviceRef, mGraphToBuild->mImageMemory);
-//
-//	std::vector<VkDeviceSize> textureMemoryOffsets;
-//	mGraphToBuild->mImageMemory = memoryAllocator->AllocateImagesMemory(mGraphToBuild->mDeviceRef, mGraphToBuild->mImages, textureMemoryOffsets);
-//
-//	std::vector<VkBindImageMemoryInfo> bindImageMemoryInfos(mGraphToBuild->mImages.size());
-//	for(size_t i = 0; i < mGraphToBuild->mImages.size(); i++)
-//	{
-//		//TODO: mGPU?
-//		bindImageMemoryInfos[i].sType        = VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO;
-//		bindImageMemoryInfos[i].pNext        = nullptr;
-//		bindImageMemoryInfos[i].memory       = mGraphToBuild->mImageMemory;
-//		bindImageMemoryInfos[i].memoryOffset = textureMemoryOffsets[i];
-//		bindImageMemoryInfos[i].image        = mGraphToBuild->mImages[i];
-//	}
-//
-//	ThrowIfFailed(vkBindImageMemory2(mGraphToBuild->mDeviceRef, (uint32_t)(bindImageMemoryInfos.size()), bindImageMemoryInfos.data()));
-//}
-//
-//void VulkanCBindings::FrameGraphBuilder::CreateImageViews(const std::unordered_map<SubresourceName, ImageResourceCreateInfo>& imageResourceCreateInfos)
-//{
-//	mGraphToBuild->mImageViews.clear();
-//
-//	for(const auto& nameWithCreateInfo: imageResourceCreateInfos)
-//	{
-//		//Image is the same for all image views
-//		const SubresourceAddress firstViewAddress = nameWithCreateInfo.second.ImageViewInfos[0].ViewAddresses[0];
-//		uint32_t imageIndex                       = mRenderPassesSubresourceMetadatas[firstViewAddress.PassName][firstViewAddress.SubresId].ImageIndex;
-//		VkImage image                             = mGraphToBuild->mImages[imageIndex];
-//
-//		for(size_t j = 0; j < nameWithCreateInfo.second.ImageViewInfos.size(); j++)
-//		{
-//			const ImageViewInfo& imageViewInfo = nameWithCreateInfo.second.ImageViewInfos[j];
-//
-//			VkImageView imageView = VK_NULL_HANDLE;
-//			CreateImageView(imageViewInfo, image, nameWithCreateInfo.second.ImageCreateInfo.format, &imageView);
-//
-//			mGraphToBuild->mImageViews.push_back(imageView);
-//
-//			uint32_t imageViewIndex = (uint32_t)(mGraphToBuild->mImageViews.size() - 1);
-//			for(size_t k = 0; k < imageViewInfo.ViewAddresses.size(); k++)
-//			{
-//				mRenderPassesSubresourceMetadatas[imageViewInfo.ViewAddresses[k].PassName][imageViewInfo.ViewAddresses[k].SubresId].ImageViewIndex = imageViewIndex;
-//			}
-//		}
-//	}
-//}
-//
-//void VulkanCBindings::FrameGraphBuilder::CreateSwapchainImageViews(const std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& backbufferResourceCreateInfos, VkFormat swapchainFormat)
-//{
-//	mGraphToBuild->mSwapchainImageViews.clear();
-//	mGraphToBuild->mSwapchainViewsSwapMap.clear();
-//
-//	for(const auto& nameWithCreateInfo: backbufferResourceCreateInfos)
-//	{
-//		for(size_t j = 0; j < nameWithCreateInfo.second.ImageViewInfos.size(); j++)
-//		{
-//			const ImageViewInfo& imageViewInfo = nameWithCreateInfo.second.ImageViewInfos[j];
-//
-//			//Base image view is NULL (it will be assigned from mSwapchainImageViews each frame)
-//			mGraphToBuild->mImageViews.push_back(VK_NULL_HANDLE);
-//
-//			uint32_t imageViewIndex = (uint32_t)(mGraphToBuild->mImageViews.size() - 1);
-//			for(size_t k = 0; k < imageViewInfo.ViewAddresses.size(); k++)
-//			{
-//				mRenderPassesSubresourceMetadatas[imageViewInfo.ViewAddresses[k].PassName][imageViewInfo.ViewAddresses[k].SubresId].ImageViewIndex = imageViewIndex;
-//			}
-//
-//			//Create per-frame views and the entry in mSwapchainViewsSwapMap describing how to swap views each frame
-//			mGraphToBuild->mSwapchainViewsSwapMap.push_back(imageViewIndex);
-//			for(size_t swapchainImageIndex = 0; swapchainImageIndex < mGraphToBuild->mSwapchainImageRefs.size(); swapchainImageIndex++)
-//			{
-//				VkImage image = mGraphToBuild->mSwapchainImageRefs[swapchainImageIndex];
-//
-//				VkImageView imageView = VK_NULL_HANDLE;
-//				CreateImageView(imageViewInfo, image, swapchainFormat, &imageView);
-//
-//				mGraphToBuild->mSwapchainImageViews.push_back(imageView);
-//				mGraphToBuild->mSwapchainViewsSwapMap.push_back((uint32_t)(mGraphToBuild->mSwapchainImageViews.size() - 1));
-//			}
-//		}
-//	}
-//
-//	mGraphToBuild->mLastSwapchainImageIndex = (uint32_t)(mGraphToBuild->mSwapchainImageRefs.size() - 1);
-//	
-//	std::swap(mGraphToBuild->mImages[mGraphToBuild->mBackbufferRefIndex], mGraphToBuild->mSwapchainImageRefs[mGraphToBuild->mLastSwapchainImageIndex]);
-//	for(uint32_t i = 0; i < (uint32_t)mGraphToBuild->mSwapchainViewsSwapMap.size(); i += ((uint32_t)mGraphToBuild->mSwapchainImageRefs.size() + 1u))
-//	{
-//		uint32_t imageViewIndex     = mGraphToBuild->mSwapchainViewsSwapMap[i];
-//		uint32_t imageViewSwapIndex = mGraphToBuild->mSwapchainViewsSwapMap[i + mGraphToBuild->mLastSwapchainImageIndex];
-//
-//		std::swap(mGraphToBuild->mImageViews[imageViewIndex], mGraphToBuild->mSwapchainImageViews[imageViewSwapIndex]);
-//	}
-//}
-//
-//void VulkanCBindings::FrameGraphBuilder::CreateImageView(const ImageViewInfo& imageViewInfo, VkImage image, VkFormat defaultFormat, VkImageView* outImageView)
-//{
-//	assert(outImageView != nullptr);
-//
-//	VkFormat format = imageViewInfo.Format;
-//	if(format == VK_FORMAT_UNDEFINED)
-//	{
-//		format = defaultFormat;
-//	}
-//
-//	assert(format != VK_FORMAT_UNDEFINED);
-//
-//	//TODO: mutable format usage
-//	//TODO: fragment density map
-//	VkImageViewCreateInfo imageViewCreateInfo;
-//	imageViewCreateInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-//	imageViewCreateInfo.pNext                           = nullptr;
-//	imageViewCreateInfo.flags                           = 0;
-//	imageViewCreateInfo.image                           = image;
-//	imageViewCreateInfo.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
-//	imageViewCreateInfo.format                          = format;
-//	imageViewCreateInfo.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-//	imageViewCreateInfo.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-//	imageViewCreateInfo.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-//	imageViewCreateInfo.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-//	imageViewCreateInfo.subresourceRange.aspectMask     = imageViewInfo.AspectMask;
-//
-//	imageViewCreateInfo.subresourceRange.baseMipLevel   = 0;
-//	imageViewCreateInfo.subresourceRange.levelCount     = 1;
-//	imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
-//	imageViewCreateInfo.subresourceRange.layerCount     = 1;
-//
-//	ThrowIfFailed(vkCreateImageView(mGraphToBuild->mDeviceRef, &imageViewCreateInfo, nullptr, outImageView));
-//}
+void D3D12::FrameGraphBuilder::BuildResourceCreateInfos(std::unordered_map<SubresourceName, TextureCreateInfo>& outImageCreateInfos, std::unordered_map<SubresourceName, BackbufferCreateInfo>& outBackbufferCreateInfos, std::unordered_set<RenderPassName>& swapchainPassNames)
+{
+	for(const auto& renderPassName: mRenderPassNames)
+	{
+		const auto& nameIdMap = mRenderPassesSubresourceNameIds[renderPassName];
+		for(const auto& nameId: nameIdMap)
+		{
+			const SubresourceName subresourceName = nameId.first;
+			const SubresourceId   subresourceId   = nameId.second;
+
+			if(subresourceName == mBackbufferName)
+			{
+				TextureSubresourceMetadata metadata = mRenderPassesSubresourceMetadatas[renderPassName][subresourceId];
+
+				TextureViewInfo viewInfo;
+				viewInfo.Format = metadata.Format;
+				viewInfo.ViewAddresses.push_back({.PassName = renderPassName, .SubresId = subresourceId});
+
+				BackbufferCreateInfo backbufferCreateInfo;
+				backbufferCreateInfo.ViewInfos.push_back(viewInfo);
+
+				outBackbufferCreateInfos[subresourceName] = backbufferCreateInfo;
+
+				swapchainPassNames.insert(renderPassName);
+			}
+			else
+			{
+				TextureSubresourceMetadata metadata = mRenderPassesSubresourceMetadatas[renderPassName][subresourceId];
+				if(!outImageCreateInfos.contains(subresourceName))
+				{
+					//TODO: Multisampling
+					D3D12_RESOURCE_DESC1 resourceDesc;
+					resourceDesc.Dimension                       = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+					resourceDesc.Alignment                       = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
+					resourceDesc.Width                           = mGraphToBuild->mFrameGraphConfig.GetViewportHeight();
+					resourceDesc.Height                          = mGraphToBuild->mFrameGraphConfig.GetViewportHeight();
+					resourceDesc.DepthOrArraySize                = 1;
+					resourceDesc.MipLevels                       = 1;
+					resourceDesc.Format                          = metadata.Format;
+					resourceDesc.SampleDesc.Count                = 1;
+					resourceDesc.SampleDesc.Quality              = 0;
+					resourceDesc.Layout                          = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+					resourceDesc.Flags                           = D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
+					resourceDesc.SamplerFeedbackMipRegion.Width  = 0;
+					resourceDesc.SamplerFeedbackMipRegion.Height = 0;
+					resourceDesc.SamplerFeedbackMipRegion.Depth  = 0;
+
+					outImageCreateInfos[subresourceName] = TextureCreateInfo();
+					outImageCreateInfos[subresourceName].ResourceDesc = resourceDesc;
+
+					//Mark the optimized clear value with UNKNOWN format, this means that the optimized clear value is undefined for the resource
+					outImageCreateInfos[subresourceName].OptimizedClearValue.Format = DXGI_FORMAT_UNKNOWN;
+				}
+				else
+				{
+					auto& imageResourceCreateInfo = outImageCreateInfos[subresourceName];
+					if(metadata.Format != DXGI_FORMAT_UNKNOWN)
+					{
+						if(imageResourceCreateInfo.ResourceDesc.Format == DXGI_FORMAT_UNKNOWN)
+						{
+							//Not all passes specify the format
+							imageResourceCreateInfo.ResourceDesc.Format = metadata.Format;
+						}
+						else if(metadata.Format != imageResourceCreateInfo.ResourceDesc.Format)
+						{
+							imageResourceCreateInfo.ResourceDesc.Format = D3D12Utils::ConvertToTypeless(metadata.Format);
+						}
+					}
+				}
+
+				if(metadata.ResourceState & (D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE))
+				{
+					outImageCreateInfos[subresourceName].ResourceDesc.Flags &= ~(D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE);
+				}
+				else if(metadata.ResourceState & D3D12_RESOURCE_STATE_UNORDERED_ACCESS)
+				{
+					outImageCreateInfos[subresourceName].ResourceDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+				}
+				else if(metadata.ResourceState & D3D12_RESOURCE_STATE_RENDER_TARGET)
+				{
+					outImageCreateInfos[subresourceName].ResourceDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+				}
+				else if(metadata.ResourceState & (D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_DEPTH_WRITE))
+				{
+					outImageCreateInfos[subresourceName].ResourceDesc.Flags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+				}
+
+				//It's fine if format is UNDEFINED. It means it can be arbitrary and we'll fix it later based on other image view infos for this resource
+				TextureViewInfo viewInfo;
+				viewInfo.Format     = metadata.Format;
+				viewInfo.ViewAddresses.push_back({.PassName = renderPassName, .SubresId = subresourceId});
+
+				outImageCreateInfos[subresourceName].ViewInfos.push_back(viewInfo);
+			}
+		}
+	}
+
+	MergeImageViewInfos(outImageCreateInfos);
+	InitResourceInitialStatesAndClearValues(outImageCreateInfos); //TODO: embed it in this exact function (I don't have the time right now)
+}
+
+void D3D12::FrameGraphBuilder::MergeImageViewInfos(std::unordered_map<SubresourceName, TextureCreateInfo>& inoutTextureCreateInfos)
+{
+	//Fix all "arbitrary" texture view infos
+	for(auto& nameWithCreateInfo: inoutTextureCreateInfos)
+	{
+		for(int i = 0; i < nameWithCreateInfo.second.ViewInfos.size(); i++)
+		{
+			if(nameWithCreateInfo.second.ViewInfos[i].Format == DXGI_FORMAT_UNKNOWN)
+			{
+				//Assign the closest non-UNDEFINED format
+				for(int j = i + 1; j < (int)nameWithCreateInfo.second.ViewInfos.size(); j++)
+				{
+					if(nameWithCreateInfo.second.ViewInfos[j].Format != DXGI_FORMAT_UNKNOWN)
+					{
+						nameWithCreateInfo.second.ViewInfos[i].Format = nameWithCreateInfo.second.ViewInfos[j].Format;
+						break;
+					}
+				}
+
+				//Still UNDEFINED? Try to find the format in elements before
+				if(nameWithCreateInfo.second.ViewInfos[i].Format == DXGI_FORMAT_UNKNOWN)
+				{
+					for(int j = i - 1; j >= 0; j++)
+					{
+						if(nameWithCreateInfo.second.ViewInfos[j].Format != DXGI_FORMAT_UNKNOWN)
+						{
+							nameWithCreateInfo.second.ViewInfos[i].Format = nameWithCreateInfo.second.ViewInfos[j].Format;
+							break;
+						}
+					}
+				}
+			}
+
+			assert(nameWithCreateInfo.second.ViewInfos[i].Format != DXGI_FORMAT_UNKNOWN);
+		}
+
+		//Merge all of the same image views into one
+		std::sort(nameWithCreateInfo.second.ViewInfos.begin(), nameWithCreateInfo.second.ViewInfos.end(), [](const TextureViewInfo& left, const TextureViewInfo& right)
+		{
+			return (uint64_t)left.Format < (uint64_t)right.Format;
+		});
+
+		std::vector<TextureViewInfo> newViewInfos;
+
+		DXGI_FORMAT currentFormat = DXGI_FORMAT_UNKNOWN;
+		for(size_t i = 0; i < nameWithCreateInfo.second.ViewInfos.size(); i++)
+		{
+			if(currentFormat != nameWithCreateInfo.second.ViewInfos[i].Format)
+			{
+				TextureViewInfo viewInfo;
+				viewInfo.Format = nameWithCreateInfo.second.ViewInfos[i].Format;
+				viewInfo.ViewAddresses.push_back({.PassName = nameWithCreateInfo.second.ViewInfos[i].ViewAddresses[0].PassName, .SubresId = nameWithCreateInfo.second.ViewInfos[i].ViewAddresses[0].SubresId});
+
+				newViewInfos.push_back(viewInfo);
+			}
+			else
+			{
+				newViewInfos.back().ViewAddresses.push_back({.PassName = nameWithCreateInfo.second.ViewInfos[i].ViewAddresses[0].PassName, .SubresId = nameWithCreateInfo.second.ViewInfos[i].ViewAddresses[0].SubresId});
+			}
+
+			currentFormat = nameWithCreateInfo.second.ViewInfos[i].Format;
+		}
+
+		nameWithCreateInfo.second.ViewInfos = newViewInfos;
+	}
+}
+
+void D3D12::FrameGraphBuilder::InitResourceInitialStatesAndClearValues(std::unordered_map<SubresourceName, TextureCreateInfo>& inoutTextureCreateInfos)
+{
+	for(const auto& renderPassName: mRenderPassNames)
+	{
+		const auto& nameIdMap = mRenderPassesSubresourceNameIds[renderPassName];
+		for(const auto& nameId : nameIdMap)
+		{
+			const SubresourceName subresourceName = nameId.first;
+			const SubresourceId   subresourceId   = nameId.second;
+
+			if(subresourceName != mBackbufferName)
+			{
+				const TextureSubresourceMetadata& metadata = mRenderPassesSubresourceMetadatas[renderPassName][subresourceId];
+				TextureCreateInfo& textureCreateInfo       = inoutTextureCreateInfos[subresourceName];
+
+				textureCreateInfo.InitialState = metadata.ResourceState; //Replace until the final state
+
+				//If the resource already has optimized clear value, can't add a new one
+				assert((textureCreateInfo.OptimizedClearValue.Format == DXGI_FORMAT_UNKNOWN) || (metadata.ResourceState & (D3D12_RESOURCE_STATE_RENDER_TARGET | D3D12_RESOURCE_STATE_DEPTH_WRITE) == 0));
+				if(metadata.ResourceState & D3D12_RESOURCE_STATE_RENDER_TARGET)
+				{
+					textureCreateInfo.OptimizedClearValue.Format   = metadata.Format;
+					textureCreateInfo.OptimizedClearValue.Color[0] = 0.0f;
+					textureCreateInfo.OptimizedClearValue.Color[1] = 0.0f;
+					textureCreateInfo.OptimizedClearValue.Color[2] = 0.0f;
+					textureCreateInfo.OptimizedClearValue.Color[3] = 0.0f;
+				}
+				else if(metadata.ResourceState & D3D12_RESOURCE_STATE_DEPTH_WRITE)
+				{
+					textureCreateInfo.OptimizedClearValue.Format               = metadata.Format;
+					textureCreateInfo.OptimizedClearValue.DepthStencil.Depth   = 1.0f;
+					textureCreateInfo.OptimizedClearValue.DepthStencil.Stencil = 0.0f;
+				}
+			}
+		}
+	}
+}
+
+void D3D12::FrameGraphBuilder::SetSwapchainTextures(const std::unordered_map<SubresourceName, BackbufferCreateInfo>& backbufferResourceCreateInfos, const std::vector<ID3D12Resource2*>& swapchainTextures)
+{
+	mGraphToBuild->mSwapchainImageRefs.clear();
+
+	mGraphToBuild->mTextures.push_back(nullptr);
+	mGraphToBuild->mBackbufferRefIndex = (uint32_t)(mGraphToBuild->mTextures.size() - 1);
+
+	for(size_t i = 0; i < swapchainTextures.size(); i++)
+	{
+		mGraphToBuild->mSwapchainImageRefs.push_back(swapchainTextures[i]);
+	}
+	
+	for(const auto& nameWithCreateInfo: backbufferResourceCreateInfos)
+	{
+		//IMAGE VIEWS
+		for(const auto& imageViewInfo: nameWithCreateInfo.second.ViewInfos)
+		{
+			for(const auto& viewAddress: imageViewInfo.ViewAddresses)
+			{
+				mRenderPassesSubresourceMetadatas[viewAddress.PassName][viewAddress.SubresId].ImageIndex = mGraphToBuild->mBackbufferRefIndex;
+			}
+		}
+	}
+}
+
+void D3D12::FrameGraphBuilder::CreateTextures(ID3D12Device8* device, const std::unordered_map<SubresourceName, TextureCreateInfo>& textureCreateInfos, const MemoryManager* memoryAllocator)
+{
+	mGraphToBuild->mTextures.clear();
+	mGraphToBuild->mTextureHeap.reset();
+
+	std::unordered_map<SubresourceName, size_t> textureIndices;
+
+	std::vector<D3D12_RESOURCE_DESC1> textureDescsVec;
+	textureDescsVec.reserve(textureCreateInfos.size());
+	for(const auto& it: textureCreateInfos)
+	{
+		textureDescsVec.push_back(it.second.ResourceDesc);
+		textureIndices[it.first] = (textureDescsVec.size() - 1);
+	}
+
+	std::vector<UINT64> textureHeapOffsets;
+	textureHeapOffsets.reserve(textureDescsVec.size());
+	memoryAllocator->AllocateTextureMemory(device, textureDescsVec, textureHeapOffsets, mGraphToBuild->mTextureHeap.put());
+
+	for(const auto& nameWithCreateInfo: textureCreateInfos)
+	{
+		const SubresourceName&   subresourceName = nameWithCreateInfo.first;
+		const TextureCreateInfo& createInfo      = nameWithCreateInfo.second;
+
+		size_t textureIndex = textureIndices[subresourceName];
+
+		const D3D12_CLEAR_VALUE* resourceClearValuePtr = nullptr;
+		if(createInfo.OptimizedClearValue.Format != DXGI_FORMAT_UNKNOWN) //Only use initialized values
+		{
+			resourceClearValuePtr = &createInfo.OptimizedClearValue;
+		}
+
+		mGraphToBuild->mOwnedResources.emplace_back();
+		THROW_IF_FAILED(device->CreatePlacedResource1(mGraphToBuild->mTextureHeap.get(), textureHeapOffsets[textureIndex], &createInfo.ResourceDesc, createInfo.InitialState, resourceClearValuePtr, IID_PPV_ARGS(mGraphToBuild->mOwnedResources.back().put())));
+		
+		mGraphToBuild->mTextures.push_back(mGraphToBuild->mOwnedResources.back().get());
+
+		for(const auto& imageViewInfo: nameWithCreateInfo.second.ViewInfos)
+		{
+			for(const auto& viewAddress: imageViewInfo.ViewAddresses)
+			{
+				mRenderPassesSubresourceMetadatas[viewAddress.PassName][viewAddress.SubresId].ImageIndex = (uint32_t)(mGraphToBuild->mTextures.size() - 1);
+			}
+		}
+		
+		SetDebugObjectName(mGraphToBuild->mOwnedResources.back().get(), nameWithCreateInfo.first); //Only does something in debug
+	}
+}
 
 bool D3D12::FrameGraphBuilder::PassesIntersect(const RenderPassName& writingPass, const RenderPassName& readingPass)
 {
@@ -1594,23 +1261,12 @@ bool D3D12::FrameGraphBuilder::PassesIntersect(const RenderPassName& writingPass
 	return false;
 }
 
-//void VulkanCBindings::FrameGraphBuilder::SetDebugObjectName(VkImage image, const SubresourceName& name) const
-//{
-//#if defined(VK_EXT_debug_utils) && (defined(DEBUG) || defined(_DEBUG))
-//	
-//	if(mInstanceParameters->IsDebugUtilsExtensionEnabled())
-//	{
-//		VkDebugUtilsObjectNameInfoEXT imageNameInfo;
-//		imageNameInfo.sType        = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
-//		imageNameInfo.pNext        = nullptr;
-//		imageNameInfo.objectType   = VK_OBJECT_TYPE_IMAGE;
-//		imageNameInfo.objectHandle = reinterpret_cast<uint64_t>(image);
-//		imageNameInfo.pObjectName  = name.c_str();
-//
-//		ThrowIfFailed(vkSetDebugUtilsObjectNameEXT(mGraphToBuild->mDeviceRef, &imageNameInfo));
-//	}
-//#else
-//	UNREFERENCED_PARAMETER(image);
-//	UNREFERENCED_PARAMETER(name);
-//#endif
-//}
+void D3D12::FrameGraphBuilder::SetDebugObjectName(ID3D12Resource2* texture, const SubresourceName& name) const
+{
+#if defined(DEBUG) || defined(_DEBUG)
+	THROW_IF_FAILED(texture->SetName(Utils::ConvertUTF8ToWstring(name).c_str()));
+#else
+	UNREFERENCED_PARAMETER(image);
+	UNREFERENCED_PARAMETER(name);
+#endif
+}
