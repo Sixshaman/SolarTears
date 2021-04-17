@@ -48,8 +48,8 @@ void D3D12::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommandLists* com
 				JobData* threadJobData = reinterpret_cast<JobData*>(userData);
 				const FrameGraph* that = threadJobData->FrameGraph;
 
-				ID3D12GraphicsCommandList* graphicsCommandList      = threadJobData->CommandLists->GetThreadDirectCommandList(threadJobData->DependencyLevelSpanIndex);
-				ID3D12CommandAllocator*    graphicsCommandAllocator = threadJobData->CommandLists->GetThreadDirectCommandAllocator(threadJobData->DependencyLevelSpanIndex, threadJobData->FrameResourceIndex);
+				ID3D12GraphicsCommandList6* graphicsCommandList      = threadJobData->CommandLists->GetThreadDirectCommandList(threadJobData->DependencyLevelSpanIndex);
+				ID3D12CommandAllocator*     graphicsCommandAllocator = threadJobData->CommandLists->GetThreadDirectCommandAllocator(threadJobData->DependencyLevelSpanIndex, threadJobData->FrameResourceIndex);
 
 				that->BeginCommandList(graphicsCommandList, graphicsCommandAllocator, threadJobData->DependencyLevelSpanIndex);
 				that->RecordGraphicsPasses(graphicsCommandList, threadJobData->Scene, threadJobData->DependencyLevelSpanIndex);
@@ -61,8 +61,8 @@ void D3D12::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommandLists* com
 			threadPool->EnqueueWork(executePassJob, &jobData, sizeof(JobData));
 		}
 
-		ID3D12GraphicsCommandList* mainGraphicsCommandList      = commandLists->GetMainThreadDirectCommandList();
-		ID3D12CommandAllocator*    mainGraphicsCommandAllocator = commandLists->GetMainThreadDirectCommandAllocator(currentFrameResourceIndex);
+		ID3D12GraphicsCommandList6* mainGraphicsCommandList      = commandLists->GetMainThreadDirectCommandList();
+		ID3D12CommandAllocator*     mainGraphicsCommandAllocator = commandLists->GetMainThreadDirectCommandAllocator(currentFrameResourceIndex);
 		
 		BeginCommandList(mainGraphicsCommandList, mainGraphicsCommandAllocator, (uint32_t)(mGraphicsPassSpans.size() - 1));
 		RecordGraphicsPasses(mainGraphicsCommandList, scene, (uint32_t)(mGraphicsPassSpans.size() - 1));
@@ -86,9 +86,9 @@ void D3D12::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommandLists* com
 
 void D3D12::FrameGraph::BeginCommandList(ID3D12GraphicsCommandList* commandList, ID3D12CommandAllocator* commandAllocator, uint32_t dependencyLevelSpanIndex) const
 {
-	//TODO: Reset with the first pipeline statre in the render pass
 	UNREFERENCED_PARAMETER(dependencyLevelSpanIndex);
 
+	//TODO: Reset with the first pipeline statre in the render pass
 	THROW_IF_FAILED(commandAllocator->Reset());
 	THROW_IF_FAILED(commandList->Reset(commandAllocator, nullptr));
 }
@@ -98,14 +98,27 @@ void D3D12::FrameGraph::EndCommandList(ID3D12GraphicsCommandList* commandList) c
 	THROW_IF_FAILED(commandList->Close());
 }
 
-void D3D12::FrameGraph::RecordGraphicsPasses(ID3D12GraphicsCommandList* commandList, const RenderableScene* scene, uint32_t dependencyLevelSpanIndex) const
+void D3D12::FrameGraph::RecordGraphicsPasses(ID3D12GraphicsCommandList6* commandList, const RenderableScene* scene, uint32_t dependencyLevelSpanIndex) const
 {
-	UNREFERENCED_PARAMETER(commandList);
-	UNREFERENCED_PARAMETER(scene);
-
 	DependencyLevelSpan levelSpan = mGraphicsPassSpans[dependencyLevelSpanIndex];
 	for(uint32_t renderPassIndex = levelSpan.DependencyLevelBegin; renderPassIndex < levelSpan.DependencyLevelEnd; renderPassIndex++)
 	{
-		
+		BarrierSpan barrierSpan            = mImageRenderPassBarriers[renderPassIndex];
+		UINT        beforePassBarrierCount = barrierSpan.BeforePassEnd - barrierSpan.BeforePassBegin;
+		UINT        afterPassBarrierCount  = barrierSpan.AfterPassEnd  - barrierSpan.AfterPassBegin;
+
+		if(beforePassBarrierCount != 0)
+		{
+			const D3D12_RESOURCE_BARRIER* barrierPointer = mImageBarriers.data() + barrierSpan.BeforePassBegin;
+			commandList->ResourceBarrier(beforePassBarrierCount, barrierPointer);
+		}
+
+		mRenderPasses[renderPassIndex]->RecordExecution(commandList, scene, mFrameGraphConfig);
+
+		if(afterPassBarrierCount != 0)
+		{
+			const D3D12_RESOURCE_BARRIER* barrierPointer = mImageBarriers.data() + barrierSpan.AfterPassBegin;
+			commandList->ResourceBarrier(afterPassBarrierCount, barrierPointer);
+		}
 	}
 }

@@ -37,6 +37,8 @@ namespace D3D12
 		RenderPass& operator=(RenderPass&& right) = default;
 
 	public:
+		virtual ID3D12PipelineState* FirstPipeline() const = 0;
+
 		virtual void RecordExecution(ID3D12GraphicsCommandList6* commandList, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig) const = 0;
 	};
 }

@@ -8,6 +8,7 @@
 - Automatic subresource format tracking. If resource A gets copied into resource B, and it's known that resource B has format F, then resource A should also have format F.
 - CMake
 - OWNDC
+- Frame graph: a system for ping-pong textures (INCLUDING SWAPCHAIN)
 - Thread-related stuff (including command buffers, dependency levels, etc.) should be spaced far away to avoid false cache sharing
 - Revise scene world structure - maybe do principal XYZ axes instead of scale+rotation+translation? Google it
 - Right-handed instead of left-handed
@@ -66,3 +67,4 @@
 - DX12: D3D12EnableExperimentalFeatures!
 - DX12: Descriptor indexing (seriously, not using bindless in 2021?)
 - DX12: DRED
+- DX12: ID3D12GraphicsCommandList::Reset with pipeline state parameter (requires some kind of pipeline tracking?)
