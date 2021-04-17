@@ -24,8 +24,8 @@ namespace D3D12
 
 		void Present();
 
-		ID3D12Resource* GetSwapchainImage(uint32_t index) const;
-		ID3D12Resource* GetCurrentImage()                 const;
+		ID3D12Resource* GetSwapchainImage(uint32_t index)  const;
+		ID3D12Resource* GetCurrentImage()                  const;
 
 		DXGI_FORMAT GetBackbufferFormat() const;
 

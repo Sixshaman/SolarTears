@@ -17,13 +17,13 @@ namespace D3D12
 		static constexpr uint32_t StaticSamplerCount = 2;
 
 	public:
-		ShaderManager(LoggerQueue* logger, ID3D12Device* device);
-		~ShaderManager();
+		constexpr static UINT GBufferPerObjectBufferBinding = 0;
+		constexpr static UINT GBufferTextureBinding         = 1;
+		constexpr static UINT GBufferPerFrameBufferBinding  = 2;
 
 	public:
-		constexpr static UINT GetGBufferPerObjectBufferBinding();
-		constexpr static UINT GetGBufferPerFrameBufferBinding();
-		constexpr static UINT GetGBufferTextureBinding();
+		ShaderManager(LoggerQueue* logger, ID3D12Device* device);
+		~ShaderManager();
 
 	private:
 		void LoadShaderData(ID3D12Device* device);

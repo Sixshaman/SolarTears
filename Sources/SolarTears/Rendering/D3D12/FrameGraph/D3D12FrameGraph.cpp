@@ -103,13 +103,13 @@ void D3D12::FrameGraph::RecordGraphicsPasses(ID3D12GraphicsCommandList6* command
 	DependencyLevelSpan levelSpan = mGraphicsPassSpans[dependencyLevelSpanIndex];
 	for(uint32_t renderPassIndex = levelSpan.DependencyLevelBegin; renderPassIndex < levelSpan.DependencyLevelEnd; renderPassIndex++)
 	{
-		BarrierSpan barrierSpan            = mImageRenderPassBarriers[renderPassIndex];
+		BarrierSpan barrierSpan            = mRenderPassBarriers[renderPassIndex];
 		UINT        beforePassBarrierCount = barrierSpan.BeforePassEnd - barrierSpan.BeforePassBegin;
 		UINT        afterPassBarrierCount  = barrierSpan.AfterPassEnd  - barrierSpan.AfterPassBegin;
 
 		if(beforePassBarrierCount != 0)
 		{
-			const D3D12_RESOURCE_BARRIER* barrierPointer = mImageBarriers.data() + barrierSpan.BeforePassBegin;
+			const D3D12_RESOURCE_BARRIER* barrierPointer = mResourceBarriers.data() + barrierSpan.BeforePassBegin;
 			commandList->ResourceBarrier(beforePassBarrierCount, barrierPointer);
 		}
 
@@ -117,8 +117,55 @@ void D3D12::FrameGraph::RecordGraphicsPasses(ID3D12GraphicsCommandList6* command
 
 		if(afterPassBarrierCount != 0)
 		{
-			const D3D12_RESOURCE_BARRIER* barrierPointer = mImageBarriers.data() + barrierSpan.AfterPassBegin;
+			const D3D12_RESOURCE_BARRIER* barrierPointer = mResourceBarriers.data() + barrierSpan.AfterPassBegin;
 			commandList->ResourceBarrier(afterPassBarrierCount, barrierPointer);
 		}
+	}
+}
+
+void D3D12::FrameGraph::SwitchSwapchainPasses(uint32_t swapchainImageIndex)
+{
+	uint32_t swapchainImageCount = (uint32_t)mSwapchainImageRefs.size();
+
+	for(uint32_t i = 0; i < (uint32_t)mSwapchainPassesSwapMap.size(); i += (swapchainImageCount + 1u))
+	{
+		uint32_t passIndexToSwitch = mSwapchainPassesSwapMap[i];
+		
+		mRenderPasses[passIndexToSwitch].swap(mSwapchainRenderPasses[mSwapchainPassesSwapMap[i + mLastSwapchainImageIndex + 1]]);
+		mRenderPasses[passIndexToSwitch].swap(mSwapchainRenderPasses[mSwapchainPassesSwapMap[i + swapchainImageIndex      + 1]]);
+	}
+}
+
+void D3D12::FrameGraph::SwitchSwapchainImages(uint32_t swapchainImageIndex)
+{
+	//Swap images
+	std::swap(mTextures[mBackbufferRefIndex], mSwapchainImageRefs[mLastSwapchainImageIndex]);
+	std::swap(mTextures[mBackbufferRefIndex], mSwapchainImageRefs[swapchainImageIndex]);
+
+
+	//Update barriers
+	for(size_t i = 0; i < mSwapchainBarrierIndices.size(); i++)
+	{
+		mResourceBarriers[i].Transition.pResource = mTextures[mBackbufferRefIndex];
+	}
+
+
+	//Swap image views
+	uint32_t swapchainCpuDescriptorCount = (uint32_t)mSwapchainCpuDescriptors.size();
+	for (uint32_t i = 0; i < (uint32_t)mSwapchainCpuDescriptorSwapMap.size(); i += (swapchainCpuDescriptorCount + 1u))
+	{
+		uint32_t viewIndexToSwitch = mSwapchainCpuDescriptorSwapMap[i];
+
+		std::swap(mCpuDescriptors[viewIndexToSwitch], mSwapchainCpuDescriptors[mSwapchainCpuDescriptorSwapMap[i + mLastSwapchainImageIndex + 1]]);
+		std::swap(mCpuDescriptors[viewIndexToSwitch], mSwapchainCpuDescriptors[mSwapchainCpuDescriptorSwapMap[i + swapchainImageIndex + 1]]);
+	}
+
+	uint32_t swapchainGpuDescriptorCountCount = (uint32_t)mSwapchainGpuDescriptors.size();
+	for (uint32_t i = 0; i < (uint32_t)mSwapchainGpuDescriptorSwapMap.size(); i += (swapchainGpuDescriptorCountCount + 1u))
+	{
+		uint32_t viewIndexToSwitch = mSwapchainGpuDescriptorSwapMap[i];
+
+		std::swap(mGpuDescriptors[viewIndexToSwitch], mSwapchainGpuDescriptors[mSwapchainGpuDescriptorSwapMap[i + mLastSwapchainImageIndex + 1]]);
+		std::swap(mGpuDescriptors[viewIndexToSwitch], mSwapchainGpuDescriptors[mSwapchainGpuDescriptorSwapMap[i + swapchainImageIndex + 1]]);
 	}
 }

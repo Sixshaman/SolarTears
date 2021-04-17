@@ -151,7 +151,6 @@ void VulkanCBindings::Renderer::CreateFrameGraph(uint32_t viewportWidth, uint32_
 	frameGraphBuilder.Build(mDeviceQueues.get(), mCommandBuffers.get(), mMemoryAllocator.get(), mSwapChain.get());
 }
 
-
 void VulkanCBindings::Renderer::RenderScene()
 {
 	const uint32_t currentFrameResourceIndex = mFrameCounterRef->GetFrameCount() % VulkanUtils::InFlightFrameCount;

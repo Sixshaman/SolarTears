@@ -9,6 +9,17 @@ std::string ConvertWstringToUTF8(const std::wstring& str)
 	return result;
 }
 
+std::wstring ConvertUTF8ToWstring(const std::string& str)
+{
+	std::wstring result;
+	int charCount = MultiByteToWideChar(CP_UTF8, MB_COMPOSITE, str.c_str(), -1, nullptr, 0);
+
+	result.resize(charCount - 1);
+	MultiByteToWideChar(CP_UTF8, WC_COMPOSITECHECK, str.c_str(), -1, result.data(), (int)result.size());
+
+	return result;
+}
+
 void SystemDebugMessage(const std::string& str)
 {
 #if defined(DEBUG) || defined(_DEBUG)

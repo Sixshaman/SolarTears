@@ -44,5 +44,7 @@ namespace D3D12
 		bool IsStateWriteable(D3D12_RESOURCE_STATES state);
 		bool IsStateComputeFriendly(D3D12_RESOURCE_STATES state);
 		bool IsStatePromoteableTo(D3D12_RESOURCE_STATES state);
+
+		DXGI_FORMAT ConvertToTypeless(DXGI_FORMAT format);
 	}
 }

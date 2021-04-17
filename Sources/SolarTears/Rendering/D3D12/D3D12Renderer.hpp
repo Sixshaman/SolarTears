@@ -41,6 +41,8 @@ namespace D3D12
 		void EnableDebugMode();
 		void CreateDevice(IDXGIAdapter4* adapter);
 
+		void CreateFrameGraph(uint32_t viewportWidth, uint32_t viewportHeight);
+
 	private:
 		ThreadPool*         mThreadPoolRef;
 		const FrameCounter* mFrameCounterRef;

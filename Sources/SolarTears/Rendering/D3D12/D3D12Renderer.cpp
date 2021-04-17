@@ -8,6 +8,7 @@
 #include "Scene/D3D12SceneBuilder.hpp"
 #include "Scene/D3D12SceneDescriptorCreator.hpp"
 #include "FrameGraph/D3D12FrameGraphDescriptorCreator.hpp"
+#include "FrameGraph/D3D12FrameGraphBuilder.hpp"
 #include "../../Core/ThreadPool.hpp"
 
 D3D12::Renderer::Renderer(LoggerQueue* loggerQueue, FrameCounter* frameCounter, ThreadPool* threadPool): ::Renderer(loggerQueue), mFrameCounterRef(frameCounter), mThreadPoolRef(threadPool)
@@ -42,11 +43,15 @@ void D3D12::Renderer::AttachToWindow(Window* window)
 {
 	assert(mDevice != nullptr);
 	mSwapChain->BindToWindow(mFactory.get(), mDeviceQueues.get(), window);
+
+	CreateFrameGraph(window->GetWidth(), window->GetHeight());
 }
 
 void D3D12::Renderer::ResizeWindowBuffers(Window* window)
 {
 	mSwapChain->Resize(mDeviceQueues.get(), window);
+
+	CreateFrameGraph(window->GetWidth(), window->GetHeight());
 }
 
 void D3D12::Renderer::InitScene(SceneDescription* sceneDescription)
@@ -108,4 +113,27 @@ void D3D12::Renderer::CreateDevice(IDXGIAdapter4* adapter)
 	mLoggingBoard->PostLogMessage(L"");
 
 	THROW_IF_FAILED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(mDevice.put())));
+}
+
+void D3D12::Renderer::CreateFrameGraph(uint32_t viewportWidth, uint32_t viewportHeight)
+{
+	mFrameGraph.reset();
+
+	FrameGraphConfig frameGraphConfig;
+	frameGraphConfig.SetScreenSize((uint16_t)viewportWidth, (uint16_t)viewportHeight);
+
+	mFrameGraph = std::make_unique<D3D12::FrameGraph>(frameGraphConfig);
+
+	D3D12::FrameGraphBuilder frameGraphBuilder(mFrameGraph.get(), mScene.get(), mDeviceFeatures.get(), mShaderManager.get());
+
+	//GBufferPass::Register(&frameGraphBuilder, "GBuffer");
+	//CopyImagePass::Register(&frameGraphBuilder, "CopyImage");
+
+	//frameGraphBuilder.AssignSubresourceName("GBuffer",   GBufferPass::ColorBufferImageId, "ColorBuffer");
+	//frameGraphBuilder.AssignSubresourceName("CopyImage", CopyImagePass::SrcImageId,       "ColorBuffer");
+	//frameGraphBuilder.AssignSubresourceName("CopyImage", CopyImagePass::DstImageId,       "Backbuffer");
+
+	frameGraphBuilder.AssignBackbufferName("Backbuffer");
+
+	frameGraphBuilder.Build(mMemoryAllocator.get(), mSwapChain.get());
 }
