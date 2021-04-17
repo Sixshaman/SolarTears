@@ -707,6 +707,7 @@ void D3D12::FrameGraphBuilder::TopologicalSortNode(const std::unordered_map<Rend
 //				SubresourceId             prevSubresourceId       = mRenderPassesSubresourceNameIds.at(prevPassName).at(subresourceName);
 //				ImageSubresourceMetadata& prevSubresourceMetadata = mRenderPassesSubresourceMetadatas.at(prevPassName).at(prevSubresourceId);
 //
+//              //No, the barriers should be circular
 //				subresourceMetadata.PrevPassMetadata     = &prevSubresourceMetadata; //Barrier from the last state at the beginning of frame
 //				prevSubresourceMetadata.NextPassMetadata = nullptr;                  //No barriers after the frame ends (except for present barrier)
 //			}
@@ -808,9 +809,9 @@ void D3D12::FrameGraphBuilder::TopologicalSortNode(const std::unordered_map<Rend
 //	}
 //}
 
-void D3D12::FrameGraphBuilder::BuildBarriers()
+void D3D12::FrameGraphBuilder::BuildBarriers() //When present from compute is out, you're gonna have a fun time writing all the new rules lol
 {
-	mGraphToBuild->mImageRenderPassBarriers.resize(mRenderPassNames.size());
+	mGraphToBuild->mRenderPassBarriers.resize(mRenderPassNames.size());
 	mGraphToBuild->mSwapchainBarrierIndices.clear();
 
 	std::unordered_set<uint64_t> processedMetadataIds; //This is here so no barrier gets added twice
@@ -823,8 +824,8 @@ void D3D12::FrameGraphBuilder::BuildBarriers()
 
 		std::vector<D3D12_RESOURCE_BARRIER> beforeBarriers;
 		std::vector<D3D12_RESOURCE_BARRIER> afterBarriers;
-		std::vector<size_t>                 beforeSwapchainBarriers;
-		std::vector<size_t>                 afterSwapchainBarriers;
+		std::vector<size_t>                 beforeSwapchainBarrierIndices;
+		std::vector<size_t>                 afterSwapchainBarrierIndices;
 		for(auto& subresourceNameId: nameIdMap)
 		{
 			SubresourceName subresourceName = subresourceNameId.first;
@@ -838,170 +839,246 @@ void D3D12::FrameGraphBuilder::BuildBarriers()
 					/*
 					*    Before barrier:
 					*
-					*    Same queue, state unchanged:                        No barrier needed
-					*    Same queue, state changed PRESENT -> Unpromoteable: Need a barrier PRESENT -> New state
-					*    Same queue, state changed PRESENT -> Promoteable:   No barrier needed, state will be promoted
-					*    Same queue, state changed other cases:              No barrier needed, covered by previous state's barrier
+					*    1.  Same queue, state unchanged:                                  No barrier needed
+					*    2.  Same queue, state changed, PRESENT -> automatically promoted: No barrier needed
+					*    3.  Same queue, state changed other cases:                        Need a barrier Old state -> New state
+					*
+					*    4.  Graphics -> Compute,  state automatically promoted:               No barrier needed
+					*    5.  Graphics -> Compute,  state non-promoted, was promoted read-only: Need a barrier COMMON -> New state
+					*    6.  Graphics -> Compute,  state unchanged:                            No barrier needed
+					*    7.  Graphics -> Compute,  state changed other cases:                  No barrier needed, handled by the previous state's barrier
 					* 
-					*    Graphics -> Compute:                                                      No barrier needed, handled by previous state's barrier
-					*    Compute  -> Graphics, state changed Compute/graphics -> Compute/Graphics: No barrier needed, handled by previous state's barrier
-					*    Compute  -> Graphics, state changed Compute/Graphics -> Graphics:         Need a barrier Old state -> New state
+					*    8.  Compute  -> Graphics, state automatically promoted:                       No barrier needed, state will be promoted again
+					* 	 9.  Compute  -> Graphics, state non-promoted, was promoted read-only:         Need a barrier COMMON -> New state   
+					*    10. Compute  -> Graphics, state changed Compute/graphics -> Compute/Graphics: No barrier needed, handled by the previous state's barrier
+					*    11. Compute  -> Graphics, state changed Compute/Graphics -> Graphics:         Need a barrier Old state -> New state
+					*    12. Compute  -> Graphics, state unchanged:                                    No barrier needed
+					*
+					*    13. Graphics/Compute -> Copy, was promoted read-only: No barrier needed, state decays
+					*    14. Graphics/Compute -> Copy, other cases:            No barrier needed, handled by previous state's barrier
 					* 
-					*    Graphics/Compute -> Copy:                           No barrier needed, handled by previous state's barrier
-					*    Copy             -> Graphics/Compute promoteable:   No barrier needed, resource will be promoted
-					*    Copy             -> Graphics/Compute unpromoteable: Need a barrier COMMON -> New state
+					*    15. Copy -> Graphics/Compute, state automatically promoted: No barrier needed
+					*    16. Copy -> Graphics/Compute, state non-promoted:           Need a barrier COMMON -> New state
 					*/
 
-					//if(processedMetadataIds.contains(subresourceMetadata.PrevPassMetadata->MetadataId)) //Was already processed as "after pass"
-					//{
-					//	continue;
-					//}
+					bool needBarrier = false;
+					D3D12_RESOURCE_STATES prevPassState = subresourceMetadata.PrevPassMetadata->ResourceState;
+					D3D12_RESOURCE_STATES nextPassState = subresourceMetadata.ResourceState;
 
-					//const bool accessFlagsDiffer   = (subresourceMetadata.AccessFlags          != subresourceMetadata.PrevPassMetadata->AccessFlags);
-					//const bool layoutsDiffer       = (subresourceMetadata.Layout               != subresourceMetadata.PrevPassMetadata->Layout);
-					//const bool queueFamiliesDiffer = (subresourceMetadata.QueueFamilyOwnership != subresourceMetadata.PrevPassMetadata->QueueFamilyOwnership);
-					//if(accessFlagsDiffer || layoutsDiffer || queueFamiliesDiffer)
-					//{
-					//	//Swapchain image barriers are changed every frame
-					//	ID3D12Resource2* barrieredTexture = nullptr;
-					//	if(subresourceMetadata.ImageIndex != mGraphToBuild->mBackbufferRefIndex)
-					//	{
-					//		barrieredTexture = mGraphToBuild->mImages[subresourceMetadata.ImageIndex];
-					//	}
+					const D3D12_COMMAND_LIST_TYPE prevStateQueue = subresourceMetadata.PrevPassMetadata->QueueOwnership;
+					const D3D12_COMMAND_LIST_TYPE nextStateQueue = subresourceMetadata.QueueOwnership;
 
-					//	D3D12_RESOURCE_BARRIER textureTransitionBarrier;
-					//	textureTransitionBarrier.Type  = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-					//	textureTransitionBarrier.Transition.pResource = barrieredTexture;
-					//	textureTransitionBarrier.Transition.Subresource = 0;
-					//	textureTransitionBarrier.Transition.StateBefore = subresourceMetadata.PrevPassMetadata->ResourceState;
-					//	textureTransitionBarrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+					const bool prevWasPromoted = (subresourceMetadata.PrevPassMetadata->MetadataFlags & StateWasPromoted);
+					const bool nextIsPromoted  = (subresourceMetadata.MetadataFlags & StateWasPromoted);
 
-					//	VkImageMemoryBarrier imageMemoryBarrier;
-					//	imageMemoryBarrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-					//	imageMemoryBarrier.pNext                           = nullptr;
-					//	imageMemoryBarrier.srcAccessMask                   = subresourceMetadata.PrevPassMetadata->AccessFlags;
-					//	imageMemoryBarrier.dstAccessMask                   = subresourceMetadata.AccessFlags;
-					//	imageMemoryBarrier.oldLayout                       = subresourceMetadata.PrevPassMetadata->Layout;
-					//	imageMemoryBarrier.newLayout                       = subresourceMetadata.Layout;
-					//	imageMemoryBarrier.srcQueueFamilyIndex             = subresourceMetadata.PrevPassMetadata->QueueFamilyOwnership;
-					//	imageMemoryBarrier.dstQueueFamilyIndex             = subresourceMetadata.QueueFamilyOwnership;
-					//	imageMemoryBarrier.image                           = barrieredImage;
-					//	imageMemoryBarrier.subresourceRange.aspectMask     = subresourceMetadata.AspectFlags;
-					//	imageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
-					//	imageMemoryBarrier.subresourceRange.layerCount     = 1;
-					//	imageMemoryBarrier.subresourceRange.baseMipLevel   = 0;
-					//	imageMemoryBarrier.subresourceRange.levelCount     = 1;
+					if(prevStateQueue == nextStateQueue) //Rules 1, 2, 3
+					{
+						if(prevPassState == D3D12_RESOURCE_STATE_PRESENT) //Rule 2 or 3
+						{
+							needBarrier = !nextIsPromoted;
+						}
+						else //Rule 1 or 3
+						{
+							needBarrier = (prevPassState != nextPassState);
+						}
+					}
+					else if(prevStateQueue == D3D12_COMMAND_LIST_TYPE_DIRECT && nextStateQueue == D3D12_COMMAND_LIST_TYPE_COMPUTE) //Rules 4, 5, 6, 7
+					{
+						if(prevWasPromoted && !D3D12Utils::IsStateWriteable(prevPassState)) //Rule 5
+						{
+							prevPassState = D3D12_RESOURCE_STATE_COMMON; //Common state decay from promoted read-only
+							needBarrier   = !nextIsPromoted;
+						}
+						else //Rules 4, 6, 7
+						{
+							needBarrier = false;
+						}
+					}
+					else if(prevStateQueue == D3D12_COMMAND_LIST_TYPE_COMPUTE && nextStateQueue == D3D12_COMMAND_LIST_TYPE_DIRECT) //Rules 8, 9, 10, 11, 12
+					{
+						if(prevWasPromoted && !D3D12Utils::IsStateWriteable(prevPassState)) //Rule 9
+						{
+							prevPassState = D3D12_RESOURCE_STATE_COMMON; //Common state decay from promoted read-only
+							needBarrier   = !nextIsPromoted;
+						}
+						else //Rules 8, 10, 11, 12
+						{
+							needBarrier = !nextIsPromoted && (prevPassState != nextPassState) && !D3D12Utils::IsStateComputeFriendly(nextPassState);
+						}
+					}
+					else if(nextStateQueue == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 13, 14
+					{
+						needBarrier = false;
+					}
+					else if(prevStateQueue == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 15, 16
+					{
+						needBarrier = !nextIsPromoted;
+					}
 
-					//	beforeBarriers.push_back(imageMemoryBarrier);
+					if(needBarrier)
+					{
+						//Swapchain image barriers are changed every frame
+						ID3D12Resource2* barrieredTexture = nullptr;
+						if(subresourceMetadata.ImageIndex != mGraphToBuild->mBackbufferRefIndex)
+						{
+							barrieredTexture = mGraphToBuild->mTextures[subresourceMetadata.ImageIndex].get();
+						}
 
-					//	//Mark the swapchain barriers
-					//	if(barrieredImage == nullptr)
-					//	{
-					//		beforeSwapchainBarriers.push_back(beforeBarriers.size() - 1);
-					//	}
-					//}
+						D3D12_RESOURCE_BARRIER textureTransitionBarrier;
+						textureTransitionBarrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+						textureTransitionBarrier.Transition.pResource   = barrieredTexture;
+						textureTransitionBarrier.Transition.Subresource = 0;
+						textureTransitionBarrier.Transition.StateBefore = prevPassState;
+						textureTransitionBarrier.Transition.StateAfter  = nextPassState;
+						textureTransitionBarrier.Flags                  = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+
+						beforeBarriers.push_back(textureTransitionBarrier);
+
+						//Mark the swapchain barriers
+						if(barrieredTexture == nullptr)
+						{
+							beforeSwapchainBarrierIndices.push_back(beforeBarriers.size() - 1);
+						}
+					}
 				}
 
 				if(subresourceMetadata.NextPassMetadata != nullptr)
 				{
 					/*
-					*    Before barrier:
+					*    After barrier:
 					*
-					*    Same queue, state unchanged:                        No barrier needed
-					*    Same queue, state changed PRESENT -> Unpromoteable: Need a barrier PRESENT -> New state
-					*    Same queue, state changed PRESENT -> Promoteable:   No barrier needed, state will be promoted
-					*    Same queue, state changed other cases:              No barrier needed, covered by previous state's barrier
+					*    1.  Same queue, state unchanged:                              No barrier needed
+					*    2.  Same queue, state changed, Promoted read-only -> PRESENT: No barrier needed, state decays
+					*    3.  Same queue, state changed, other cases:                   Need a barrier Old state -> New state
 					*
-					*    Graphics -> Compute,  state unchanged:                                    No barrier needed, handled by previous state's barrier
-					*    Graphics -> Compute,  state changed:                                      Need a barrier Old state -> New state
-					*    Compute  -> Graphics, state changed Compute/graphics -> Compute/Graphics: No barrier needed, handled by previous state's barrier
-					*    Compute  -> Graphics, state changed Compute/Graphics -> Graphics:         Need a barrier Old state -> New state
-					*
-					*    Graphics/Compute -> Copy:                           No barrier needed, handled by previous state's barrier
-					*    Copy             -> Graphics/Compute promoteable:   No barrier needed, resource will be promoted
-					*    Copy             -> Graphics/Compute unpromoteable: Need a barrier COMMON -> New state
+					*    4.  Graphics -> Compute,  state will be automatically promoted:               No barrier needed
+					*    5.  Graphics -> Compute,  state will not be promoted, was promoted read-only: No barrier needed, will be handled by the next state's barrier
+					*    6.  Graphics -> Compute,  state unchanged:                                    No barrier needed
+					*    7.  Graphics -> Compute,  state changed other cases:                          Need a barrier Old state -> New state
+					* 
+					*    8.  Compute  -> Graphics, state will be automatically promoted:                 No barrier needed, state will be promoted again
+					* 	 9.  Compute  -> Graphics, state will not be promoted, was promoted read-only:   No barrier needed, will be handled by the next state's barrier     
+					*    10. Compute  -> Graphics, state changed Promoted read-only -> PRESENT:          No barrier needed, state will decay
+					*    11. Compute  -> Graphics, state changed Compute/graphics   -> Compute/Graphics: Need a barrier Old state -> New state
+					*    12. Compute  -> Graphics, state changed Compute/Graphics   -> Graphics:         No barrier needed, will be handled by the next state's barrier
+					*    13. Compute  -> Graphics, state unchanged:                                      No barrier needed
+					*   
+					*    15. Graphics/Compute -> Copy, from Promoted read-only: No barrier needed
+					*    16. Graphics/Compute -> Copy, other cases:             Need a barrier Old state -> COMMON
+					* 
+					*    17. Copy -> Graphics/Compute, state will be automatically promoted: No barrier needed
+					*    18. Copy -> Graphics/Compute, state will not be promoted:           No barrier needed, will be handled by the next state's barrier
 					*/
 
-					//const bool accessFlagsDiffer   = (subresourceMetadata.AccessFlags          != subresourceMetadata.NextPassMetadata->AccessFlags);
-					//const bool layoutsDiffer       = (subresourceMetadata.Layout               != subresourceMetadata.NextPassMetadata->Layout);
-					//const bool queueFamiliesDiffer = (subresourceMetadata.QueueFamilyOwnership != subresourceMetadata.NextPassMetadata->QueueFamilyOwnership);
-					//if(accessFlagsDiffer || layoutsDiffer || queueFamiliesDiffer)
-					//{
-					//	//Swapchain image barriers are changed every frame
-					//	VkImage barrieredImage = nullptr;
-					//	if(subresourceMetadata.ImageIndex != mGraphToBuild->mBackbufferRefIndex)
-					//	{
-					//		barrieredImage = mGraphToBuild->mImages[subresourceMetadata.ImageIndex];
-					//	}
+					bool needBarrier = false;
+					D3D12_RESOURCE_STATES prevPassState = subresourceMetadata.ResourceState;
+					D3D12_RESOURCE_STATES nextPassState = subresourceMetadata.NextPassMetadata->ResourceState;
 
-					//	VkImageMemoryBarrier imageMemoryBarrier;
-					//	imageMemoryBarrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-					//	imageMemoryBarrier.pNext                           = nullptr;
-					//	imageMemoryBarrier.srcAccessMask                   = subresourceMetadata.AccessFlags;
-					//	imageMemoryBarrier.dstAccessMask                   = subresourceMetadata.NextPassMetadata->AccessFlags;
-					//	imageMemoryBarrier.oldLayout                       = subresourceMetadata.Layout;
-					//	imageMemoryBarrier.newLayout                       = subresourceMetadata.NextPassMetadata->Layout;
-					//	imageMemoryBarrier.srcQueueFamilyIndex             = subresourceMetadata.QueueFamilyOwnership;
-					//	imageMemoryBarrier.dstQueueFamilyIndex             = subresourceMetadata.NextPassMetadata->QueueFamilyOwnership;
-					//	imageMemoryBarrier.image                           = mGraphToBuild->mImages[subresourceMetadata.ImageIndex];
-					//	imageMemoryBarrier.subresourceRange.aspectMask     = subresourceMetadata.NextPassMetadata->AspectFlags;
-					//	imageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
-					//	imageMemoryBarrier.subresourceRange.layerCount     = 1;
-					//	imageMemoryBarrier.subresourceRange.baseMipLevel   = 0;
-					//	imageMemoryBarrier.subresourceRange.levelCount     = 1;
+					const D3D12_COMMAND_LIST_TYPE prevStateQueue = subresourceMetadata.QueueOwnership;
+					const D3D12_COMMAND_LIST_TYPE nextStateQueue = subresourceMetadata.NextPassMetadata->QueueOwnership;
 
-					//	afterBarriers.push_back(imageMemoryBarrier);
+					const bool prevWasPromoted = (subresourceMetadata.MetadataFlags & StateWasPromoted);
+					const bool nextIsPromoted  = (subresourceMetadata.NextPassMetadata->MetadataFlags & StateWasPromoted);
 
-					//	//Mark the swapchain barriers
-					//	if(barrieredImage == nullptr)
-					//	{
-					//		afterSwapchainBarriers.push_back(afterBarriers.size() - 1);
-					//	}
-					//}
+					if(prevStateQueue == nextStateQueue) //Rules 1, 2, 3, 4
+					{
+						if(nextPassState == D3D12_RESOURCE_STATE_PRESENT)
+						{
+							needBarrier = !prevWasPromoted || D3D12Utils::IsStateWriteable(prevPassState);
+						}
+						else
+						{
+							needBarrier = (prevPassState != nextPassState);
+						}
+					}
+					else if(prevStateQueue == D3D12_COMMAND_LIST_TYPE_DIRECT && nextStateQueue == D3D12_COMMAND_LIST_TYPE_COMPUTE) //Rules 4, 5, 6, 7
+					{
+						if(prevWasPromoted && !D3D12Utils::IsStateWriteable(prevPassState)) //Rule 5
+						{
+							needBarrier = false;
+						}
+						else //Rules 4, 6, 7
+						{
+							needBarrier = !nextIsPromoted && (prevPassState != nextPassState);
+						}
+					}
+					else if(prevStateQueue == D3D12_COMMAND_LIST_TYPE_COMPUTE && nextStateQueue == D3D12_COMMAND_LIST_TYPE_DIRECT) //Rules 8, 9, 10, 11, 12, 13
+					{
+						if(prevWasPromoted && !D3D12Utils::IsStateWriteable(prevPassState)) //Rule 9, 10
+						{
+							needBarrier = false;
+						}
+						else //Rules 8, 11, 12, 13
+						{
+							needBarrier = !nextIsPromoted && (prevPassState != nextPassState) && D3D12Utils::IsStateComputeFriendly(nextPassState);
+						}
+					}
+					else if(nextStateQueue == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 14, 15
+					{
+						needBarrier = !prevWasPromoted || D3D12Utils::IsStateWriteable(prevPassState);
+					}
+					else if(prevStateQueue == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 16, 17
+					{
+						needBarrier = false;
+					}
+
+					if(needBarrier)
+					{
+						//Swapchain image barriers are changed every frame
+						ID3D12Resource2* barrieredTexture = nullptr;
+						if(subresourceMetadata.ImageIndex != mGraphToBuild->mBackbufferRefIndex)
+						{
+							barrieredTexture = mGraphToBuild->mTextures[subresourceMetadata.ImageIndex].get();
+						}
+
+						D3D12_RESOURCE_BARRIER textureTransitionBarrier;
+						textureTransitionBarrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+						textureTransitionBarrier.Transition.pResource   = barrieredTexture;
+						textureTransitionBarrier.Transition.Subresource = 0;
+						textureTransitionBarrier.Transition.StateBefore = prevPassState;
+						textureTransitionBarrier.Transition.StateAfter  = nextPassState;
+						textureTransitionBarrier.Flags                  = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+
+						afterBarriers.push_back(textureTransitionBarrier);
+
+						//Mark the swapchain barriers
+						if(barrieredTexture == nullptr)
+						{
+							afterSwapchainBarrierIndices.push_back(beforeBarriers.size() - 1);
+						}
+					}
 				}
 			}
 
 			processedMetadataIds.insert(subresourceMetadata.MetadataId);
 		}
 
-		//uint32_t beforeBarrierBegin = (uint32_t)(mGraphToBuild->mImageBarriers.size());
-		//mGraphToBuild->mImageBarriers.insert(mGraphToBuild->mImageBarriers.end(), beforeBarriers.begin(), beforeBarriers.end());
+		uint32_t beforeBarrierBegin = (uint32_t)(mGraphToBuild->mResourceBarriers.size());
+		mGraphToBuild->mResourceBarriers.insert(mGraphToBuild->mResourceBarriers.end(), beforeBarriers.begin(), beforeBarriers.end());
 
-		//uint32_t afterBarrierBegin = (uint32_t)(mGraphToBuild->mImageBarriers.size());
-		//mGraphToBuild->mImageBarriers.insert(mGraphToBuild->mImageBarriers.end(), afterBarriers.begin(), afterBarriers.end());
+		uint32_t afterBarrierBegin = (uint32_t)(mGraphToBuild->mResourceBarriers.size());
+		mGraphToBuild->mResourceBarriers.insert(mGraphToBuild->mResourceBarriers.end(), afterBarriers.begin(), afterBarriers.end());
 
-		//FrameGraph::BarrierSpan barrierSpan;
-		//barrierSpan.BeforePassBegin = beforeBarrierBegin;
-		//barrierSpan.BeforePassEnd   = beforeBarrierBegin + (uint32_t)(beforeBarriers.size());
-		//barrierSpan.AfterPassBegin  = afterBarrierBegin;
-		//barrierSpan.AfterPassEnd    = afterBarrierBegin + (uint32_t)(afterBarriers.size());
+		FrameGraph::BarrierSpan barrierSpan;
+		barrierSpan.BeforePassBegin = beforeBarrierBegin;
+		barrierSpan.BeforePassEnd   = beforeBarrierBegin + (uint32_t)(beforeBarriers.size());
+		barrierSpan.AfterPassBegin  = afterBarrierBegin;
+		barrierSpan.AfterPassEnd    = afterBarrierBegin + (uint32_t)(afterBarriers.size());
 
-		////That's for now
-		//barrierSpan.beforeFlagsBegin = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-		//barrierSpan.beforeFlagsEnd   = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-		//barrierSpan.afterFlagsBegin  = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-		//barrierSpan.afterFlagsEnd    = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		mGraphToBuild->mRenderPassBarriers[i] = barrierSpan;
 
-		//mGraphToBuild->mImageRenderPassBarriers[i] = barrierSpan;
+		for(size_t beforeSwapchainBarrierIndex: beforeSwapchainBarrierIndices)
+		{
+			mGraphToBuild->mSwapchainBarrierIndices.push_back(beforeBarrierBegin + (uint32_t)beforeSwapchainBarrierIndex);
+		}
 
-		//for(size_t beforeSwapchainBarrierIndex: beforeSwapchainBarriers)
-		//{
-		//	mGraphToBuild->mSwapchainBarrierIndices.push_back(beforeBarrierBegin + (uint32_t)beforeSwapchainBarrierIndex);
-		//}
-
-		//for(size_t afterSwapchainBarrierIndex: afterSwapchainBarriers)
-		//{
-		//	mGraphToBuild->mSwapchainBarrierIndices.push_back(afterBarrierBegin + (uint32_t)afterSwapchainBarrierIndex);
-		//}
+		for(size_t afterSwapchainBarrierIndex: afterSwapchainBarrierIndices)
+		{
+			mGraphToBuild->mSwapchainBarrierIndices.push_back(afterBarrierBegin + (uint32_t)afterSwapchainBarrierIndex);
+		}
 	}
 }
-
-//void VulkanCBindings::FrameGraphBuilder::BuildDescriptors()
-//{
-//	//TODO (in case of passes using storage images or input attachments)
-//	//For now I don't have any passes to test it
-//}
-//
+ 
 //void VulkanCBindings::FrameGraphBuilder::BarrierImages(const DeviceQueues* deviceQueues, const WorkerCommandBuffers* workerCommandBuffers, uint32_t defaultQueueIndex)
 //{
 //	//Transit to the last pass as if rendering just ended. That ensures correct barriers at the start of the frame

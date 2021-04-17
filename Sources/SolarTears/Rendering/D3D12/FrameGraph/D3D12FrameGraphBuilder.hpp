@@ -34,6 +34,7 @@ namespace D3D12
 		//};
 
 		constexpr static uint32_t TextureFlagAutoBarrier = 0x01; //Barrier is handled by render pass itself
+		constexpr static uint32_t StateWasPromoted       = 0x02; //The current resource state was promoted automatically from COMMON
 
 		struct TextureSubresourceMetadata
 		{
@@ -157,11 +158,8 @@ namespace D3D12
 		//void BuildSubresources(const MemoryManager* memoryAllocator, const std::vector<VkImage>& swapchainImages, std::unordered_set<RenderPassName>& swapchainPassNames, VkFormat swapchainFormat, uint32_t defaultQueueIndex);
 		//void BuildPassObjects(const std::unordered_set<RenderPassName>& swapchainPassNames);
 
-		//Builds barriers
+		//Build resource barriers
 		void BuildBarriers();
-
-		////Build descriptors
-		//void BuildDescriptors();
 
 		////Transit images from UNDEFINED to usable state
 		//void BarrierImages(const DeviceQueues* deviceQueues, const WorkerCommandBuffers* workerCommandBuffers, uint32_t defaultQueueIndex);
