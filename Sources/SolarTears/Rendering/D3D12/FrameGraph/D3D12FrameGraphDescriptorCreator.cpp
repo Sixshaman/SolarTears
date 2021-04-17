@@ -17,17 +17,91 @@ UINT D3D12::FrameGraphDescriptorCreator::GetSrvUavDescriptorCountNeeded()
 		return 10;
 	}
 
-	return 0;
+	UINT descriptorCountNeeded = 0;
+	for(size_t i = 0; i < mFrameGraphToCreateDescriptors->mTextures.size(); i++)
+	{
+		if(i == mFrameGraphToCreateDescriptors->mBackbufferRefIndex)
+		{
+			//No srv/uav for the backbuffer
+			continue;
+		}
+
+		D3D12_RESOURCE_DESC1 texDesc = mFrameGraphToCreateDescriptors->mTextures[i]->GetDesc1();
+		if(((texDesc.Flags & D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE) == 0) || (texDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
+		{
+			descriptorCountNeeded++;
+		}
+	}
+
+	return descriptorCountNeeded;
 }
 
 UINT D3D12::FrameGraphDescriptorCreator::GetRtvDescriptorCountNeeded()
 {
-	return 0;
+	if(mFrameGraphToCreateDescriptors == nullptr)
+	{
+		return 0;
+	}
+
+	UINT descriptorCountNeeded = 0;
+	for(size_t i = 0; i < mFrameGraphToCreateDescriptors->mTextures.size(); i++)
+	{
+		if(i == mFrameGraphToCreateDescriptors->mBackbufferRefIndex)
+		{
+			continue; //Backbuffer is handled separately
+		}
+
+		D3D12_RESOURCE_DESC1 texDesc = mFrameGraphToCreateDescriptors->mTextures[i]->GetDesc1();
+		if(texDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)
+		{
+			descriptorCountNeeded++;
+		}
+	}
+
+	for(size_t i = 0; mFrameGraphToCreateDescriptors->mSwapchainImageRefs.size(); i++)
+	{
+		D3D12_RESOURCE_DESC1 texDesc = mFrameGraphToCreateDescriptors->mTextures[i]->GetDesc1();
+		if(texDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)
+		{
+			descriptorCountNeeded++;
+		}
+	}
+
+	return descriptorCountNeeded;
 }
 
 UINT D3D12::FrameGraphDescriptorCreator::GetDsvDescriptorCountNeeded()
 {
-	return 0;
+	if(mFrameGraphToCreateDescriptors == nullptr)
+	{
+		return 0;
+	}
+
+	UINT descriptorCountNeeded = 0;
+	for(size_t i = 0; i < mFrameGraphToCreateDescriptors->mTextures.size(); i++)
+	{
+		if(i == mFrameGraphToCreateDescriptors->mBackbufferRefIndex)
+		{
+			continue; //Backbuffer is handled separately
+		}
+
+		D3D12_RESOURCE_DESC1 texDesc = mFrameGraphToCreateDescriptors->mTextures[i]->GetDesc1();
+		if(texDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL)
+		{
+			descriptorCountNeeded++;
+		}
+	}
+
+	for(size_t i = 0; mFrameGraphToCreateDescriptors->mSwapchainImageRefs.size(); i++)
+	{
+		D3D12_RESOURCE_DESC1 texDesc = mFrameGraphToCreateDescriptors->mTextures[i]->GetDesc1();
+		if(texDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL)
+		{
+			descriptorCountNeeded++;
+		}
+	}
+
+	return descriptorCountNeeded;
 }
 
 void D3D12::FrameGraphDescriptorCreator::RecreateFrameGraphSrvUavDescriptors(ID3D12Device* device, D3D12_CPU_DESCRIPTOR_HANDLE startDescriptorCpu, D3D12_GPU_DESCRIPTOR_HANDLE startDescriptorGpu, UINT srvDescriptorSize)

@@ -11,6 +11,8 @@
 #include "FrameGraph/D3D12FrameGraphBuilder.hpp"
 #include "../../Core/ThreadPool.hpp"
 
+#include "FrameGraph/Passes/D3D12CopyImagePass.hpp"
+
 D3D12::Renderer::Renderer(LoggerQueue* loggerQueue, FrameCounter* frameCounter, ThreadPool* threadPool): ::Renderer(loggerQueue), mFrameCounterRef(frameCounter), mThreadPoolRef(threadPool)
 {
 #if defined(DEBUG) || defined(_DEBUG)
@@ -127,13 +129,17 @@ void D3D12::Renderer::CreateFrameGraph(uint32_t viewportWidth, uint32_t viewport
 	D3D12::FrameGraphBuilder frameGraphBuilder(mFrameGraph.get(), mScene.get(), mDeviceFeatures.get(), mShaderManager.get());
 
 	//GBufferPass::Register(&frameGraphBuilder, "GBuffer");
-	//CopyImagePass::Register(&frameGraphBuilder, "CopyImage");
+	CopyImagePass::Register(&frameGraphBuilder, "CopyImage");
 
 	//frameGraphBuilder.AssignSubresourceName("GBuffer",   GBufferPass::ColorBufferImageId, "ColorBuffer");
-	//frameGraphBuilder.AssignSubresourceName("CopyImage", CopyImagePass::SrcImageId,       "ColorBuffer");
-	//frameGraphBuilder.AssignSubresourceName("CopyImage", CopyImagePass::DstImageId,       "Backbuffer");
+	frameGraphBuilder.AssignSubresourceName("CopyImage", CopyImagePass::SrcImageId,       "ColorBuffer");
+	frameGraphBuilder.AssignSubresourceName("CopyImage", CopyImagePass::DstImageId,       "Backbuffer");
 
 	frameGraphBuilder.AssignBackbufferName("Backbuffer");
 
-	frameGraphBuilder.Build(mMemoryAllocator.get(), mSwapChain.get());
+	frameGraphBuilder.Build(mDevice.get(), mMemoryAllocator.get(), mSwapChain.get());
+
+	SceneDescriptorCreator      sceneDescriptorCreator(mScene.get());
+	FrameGraphDescriptorCreator frameGraphDescriptorCreator(mFrameGraph.get());
+	mDescriptorManager->ValidateDescriptorHeaps(mDevice.get(), &sceneDescriptorCreator, &frameGraphDescriptorCreator, DescriptorManager::FLAG_SCENE_UNCHANGED);
 }

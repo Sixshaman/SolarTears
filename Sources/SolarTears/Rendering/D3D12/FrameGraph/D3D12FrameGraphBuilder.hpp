@@ -135,7 +135,7 @@ namespace D3D12
 		void PropagateMetadatasFromImageViews(const std::unordered_map<SubresourceName, TextureCreateInfo>& imageCreateInfos, const std::unordered_map<SubresourceName, BackbufferCreateInfo>& backbufferCreateInfos);
 
 		//Functions for creating frame graph passes and resources
-		void BuildSubresources(ID3D12Device8* device, const MemoryManager* memoryAllocator, const std::vector<ID3D12Resource2*>& swapchainTextures, std::unordered_set<RenderPassName>& swapchainPassNames, DXGI_FORMAT swapchainFormat);
+		void BuildSubresources(ID3D12Device8* device, const MemoryManager* memoryAllocator, const std::vector<ID3D12Resource2*>& swapchainTextures, std::unordered_set<RenderPassName>& swapchainPassNames);
 		void BuildPassObjects(ID3D12Device8* device, const std::unordered_set<RenderPassName>& swapchainPassNames);
 
 		//Build resource barriers

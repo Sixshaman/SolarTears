@@ -97,6 +97,9 @@
     <Filter Include="Rendering\D3D12\FrameGraph">
       <UniqueIdentifier>{88f74e64-a01c-4d40-9547-71d612bd30ca}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Rendering\D3D12\FrameGraph\Passes">
+      <UniqueIdentifier>{a8812f67-3801-4386-916e-8c44261db329}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Platform\Win32\Win32Application.hpp">
@@ -315,6 +318,9 @@
     <ClInclude Include="Rendering\D3D12\FrameGraph\D3D12FrameGraphBuilder.hpp">
       <Filter>Rendering\D3D12\FrameGraph</Filter>
     </ClInclude>
+    <ClInclude Include="Rendering\D3D12\FrameGraph\Passes\D3D12CopyImagePass.hpp">
+      <Filter>Rendering\D3D12\FrameGraph\Passes</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Platform\Win32\Win32Application.cpp">
@@ -505,6 +511,9 @@
     </ClCompile>
     <ClCompile Include="Rendering\D3D12\FrameGraph\D3D12FrameGraphBuilder.cpp">
       <Filter>Rendering\D3D12\FrameGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\D3D12\FrameGraph\Passes\D3D12CopyImagePass.cpp">
+      <Filter>Rendering\D3D12\FrameGraph\Passes</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
