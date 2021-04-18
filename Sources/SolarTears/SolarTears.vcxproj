@@ -66,6 +66,7 @@
     <ClInclude Include="Rendering\D3D12\FrameGraph\D3D12FrameGraphDescriptorCreator.hpp" />
     <ClInclude Include="Rendering\D3D12\FrameGraph\D3D12RenderPass.hpp" />
     <ClInclude Include="Rendering\D3D12\FrameGraph\Passes\D3D12CopyImagePass.hpp" />
+    <ClInclude Include="Rendering\D3D12\FrameGraph\Passes\D3D12GBufferPass.hpp" />
     <ClInclude Include="Rendering\D3D12\Scene\D3D12Scene.hpp" />
     <ClInclude Include="Rendering\D3D12\Scene\D3D12SceneBuilder.hpp" />
     <ClInclude Include="Rendering\D3D12\Scene\D3D12SceneDescriptorCreator.hpp" />
@@ -75,7 +76,7 @@
     <ClInclude Include="Rendering\RenderableSceneMisc.hpp" />
     <ClInclude Include="Rendering\Renderer.hpp" />
     <ClInclude Include="Rendering\VulkanC\FrameGraph\Passes\VulkanCCopyImagePass.hpp" />
-    <ClInclude Include="Rendering\VulkanC\FrameGraph\Passes\VulkanCGBufferRenderPass.hpp" />
+    <ClInclude Include="Rendering\VulkanC\FrameGraph\Passes\VulkanCGBufferPass.hpp" />
     <ClInclude Include="Rendering\VulkanC\FrameGraph\VulkanCFrameGraph.hpp" />
     <ClInclude Include="Rendering\VulkanC\FrameGraph\VulkanCFrameGraphBuilder.hpp" />
     <ClInclude Include="Rendering\VulkanC\FrameGraph\VulkanCRenderPass.hpp" />
@@ -133,6 +134,7 @@
     <ClCompile Include="Rendering\D3D12\FrameGraph\D3D12FrameGraphDescriptorCreator.cpp" />
     <ClCompile Include="Rendering\D3D12\FrameGraph\D3D12RenderPass.cpp" />
     <ClCompile Include="Rendering\D3D12\FrameGraph\Passes\D3D12CopyImagePass.cpp" />
+    <ClCompile Include="Rendering\D3D12\FrameGraph\Passes\D3D12GBufferPass.cpp" />
     <ClCompile Include="Rendering\D3D12\Scene\D3D12Scene.cpp" />
     <ClCompile Include="Rendering\D3D12\Scene\D3D12SceneBuilder.cpp" />
     <ClCompile Include="Rendering\D3D12\Scene\D3D12SceneDescriptorCreator.cpp" />
@@ -141,7 +143,7 @@
     <ClCompile Include="Rendering\RenderableSceneBuilderBase.cpp" />
     <ClCompile Include="Rendering\Renderer.cpp" />
     <ClCompile Include="Rendering\VulkanC\FrameGraph\Passes\VulkanCCopyImagePass.cpp" />
-    <ClCompile Include="Rendering\VulkanC\FrameGraph\Passes\VulkanCGBufferRenderPass.cpp" />
+    <ClCompile Include="Rendering\VulkanC\FrameGraph\Passes\VulkanCGBufferPass.cpp" />
     <ClCompile Include="Rendering\VulkanC\FrameGraph\VulkanCFrameGraph.cpp" />
     <ClCompile Include="Rendering\VulkanC\FrameGraph\VulkanCFrameGraphBuilder.cpp" />
     <ClCompile Include="Rendering\VulkanC\FrameGraph\VulkanCRenderPass.cpp" />
@@ -181,6 +183,7 @@
       <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compiling %(Identity): %(Command)</Message>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv</Outputs>
     </CustomBuild>
+    <None Include="Rendering\D3D12\D3D12Utils.inl" />
     <None Include="Rendering\D3D12\Scene\D3D12SceneBuilder.inl" />
     <None Include="Rendering\VulkanC\Scene\VulkanCSceneBuilder.inl" />
     <None Include="Shaders\D3D12\CommonHeader.hlsli" />

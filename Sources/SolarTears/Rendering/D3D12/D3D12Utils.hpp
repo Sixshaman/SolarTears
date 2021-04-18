@@ -46,5 +46,49 @@ namespace D3D12
 		bool IsStatePromoteableTo(D3D12_RESOURCE_STATES state);
 
 		DXGI_FORMAT ConvertToTypeless(DXGI_FORMAT format);
+
+
+		class StateSubobjectHelper
+		{
+		public:
+			StateSubobjectHelper();
+			~StateSubobjectHelper();
+
+			template<typename T>
+			void AddSubobjectGeneric(const T& subobject);
+
+			void AddVertexShader(const void* shaderBlob, size_t shaderDataSize);
+			void AddHullShader(const void* shaderBlob, size_t shaderDataSize);
+			void AddDomainShader(const void* shaderBlob, size_t shaderDataSize);
+			void AddGeometryShader(const void* shaderBlob, size_t shaderDataSize);
+			void AddPixelShader(const void* shaderBlob, size_t shaderDataSize);
+
+			void AddComputeShader(const void* shaderBlob, size_t shaderDataSize);
+
+			void AddAmplificationShader(const void* shaderBlob, size_t shaderDataSize);
+			void AddMeshShader(const void* shaderBlob, size_t shaderDataSize);
+
+			void AddSampleMask(UINT sampleMask);
+			void AddNodeMask(UINT nodeMask);
+			void AddDepthStencilFormat(DXGI_FORMAT format);
+
+			void*  GetStreamPointer() const;
+			size_t GetStreamSize()    const;
+
+		private:
+			void AllocateStreamData(size_t data);
+			void AddStreamData(void* data, size_t dataSize);
+
+			void AddShader(D3D12_PIPELINE_STATE_SUBOBJECT_TYPE subobjectType, const void* shaderData, size_t shaderSize);
+
+			void ReallocateData(size_t requiredSize);
+
+		private:
+			std::byte* mSubobjectStreamBlob; //Have to control memory manually here... There's no properly aligned std::vector 
+			size_t     mStreamBlobSize;
+			size_t     mStreamBlobCapacity;
+		};
+
+		#include "D3D12Utils.inl"
 	}
 }

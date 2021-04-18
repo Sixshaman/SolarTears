@@ -816,7 +816,7 @@ void D3D12::FrameGraphBuilder::BuildBarriers() //When present from compute is ou
 					*    6.  Graphics -> Compute,  state unchanged:                                    No barrier needed
 					*    7.  Graphics -> Compute,  state changed other cases:                          Need a barrier Old state -> New state
 					* 
-					*    8.  Compute  -> Graphics, state will be automatically promoted:                 No barrier needed, state will be promoted again
+					*    8.  Compute  -> Graphics, state will be automatically promoted:                 No barrier needed
 					* 	 9.  Compute  -> Graphics, state will not be promoted, was promoted read-only:   No barrier needed, will be handled by the next state's barrier     
 					*    10. Compute  -> Graphics, state changed Promoted read-only -> PRESENT:          No barrier needed, state will decay
 					*    11. Compute  -> Graphics, state changed Compute/graphics   -> Compute/Graphics: Need a barrier Old state -> New state

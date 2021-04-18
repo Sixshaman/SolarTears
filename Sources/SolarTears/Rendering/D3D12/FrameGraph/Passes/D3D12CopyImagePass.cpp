@@ -29,9 +29,10 @@ D3D12::CopyImagePass::~CopyImagePass()
 {
 }
 
-void D3D12::CopyImagePass::RecordExecution(ID3D12GraphicsCommandList6* commandList, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig) const
+void D3D12::CopyImagePass::RecordExecution(ID3D12GraphicsCommandList6* commandList, const RenderableScene* scene, const ShaderManager* shaderManager, const FrameGraphConfig& frameGraphConfig) const
 {
 	UNREFERENCED_PARAMETER(scene);
+	UNREFERENCED_PARAMETER(shaderManager);
 
 	D3D12_TEXTURE_COPY_LOCATION dstRegion;
 	dstRegion.pResource        = mDstImageRef;

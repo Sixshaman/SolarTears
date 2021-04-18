@@ -173,3 +173,135 @@ DXGI_FORMAT D3D12::D3D12Utils::ConvertToTypeless(DXGI_FORMAT format)
             return DXGI_FORMAT_UNKNOWN;
     }
 }
+
+D3D12::D3D12Utils::StateSubobjectHelper::StateSubobjectHelper(): mSubobjectStreamBlob(nullptr), mStreamBlobSize(0), mStreamBlobCapacity(0)
+{
+}
+
+D3D12::D3D12Utils::StateSubobjectHelper::~StateSubobjectHelper()
+{
+    if(mSubobjectStreamBlob != nullptr)
+    {
+        delete[] mSubobjectStreamBlob;
+    }
+}
+
+void D3D12::D3D12Utils::StateSubobjectHelper::AddVertexShader(const void* shaderBlob, size_t shaderDataSize)
+{
+    AddShader(D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_VS, shaderBlob, shaderDataSize);
+}
+
+void D3D12::D3D12Utils::StateSubobjectHelper::AddHullShader(const void* shaderBlob, size_t shaderDataSize)
+{
+    AddShader(D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_HS, shaderBlob, shaderDataSize);
+}
+
+void D3D12::D3D12Utils::StateSubobjectHelper::AddDomainShader(const void* shaderBlob, size_t shaderDataSize)
+{
+    AddShader(D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_DS, shaderBlob, shaderDataSize);
+}
+
+void D3D12::D3D12Utils::StateSubobjectHelper::AddGeometryShader(const void* shaderBlob, size_t shaderDataSize)
+{
+    AddShader(D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_DS, shaderBlob, shaderDataSize);
+}
+
+void D3D12::D3D12Utils::StateSubobjectHelper::AddPixelShader(const void* shaderBlob, size_t shaderDataSize)
+{
+    AddShader(D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_PS, shaderBlob, shaderDataSize);
+}
+
+void D3D12::D3D12Utils::StateSubobjectHelper::AddComputeShader(const void* shaderBlob, size_t shaderDataSize)
+{
+    AddShader(D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_CS, shaderBlob, shaderDataSize);
+}
+
+void D3D12::D3D12Utils::StateSubobjectHelper::AddAmplificationShader(const void* shaderBlob, size_t shaderDataSize)
+{
+    AddShader(D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_AS, shaderBlob, shaderDataSize);
+}
+
+void D3D12::D3D12Utils::StateSubobjectHelper::AddMeshShader(const void* shaderBlob, size_t shaderDataSize)
+{
+    AddShader(D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_MS, shaderBlob, shaderDataSize);
+}
+
+void D3D12::D3D12Utils::StateSubobjectHelper::AddSampleMask(UINT sampleMask)
+{
+    AllocateStreamData(sizeof(D3D12_PIPELINE_STATE_SUBOBJECT_TYPE) + sizeof(UINT));
+
+    D3D12_PIPELINE_STATE_SUBOBJECT_TYPE subobjectType = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_SAMPLE_MASK;
+    AddStreamData(&subobjectType, sizeof(D3D12_PIPELINE_STATE_SUBOBJECT_TYPE));
+    AddStreamData(&sampleMask,    sizeof(UINT));
+}
+
+void D3D12::D3D12Utils::StateSubobjectHelper::AddNodeMask(UINT nodeMask)
+{
+    AllocateStreamData(sizeof(D3D12_PIPELINE_STATE_SUBOBJECT_TYPE) + sizeof(D3D12_NODE_MASK));
+
+    D3D12_NODE_MASK data = {.NodeMask = nodeMask};
+
+    D3D12_PIPELINE_STATE_SUBOBJECT_TYPE subobjectType = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_NODE_MASK;
+    AddStreamData(&subobjectType, sizeof(D3D12_PIPELINE_STATE_SUBOBJECT_TYPE));
+    AddStreamData(&data,          sizeof(D3D12_NODE_MASK));
+}
+
+void D3D12::D3D12Utils::StateSubobjectHelper::AddDepthStencilFormat(DXGI_FORMAT format)
+{
+    AllocateStreamData(sizeof(D3D12_PIPELINE_STATE_SUBOBJECT_TYPE) + sizeof(DXGI_FORMAT));
+
+    D3D12_PIPELINE_STATE_SUBOBJECT_TYPE subobjectType = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_DEPTH_STENCIL_FORMAT;
+    AddStreamData(&subobjectType, sizeof(D3D12_PIPELINE_STATE_SUBOBJECT_TYPE));
+    AddStreamData(&format,        sizeof(DXGI_FORMAT));
+}
+
+void* D3D12::D3D12Utils::StateSubobjectHelper::GetStreamPointer() const
+{
+    return mSubobjectStreamBlob;
+}
+
+const size_t D3D12::D3D12Utils::StateSubobjectHelper::GetStreamSize() const
+{
+    return mStreamBlobSize;
+}
+
+void D3D12::D3D12Utils::StateSubobjectHelper::AllocateStreamData(size_t data)
+{
+    size_t addedSpace = AlignMemory(data, alignof(void*));
+    if(mStreamBlobSize + addedSpace > mStreamBlobCapacity)
+    {
+        ReallocateData(mStreamBlobSize + addedSpace);
+    }
+}
+
+void D3D12::D3D12Utils::StateSubobjectHelper::AddStreamData(void* data, size_t dataSize)
+{
+    assert(mStreamBlobSize + dataSize <= mStreamBlobCapacity);
+
+    memcpy(mSubobjectStreamBlob + mStreamBlobSize, data, dataSize);
+    mStreamBlobSize += dataSize;
+}
+
+void D3D12::D3D12Utils::StateSubobjectHelper::AddShader(D3D12_PIPELINE_STATE_SUBOBJECT_TYPE subobjectType, const void* shaderData, size_t shaderSize)
+{
+    AllocateStreamData(sizeof(D3D12_PIPELINE_STATE_SUBOBJECT_TYPE) + sizeof(D3D12_SHADER_BYTECODE));
+
+    D3D12_SHADER_BYTECODE shaderBytecode;
+    shaderBytecode.pShaderBytecode = shaderData;
+    shaderBytecode.BytecodeLength  = shaderSize;
+
+    AddStreamData(&subobjectType,  sizeof(D3D12_PIPELINE_STATE_SUBOBJECT_TYPE));
+    AddStreamData(&shaderBytecode, sizeof(D3D12_SHADER_BYTECODE));
+}
+
+void D3D12::D3D12Utils::StateSubobjectHelper::ReallocateData(size_t requiredSize)
+{
+    size_t newCapacity = mStreamBlobCapacity * 2 + requiredSize;
+
+    std::byte* newData = new std::byte[newCapacity, alignof(void*)];
+    memcpy(newData, mSubobjectStreamBlob, mStreamBlobSize);
+
+    delete[] mSubobjectStreamBlob;
+    mSubobjectStreamBlob = newData;
+    mStreamBlobCapacity  = newCapacity;
+}

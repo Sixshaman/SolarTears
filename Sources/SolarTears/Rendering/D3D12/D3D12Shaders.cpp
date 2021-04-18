@@ -15,25 +15,49 @@ D3D12::ShaderManager::~ShaderManager()
 {
 }
 
+const void* D3D12::ShaderManager::GetGBufferVertexShaderData() const
+{
+	return mGBufferVertexShaderBlob->GetBufferPointer();
+}
+
+const void* D3D12::ShaderManager::GetGBufferPixelShaderData() const
+{
+	return mGBufferPixelShaderBlob->GetBufferPointer();
+}
+
+size_t D3D12::ShaderManager::GetGBufferVertexShaderSize() const
+{
+	return mGBufferVertexShaderBlob->GetBufferSize();
+}
+
+size_t D3D12::ShaderManager::GetGBufferPixelShaderSize() const
+{
+	return mGBufferVertexShaderBlob->GetBufferSize();
+}
+
+ID3D12RootSignature* D3D12::ShaderManager::GetGBufferRootSignature() const
+{
+	return mGBufferRootSignature.get();
+}
+
 void D3D12::ShaderManager::LoadShaderData(ID3D12Device* device)
 {
 	wil::com_ptr_nothrow<IDxcUtils> dxcUtils;
 	THROW_IF_FAILED(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(dxcUtils.put())));
 
 
+	mGBufferVertexShaderBlob.reset();
+	mGBufferPixelShaderBlob.reset();
 	const std::wstring gbufferShaderDir = Utils::GetMainDirectory() + L"Shaders/D3D12/GBuffer/";
 	
-	wil::com_ptr_nothrow<IDxcBlobEncoding> gbufferVSShaderBlob;
-	THROW_IF_FAILED(dxcUtils->LoadFile((gbufferShaderDir + L"GBufferDrawVS.cso").c_str(), nullptr, gbufferVSShaderBlob.put()));
-
-	wil::com_ptr_nothrow<IDxcBlobEncoding> gbufferPSShaderBlob;
-	THROW_IF_FAILED(dxcUtils->LoadFile((gbufferShaderDir + L"GBufferDrawPS.cso").c_str(), nullptr, gbufferPSShaderBlob.put()));
+	THROW_IF_FAILED(dxcUtils->LoadFile((gbufferShaderDir + L"GBufferDrawVS.cso").c_str(), nullptr, mGBufferVertexShaderBlob.put()));
+	THROW_IF_FAILED(dxcUtils->LoadFile((gbufferShaderDir + L"GBufferDrawPS.cso").c_str(), nullptr, mGBufferPixelShaderBlob.put()));
 
 	wil::com_ptr_nothrow<ID3D12ShaderReflection> gbufferVsReflection;
-	CreateReflectionData(dxcUtils.get(), gbufferVSShaderBlob.get(), gbufferVsReflection.put());
+	CreateReflectionData(dxcUtils.get(), mGBufferVertexShaderBlob.get(), gbufferVsReflection.put());
 
 	wil::com_ptr_nothrow<ID3D12ShaderReflection> gbufferPsReflection;
-	CreateReflectionData(dxcUtils.get(), gbufferPSShaderBlob.get(), gbufferPsReflection.put());
+	CreateReflectionData(dxcUtils.get(), mGBufferPixelShaderBlob.get(), gbufferPsReflection.put());
 
 
 	BuildGBufferRootSignature(device, gbufferVsReflection.get(), gbufferPsReflection.get());
