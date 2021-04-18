@@ -8,11 +8,13 @@
 - Automatic subresource format tracking. If resource A gets copied into resource B, and it's known that resource B has format F, then resource A should also have format F.
 - CMake
 - OWNDC
+- Scene builder: maybe transfer static functions for vertex size and formats somewhere else?
 - Frame graph: a system for ping-pong textures (INCLUDING SWAPCHAIN). Proposition: have a flat list of textures and a ping-pong vector. The textures are laid as follows: A1, A2, B1, C1, D1, D2, D3..., where the same letter indicates a ping-ponged texture. 
 - Thread-related stuff (including command buffers, dependency levels, etc.) should be spaced far away to avoid false cache sharing
 - Revise scene world structure - maybe do principal XYZ axes instead of scale+rotation+translation? Google it
 - Right-handed instead of left-handed
 - Blit pass
+- Pipeline layout/root signature management: either do both as in Vulkan (owned by render passes) or both as in D3D12 (owned by the shader manager)
 - More fine-grained barriers (no TOP_OF_PIPE/BOTTOM_OF_PIPE)
 - Async compute: Async compute passes should be in the end of the frame. BUT! They should be executed AT THE START of THE PREVIOUS frame. Need to reorder stuff for that
 - Some sort of extension picker for Vulkan?

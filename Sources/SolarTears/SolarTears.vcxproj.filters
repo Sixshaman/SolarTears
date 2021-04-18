@@ -180,9 +180,6 @@
     <ClInclude Include="Rendering\VulkanC\FrameGraph\Passes\VulkanCCopyImagePass.hpp">
       <Filter>Rendering\VulkanC\FrameGraph\Passes</Filter>
     </ClInclude>
-    <ClInclude Include="Rendering\VulkanC\FrameGraph\Passes\VulkanCGBufferRenderPass.hpp">
-      <Filter>Rendering\VulkanC\FrameGraph\Passes</Filter>
-    </ClInclude>
     <ClInclude Include="Rendering\VulkanC\VulkanCShaders.hpp">
       <Filter>Rendering\VulkanC</Filter>
     </ClInclude>
@@ -321,6 +318,12 @@
     <ClInclude Include="Rendering\D3D12\FrameGraph\Passes\D3D12CopyImagePass.hpp">
       <Filter>Rendering\D3D12\FrameGraph\Passes</Filter>
     </ClInclude>
+    <ClInclude Include="Rendering\D3D12\FrameGraph\Passes\D3D12GBufferPass.hpp">
+      <Filter>Rendering\D3D12\FrameGraph\Passes</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\VulkanC\FrameGraph\Passes\VulkanCGBufferPass.hpp">
+      <Filter>Rendering\VulkanC\FrameGraph\Passes</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Platform\Win32\Win32Application.cpp">
@@ -396,9 +399,6 @@
       <Filter>Rendering\VulkanC\FrameGraph</Filter>
     </ClCompile>
     <ClCompile Include="Rendering\VulkanC\FrameGraph\Passes\VulkanCCopyImagePass.cpp">
-      <Filter>Rendering\VulkanC\FrameGraph\Passes</Filter>
-    </ClCompile>
-    <ClCompile Include="Rendering\VulkanC\FrameGraph\Passes\VulkanCGBufferRenderPass.cpp">
       <Filter>Rendering\VulkanC\FrameGraph\Passes</Filter>
     </ClCompile>
     <ClCompile Include="Rendering\VulkanC\VulkanCShaders.cpp">
@@ -515,6 +515,12 @@
     <ClCompile Include="Rendering\D3D12\FrameGraph\Passes\D3D12CopyImagePass.cpp">
       <Filter>Rendering\D3D12\FrameGraph\Passes</Filter>
     </ClCompile>
+    <ClCompile Include="Rendering\D3D12\FrameGraph\Passes\D3D12GBufferPass.cpp">
+      <Filter>Rendering\D3D12\FrameGraph\Passes</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\VulkanC\FrameGraph\Passes\VulkanCGBufferPass.cpp">
+      <Filter>Rendering\VulkanC\FrameGraph\Passes</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="Platform\Win32\Win32Util.inl">
@@ -537,6 +543,9 @@
     </None>
     <None Include="Shaders\D3D12\CommonHeader.hlsli">
       <Filter>Shaders\D3D12</Filter>
+    </None>
+    <None Include="Rendering\D3D12\D3D12Utils.inl">
+      <Filter>Rendering\D3D12</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>
