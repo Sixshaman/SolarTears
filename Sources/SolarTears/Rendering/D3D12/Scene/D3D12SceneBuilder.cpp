@@ -358,7 +358,7 @@ void D3D12::RenderableSceneBuilder::AllocateTexturesHeap(ID3D12Device8* device, 
 	mSceneTextureHeapOffsets.clear();
 	mSceneToBuild->mHeapForTextures.reset();
 
-	memoryAllocator->AllocateTextureMemory(device, mSceneTextureDescs, mSceneTextureHeapOffsets, mSceneToBuild->mHeapForTextures.put());
+	memoryAllocator->AllocateTextureMemory(device, mSceneTextureDescs, mSceneTextureHeapOffsets, D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES, mSceneToBuild->mHeapForTextures.put());
 }
 
 void D3D12::RenderableSceneBuilder::CreateTextures(ID3D12Device8* device)

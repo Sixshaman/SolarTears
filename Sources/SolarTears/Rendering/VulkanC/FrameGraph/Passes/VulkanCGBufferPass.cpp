@@ -1,4 +1,4 @@
-#include "VulkanCGBufferRenderPass.hpp"
+#include "VulkanCGBufferPass.hpp"
 #include "../../VulkanCFunctions.hpp"
 #include "../../VulkanCDeviceParameters.hpp"
 #include "../../VulkanCShaders.hpp"

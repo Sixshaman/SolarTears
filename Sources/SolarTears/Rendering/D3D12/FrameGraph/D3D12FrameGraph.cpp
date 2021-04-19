@@ -4,7 +4,9 @@
 #include "../D3D12WorkerCommandLists.hpp"
 #include "../D3D12SwapChain.hpp"
 #include "../D3D12DeviceQueues.hpp"
+#include "../D3D12SrvDescriptorManager.hpp"
 #include <latch>
+#include <array>
 #include <wil/com.h>
 
 D3D12::FrameGraph::FrameGraph(const FrameGraphConfig& frameGraphConfig): mFrameGraphConfig(frameGraphConfig), mSrvUavDescriptorCount(0)
@@ -15,29 +17,43 @@ D3D12::FrameGraph::~FrameGraph()
 {
 }
 
-void D3D12::FrameGraph::Traverse(ThreadPool* threadPool, const WorkerCommandLists* commandLists, const RenderableScene* scene, const D3D12::ShaderManager* shaderManager, const SwapChain* swapChain, DeviceQueues* deviceQueues, uint32_t currentFrameResourceIndex)
+void D3D12::FrameGraph::Traverse(ThreadPool* threadPool, const WorkerCommandLists* commandLists, const RenderableScene* scene, const ShaderManager* shaderManager, const SrvDescriptorManager* descriptorManager, const SwapChain* swapChain, DeviceQueues* deviceQueues, uint32_t currentFrameResourceIndex)
 {
+	SwitchSwapchainPasses(swapChain->GetCurrentImageIndex());
+	SwitchSwapchainImages(swapChain->GetCurrentImageIndex());
+
 	if(mGraphicsPassSpans.size() > 0)
 	{
+		struct ExecuteParams
+		{
+			const WorkerCommandLists*   CommandLists;
+			const FrameGraph*           FrameGraph;
+			const RenderableScene*      Scene;
+			const ShaderManager*        Shaders;
+			const SrvDescriptorManager* DescriptorManager;
+		} 
+		executeParams = 
+		{
+			.CommandLists      = commandLists,
+			.FrameGraph        = this,
+			.Scene             = scene,
+			.Shaders           = shaderManager,
+			.DescriptorManager = descriptorManager
+		};
+
 		std::latch graphicsPassLatch((uint32_t)(mGraphicsPassSpans.size() - 1));
 		for(size_t dependencyLevelSpanIndex = 0; dependencyLevelSpanIndex < mGraphicsPassSpans.size() - 1; dependencyLevelSpanIndex++)
 		{
 			struct JobData
 			{
-				const WorkerCommandLists* CommandLists;
-				const FrameGraph*         FrameGraph;
-				const RenderableScene*    Scene;
-				const ShaderManager*      Shaders;
-				std::latch*               Waitable;
-				uint32_t                  DependencyLevelSpanIndex;
-				uint32_t                  FrameResourceIndex;
+				ExecuteParams* ExecuteParams;
+				std::latch*    Waitable;
+				uint32_t       DependencyLevelSpanIndex;
+				uint32_t       FrameResourceIndex;
 			}
 			jobData =
 			{
-				.CommandLists             = commandLists,
-				.FrameGraph               = this,
-				.Scene                    = scene,
-				.Shaders                  = shaderManager,
+				.ExecuteParams            = &executeParams,
 				.Waitable                 = &graphicsPassLatch,
 				.DependencyLevelSpanIndex = (uint32_t)dependencyLevelSpanIndex,
 				.FrameResourceIndex       = currentFrameResourceIndex
@@ -48,13 +64,17 @@ void D3D12::FrameGraph::Traverse(ThreadPool* threadPool, const WorkerCommandList
 				UNREFERENCED_PARAMETER(userDataSize);
 
 				JobData* threadJobData = reinterpret_cast<JobData*>(userData);
-				const FrameGraph* that = threadJobData->FrameGraph;
+				const FrameGraph* that = threadJobData->ExecuteParams->FrameGraph;
 
-				ID3D12GraphicsCommandList6* graphicsCommandList      = threadJobData->CommandLists->GetThreadDirectCommandList(threadJobData->DependencyLevelSpanIndex);
-				ID3D12CommandAllocator*     graphicsCommandAllocator = threadJobData->CommandLists->GetThreadDirectCommandAllocator(threadJobData->DependencyLevelSpanIndex, threadJobData->FrameResourceIndex);
+				ID3D12GraphicsCommandList6* graphicsCommandList      = threadJobData->ExecuteParams->CommandLists->GetThreadDirectCommandList(threadJobData->DependencyLevelSpanIndex);
+				ID3D12CommandAllocator*     graphicsCommandAllocator = threadJobData->ExecuteParams->CommandLists->GetThreadDirectCommandAllocator(threadJobData->DependencyLevelSpanIndex, threadJobData->FrameResourceIndex);
 
 				that->BeginCommandList(graphicsCommandList, graphicsCommandAllocator, threadJobData->DependencyLevelSpanIndex);
-				that->RecordGraphicsPasses(graphicsCommandList, threadJobData->Scene, threadJobData->Shaders, threadJobData->DependencyLevelSpanIndex);
+				
+				std::array descriptorHeaps = { threadJobData->ExecuteParams->DescriptorManager->GetSrvUavCbvHeap()};
+				graphicsCommandList->SetDescriptorHeaps((UINT)descriptorHeaps.size(), descriptorHeaps.data());
+
+				that->RecordGraphicsPasses(graphicsCommandList, threadJobData->ExecuteParams->Scene, threadJobData->ExecuteParams->Shaders, threadJobData->DependencyLevelSpanIndex);
 				that->EndCommandList(graphicsCommandList);
 
 				threadJobData->Waitable->count_down();
@@ -143,10 +163,9 @@ void D3D12::FrameGraph::SwitchSwapchainImages(uint32_t swapchainImageIndex)
 	//Set images (no swapping unlike Vulkan)
 	mTextures[mBackbufferRefIndex] = mSwapchainImageRefs[swapchainImageIndex];
 
-
 	//Update barriers
 	for(size_t i = 0; i < mSwapchainBarrierIndices.size(); i++)
 	{
-		mResourceBarriers[i].Transition.pResource = mTextures[mBackbufferRefIndex];
+		mResourceBarriers[mSwapchainBarrierIndices[i]].Transition.pResource = mTextures[mBackbufferRefIndex];
 	}
 }

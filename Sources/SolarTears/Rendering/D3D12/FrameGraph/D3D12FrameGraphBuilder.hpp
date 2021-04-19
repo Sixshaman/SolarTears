@@ -143,6 +143,9 @@ namespace D3D12
 		//Initializes InitialState and ClearValue fields of texture create infos
 		void InitResourceInitialStatesAndClearValues(std::unordered_map<SubresourceName, TextureCreateInfo>& inoutTextureCreateInfos);
 
+		//Clears DENY_SHADER_RESOURCE resource desc flags
+		void CleanDenyShaderResourceFlags(std::unordered_map<SubresourceName, TextureCreateInfo>& inoutTextureCreateInfos);
+
 		//Validates PrevPassMetadata and NextPassMetadata links in each subresource info
 		void ValidateSubresourceLinks();
 

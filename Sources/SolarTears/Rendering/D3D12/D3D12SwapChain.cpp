@@ -69,6 +69,11 @@ ID3D12Resource* D3D12::SwapChain::GetCurrentImage() const
 	return mSwapchainImages[currentImageIndex].get();
 }
 
+UINT D3D12::SwapChain::GetCurrentImageIndex() const
+{
+	return mSwapchain->GetCurrentBackBufferIndex();
+}
+
 DXGI_FORMAT D3D12::SwapChain::GetBackbufferFormat() const
 {
 	return mSwapChainFormat;

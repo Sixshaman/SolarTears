@@ -18,7 +18,7 @@ namespace D3D12
 	class FrameGraph;
 	class MemoryManager;
 	class ShaderManager;
-	class DescriptorManager;
+	class SrvDescriptorManager;
 	class DeviceQueues;
 	class WorkerCommandLists;
 
@@ -59,8 +59,8 @@ namespace D3D12
 
 		std::unique_ptr<DeviceFeatures> mDeviceFeatures;
 
-		std::unique_ptr<MemoryManager>     mMemoryAllocator;
-		std::unique_ptr<ShaderManager>     mShaderManager;
-		std::unique_ptr<DescriptorManager> mDescriptorManager;
+		std::unique_ptr<MemoryManager>        mMemoryAllocator;
+		std::unique_ptr<ShaderManager>        mShaderManager;
+		std::unique_ptr<SrvDescriptorManager> mDescriptorManager;
 	};
 }

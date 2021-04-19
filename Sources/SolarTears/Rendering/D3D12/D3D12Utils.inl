@@ -52,6 +52,22 @@ inline void D3D12::D3D12Utils::StateSubobjectHelper::AddSubobjectGeneric(const T
 	AllocateStreamData(sizeof(D3D12_PIPELINE_STATE_SUBOBJECT_TYPE) + sizeof(T));
 
 	D3D12_PIPELINE_STATE_SUBOBJECT_TYPE subobjectType = TypeOfSubobject<T>;
-    AddStreamData(&subobjectType, sizeof(D3D12_PIPELINE_STATE_SUBOBJECT_TYPE));
-    AddStreamData(&subobject,     sizeof(T));
+	assert(subobjectType != D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_MAX_VALID);
+
+	AddPadding();
+	AddStreamData(&subobjectType);
+	AddStreamData(&subobject);
+}
+
+template<typename T>
+void D3D12::D3D12Utils::StateSubobjectHelper::AddStreamData(const T* data)
+{
+	size_t dataAlignment = alignof(T);
+	size_t dataSize      = sizeof(T);
+
+	size_t currentSize = AlignMemory(mStreamBlobSize, dataAlignment);
+	assert(currentSize + dataSize <= mStreamBlobCapacity);
+
+	memcpy(mSubobjectStreamBlob + currentSize, data, dataSize);
+	mStreamBlobSize = currentSize + dataSize;
 }

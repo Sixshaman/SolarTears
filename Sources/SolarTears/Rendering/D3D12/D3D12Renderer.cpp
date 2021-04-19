@@ -3,7 +3,7 @@
 #include "D3D12DeviceQueues.hpp"
 #include "D3D12WorkerCommandLists.hpp"
 #include "D3D12Shaders.hpp"
-#include "D3D12DescriptorManager.hpp"
+#include "D3D12SrvDescriptorManager.hpp"
 #include "Scene/D3D12Scene.hpp"
 #include "Scene/D3D12SceneBuilder.hpp"
 #include "Scene/D3D12SceneDescriptorCreator.hpp"
@@ -35,7 +35,7 @@ D3D12::Renderer::Renderer(LoggerQueue* loggerQueue, FrameCounter* frameCounter, 
 
 	mMemoryAllocator   = std::make_unique<MemoryManager>(mLoggingBoard);
 	mShaderManager     = std::make_unique<ShaderManager>(mLoggingBoard, mDevice.get());
-	mDescriptorManager = std::make_unique<DescriptorManager>(mDevice.get());
+	mDescriptorManager = std::make_unique<SrvDescriptorManager>();
 }
 
 D3D12::Renderer::~Renderer()
@@ -72,11 +72,21 @@ void D3D12::Renderer::InitScene(SceneDescription* sceneDescription)
 
 	SceneDescriptorCreator      sceneDescriptorCreator(mScene.get());
 	FrameGraphDescriptorCreator frameGraphDescriptorCreator(mFrameGraph.get());
-	mDescriptorManager->ValidateDescriptorHeaps(mDevice.get(), &sceneDescriptorCreator, &frameGraphDescriptorCreator, DescriptorManager::FLAG_FRAME_GRAPH_UNCHANGED);
+	mDescriptorManager->ValidateDescriptorHeaps(mDevice.get(), &sceneDescriptorCreator, &frameGraphDescriptorCreator, SrvDescriptorManager::FLAG_FRAME_GRAPH_UNCHANGED);
 }
 
 void D3D12::Renderer::RenderScene()
 {
+	const uint32_t currentFrameResourceIndex = mFrameCounterRef->GetFrameCount() % D3D12Utils::InFlightFrameCount;
+
+	//VkFence frameFence = mRenderFences[currentFrameResourceIndex];
+	//std::array frameFences = {frameFence};
+	//ThrowIfFailed(vkWaitForFences(mDevice, (uint32_t)(frameFences.size()), frameFences.data(), VK_TRUE, 3000000000));
+
+	//ThrowIfFailed(vkResetFences(mDevice, (uint32_t)(frameFences.size()), frameFences.data()));
+
+	mFrameGraph->Traverse(mThreadPoolRef, mWorkerCommandLists.get(), mScene.get(), mShaderManager.get(), mDescriptorManager.get(), mSwapChain.get(), mDeviceQueues.get(), currentFrameResourceIndex);
+
 	mSwapChain->Present();
 }
 
@@ -142,5 +152,5 @@ void D3D12::Renderer::CreateFrameGraph(uint32_t viewportWidth, uint32_t viewport
 
 	SceneDescriptorCreator      sceneDescriptorCreator(mScene.get());
 	FrameGraphDescriptorCreator frameGraphDescriptorCreator(mFrameGraph.get());
-	mDescriptorManager->ValidateDescriptorHeaps(mDevice.get(), &sceneDescriptorCreator, &frameGraphDescriptorCreator, DescriptorManager::FLAG_SCENE_UNCHANGED);
+	mDescriptorManager->ValidateDescriptorHeaps(mDevice.get(), &sceneDescriptorCreator, &frameGraphDescriptorCreator, SrvDescriptorManager::FLAG_SCENE_UNCHANGED);
 }

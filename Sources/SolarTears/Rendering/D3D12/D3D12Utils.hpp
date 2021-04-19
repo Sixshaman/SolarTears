@@ -77,7 +77,11 @@ namespace D3D12
 
 		private:
 			void AllocateStreamData(size_t data);
-			void AddStreamData(void* data, size_t dataSize);
+
+			void AddPadding();
+
+			template<typename T>
+			void AddStreamData(const T* data);
 
 			void AddShader(D3D12_PIPELINE_STATE_SUBOBJECT_TYPE subobjectType, const void* shaderData, size_t shaderSize);
 
