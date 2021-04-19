@@ -27,6 +27,16 @@ namespace D3D12
 
 		constexpr static uint32_t TextureFlagAutoBarrier       = 0x01; //Barrier is handled by render pass itself
 		constexpr static uint32_t TextureFlagStateAutoPromoted = 0x02; //The current resource state was promoted automatically from COMMON
+		
+		enum SubresourceViewType
+		{
+			ShaderResource,
+			UnorderedAccess,
+			RenderTarget,
+			DepthStencil,
+
+			Unknown
+		};
 
 		struct TextureSubresourceMetadata
 		{
@@ -36,7 +46,7 @@ namespace D3D12
 			TextureSubresourceMetadata* NextPassMetadata;
 
 			uint32_t                ImageIndex;
-			uint32_t                SrvIndex;
+			uint32_t                SrvUavIndex;
 			uint32_t                RtvIndex;
 			uint32_t                DsvIndex;
 			uint32_t                MetadataFlags;
@@ -54,6 +64,7 @@ namespace D3D12
 		struct TextureViewInfo
 		{
 			DXGI_FORMAT                     Format;
+			SubresourceViewType             ViewType;
 			std::vector<SubresourceAddress> ViewAddresses;
 		};
 
@@ -91,12 +102,19 @@ namespace D3D12
 		const ShaderManager*    GetShaderManager()  const;
 		const FrameGraphConfig* GetConfig()         const;
 
-		ID3D12Resource2*      GetRegisteredResource(const std::string_view passName,          const std::string_view subresourceId) const;
-		DXGI_FORMAT           GetRegisteredSubresourceFormat(const std::string_view passName, const std::string_view subresourceId) const;
-		D3D12_RESOURCE_STATES GetRegisteredSubresourceState(const std::string_view passName,  const std::string_view subresourceId) const;
+		ID3D12Resource2*            GetRegisteredResource(const std::string_view passName,          const std::string_view subresourceId) const;
+		D3D12_CPU_DESCRIPTOR_HANDLE GetRegisteredSubresourceSrvUav(const std::string_view passName, const std::string_view subresourceId) const;
+		D3D12_CPU_DESCRIPTOR_HANDLE GetRegisteredSubresourceRtv(const std::string_view passName,    const std::string_view subresourceId) const;
+		D3D12_CPU_DESCRIPTOR_HANDLE GetRegisteredSubresourceDsv(const std::string_view passName,    const std::string_view subresourceId) const;
+		DXGI_FORMAT                 GetRegisteredSubresourceFormat(const std::string_view passName, const std::string_view subresourceId) const;
+		D3D12_RESOURCE_STATES       GetRegisteredSubresourceState(const std::string_view passName,  const std::string_view subresourceId) const;
 
 		D3D12_RESOURCE_STATES GetPreviousPassSubresourceState(const std::string_view passName, const std::string_view subresourceId) const;
 		D3D12_RESOURCE_STATES GetNextPassSubresourceState(const std::string_view passName,     const std::string_view subresourceId) const;
+
+		D3D12_CPU_DESCRIPTOR_HANDLE GetFrameGraphSrvHeapStart() const;
+		D3D12_CPU_DESCRIPTOR_HANDLE GetFrameGraphRtvHeapStart() const;
+		D3D12_CPU_DESCRIPTOR_HANDLE GetFrameGraphDsvHeapStart() const;
 
 		void Build(ID3D12Device8* device, const MemoryManager* memoryAllocator, const SwapChain* swapChain);
 
@@ -148,8 +166,14 @@ namespace D3D12
 		void SetSwapchainTextures(const std::unordered_map<SubresourceName, BackbufferCreateInfo>& backbufferResourceCreateInfos, const std::vector<ID3D12Resource2*>& swapchainTextures);
 		void CreateTextures(ID3D12Device8* device, const std::unordered_map<SubresourceName, TextureCreateInfo>& imageCreateInfos, const MemoryManager* memoryAllocator);
 
+		//Create descriptors and descriptor heaps
+		void CreateDescriptors(ID3D12Device8* device, const std::unordered_map<SubresourceName, TextureCreateInfo>& imageCreateInfos);
+
 		//Test if two writingPass writes to readingPass
 		bool PassesIntersect(const RenderPassName& writingPass, const RenderPassName& readingPass);
+
+		//Converts per-pass resource usage to the view type
+		SubresourceViewType ViewTypeFromResourceState(D3D12_RESOURCE_STATES resourceState);
 
 		//Set object name for debug messages
 		void SetDebugObjectName(ID3D12Resource2* texture, const SubresourceName& name) const;
@@ -172,6 +196,10 @@ namespace D3D12
 		uint64_t mSubresourceMetadataCounter;
 
 		SubresourceName mBackbufferName;
+
+		UINT mSrvUavCbvDescriptorSize;
+		UINT mRtvDescriptorSize;
+		UINT mDsvDescriptorSize;
 
 		//Several things that might be needed to create some of the passes
 		const RenderableScene* mScene;
