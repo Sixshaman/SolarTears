@@ -7,7 +7,7 @@
 #include <latch>
 #include <wil/com.h>
 
-D3D12::FrameGraph::FrameGraph(const FrameGraphConfig& frameGraphConfig): mFrameGraphConfig(frameGraphConfig)
+D3D12::FrameGraph::FrameGraph(const FrameGraphConfig& frameGraphConfig): mFrameGraphConfig(frameGraphConfig), mSrvUavDescriptorCount(0)
 {
 }
 
@@ -15,7 +15,7 @@ D3D12::FrameGraph::~FrameGraph()
 {
 }
 
-void D3D12::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommandLists* commandLists, RenderableScene* scene, SwapChain* swapChain, DeviceQueues* deviceQueues, uint32_t currentFrameResourceIndex)
+void D3D12::FrameGraph::Traverse(ThreadPool* threadPool, const WorkerCommandLists* commandLists, const RenderableScene* scene, const D3D12::ShaderManager* shaderManager, const SwapChain* swapChain, DeviceQueues* deviceQueues, uint32_t currentFrameResourceIndex)
 {
 	if(mGraphicsPassSpans.size() > 0)
 	{
@@ -24,18 +24,20 @@ void D3D12::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommandLists* com
 		{
 			struct JobData
 			{
-				const WorkerCommandLists*     CommandLists;
-				const FrameGraph*             FrameGraph;
-				const D3D12::RenderableScene* Scene;
-				std::latch*                   Waitable;
-				uint32_t                      DependencyLevelSpanIndex;
-				uint32_t                      FrameResourceIndex;
+				const WorkerCommandLists* CommandLists;
+				const FrameGraph*         FrameGraph;
+				const RenderableScene*    Scene;
+				const ShaderManager*      Shaders;
+				std::latch*               Waitable;
+				uint32_t                  DependencyLevelSpanIndex;
+				uint32_t                  FrameResourceIndex;
 			}
 			jobData =
 			{
 				.CommandLists             = commandLists,
 				.FrameGraph               = this,
 				.Scene                    = scene,
+				.Shaders                  = shaderManager,
 				.Waitable                 = &graphicsPassLatch,
 				.DependencyLevelSpanIndex = (uint32_t)dependencyLevelSpanIndex,
 				.FrameResourceIndex       = currentFrameResourceIndex
@@ -52,7 +54,7 @@ void D3D12::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommandLists* com
 				ID3D12CommandAllocator*     graphicsCommandAllocator = threadJobData->CommandLists->GetThreadDirectCommandAllocator(threadJobData->DependencyLevelSpanIndex, threadJobData->FrameResourceIndex);
 
 				that->BeginCommandList(graphicsCommandList, graphicsCommandAllocator, threadJobData->DependencyLevelSpanIndex);
-				that->RecordGraphicsPasses(graphicsCommandList, threadJobData->Scene, threadJobData->DependencyLevelSpanIndex);
+				that->RecordGraphicsPasses(graphicsCommandList, threadJobData->Scene, threadJobData->Shaders, threadJobData->DependencyLevelSpanIndex);
 				that->EndCommandList(graphicsCommandList);
 
 				threadJobData->Waitable->count_down();
@@ -65,7 +67,7 @@ void D3D12::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommandLists* com
 		ID3D12CommandAllocator*     mainGraphicsCommandAllocator = commandLists->GetMainThreadDirectCommandAllocator(currentFrameResourceIndex);
 		
 		BeginCommandList(mainGraphicsCommandList, mainGraphicsCommandAllocator, (uint32_t)(mGraphicsPassSpans.size() - 1));
-		RecordGraphicsPasses(mainGraphicsCommandList, scene, (uint32_t)(mGraphicsPassSpans.size() - 1));
+		RecordGraphicsPasses(mainGraphicsCommandList, scene, shaderManager, (uint32_t)(mGraphicsPassSpans.size() - 1));
 		EndCommandList(mainGraphicsCommandList);
 
 		graphicsPassLatch.wait();
@@ -98,7 +100,7 @@ void D3D12::FrameGraph::EndCommandList(ID3D12GraphicsCommandList* commandList) c
 	THROW_IF_FAILED(commandList->Close());
 }
 
-void D3D12::FrameGraph::RecordGraphicsPasses(ID3D12GraphicsCommandList6* commandList, const RenderableScene* scene, uint32_t dependencyLevelSpanIndex) const
+void D3D12::FrameGraph::RecordGraphicsPasses(ID3D12GraphicsCommandList6* commandList, const RenderableScene* scene, const D3D12::ShaderManager* shaderManager, uint32_t dependencyLevelSpanIndex) const
 {
 	DependencyLevelSpan levelSpan = mGraphicsPassSpans[dependencyLevelSpanIndex];
 	for(uint32_t renderPassIndex = levelSpan.DependencyLevelBegin; renderPassIndex < levelSpan.DependencyLevelEnd; renderPassIndex++)
@@ -113,7 +115,7 @@ void D3D12::FrameGraph::RecordGraphicsPasses(ID3D12GraphicsCommandList6* command
 			commandList->ResourceBarrier(beforePassBarrierCount, barrierPointer);
 		}
 
-		mRenderPasses[renderPassIndex]->RecordExecution(commandList, scene, mFrameGraphConfig);
+		mRenderPasses[renderPassIndex]->RecordExecution(commandList, scene, shaderManager, mFrameGraphConfig);
 
 		if(afterPassBarrierCount != 0)
 		{
@@ -146,21 +148,5 @@ void D3D12::FrameGraph::SwitchSwapchainImages(uint32_t swapchainImageIndex)
 	for(size_t i = 0; i < mSwapchainBarrierIndices.size(); i++)
 	{
 		mResourceBarriers[i].Transition.pResource = mTextures[mBackbufferRefIndex];
-	}
-
-
-	//Set image views
-	uint32_t swapchainCpuDescriptorCount = (uint32_t)mSwapchainCpuDescriptors.size();
-	for (uint32_t i = 0; i < (uint32_t)mSwapchainCpuDescriptorSwapMap.size(); i += (swapchainCpuDescriptorCount + 1u))
-	{
-		uint32_t viewIndexToSwitch         = mSwapchainCpuDescriptorSwapMap[i];
-		mCpuDescriptors[viewIndexToSwitch] = mSwapchainCpuDescriptors[mSwapchainCpuDescriptorSwapMap[i + swapchainImageIndex + 1]];
-	}
-
-	uint32_t swapchainGpuDescriptorCountCount = (uint32_t)mSwapchainGpuDescriptors.size();
-	for (uint32_t i = 0; i < (uint32_t)mSwapchainGpuDescriptorSwapMap.size(); i += (swapchainGpuDescriptorCountCount + 1u))
-	{
-		uint32_t viewIndexToSwitch         = mSwapchainGpuDescriptorSwapMap[i];
-		mGpuDescriptors[viewIndexToSwitch] = mSwapchainGpuDescriptors[mSwapchainGpuDescriptorSwapMap[i + swapchainImageIndex + 1]];
 	}
 }

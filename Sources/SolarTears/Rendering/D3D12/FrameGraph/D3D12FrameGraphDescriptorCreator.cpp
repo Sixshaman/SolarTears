@@ -17,120 +17,19 @@ UINT D3D12::FrameGraphDescriptorCreator::GetSrvUavDescriptorCountNeeded()
 		return 10;
 	}
 
-	UINT descriptorCountNeeded = 0;
-	for(size_t i = 0; i < mFrameGraphToCreateDescriptors->mTextures.size(); i++)
-	{
-		if(i == mFrameGraphToCreateDescriptors->mBackbufferRefIndex)
-		{
-			//No srv/uav for the backbuffer
-			continue;
-		}
-
-		D3D12_RESOURCE_DESC1 texDesc = mFrameGraphToCreateDescriptors->mTextures[i]->GetDesc1();
-		if(((texDesc.Flags & D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE) == 0) || (texDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS))
-		{
-			descriptorCountNeeded++;
-		}
-	}
-
-	return descriptorCountNeeded;
+	return mFrameGraphToCreateDescriptors->mSrvUavDescriptorCount;
 }
 
-UINT D3D12::FrameGraphDescriptorCreator::GetRtvDescriptorCountNeeded()
+void D3D12::FrameGraphDescriptorCreator::RecreateFrameGraphSrvUavDescriptors(ID3D12Device* device, D3D12_CPU_DESCRIPTOR_HANDLE startDescriptorCpu, D3D12_GPU_DESCRIPTOR_HANDLE startDescriptorGpu, D3D12_GPU_DESCRIPTOR_HANDLE prevStartDescriptorGpu)
 {
-	if(mFrameGraphToCreateDescriptors == nullptr)
+	device->CopyDescriptorsSimple(mFrameGraphToCreateDescriptors->mSrvUavDescriptorCount, mFrameGraphToCreateDescriptors->mSrvUavDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), startDescriptorCpu, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	for(size_t i = 0; i < mFrameGraphToCreateDescriptors->mRenderPasses.size(); i++)
 	{
-		return 0;
+		mFrameGraphToCreateDescriptors->mRenderPasses[i]->RevalidateSrvUavDescriptors(prevStartDescriptorGpu, startDescriptorGpu);
 	}
 
-	UINT descriptorCountNeeded = 0;
-	for(size_t i = 0; i < mFrameGraphToCreateDescriptors->mTextures.size(); i++)
+	for(size_t i = 0; i < mFrameGraphToCreateDescriptors->mSwapchainRenderPasses.size(); i++)
 	{
-		if(i == mFrameGraphToCreateDescriptors->mBackbufferRefIndex)
-		{
-			continue; //Backbuffer is handled separately
-		}
-
-		D3D12_RESOURCE_DESC1 texDesc = mFrameGraphToCreateDescriptors->mTextures[i]->GetDesc1();
-		if(texDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)
-		{
-			descriptorCountNeeded++;
-		}
+		mFrameGraphToCreateDescriptors->mSwapchainRenderPasses[i]->RevalidateSrvUavDescriptors(prevStartDescriptorGpu, startDescriptorGpu);
 	}
-
-	for(size_t i = 0; mFrameGraphToCreateDescriptors->mSwapchainImageRefs.size(); i++)
-	{
-		D3D12_RESOURCE_DESC1 texDesc = mFrameGraphToCreateDescriptors->mTextures[i]->GetDesc1();
-		if(texDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)
-		{
-			descriptorCountNeeded++;
-		}
-	}
-
-	return descriptorCountNeeded;
-}
-
-UINT D3D12::FrameGraphDescriptorCreator::GetDsvDescriptorCountNeeded()
-{
-	if(mFrameGraphToCreateDescriptors == nullptr)
-	{
-		return 0;
-	}
-
-	UINT descriptorCountNeeded = 0;
-	for(size_t i = 0; i < mFrameGraphToCreateDescriptors->mTextures.size(); i++)
-	{
-		if(i == mFrameGraphToCreateDescriptors->mBackbufferRefIndex)
-		{
-			continue; //Backbuffer is handled separately
-		}
-
-		D3D12_RESOURCE_DESC1 texDesc = mFrameGraphToCreateDescriptors->mTextures[i]->GetDesc1();
-		if(texDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL)
-		{
-			descriptorCountNeeded++;
-		}
-	}
-
-	for(size_t i = 0; mFrameGraphToCreateDescriptors->mSwapchainImageRefs.size(); i++)
-	{
-		D3D12_RESOURCE_DESC1 texDesc = mFrameGraphToCreateDescriptors->mTextures[i]->GetDesc1();
-		if(texDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL)
-		{
-			descriptorCountNeeded++;
-		}
-	}
-
-	return descriptorCountNeeded;
-}
-
-void D3D12::FrameGraphDescriptorCreator::RecreateFrameGraphSrvUavDescriptors(ID3D12Device* device, D3D12_CPU_DESCRIPTOR_HANDLE startDescriptorCpu, D3D12_GPU_DESCRIPTOR_HANDLE startDescriptorGpu, UINT srvDescriptorSize)
-{
-	UNREFERENCED_PARAMETER(device);
-	UNREFERENCED_PARAMETER(startDescriptorCpu);
-	UNREFERENCED_PARAMETER(startDescriptorGpu);
-	UNREFERENCED_PARAMETER(srvDescriptorSize);
-
-	//In case of TYPELESS textures:
-	//The format will be resolved inside Render Pass object via a special function
-}
-
-void D3D12::FrameGraphDescriptorCreator::RecreateFrameGraphRtvDescriptors(ID3D12Device* device, D3D12_CPU_DESCRIPTOR_HANDLE startDescriptorCpu, UINT rtvDescriptorSize)
-{
-	UNREFERENCED_PARAMETER(device);
-	UNREFERENCED_PARAMETER(startDescriptorCpu);
-	UNREFERENCED_PARAMETER(rtvDescriptorSize);
-
-	//In case of TYPELESS textures:
-	//The format will be resolved inside Render Pass object via a special function
-}
-
-void D3D12::FrameGraphDescriptorCreator::RecreateFrameGraphDsvDescriptors(ID3D12Device* device, D3D12_CPU_DESCRIPTOR_HANDLE startDescriptorCpu, UINT dsvDescriptorSize)
-{
-	UNREFERENCED_PARAMETER(device);
-	UNREFERENCED_PARAMETER(startDescriptorCpu);
-	UNREFERENCED_PARAMETER(dsvDescriptorSize);
-
-	//In case of TYPELESS textures:
-	//The format will be resolved inside Render Pass object via a special function
 }

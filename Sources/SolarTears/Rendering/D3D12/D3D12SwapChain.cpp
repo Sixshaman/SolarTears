@@ -47,7 +47,7 @@ void D3D12::SwapChain::Resize(DeviceQueues* deviceQueues, Window* window)
 	}
 }
 
-void D3D12::SwapChain::Present()
+void D3D12::SwapChain::Present() const
 {
 	DXGI_PRESENT_PARAMETERS presentParameters;
 	presentParameters.DirtyRectsCount = 0;

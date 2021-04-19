@@ -36,6 +36,9 @@ namespace D3D12
 			TextureSubresourceMetadata* NextPassMetadata;
 
 			uint32_t                ImageIndex;
+			uint32_t                SrvIndex;
+			uint32_t                RtvIndex;
+			uint32_t                DsvIndex;
 			uint32_t                MetadataFlags;
 			D3D12_COMMAND_LIST_TYPE QueueOwnership;
 			DXGI_FORMAT             Format;

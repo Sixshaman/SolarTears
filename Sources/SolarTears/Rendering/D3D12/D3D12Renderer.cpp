@@ -11,6 +11,7 @@
 #include "FrameGraph/D3D12FrameGraphBuilder.hpp"
 #include "../../Core/ThreadPool.hpp"
 
+#include "FrameGraph/Passes/D3D12GBufferPass.hpp"
 #include "FrameGraph/Passes/D3D12CopyImagePass.hpp"
 
 D3D12::Renderer::Renderer(LoggerQueue* loggerQueue, FrameCounter* frameCounter, ThreadPool* threadPool): ::Renderer(loggerQueue), mFrameCounterRef(frameCounter), mThreadPoolRef(threadPool)
@@ -128,10 +129,10 @@ void D3D12::Renderer::CreateFrameGraph(uint32_t viewportWidth, uint32_t viewport
 
 	D3D12::FrameGraphBuilder frameGraphBuilder(mFrameGraph.get(), mScene.get(), mDeviceFeatures.get(), mShaderManager.get());
 
-	//GBufferPass::Register(&frameGraphBuilder, "GBuffer");
+	GBufferPass::Register(&frameGraphBuilder,   "GBuffer");
 	CopyImagePass::Register(&frameGraphBuilder, "CopyImage");
 
-	//frameGraphBuilder.AssignSubresourceName("GBuffer",   GBufferPass::ColorBufferImageId, "ColorBuffer");
+	frameGraphBuilder.AssignSubresourceName("GBuffer",   GBufferPass::ColorBufferImageId, "ColorBuffer");
 	frameGraphBuilder.AssignSubresourceName("CopyImage", CopyImagePass::SrcImageId,       "ColorBuffer");
 	frameGraphBuilder.AssignSubresourceName("CopyImage", CopyImagePass::DstImageId,       "Backbuffer");
 
