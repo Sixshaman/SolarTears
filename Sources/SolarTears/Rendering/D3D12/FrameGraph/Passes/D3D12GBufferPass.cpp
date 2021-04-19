@@ -11,6 +11,8 @@ D3D12::GBufferPass::GBufferPass(ID3D12Device8* device, const FrameGraphBuilder* 
 {
 	//TODO: bundles
 	CreatePipelineState(device, frameGraphBuilder->GetShaderManager(), frameGraphBuilder->GetConfig());
+
+	mColorsRenderTarget = frameGraphBuilder->GetRegisteredSubresourceRtv(passName, ColorBufferImageId);
 }
 
 D3D12::GBufferPass::~GBufferPass()

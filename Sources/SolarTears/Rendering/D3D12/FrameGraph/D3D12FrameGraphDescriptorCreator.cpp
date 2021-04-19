@@ -25,11 +25,17 @@ void D3D12::FrameGraphDescriptorCreator::RecreateFrameGraphSrvUavDescriptors(ID3
 	device->CopyDescriptorsSimple(mFrameGraphToCreateDescriptors->mSrvUavDescriptorCount, mFrameGraphToCreateDescriptors->mSrvUavDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), startDescriptorCpu, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	for(size_t i = 0; i < mFrameGraphToCreateDescriptors->mRenderPasses.size(); i++)
 	{
-		mFrameGraphToCreateDescriptors->mRenderPasses[i]->RevalidateSrvUavDescriptors(prevStartDescriptorGpu, startDescriptorGpu);
+		if(mFrameGraphToCreateDescriptors->mRenderPasses[i] != nullptr)
+		{
+			mFrameGraphToCreateDescriptors->mRenderPasses[i]->RevalidateSrvUavDescriptors(prevStartDescriptorGpu, startDescriptorGpu);
+		}
 	}
 
 	for(size_t i = 0; i < mFrameGraphToCreateDescriptors->mSwapchainRenderPasses.size(); i++)
 	{
-		mFrameGraphToCreateDescriptors->mSwapchainRenderPasses[i]->RevalidateSrvUavDescriptors(prevStartDescriptorGpu, startDescriptorGpu);
+		if(mFrameGraphToCreateDescriptors->mSwapchainRenderPasses[i] != nullptr)
+		{
+			mFrameGraphToCreateDescriptors->mSwapchainRenderPasses[i]->RevalidateSrvUavDescriptors(prevStartDescriptorGpu, startDescriptorGpu);
+		}
 	}
 }
