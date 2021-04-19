@@ -4,6 +4,7 @@
 #include <string>
 #include <fstream>
 #include <cinttypes>
+#include <malloc.h>
 
 UINT64 D3D12::D3D12Utils::AlignMemory(UINT64 value, UINT64 alignment)
 {
@@ -182,7 +183,7 @@ D3D12::D3D12Utils::StateSubobjectHelper::~StateSubobjectHelper()
 {
     if(mSubobjectStreamBlob != nullptr)
     {
-        delete[] mSubobjectStreamBlob;
+        _aligned_free(mSubobjectStreamBlob);
     }
 }
 
@@ -231,8 +232,10 @@ void D3D12::D3D12Utils::StateSubobjectHelper::AddSampleMask(UINT sampleMask)
     AllocateStreamData(sizeof(D3D12_PIPELINE_STATE_SUBOBJECT_TYPE) + sizeof(UINT));
 
     D3D12_PIPELINE_STATE_SUBOBJECT_TYPE subobjectType = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_SAMPLE_MASK;
-    AddStreamData(&subobjectType, sizeof(D3D12_PIPELINE_STATE_SUBOBJECT_TYPE));
-    AddStreamData(&sampleMask,    sizeof(UINT));
+
+    AddPadding();
+    AddStreamData(&subobjectType);
+    AddStreamData(&sampleMask);
 }
 
 void D3D12::D3D12Utils::StateSubobjectHelper::AddNodeMask(UINT nodeMask)
@@ -242,8 +245,10 @@ void D3D12::D3D12Utils::StateSubobjectHelper::AddNodeMask(UINT nodeMask)
     D3D12_NODE_MASK data = {.NodeMask = nodeMask};
 
     D3D12_PIPELINE_STATE_SUBOBJECT_TYPE subobjectType = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_NODE_MASK;
-    AddStreamData(&subobjectType, sizeof(D3D12_PIPELINE_STATE_SUBOBJECT_TYPE));
-    AddStreamData(&data,          sizeof(D3D12_NODE_MASK));
+
+    AddPadding();
+    AddStreamData(&subobjectType);
+    AddStreamData(&data);
 }
 
 void D3D12::D3D12Utils::StateSubobjectHelper::AddDepthStencilFormat(DXGI_FORMAT format)
@@ -251,8 +256,10 @@ void D3D12::D3D12Utils::StateSubobjectHelper::AddDepthStencilFormat(DXGI_FORMAT 
     AllocateStreamData(sizeof(D3D12_PIPELINE_STATE_SUBOBJECT_TYPE) + sizeof(DXGI_FORMAT));
 
     D3D12_PIPELINE_STATE_SUBOBJECT_TYPE subobjectType = D3D12_PIPELINE_STATE_SUBOBJECT_TYPE_DEPTH_STENCIL_FORMAT;
-    AddStreamData(&subobjectType, sizeof(D3D12_PIPELINE_STATE_SUBOBJECT_TYPE));
-    AddStreamData(&format,        sizeof(DXGI_FORMAT));
+
+    AddPadding();
+    AddStreamData(&subobjectType);
+    AddStreamData(&format);
 }
 
 void* D3D12::D3D12Utils::StateSubobjectHelper::GetStreamPointer() const
@@ -260,26 +267,27 @@ void* D3D12::D3D12Utils::StateSubobjectHelper::GetStreamPointer() const
     return mSubobjectStreamBlob;
 }
 
-const size_t D3D12::D3D12Utils::StateSubobjectHelper::GetStreamSize() const
+size_t D3D12::D3D12Utils::StateSubobjectHelper::GetStreamSize() const
 {
     return mStreamBlobSize;
 }
 
-void D3D12::D3D12Utils::StateSubobjectHelper::AllocateStreamData(size_t data)
+void D3D12::D3D12Utils::StateSubobjectHelper::AllocateStreamData(size_t dataSize)
 {
-    size_t addedSpace = AlignMemory(data, alignof(void*));
-    if(mStreamBlobSize + addedSpace > mStreamBlobCapacity)
+    size_t addedSpace  = AlignMemory(dataSize, alignof(void*));
+    size_t currentSize = AlignMemory(mStreamBlobSize, alignof(void*));
+    if(currentSize + addedSpace > mStreamBlobCapacity)
     {
-        ReallocateData(mStreamBlobSize + addedSpace);
+        ReallocateData(addedSpace);
     }
 }
 
-void D3D12::D3D12Utils::StateSubobjectHelper::AddStreamData(void* data, size_t dataSize)
+void D3D12::D3D12Utils::StateSubobjectHelper::AddPadding()
 {
-    assert(mStreamBlobSize + dataSize <= mStreamBlobCapacity);
+    size_t alignedSize = AlignMemory(mStreamBlobSize, alignof(void*));
+    assert(alignedSize < mStreamBlobCapacity);
 
-    memcpy(mSubobjectStreamBlob + mStreamBlobSize, data, dataSize);
-    mStreamBlobSize += dataSize;
+    mStreamBlobSize = alignedSize;
 }
 
 void D3D12::D3D12Utils::StateSubobjectHelper::AddShader(D3D12_PIPELINE_STATE_SUBOBJECT_TYPE subobjectType, const void* shaderData, size_t shaderSize)
@@ -290,18 +298,22 @@ void D3D12::D3D12Utils::StateSubobjectHelper::AddShader(D3D12_PIPELINE_STATE_SUB
     shaderBytecode.pShaderBytecode = shaderData;
     shaderBytecode.BytecodeLength  = shaderSize;
 
-    AddStreamData(&subobjectType,  sizeof(D3D12_PIPELINE_STATE_SUBOBJECT_TYPE));
-    AddStreamData(&shaderBytecode, sizeof(D3D12_SHADER_BYTECODE));
+    AddPadding();
+    AddStreamData(&subobjectType);
+    AddStreamData(&shaderBytecode);
 }
 
 void D3D12::D3D12Utils::StateSubobjectHelper::ReallocateData(size_t requiredSize)
 {
     size_t newCapacity = mStreamBlobCapacity * 2 + requiredSize;
 
-    std::byte* newData = new std::byte[newCapacity, alignof(void*)];
+    std::byte* newData = reinterpret_cast<std::byte*>(_aligned_malloc(newCapacity, alignof(void*))); //Even new is useless here - aligned new won't work there. And MSVC doesn't support aligned_alloc
+    assert(reinterpret_cast<uintptr_t>(newData) % alignof(void*) == 0);
+
+    assert(newData != nullptr);
     memcpy(newData, mSubobjectStreamBlob, mStreamBlobSize);
 
-    delete[] mSubobjectStreamBlob;
+    _aligned_free(mSubobjectStreamBlob);
     mSubobjectStreamBlob = newData;
     mStreamBlobCapacity  = newCapacity;
 }

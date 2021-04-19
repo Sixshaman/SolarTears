@@ -27,6 +27,8 @@ namespace D3D12
 		ID3D12Resource* GetSwapchainImage(uint32_t index)  const;
 		ID3D12Resource* GetCurrentImage()                  const;
 
+		UINT GetCurrentImageIndex() const;
+
 		DXGI_FORMAT GetBackbufferFormat() const;
 
 	private:

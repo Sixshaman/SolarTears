@@ -11,6 +11,7 @@ namespace D3D12
 {
 	class WorkerCommandLists;
 	class RenderableScene;
+	class SrvDescriptorManager;
 	class SwapChain;
 	class DeviceQueues;
 
@@ -37,7 +38,7 @@ namespace D3D12
 		FrameGraph(const FrameGraphConfig& frameGraphConfig);
 		~FrameGraph();
 
-		void Traverse(ThreadPool* threadPool, const WorkerCommandLists* commandLists, const RenderableScene* scene, const D3D12::ShaderManager* shaderManager, const SwapChain* swapChain, DeviceQueues* deviceQueues, uint32_t currentFrameResourceIndex);
+		void Traverse(ThreadPool* threadPool, const WorkerCommandLists* commandLists, const RenderableScene* scene, const ShaderManager* shaderManager, const SrvDescriptorManager* descriptorManager, const SwapChain* swapChain, DeviceQueues* deviceQueues, uint32_t currentFrameResourceIndex);
 
 	private:
 		void SwitchSwapchainPasses(uint32_t swapchainImageIndex);

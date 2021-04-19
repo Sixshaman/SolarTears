@@ -29,10 +29,13 @@ namespace D3D12
 		GBufferPass(ID3D12Device8* device, const FrameGraphBuilder* frameGraphBuilder, const std::string& passName);
 
 	private:
-		void CreatePipelineState(ID3D12Device8* device, const ShaderManager* shaderManager, const FrameGraphConfig* frameGraphConfig);
+		void CreatePipelineState(ID3D12Device8* device, const ShaderManager* shaderManager);
 
 	private:
 		D3D12_CPU_DESCRIPTOR_HANDLE mColorsRenderTarget;
+
+		D3D12_VIEWPORT mViewport;
+		D3D12_RECT     mScissorRect;
 
 		wil::com_ptr_nothrow<ID3D12PipelineState> mPipelineState;
 	};

@@ -11,7 +11,7 @@ D3D12::MemoryManager::~MemoryManager()
 {
 }
 
-void D3D12::MemoryManager::AllocateTextureMemory(ID3D12Device8* device, const std::vector<D3D12_RESOURCE_DESC1>& textureDescs, std::vector<UINT64>& outHeapOffsets, ID3D12Heap** outHeap) const
+void D3D12::MemoryManager::AllocateTextureMemory(ID3D12Device8* device, const std::vector<D3D12_RESOURCE_DESC1>& textureDescs, std::vector<UINT64>& outHeapOffsets, D3D12_HEAP_FLAGS heapFlags, ID3D12Heap** outHeap) const
 {
 	outHeapOffsets.clear();
 
@@ -33,7 +33,7 @@ void D3D12::MemoryManager::AllocateTextureMemory(ID3D12Device8* device, const st
 	heapDesc.Properties.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
 	heapDesc.Properties.CreationNodeMask     = 0;
 	heapDesc.Properties.VisibleNodeMask      = 0;
-	heapDesc.Flags                           = D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES;
+	heapDesc.Flags                           = heapFlags;
 
 	THROW_IF_FAILED(device->CreateHeap(&heapDesc, IID_PPV_ARGS(outHeap)));
 }

@@ -10,9 +10,23 @@
 D3D12::GBufferPass::GBufferPass(ID3D12Device8* device, const FrameGraphBuilder* frameGraphBuilder, const std::string& passName)
 {
 	//TODO: bundles
-	CreatePipelineState(device, frameGraphBuilder->GetShaderManager(), frameGraphBuilder->GetConfig());
+	CreatePipelineState(device, frameGraphBuilder->GetShaderManager());
 
 	mColorsRenderTarget = frameGraphBuilder->GetRegisteredSubresourceRtv(passName, ColorBufferImageId);
+
+	const FrameGraphConfig* frameGraphConfig = frameGraphBuilder->GetConfig();
+
+	mViewport.TopLeftX = 0.0f;
+	mViewport.TopLeftY = 0.0f;
+	mViewport.Width    = (FLOAT)frameGraphConfig->GetViewportWidth();
+	mViewport.Height   = (FLOAT)frameGraphConfig->GetViewportHeight();
+	mViewport.MinDepth = 0.0f;
+	mViewport.MaxDepth = 1.0f;
+
+	mScissorRect.left   = 0;
+	mScissorRect.top    = 0;
+	mScissorRect.right  = frameGraphConfig->GetViewportWidth();
+	mScissorRect.bottom = frameGraphConfig->GetViewportHeight();
 }
 
 D3D12::GBufferPass::~GBufferPass()
@@ -37,6 +51,8 @@ void D3D12::GBufferPass::Register(FrameGraphBuilder* frameGraphBuilder, const st
 
 void D3D12::GBufferPass::RecordExecution(ID3D12GraphicsCommandList6* commandList, const RenderableScene* scene, const ShaderManager* shaderManager, const FrameGraphConfig& frameGraphConfig) const
 {
+	UNREFERENCED_PARAMETER(frameGraphConfig);
+
 	D3D12_RENDER_PASS_RENDER_TARGET_DESC colorsRtvDesc;
 	colorsRtvDesc.cpuDescriptor                             = mColorsRenderTarget;
 	colorsRtvDesc.BeginningAccess.Type                      = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
@@ -56,6 +72,12 @@ void D3D12::GBufferPass::RecordExecution(ID3D12GraphicsCommandList6* commandList
 	commandList->SetGraphicsRootSignature(shaderManager->GetGBufferRootSignature());
 	commandList->SetPipelineState(mPipelineState.get());
 
+	std::array viewports = {mViewport};
+	commandList->RSSetViewports((UINT)viewports.size(), viewports.data());
+
+	std::array scissorRects = {mScissorRect};
+	commandList->RSSetScissorRects((UINT)scissorRects.size(), scissorRects.data());
+
 	scene->DrawObjectsOntoGBuffer(commandList, shaderManager);
 
 	commandList->EndRenderPass();
@@ -72,7 +94,7 @@ void D3D12::GBufferPass::RevalidateSrvUavDescriptors(D3D12_GPU_DESCRIPTOR_HANDLE
 	UNREFERENCED_PARAMETER(newHeapStart);
 }
 
-void D3D12::GBufferPass::CreatePipelineState(ID3D12Device8* device, const ShaderManager* shaderManager, const FrameGraphConfig* frameGraphConfig)
+void D3D12::GBufferPass::CreatePipelineState(ID3D12Device8* device, const ShaderManager* shaderManager)
 {
 	D3D12Utils::StateSubobjectHelper stateSubobjectHelper;
 

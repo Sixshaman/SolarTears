@@ -32,7 +32,7 @@ size_t D3D12::ShaderManager::GetGBufferVertexShaderSize() const
 
 size_t D3D12::ShaderManager::GetGBufferPixelShaderSize() const
 {
-	return mGBufferVertexShaderBlob->GetBufferSize();
+	return mGBufferPixelShaderBlob->GetBufferSize();
 }
 
 ID3D12RootSignature* D3D12::ShaderManager::GetGBufferRootSignature() const

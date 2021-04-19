@@ -196,7 +196,7 @@ void VulkanCBindings::FrameGraph::UnsetSwapchainImages()
 	//Update barriers
 	for(size_t i = 0; i < mSwapchainBarrierIndices.size(); i++)
 	{
-		mImageBarriers[i].image = mImages[mBackbufferRefIndex];
+		mImageBarriers[mSwapchainBarrierIndices[i]].image = mImages[mBackbufferRefIndex];
 	}
 
 	//Swap image views

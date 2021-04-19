@@ -980,7 +980,7 @@ void D3D12::FrameGraphBuilder::BuildBarriers() //When present from compute is ou
 						//Mark the swapchain barriers
 						if(barrieredTexture == nullptr)
 						{
-							afterSwapchainBarrierIndices.push_back(beforeBarriers.size() - 1);
+							afterSwapchainBarrierIndices.push_back(afterBarriers.size() - 1);
 						}
 					}
 				}
@@ -1122,6 +1122,7 @@ void D3D12::FrameGraphBuilder::BuildResourceCreateInfos(std::unordered_map<Subre
 
 	MergeImageViewInfos(outImageCreateInfos);
 	InitResourceInitialStatesAndClearValues(outImageCreateInfos); //TODO: embed it in this exact function (I don't have the time right now)
+	CleanDenyShaderResourceFlags(outImageCreateInfos);
 }
 
 void D3D12::FrameGraphBuilder::MergeImageViewInfos(std::unordered_map<SubresourceName, TextureCreateInfo>& inoutTextureCreateInfos)
@@ -1240,6 +1241,18 @@ void D3D12::FrameGraphBuilder::InitResourceInitialStatesAndClearValues(std::unor
 	}
 }
 
+void D3D12::FrameGraphBuilder::CleanDenyShaderResourceFlags(std::unordered_map<SubresourceName, TextureCreateInfo>& inoutTextureCreateInfos)
+{
+	for(auto& nameWithCreateInfo: inoutTextureCreateInfos)
+	{
+		D3D12_RESOURCE_DESC1& resourceDesc = nameWithCreateInfo.second.ResourceDesc;
+		if ((resourceDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL) == 0)
+		{
+			resourceDesc.Flags &= ~D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
+		}
+	}
+}
+
 void D3D12::FrameGraphBuilder::SetSwapchainTextures(const std::unordered_map<SubresourceName, BackbufferCreateInfo>& backbufferResourceCreateInfos, const std::vector<ID3D12Resource2*>& swapchainTextures)
 {
 	mGraphToBuild->mSwapchainImageRefs.clear();
@@ -1282,7 +1295,7 @@ void D3D12::FrameGraphBuilder::CreateTextures(ID3D12Device8* device, const std::
 
 	std::vector<UINT64> textureHeapOffsets;
 	textureHeapOffsets.reserve(textureDescsVec.size());
-	memoryAllocator->AllocateTextureMemory(device, textureDescsVec, textureHeapOffsets, mGraphToBuild->mTextureHeap.put());
+	memoryAllocator->AllocateTextureMemory(device, textureDescsVec, textureHeapOffsets, D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES, mGraphToBuild->mTextureHeap.put());
 
 	for(const auto& nameWithCreateInfo: textureCreateInfos)
 	{

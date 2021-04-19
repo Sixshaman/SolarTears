@@ -23,6 +23,9 @@ void D3D12::CopyImagePass::Register(FrameGraphBuilder* frameGraphBuilder, const 
 
 	frameGraphBuilder->RegisterReadSubresource(passName,  SrcImageId);
 	frameGraphBuilder->RegisterWriteSubresource(passName, DstImageId);
+
+	frameGraphBuilder->SetPassSubresourceState(passName, SrcImageId, D3D12_RESOURCE_STATE_COPY_SOURCE);
+	frameGraphBuilder->SetPassSubresourceState(passName, DstImageId, D3D12_RESOURCE_STATE_COPY_DEST);
 }
 
 D3D12::CopyImagePass::~CopyImagePass()
@@ -46,11 +49,11 @@ void D3D12::CopyImagePass::RecordExecution(ID3D12GraphicsCommandList6* commandLi
 
 	D3D12_BOX srcBox;
 	srcBox.left   = 0;
-	srcBox.bottom = 0;
-	srcBox.back   = 0;
+	srcBox.top    = 0;
+	srcBox.front  = 0;
 	srcBox.right  = frameGraphConfig.GetViewportWidth();
-	srcBox.top    = frameGraphConfig.GetViewportHeight();
-	srcBox.front  = 1;
+	srcBox.bottom = frameGraphConfig.GetViewportHeight();
+	srcBox.back   = 1;
 
 	commandList->CopyTextureRegion(&dstRegion, 0, 0, 0, &srcRegion, &srcBox);
 }

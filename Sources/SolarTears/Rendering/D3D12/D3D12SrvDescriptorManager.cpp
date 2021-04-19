@@ -2,12 +2,17 @@
 #include "Scene/D3D12SceneDescriptorCreator.hpp"
 #include "FrameGraph/D3D12FrameGraphDescriptorCreator.hpp"
 
-D3D12::SrvDescriptorManager::SrvDescriptorManager(ID3D12Device* device): mSceneSrvDescriptorCount(0), mFrameGraphSrvDescriptorCount(0)
+D3D12::SrvDescriptorManager::SrvDescriptorManager(): mSceneSrvDescriptorCount(0), mFrameGraphSrvDescriptorCount(0)
 {
 }
 
 D3D12::SrvDescriptorManager::~SrvDescriptorManager()
 {
+}
+
+ID3D12DescriptorHeap* D3D12::SrvDescriptorManager::GetSrvUavCbvHeap() const
+{
+	return mSrvUavCbvDescriptorHeap.get();
 }
 
 void D3D12::SrvDescriptorManager::ValidateDescriptorHeaps(ID3D12Device* device, SceneDescriptorCreator* sceneDescriptorCreator, FrameGraphDescriptorCreator* frameGraphDescriptorCreator, uint32_t flags)
@@ -44,7 +49,7 @@ void D3D12::SrvDescriptorManager::ValidateDescriptorHeaps(ID3D12Device* device, 
 		srvHeapDescriptorAddressGpu.ptr += sceneSrvDescriptorsCount * srvUavCbvDescriptorSize;
 
 		D3D12_GPU_DESCRIPTOR_HANDLE prevFrameGraphStartAddress;
-		if(!(flags & FLAG_FRAME_GRAPH_UNCHANGED))
+		if(!(flags & FLAG_FRAME_GRAPH_UNCHANGED) || mSrvUavCbvDescriptorHeap == nullptr)
 		{
 			prevFrameGraphStartAddress.ptr = 0; //Frame graph was just created, the previous descriptors are laid in pseudo-heap starting from address 0
 		}

@@ -15,8 +15,10 @@ namespace D3D12
 		static constexpr uint32_t FLAG_FRAME_GRAPH_UNCHANGED = 0x2;
 
 	public:
-		SrvDescriptorManager(ID3D12Device* device);
+		SrvDescriptorManager();
 		~SrvDescriptorManager();
+
+		ID3D12DescriptorHeap* GetSrvUavCbvHeap() const;
 
 		void ValidateDescriptorHeaps(ID3D12Device* device, SceneDescriptorCreator* sceneDescriptorCreator, FrameGraphDescriptorCreator* frameGraphDescriptorCreator, uint32_t flags);
 
