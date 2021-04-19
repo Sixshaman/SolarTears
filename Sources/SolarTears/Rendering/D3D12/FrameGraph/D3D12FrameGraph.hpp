@@ -37,15 +37,15 @@ namespace D3D12
 		FrameGraph(const FrameGraphConfig& frameGraphConfig);
 		~FrameGraph();
 
-		void Traverse(ThreadPool* threadPool, WorkerCommandLists* commandLists, RenderableScene* scene, SwapChain* swapChain, DeviceQueues* deviceQueues, uint32_t currentFrameResourceIndex);
+		void Traverse(ThreadPool* threadPool, const WorkerCommandLists* commandLists, const RenderableScene* scene, const D3D12::ShaderManager* shaderManager, const SwapChain* swapChain, DeviceQueues* deviceQueues, uint32_t currentFrameResourceIndex);
 
 	private:
 		void SwitchSwapchainPasses(uint32_t swapchainImageIndex);
 		void SwitchSwapchainImages(uint32_t swapchainImageIndex);
 
-		void BeginCommandList(ID3D12GraphicsCommandList* commandList, ID3D12CommandAllocator* commandAllocator, uint32_t dependencyLevelSpanIndex) const;
-		void RecordGraphicsPasses(ID3D12GraphicsCommandList6* commandList, const RenderableScene* scene, uint32_t dependencyLevelSpanIndex)        const;
-		void EndCommandList(ID3D12GraphicsCommandList* commandList)                                                                                const;
+		void BeginCommandList(ID3D12GraphicsCommandList* commandList, ID3D12CommandAllocator* commandAllocator, uint32_t dependencyLevelSpanIndex)                              const;
+		void RecordGraphicsPasses(ID3D12GraphicsCommandList6* commandList, const RenderableScene* scene, const ShaderManager* shaderManager, uint32_t dependencyLevelSpanIndex) const;
+		void EndCommandList(ID3D12GraphicsCommandList* commandList)                                                                                                             const;
 
 	private:
 		FrameGraphConfig mFrameGraphConfig;
@@ -55,19 +55,15 @@ namespace D3D12
 
 		std::vector<DependencyLevelSpan> mGraphicsPassSpans;
 
-		std::vector<ID3D12Resource2*>            mTextures;
-		std::vector<D3D12_GPU_DESCRIPTOR_HANDLE> mGpuDescriptors;
-		std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> mCpuDescriptors;
+		std::vector<ID3D12Resource2*> mTextures;
 
 		std::vector<wil::com_ptr_nothrow<ID3D12Resource2>> mOwnedResources; //All resources that the frame graph owns
 		wil::com_ptr_nothrow<ID3D12Heap>                   mTextureHeap;
 
 		//Swapchain images and related data
-		uint32_t                                 mBackbufferRefIndex;
-		uint32_t                                 mLastSwapchainImageIndex;
-		std::vector<ID3D12Resource2*>            mSwapchainImageRefs;
-		std::vector<D3D12_CPU_DESCRIPTOR_HANDLE> mSwapchainCpuDescriptors;
-		std::vector<D3D12_GPU_DESCRIPTOR_HANDLE> mSwapchainGpuDescriptors;
+		uint32_t                      mBackbufferRefIndex;
+		uint32_t                      mLastSwapchainImageIndex;
+		std::vector<ID3D12Resource2*> mSwapchainImageRefs;
 
 		std::vector<D3D12_RESOURCE_BARRIER> mResourceBarriers;
 		std::vector<uint32_t>               mSwapchainBarrierIndices;
@@ -78,8 +74,12 @@ namespace D3D12
 		//View to replace is taken from   mSwapchainImageViews[i * (SwapchainFrameCount + 1) + currentSwapchainImageIndex + 1]
 		//The reason to use it is to make mRenderPasses always relate to passes actually used
 		std::vector<uint32_t> mSwapchainPassesSwapMap;
-		std::vector<uint32_t> mSwapchainCpuDescriptorSwapMap;
-		std::vector<uint32_t> mSwapchainGpuDescriptorSwapMap;
+
+		wil::com_ptr_nothrow<ID3D12DescriptorHeap> mSrvUavDescriptorHeap; //NOT shader-visible
+		wil::com_ptr_nothrow<ID3D12DescriptorHeap> mRtvDescriptorHeap;
+		wil::com_ptr_nothrow<ID3D12DescriptorHeap> mDsvDescriptorHeap;
+
+		UINT mSrvUavDescriptorCount;
 
 		//Used to track the command buffers that were used to record render passes
 		std::vector<ID3D12CommandList*> mFrameRecordedGraphicsCommandLists;

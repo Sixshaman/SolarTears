@@ -7,7 +7,7 @@
 #include "../../../FrameGraphConfig.hpp"
 #include <array>
 
-D3D12::GBufferPass::GBufferPass(ID3D12Device8* device, const FrameGraphBuilder* frameGraphBuilder, const std::string& passName): mFrameGraphTextureIndex((uint32_t)(-1))
+D3D12::GBufferPass::GBufferPass(ID3D12Device8* device, const FrameGraphBuilder* frameGraphBuilder, const std::string& passName)
 {
 	//TODO: bundles
 	CreatePipelineState(device, frameGraphBuilder->GetShaderManager(), frameGraphBuilder->GetConfig());
@@ -62,6 +62,12 @@ void D3D12::GBufferPass::RecordExecution(ID3D12GraphicsCommandList6* commandList
 ID3D12PipelineState* D3D12::GBufferPass::FirstPipeline() const
 {
 	return mPipelineState.get();
+}
+
+void D3D12::GBufferPass::RevalidateSrvUavDescriptors(D3D12_GPU_DESCRIPTOR_HANDLE prevHeapStart, D3D12_GPU_DESCRIPTOR_HANDLE newHeapStart)
+{
+	UNREFERENCED_PARAMETER(prevHeapStart);
+	UNREFERENCED_PARAMETER(newHeapStart);
 }
 
 void D3D12::GBufferPass::CreatePipelineState(ID3D12Device8* device, const ShaderManager* shaderManager, const FrameGraphConfig* frameGraphConfig)

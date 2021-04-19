@@ -55,6 +55,12 @@ void D3D12::CopyImagePass::RecordExecution(ID3D12GraphicsCommandList6* commandLi
 	commandList->CopyTextureRegion(&dstRegion, 0, 0, 0, &srcRegion, &srcBox);
 }
 
+void D3D12::CopyImagePass::RevalidateSrvUavDescriptors(D3D12_GPU_DESCRIPTOR_HANDLE prevHeapStart, D3D12_GPU_DESCRIPTOR_HANDLE newHeapStart)
+{
+	UNREFERENCED_PARAMETER(prevHeapStart);
+	UNREFERENCED_PARAMETER(newHeapStart);
+}
+
 ID3D12PipelineState* D3D12::CopyImagePass::FirstPipeline() const
 {
 	return nullptr; //No pipeline is used by that pass

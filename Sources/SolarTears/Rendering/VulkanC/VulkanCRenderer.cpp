@@ -18,7 +18,7 @@
 #include <array>
 #include <unordered_set>
 
-#include "FrameGraph/Passes/VulkanCGBufferRenderPass.hpp"
+#include "FrameGraph/Passes/VulkanCGBufferPass.hpp"
 #include "FrameGraph/Passes/VulkanCCopyImagePass.hpp"
 
 VulkanCBindings::Renderer::Renderer(LoggerQueue* loggerQueue, FrameCounter* frameCounter, ThreadPool* threadPool): ::Renderer(loggerQueue), mInstanceParameters(loggerQueue), mDeviceParameters(loggerQueue), mThreadPoolRef(threadPool), mFrameCounterRef(frameCounter)

@@ -60,7 +60,7 @@
     <ClInclude Include="Rendering\D3D12\D3D12SwapChain.hpp" />
     <ClInclude Include="Rendering\D3D12\D3D12Utils.hpp" />
     <ClInclude Include="Rendering\D3D12\D3D12WorkerCommandLists.hpp" />
-    <ClInclude Include="Rendering\D3D12\D3D12DescriptorManager.hpp" />
+    <ClInclude Include="Rendering\D3D12\D3D12SrvDescriptorManager.hpp" />
     <ClInclude Include="Rendering\D3D12\FrameGraph\D3D12FrameGraph.hpp" />
     <ClInclude Include="Rendering\D3D12\FrameGraph\D3D12FrameGraphBuilder.hpp" />
     <ClInclude Include="Rendering\D3D12\FrameGraph\D3D12FrameGraphDescriptorCreator.hpp" />
@@ -120,7 +120,7 @@
     <ClCompile Include="Platform\Win32\Win32KeyboardKeyMap.cpp" />
     <ClCompile Include="Platform\Win32\Win32MouseKeyMap.cpp" />
     <ClCompile Include="Platform\Win32\Win32Window.cpp" />
-    <ClCompile Include="Rendering\D3D12\D3D12DescriptorManager.cpp" />
+    <ClCompile Include="Rendering\D3D12\D3D12SrvDescriptorManager.cpp" />
     <ClCompile Include="Rendering\D3D12\D3D12DeviceFeatures.cpp" />
     <ClCompile Include="Rendering\D3D12\D3D12DeviceQueues.cpp" />
     <ClCompile Include="Rendering\D3D12\D3D12Memory.cpp" />

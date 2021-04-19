@@ -21,6 +21,8 @@ namespace D3D12
 
 		ID3D12PipelineState* FirstPipeline() const override;
 
+		void RevalidateSrvUavDescriptors(D3D12_GPU_DESCRIPTOR_HANDLE prevHeapStart, D3D12_GPU_DESCRIPTOR_HANDLE newHeapStart) override;
+
 		static void Register(FrameGraphBuilder* frameGraphBuilder, const std::string& passName);
 
 	private:
@@ -31,7 +33,6 @@ namespace D3D12
 
 	private:
 		D3D12_CPU_DESCRIPTOR_HANDLE mColorsRenderTarget;
-		uint32_t                    mFrameGraphTextureIndex;
 
 		wil::com_ptr_nothrow<ID3D12PipelineState> mPipelineState;
 	};

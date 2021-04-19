@@ -64,6 +64,9 @@ void D3D12::FrameGraphBuilder::RegisterReadSubresource(const std::string_view pa
 	subresourceMetadata.QueueOwnership   = D3D12_COMMAND_LIST_TYPE_DIRECT;
 	subresourceMetadata.Format           = DXGI_FORMAT_UNKNOWN;
 	subresourceMetadata.ImageIndex       = (uint32_t)(-1);
+	subresourceMetadata.SrvIndex         = (uint32_t)(-1);
+	subresourceMetadata.RtvIndex         = (uint32_t)(-1);
+	subresourceMetadata.DsvIndex         = (uint32_t)(-1);
 	subresourceMetadata.ResourceState    = D3D12_RESOURCE_STATE_COMMON;
 
 	mSubresourceMetadataCounter++;
@@ -98,6 +101,9 @@ void D3D12::FrameGraphBuilder::RegisterWriteSubresource(const std::string_view p
 	subresourceMetadata.QueueOwnership   = D3D12_COMMAND_LIST_TYPE_DIRECT;
 	subresourceMetadata.Format           = DXGI_FORMAT_UNKNOWN;
 	subresourceMetadata.ImageIndex       = (uint32_t)(-1);
+	subresourceMetadata.SrvIndex         = (uint32_t)(-1);
+	subresourceMetadata.RtvIndex         = (uint32_t)(-1);
+	subresourceMetadata.DsvIndex         = (uint32_t)(-1);
 	subresourceMetadata.ResourceState    = D3D12_RESOURCE_STATE_COMMON;
 
 	mSubresourceMetadataCounter++;
@@ -132,6 +138,9 @@ void D3D12::FrameGraphBuilder::AssignBackbufferName(const std::string_view backb
 	presentAcquirePassMetadata.QueueOwnership   = D3D12_COMMAND_LIST_TYPE_DIRECT;
 	presentAcquirePassMetadata.Format           = DXGI_FORMAT_UNKNOWN;
 	presentAcquirePassMetadata.ImageIndex       = (uint32_t)(-1);
+	presentAcquirePassMetadata.SrvIndex         = (uint32_t)(-1);
+	presentAcquirePassMetadata.RtvIndex         = (uint32_t)(-1);
+	presentAcquirePassMetadata.DsvIndex         = (uint32_t)(-1);
 	presentAcquirePassMetadata.ResourceState    = D3D12_RESOURCE_STATE_COMMON;
 
 	mSubresourceMetadataCounter++;

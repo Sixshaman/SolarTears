@@ -18,9 +18,11 @@ namespace D3D12
 		static void Register(FrameGraphBuilder* frameGraphBuilder, const std::string& passName);
 		~CopyImagePass();
 
+		ID3D12PipelineState* FirstPipeline() const override;
+
 		void RecordExecution(ID3D12GraphicsCommandList6* commandList, const RenderableScene* scene, const ShaderManager* shaderManager, const FrameGraphConfig& frameGraphConfig) const override;
 
-		ID3D12PipelineState* FirstPipeline() const override;
+		void RevalidateSrvUavDescriptors(D3D12_GPU_DESCRIPTOR_HANDLE prevHeapStart, D3D12_GPU_DESCRIPTOR_HANDLE newHeapStart) override;
 
 	private:
 		CopyImagePass(ID3D12Device8* device, const FrameGraphBuilder* frameGraphBuilder, const std::string& currentPassName);

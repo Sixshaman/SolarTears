@@ -22,7 +22,7 @@ namespace D3D12
 		void BindToWindow(IDXGIFactory4* factory, DeviceQueues* deviceQueues, Window* window);
 		void Resize(DeviceQueues* deviceQueues, Window* window);
 
-		void Present();
+		void Present() const;
 
 		ID3D12Resource* GetSwapchainImage(uint32_t index)  const;
 		ID3D12Resource* GetCurrentImage()                  const;

@@ -294,7 +294,7 @@
     <ClInclude Include="..\3rdParty\SPIRV-Reflect\include\spirv\unified1\spirv.h">
       <Filter>3rdParty\SPIRV-Reflect\include\spirv\unified1</Filter>
     </ClInclude>
-    <ClInclude Include="Rendering\D3D12\D3D12DescriptorManager.hpp">
+    <ClInclude Include="Rendering\D3D12\D3D12SrvDescriptorManager.hpp">
       <Filter>Rendering\D3D12</Filter>
     </ClInclude>
     <ClInclude Include="Rendering\D3D12\Scene\D3D12SceneDescriptorCreator.hpp">
@@ -494,7 +494,7 @@
     <ClCompile Include="Rendering\D3D12\Scene\D3D12SceneDescriptorCreator.cpp">
       <Filter>Rendering\D3D12\Scene</Filter>
     </ClCompile>
-    <ClCompile Include="Rendering\D3D12\D3D12DescriptorManager.cpp">
+    <ClCompile Include="Rendering\D3D12\D3D12SrvDescriptorManager.cpp">
       <Filter>Rendering\D3D12</Filter>
     </ClCompile>
     <ClCompile Include="Rendering\D3D12\FrameGraph\D3D12FrameGraph.cpp">
