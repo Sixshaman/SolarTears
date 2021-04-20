@@ -1,14 +1,14 @@
-#include "VulkanCFrameGraphBuilder.hpp"
-#include "VulkanCFrameGraph.hpp"
-#include "../VulkanCInstanceParameters.hpp"
-#include "../VulkanCWorkerCommandBuffers.hpp"
-#include "../VulkanCFunctions.hpp"
-#include "../VulkanCMemory.hpp"
-#include "../VulkanCSwapChain.hpp"
-#include "../VulkanCDeviceQueues.hpp"
+#include "VulkanFrameGraphBuilder.hpp"
+#include "VulkanFrameGraph.hpp"
+#include "../VulkanInstanceParameters.hpp"
+#include "../VulkanWorkerCommandBuffers.hpp"
+#include "../VulkanFunctions.hpp"
+#include "../VulkanMemory.hpp"
+#include "../VulkanSwapChain.hpp"
+#include "../VulkanDeviceQueues.hpp"
 #include <algorithm>
 
-VulkanCBindings::FrameGraphBuilder::FrameGraphBuilder(FrameGraph* graphToBuild, const RenderableScene* scene, const InstanceParameters* instanceParameters, const DeviceParameters* deviceParameters, const ShaderManager* shaderManager): mGraphToBuild(graphToBuild), mScene(scene), mInstanceParameters(instanceParameters), mDeviceParameters(deviceParameters), mShaderManager(shaderManager)
+Vulkan::FrameGraphBuilder::FrameGraphBuilder(FrameGraph* graphToBuild, const RenderableScene* scene, const InstanceParameters* instanceParameters, const DeviceParameters* deviceParameters, const ShaderManager* shaderManager): mGraphToBuild(graphToBuild), mScene(scene), mInstanceParameters(instanceParameters), mDeviceParameters(deviceParameters), mShaderManager(shaderManager)
 {
 	mSubresourceMetadataCounter = 0;
 
@@ -23,11 +23,11 @@ VulkanCBindings::FrameGraphBuilder::FrameGraphBuilder(FrameGraph* graphToBuild, 
 	RegisterReadSubresource(PresentPassName, BackbufferPresentPassId);
 }
 
-VulkanCBindings::FrameGraphBuilder::~FrameGraphBuilder()
+Vulkan::FrameGraphBuilder::~FrameGraphBuilder()
 {
 }
 
-void VulkanCBindings::FrameGraphBuilder::RegisterRenderPass(const std::string_view passName, RenderPassCreateFunc createFunc, RenderPassType passType)
+void Vulkan::FrameGraphBuilder::RegisterRenderPass(const std::string_view passName, RenderPassCreateFunc createFunc, RenderPassType passType)
 {
 	RenderPassName renderPassName(passName);
 	assert(!mRenderPassCreateFunctions.contains(renderPassName));
@@ -38,7 +38,7 @@ void VulkanCBindings::FrameGraphBuilder::RegisterRenderPass(const std::string_vi
 	mRenderPassTypes[renderPassName] = passType;
 }
 
-void VulkanCBindings::FrameGraphBuilder::RegisterReadSubresource(const std::string_view passName, const std::string_view subresourceId)
+void Vulkan::FrameGraphBuilder::RegisterReadSubresource(const std::string_view passName, const std::string_view subresourceId)
 {
 	RenderPassName renderPassName(passName);
 
@@ -77,7 +77,7 @@ void VulkanCBindings::FrameGraphBuilder::RegisterReadSubresource(const std::stri
 	mRenderPassesSubresourceMetadatas[renderPassName][subresId] = subresourceMetadata;
 }
 
-void VulkanCBindings::FrameGraphBuilder::RegisterWriteSubresource(const std::string_view passName, const std::string_view subresourceId)
+void Vulkan::FrameGraphBuilder::RegisterWriteSubresource(const std::string_view passName, const std::string_view subresourceId)
 {
 	RenderPassName renderPassName(passName);
 
@@ -116,7 +116,7 @@ void VulkanCBindings::FrameGraphBuilder::RegisterWriteSubresource(const std::str
 	mRenderPassesSubresourceMetadatas[renderPassName][subresId] = subresourceMetadata;
 }
 
-void VulkanCBindings::FrameGraphBuilder::AssignSubresourceName(const std::string_view passName, const std::string_view subresourceId, const std::string_view subresourceName)
+void Vulkan::FrameGraphBuilder::AssignSubresourceName(const std::string_view passName, const std::string_view subresourceId, const std::string_view subresourceName)
 {
 	RenderPassName  passNameStr(passName);
 	SubresourceId   subresourceIdStr(subresourceId);
@@ -129,7 +129,7 @@ void VulkanCBindings::FrameGraphBuilder::AssignSubresourceName(const std::string
 	mRenderPassesSubresourceNameIds[passNameStr][subresourceNameStr] = subresourceIdStr;
 }
 
-void VulkanCBindings::FrameGraphBuilder::AssignBackbufferName(const std::string_view backbufferName)
+void Vulkan::FrameGraphBuilder::AssignBackbufferName(const std::string_view backbufferName)
 {
 	mBackbufferName = backbufferName;
 
@@ -157,7 +157,7 @@ void VulkanCBindings::FrameGraphBuilder::AssignBackbufferName(const std::string_
 	mRenderPassesSubresourceMetadatas[std::string(PresentPassName)][std::string(BackbufferPresentPassId)] = presentAcquirePassMetadata;
 }
 
-void VulkanCBindings::FrameGraphBuilder::SetPassSubresourceFormat(const std::string_view passName, const std::string_view subresourceId, VkFormat format)
+void Vulkan::FrameGraphBuilder::SetPassSubresourceFormat(const std::string_view passName, const std::string_view subresourceId, VkFormat format)
 {
 	RenderPassName passNameStr(passName);
 	SubresourceId  subresourceIdStr(subresourceId);
@@ -165,7 +165,7 @@ void VulkanCBindings::FrameGraphBuilder::SetPassSubresourceFormat(const std::str
 	mRenderPassesSubresourceMetadatas[passNameStr][subresourceIdStr].Format = format;
 }
 
-void VulkanCBindings::FrameGraphBuilder::SetPassSubresourceLayout(const std::string_view passName, const std::string_view subresourceId, VkImageLayout layout)
+void Vulkan::FrameGraphBuilder::SetPassSubresourceLayout(const std::string_view passName, const std::string_view subresourceId, VkImageLayout layout)
 {
 	RenderPassName passNameStr(passName);
 	SubresourceId  subresourceIdStr(subresourceId);
@@ -173,7 +173,7 @@ void VulkanCBindings::FrameGraphBuilder::SetPassSubresourceLayout(const std::str
 	mRenderPassesSubresourceMetadatas[passNameStr][subresourceIdStr].Layout = layout;
 }
 
-void VulkanCBindings::FrameGraphBuilder::SetPassSubresourceUsage(const std::string_view passName, const std::string_view subresourceId, VkImageUsageFlags usage)
+void Vulkan::FrameGraphBuilder::SetPassSubresourceUsage(const std::string_view passName, const std::string_view subresourceId, VkImageUsageFlags usage)
 {
 	RenderPassName passNameStr(passName);
 	SubresourceId  subresourceIdStr(subresourceId);
@@ -181,7 +181,7 @@ void VulkanCBindings::FrameGraphBuilder::SetPassSubresourceUsage(const std::stri
 	mRenderPassesSubresourceMetadatas[passNameStr][subresourceIdStr].UsageFlags = usage;
 }
 
-void VulkanCBindings::FrameGraphBuilder::SetPassSubresourceAspectFlags(const std::string_view passName, const std::string_view subresourceId, VkImageAspectFlags aspect)
+void Vulkan::FrameGraphBuilder::SetPassSubresourceAspectFlags(const std::string_view passName, const std::string_view subresourceId, VkImageAspectFlags aspect)
 {
 	RenderPassName passNameStr(passName);
 	SubresourceId  subresourceIdStr(subresourceId);
@@ -189,7 +189,7 @@ void VulkanCBindings::FrameGraphBuilder::SetPassSubresourceAspectFlags(const std
 	mRenderPassesSubresourceMetadatas[passNameStr][subresourceIdStr].AspectFlags = aspect;
 }
 
-void VulkanCBindings::FrameGraphBuilder::SetPassSubresourceStageFlags(const std::string_view passName, const std::string_view subresourceId, VkPipelineStageFlags stage)
+void Vulkan::FrameGraphBuilder::SetPassSubresourceStageFlags(const std::string_view passName, const std::string_view subresourceId, VkPipelineStageFlags stage)
 {
 	RenderPassName passNameStr(passName);
 	SubresourceId  subresourceIdStr(subresourceId);
@@ -197,7 +197,7 @@ void VulkanCBindings::FrameGraphBuilder::SetPassSubresourceStageFlags(const std:
 	mRenderPassesSubresourceMetadatas[passNameStr][subresourceIdStr].PipelineStageFlags = stage;
 }
 
-void VulkanCBindings::FrameGraphBuilder::SetPassSubresourceAccessFlags(const std::string_view passName, const std::string_view subresourceId, VkAccessFlags accessFlags)
+void Vulkan::FrameGraphBuilder::SetPassSubresourceAccessFlags(const std::string_view passName, const std::string_view subresourceId, VkAccessFlags accessFlags)
 {
 	RenderPassName passNameStr(passName);
 	SubresourceId  subresourceIdStr(subresourceId);
@@ -205,7 +205,7 @@ void VulkanCBindings::FrameGraphBuilder::SetPassSubresourceAccessFlags(const std
 	mRenderPassesSubresourceMetadatas[passNameStr][subresourceIdStr].AccessFlags = accessFlags;
 }
 
-void VulkanCBindings::FrameGraphBuilder::EnableSubresourceAutoBarrier(const std::string_view passName, const std::string_view subresourceId, bool autoBaarrier)
+void Vulkan::FrameGraphBuilder::EnableSubresourceAutoBarrier(const std::string_view passName, const std::string_view subresourceId, bool autoBaarrier)
 {
 	RenderPassName passNameStr(passName);
 	SubresourceId  subresourceIdStr(subresourceId);
@@ -220,27 +220,27 @@ void VulkanCBindings::FrameGraphBuilder::EnableSubresourceAutoBarrier(const std:
 	}
 }
 
-const VulkanCBindings::RenderableScene* VulkanCBindings::FrameGraphBuilder::GetScene() const
+const Vulkan::RenderableScene* Vulkan::FrameGraphBuilder::GetScene() const
 {
 	return mScene;
 }
 
-const VulkanCBindings::DeviceParameters* VulkanCBindings::FrameGraphBuilder::GetDeviceParameters() const
+const Vulkan::DeviceParameters* Vulkan::FrameGraphBuilder::GetDeviceParameters() const
 {
 	return mDeviceParameters;
 }
 
-const VulkanCBindings::ShaderManager* VulkanCBindings::FrameGraphBuilder::GetShaderManager() const
+const Vulkan::ShaderManager* Vulkan::FrameGraphBuilder::GetShaderManager() const
 {
 	return mShaderManager;
 }
 
-const FrameGraphConfig* VulkanCBindings::FrameGraphBuilder::GetConfig() const
+const FrameGraphConfig* Vulkan::FrameGraphBuilder::GetConfig() const
 {
 	return &mGraphToBuild->mFrameGraphConfig;
 }
 
-VkImage VulkanCBindings::FrameGraphBuilder::GetRegisteredResource(const std::string_view passName, const std::string_view subresourceId) const
+VkImage Vulkan::FrameGraphBuilder::GetRegisteredResource(const std::string_view passName, const std::string_view subresourceId) const
 {
 	const RenderPassName passNameStr(passName);
 	const SubresourceId  subresourceIdStr(subresourceId);
@@ -256,7 +256,7 @@ VkImage VulkanCBindings::FrameGraphBuilder::GetRegisteredResource(const std::str
 	}
 }
 
-VkImageView VulkanCBindings::FrameGraphBuilder::GetRegisteredSubresource(const std::string_view passName, const std::string_view subresourceId) const
+VkImageView Vulkan::FrameGraphBuilder::GetRegisteredSubresource(const std::string_view passName, const std::string_view subresourceId) const
 {
 	const RenderPassName passNameStr(passName);
 	const SubresourceId  subresourceIdStr(subresourceId);
@@ -272,7 +272,7 @@ VkImageView VulkanCBindings::FrameGraphBuilder::GetRegisteredSubresource(const s
 	}
 }
 
-VkFormat VulkanCBindings::FrameGraphBuilder::GetRegisteredSubresourceFormat(const std::string_view passName, const std::string_view subresourceId) const
+VkFormat Vulkan::FrameGraphBuilder::GetRegisteredSubresourceFormat(const std::string_view passName, const std::string_view subresourceId) const
 {
 	const RenderPassName passNameStr(passName);
 	const SubresourceId  subresourceIdStr(subresourceId);
@@ -281,7 +281,7 @@ VkFormat VulkanCBindings::FrameGraphBuilder::GetRegisteredSubresourceFormat(cons
 	return metadata.Format;
 }
 
-VkImageLayout VulkanCBindings::FrameGraphBuilder::GetRegisteredSubresourceLayout(const std::string_view passName, const std::string_view subresourceId) const
+VkImageLayout Vulkan::FrameGraphBuilder::GetRegisteredSubresourceLayout(const std::string_view passName, const std::string_view subresourceId) const
 {
 	const RenderPassName passNameStr(passName);
 	const SubresourceId  subresourceIdStr(subresourceId);
@@ -290,7 +290,7 @@ VkImageLayout VulkanCBindings::FrameGraphBuilder::GetRegisteredSubresourceLayout
 	return metadata.Layout;
 }
 
-VkImageUsageFlags VulkanCBindings::FrameGraphBuilder::GetRegisteredSubresourceUsage(const std::string_view passName, const std::string_view subresourceId) const
+VkImageUsageFlags Vulkan::FrameGraphBuilder::GetRegisteredSubresourceUsage(const std::string_view passName, const std::string_view subresourceId) const
 {
 	const RenderPassName passNameStr(passName);
 	const SubresourceId  subresourceIdStr(subresourceId);
@@ -299,7 +299,7 @@ VkImageUsageFlags VulkanCBindings::FrameGraphBuilder::GetRegisteredSubresourceUs
 	return metadata.UsageFlags;
 }
 
-VkPipelineStageFlags VulkanCBindings::FrameGraphBuilder::GetRegisteredSubresourceStageFlags(const std::string_view passName, const std::string_view subresourceId) const
+VkPipelineStageFlags Vulkan::FrameGraphBuilder::GetRegisteredSubresourceStageFlags(const std::string_view passName, const std::string_view subresourceId) const
 {
 	const RenderPassName passNameStr(passName);
 	const SubresourceId  subresourceIdStr(subresourceId);
@@ -308,7 +308,7 @@ VkPipelineStageFlags VulkanCBindings::FrameGraphBuilder::GetRegisteredSubresourc
 	return metadata.PipelineStageFlags;
 }
 
-VkImageAspectFlags VulkanCBindings::FrameGraphBuilder::GetRegisteredSubresourceAspectFlags(const std::string_view passName, const std::string_view subresourceId) const
+VkImageAspectFlags Vulkan::FrameGraphBuilder::GetRegisteredSubresourceAspectFlags(const std::string_view passName, const std::string_view subresourceId) const
 {
 	const RenderPassName passNameStr(passName);
 	const SubresourceId  subresourceIdStr(subresourceId);
@@ -317,7 +317,7 @@ VkImageAspectFlags VulkanCBindings::FrameGraphBuilder::GetRegisteredSubresourceA
 	return metadata.AspectFlags;
 }
 
-VkAccessFlags VulkanCBindings::FrameGraphBuilder::GetRegisteredSubresourceAccessFlags(const std::string_view passName, const std::string_view subresourceId) const
+VkAccessFlags Vulkan::FrameGraphBuilder::GetRegisteredSubresourceAccessFlags(const std::string_view passName, const std::string_view subresourceId) const
 {
 	const RenderPassName passNameStr(passName);
 	const SubresourceId  subresourceIdStr(subresourceId);
@@ -326,7 +326,7 @@ VkAccessFlags VulkanCBindings::FrameGraphBuilder::GetRegisteredSubresourceAccess
 	return metadata.AccessFlags;
 }
 
-VkImageLayout VulkanCBindings::FrameGraphBuilder::GetPreviousPassSubresourceLayout(const std::string_view passName, const std::string_view subresourceId) const
+VkImageLayout Vulkan::FrameGraphBuilder::GetPreviousPassSubresourceLayout(const std::string_view passName, const std::string_view subresourceId) const
 {
 	const RenderPassName passNameStr(passName);
 	const SubresourceId  subresourceIdStr(subresourceId);
@@ -342,7 +342,7 @@ VkImageLayout VulkanCBindings::FrameGraphBuilder::GetPreviousPassSubresourceLayo
 	}
 }
 
-VkImageUsageFlags VulkanCBindings::FrameGraphBuilder::GetPreviousPassSubresourceUsage(const std::string_view passName, const std::string_view subresourceId) const
+VkImageUsageFlags Vulkan::FrameGraphBuilder::GetPreviousPassSubresourceUsage(const std::string_view passName, const std::string_view subresourceId) const
 {
 	const RenderPassName passNameStr(passName);
 	const SubresourceId  subresourceIdStr(subresourceId);
@@ -358,7 +358,7 @@ VkImageUsageFlags VulkanCBindings::FrameGraphBuilder::GetPreviousPassSubresource
 	}
 }
 
-VkPipelineStageFlags VulkanCBindings::FrameGraphBuilder::GetPreviousPassSubresourceStageFlags(const std::string_view passName, const std::string_view subresourceId) const
+VkPipelineStageFlags Vulkan::FrameGraphBuilder::GetPreviousPassSubresourceStageFlags(const std::string_view passName, const std::string_view subresourceId) const
 {
 	const RenderPassName passNameStr(passName);
 	const SubresourceId  subresourceIdStr(subresourceId);
@@ -374,7 +374,7 @@ VkPipelineStageFlags VulkanCBindings::FrameGraphBuilder::GetPreviousPassSubresou
 	}
 }
 
-VkImageAspectFlags VulkanCBindings::FrameGraphBuilder::GetPreviousPassSubresourceAspectFlags(const std::string_view passName, const std::string_view subresourceId) const
+VkImageAspectFlags Vulkan::FrameGraphBuilder::GetPreviousPassSubresourceAspectFlags(const std::string_view passName, const std::string_view subresourceId) const
 {
 	const RenderPassName passNameStr(passName);
 	const SubresourceId  subresourceIdStr(subresourceId);
@@ -390,7 +390,7 @@ VkImageAspectFlags VulkanCBindings::FrameGraphBuilder::GetPreviousPassSubresourc
 	}
 }
 
-VkAccessFlags VulkanCBindings::FrameGraphBuilder::GetPreviousPassSubresourceAccessFlags(const std::string_view passName, const std::string_view subresourceId) const
+VkAccessFlags Vulkan::FrameGraphBuilder::GetPreviousPassSubresourceAccessFlags(const std::string_view passName, const std::string_view subresourceId) const
 {
 	const RenderPassName passNameStr(passName);
 	const SubresourceId  subresourceIdStr(subresourceId);
@@ -406,7 +406,7 @@ VkAccessFlags VulkanCBindings::FrameGraphBuilder::GetPreviousPassSubresourceAcce
 	}
 }
 
-VkImageLayout VulkanCBindings::FrameGraphBuilder::GetNextPassSubresourceLayout(const std::string_view passName, const std::string_view subresourceId) const
+VkImageLayout Vulkan::FrameGraphBuilder::GetNextPassSubresourceLayout(const std::string_view passName, const std::string_view subresourceId) const
 {
 	const RenderPassName passNameStr(passName);
 	const SubresourceId  subresourceIdStr(subresourceId);
@@ -422,7 +422,7 @@ VkImageLayout VulkanCBindings::FrameGraphBuilder::GetNextPassSubresourceLayout(c
 	}
 }
 
-VkImageUsageFlags VulkanCBindings::FrameGraphBuilder::GetNextPassSubresourceUsage(const std::string_view passName, const std::string_view subresourceId) const
+VkImageUsageFlags Vulkan::FrameGraphBuilder::GetNextPassSubresourceUsage(const std::string_view passName, const std::string_view subresourceId) const
 {
 	const RenderPassName passNameStr(passName);
 	const SubresourceId  subresourceIdStr(subresourceId);
@@ -438,7 +438,7 @@ VkImageUsageFlags VulkanCBindings::FrameGraphBuilder::GetNextPassSubresourceUsag
 	}
 }
 
-VkPipelineStageFlags VulkanCBindings::FrameGraphBuilder::GetNextPassSubresourceStageFlags(const std::string_view passName, const std::string_view subresourceId) const
+VkPipelineStageFlags Vulkan::FrameGraphBuilder::GetNextPassSubresourceStageFlags(const std::string_view passName, const std::string_view subresourceId) const
 {
 	const RenderPassName passNameStr(passName);
 	const SubresourceId  subresourceIdStr(subresourceId);
@@ -454,7 +454,7 @@ VkPipelineStageFlags VulkanCBindings::FrameGraphBuilder::GetNextPassSubresourceS
 	}
 }
 
-VkImageAspectFlags VulkanCBindings::FrameGraphBuilder::GetNextPassSubresourceAspectFlags(const std::string_view passName, const std::string_view subresourceId) const
+VkImageAspectFlags Vulkan::FrameGraphBuilder::GetNextPassSubresourceAspectFlags(const std::string_view passName, const std::string_view subresourceId) const
 {
 	const RenderPassName passNameStr(passName);
 	const SubresourceId  subresourceIdStr(subresourceId);
@@ -470,7 +470,7 @@ VkImageAspectFlags VulkanCBindings::FrameGraphBuilder::GetNextPassSubresourceAsp
 	}
 }
 
-VkAccessFlags VulkanCBindings::FrameGraphBuilder::GetNextPassSubresourceAccessFlags(const std::string_view passName, const std::string_view subresourceId) const
+VkAccessFlags Vulkan::FrameGraphBuilder::GetNextPassSubresourceAccessFlags(const std::string_view passName, const std::string_view subresourceId) const
 {
 	const RenderPassName passNameStr(passName);
 	const SubresourceId  subresourceIdStr(subresourceId);
@@ -486,7 +486,7 @@ VkAccessFlags VulkanCBindings::FrameGraphBuilder::GetNextPassSubresourceAccessFl
 	}
 }
 
-void VulkanCBindings::FrameGraphBuilder::Build(const DeviceQueues* deviceQueues, const WorkerCommandBuffers* workerCommandBuffers, const MemoryManager* memoryAllocator, const SwapChain* swapChain)
+void Vulkan::FrameGraphBuilder::Build(const DeviceQueues* deviceQueues, const WorkerCommandBuffers* workerCommandBuffers, const MemoryManager* memoryAllocator, const SwapChain* swapChain)
 {
 	std::vector<VkImage> swapchainImages(swapChain->SwapchainImageCount);
 	for(uint32_t i = 0; i < swapChain->SwapchainImageCount; i++)
@@ -519,7 +519,7 @@ void VulkanCBindings::FrameGraphBuilder::Build(const DeviceQueues* deviceQueues,
 	BarrierImages(deviceQueues, workerCommandBuffers, defaultQueueIndex);
 }
 
-void VulkanCBindings::FrameGraphBuilder::BuildAdjacencyList(std::unordered_map<RenderPassName, std::unordered_set<RenderPassName>>& adjacencyList)
+void Vulkan::FrameGraphBuilder::BuildAdjacencyList(std::unordered_map<RenderPassName, std::unordered_set<RenderPassName>>& adjacencyList)
 {
 	adjacencyList.clear();
 
@@ -543,7 +543,7 @@ void VulkanCBindings::FrameGraphBuilder::BuildAdjacencyList(std::unordered_map<R
 	}
 }
 
-void VulkanCBindings::FrameGraphBuilder::SortRenderPassesTopological(const std::unordered_map<RenderPassName, std::unordered_set<RenderPassName>>& adjacencyList, std::vector<RenderPassName>& unsortedPasses)
+void Vulkan::FrameGraphBuilder::SortRenderPassesTopological(const std::unordered_map<RenderPassName, std::unordered_set<RenderPassName>>& adjacencyList, std::vector<RenderPassName>& unsortedPasses)
 {
 	unsortedPasses.clear();
 	unsortedPasses.reserve(mRenderPassNames.size());
@@ -562,7 +562,7 @@ void VulkanCBindings::FrameGraphBuilder::SortRenderPassesTopological(const std::
 	}
 }
 
-void VulkanCBindings::FrameGraphBuilder::SortRenderPassesDependency(const std::unordered_map<RenderPassName, std::unordered_set<RenderPassName>>& adjacencyList, std::vector<RenderPassName>& topologicallySortedPasses)
+void Vulkan::FrameGraphBuilder::SortRenderPassesDependency(const std::unordered_map<RenderPassName, std::unordered_set<RenderPassName>>& adjacencyList, std::vector<RenderPassName>& topologicallySortedPasses)
 {
 	mRenderPassDependencyLevels.clear();
 
@@ -593,7 +593,7 @@ void VulkanCBindings::FrameGraphBuilder::SortRenderPassesDependency(const std::u
 	});
 }
 
-void VulkanCBindings::FrameGraphBuilder::BuildDependencyLevels(const DeviceQueues* deviceQueues, const SwapChain* swapChain)
+void Vulkan::FrameGraphBuilder::BuildDependencyLevels(const DeviceQueues* deviceQueues, const SwapChain* swapChain)
 {
 	mGraphToBuild->mGraphicsPassSpans.clear();
 
@@ -631,7 +631,7 @@ void VulkanCBindings::FrameGraphBuilder::BuildDependencyLevels(const DeviceQueue
 	mRenderPassQueueFamilies[std::string(PresentPassName)] = swapChain->GetPresentQueueFamilyIndex();
 }
 
-void VulkanCBindings::FrameGraphBuilder::TopologicalSortNode(const std::unordered_map<RenderPassName, std::unordered_set<RenderPassName>>& adjacencyList, std::unordered_set<RenderPassName>& visited, std::unordered_set<RenderPassName>& onStack, const RenderPassName& renderPassName, std::vector<RenderPassName>& sortedPassNames)
+void Vulkan::FrameGraphBuilder::TopologicalSortNode(const std::unordered_map<RenderPassName, std::unordered_set<RenderPassName>>& adjacencyList, std::unordered_set<RenderPassName>& visited, std::unordered_set<RenderPassName>& onStack, const RenderPassName& renderPassName, std::vector<RenderPassName>& sortedPassNames)
 {
 	if(visited.contains(renderPassName))
 	{
@@ -651,7 +651,7 @@ void VulkanCBindings::FrameGraphBuilder::TopologicalSortNode(const std::unordere
 	sortedPassNames.push_back(renderPassName);
 }
 
-void VulkanCBindings::FrameGraphBuilder::ValidateSubresourceLinks()
+void Vulkan::FrameGraphBuilder::ValidateSubresourceLinks()
 {
 	std::unordered_map<SubresourceName, RenderPassName> subresourceLastRenderPasses; 
 
@@ -713,7 +713,7 @@ void VulkanCBindings::FrameGraphBuilder::ValidateSubresourceLinks()
 	}
 }
 
-void VulkanCBindings::FrameGraphBuilder::ValidateSubresourceQueues()
+void Vulkan::FrameGraphBuilder::ValidateSubresourceQueues()
 {
 	//Queue families should be known
 	assert(!mRenderPassQueueFamilies.empty());
@@ -744,7 +744,7 @@ void VulkanCBindings::FrameGraphBuilder::ValidateSubresourceQueues()
 	}
 }
 
-void VulkanCBindings::FrameGraphBuilder::BuildSubresources(const MemoryManager* memoryAllocator, const std::vector<VkImage>& swapchainImages, std::unordered_set<RenderPassName>& swapchainPassNames, VkFormat swapchainFormat, uint32_t defaultQueueIndex)
+void Vulkan::FrameGraphBuilder::BuildSubresources(const MemoryManager* memoryAllocator, const std::vector<VkImage>& swapchainImages, std::unordered_set<RenderPassName>& swapchainPassNames, VkFormat swapchainFormat, uint32_t defaultQueueIndex)
 {
 	std::vector<uint32_t> defaultQueueIndices = {defaultQueueIndex};
 
@@ -761,7 +761,7 @@ void VulkanCBindings::FrameGraphBuilder::BuildSubresources(const MemoryManager* 
 	CreateSwapchainImageViews(backbufferResourceCreateInfos, swapchainFormat);
 }
 
-void VulkanCBindings::FrameGraphBuilder::BuildPassObjects(const std::unordered_set<std::string>& swapchainPassNames)
+void Vulkan::FrameGraphBuilder::BuildPassObjects(const std::unordered_set<std::string>& swapchainPassNames)
 {
 	mGraphToBuild->mRenderPasses.clear();
 	mGraphToBuild->mSwapchainRenderPasses.clear();
@@ -807,7 +807,7 @@ void VulkanCBindings::FrameGraphBuilder::BuildPassObjects(const std::unordered_s
 	}
 }
 
-void VulkanCBindings::FrameGraphBuilder::BuildBarriers()
+void Vulkan::FrameGraphBuilder::BuildBarriers()
 {
 	mGraphToBuild->mImageRenderPassBarriers.resize(mRenderPassNames.size());
 	mGraphToBuild->mSwapchainBarrierIndices.clear();
@@ -953,13 +953,13 @@ void VulkanCBindings::FrameGraphBuilder::BuildBarriers()
 	}
 }
 
-void VulkanCBindings::FrameGraphBuilder::BuildDescriptors()
+void Vulkan::FrameGraphBuilder::BuildDescriptors()
 {
 	//TODO (in case of passes using storage images or input attachments)
 	//For now I don't have any passes to test it
 }
 
-void VulkanCBindings::FrameGraphBuilder::BarrierImages(const DeviceQueues* deviceQueues, const WorkerCommandBuffers* workerCommandBuffers, uint32_t defaultQueueIndex)
+void Vulkan::FrameGraphBuilder::BarrierImages(const DeviceQueues* deviceQueues, const WorkerCommandBuffers* workerCommandBuffers, uint32_t defaultQueueIndex)
 {
 	//Transit to the last pass as if rendering just ended. That ensures correct barriers at the start of the frame
 	std::vector<VkImageMemoryBarrier> imageMemoryBarriers;
@@ -1029,7 +1029,7 @@ void VulkanCBindings::FrameGraphBuilder::BarrierImages(const DeviceQueues* devic
 	deviceQueues->GraphicsQueueWait();
 }
 
-void VulkanCBindings::FrameGraphBuilder::BuildResourceCreateInfos(const std::vector<uint32_t>& defaultQueueIndices, std::unordered_map<SubresourceName, ImageResourceCreateInfo>& outImageCreateInfos, std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& outBackbufferCreateInfos, std::unordered_set<RenderPassName>& swapchainPassNames)
+void Vulkan::FrameGraphBuilder::BuildResourceCreateInfos(const std::vector<uint32_t>& defaultQueueIndices, std::unordered_map<SubresourceName, ImageResourceCreateInfo>& outImageCreateInfos, std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& outBackbufferCreateInfos, std::unordered_set<RenderPassName>& swapchainPassNames)
 {
 	for(const auto& renderPassName: mRenderPassNames)
 	{
@@ -1114,7 +1114,7 @@ void VulkanCBindings::FrameGraphBuilder::BuildResourceCreateInfos(const std::vec
 	MergeImageViewInfos(outImageCreateInfos);
 }
 
-void VulkanCBindings::FrameGraphBuilder::MergeImageViewInfos(std::unordered_map<SubresourceName, ImageResourceCreateInfo>& inoutImageResourceCreateInfos)
+void Vulkan::FrameGraphBuilder::MergeImageViewInfos(std::unordered_map<SubresourceName, ImageResourceCreateInfo>& inoutImageResourceCreateInfos)
 {
 	//Fix all "arbitrary" image view infos
 	for(auto& nameWithCreateInfo: inoutImageResourceCreateInfos)
@@ -1219,7 +1219,7 @@ void VulkanCBindings::FrameGraphBuilder::MergeImageViewInfos(std::unordered_map<
 	}
 }
 
-void VulkanCBindings::FrameGraphBuilder::PropagateMetadatasFromImageViews(const std::unordered_map<SubresourceName, ImageResourceCreateInfo>& imageCreateInfos, const std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& backbufferCreateInfos)
+void Vulkan::FrameGraphBuilder::PropagateMetadatasFromImageViews(const std::unordered_map<SubresourceName, ImageResourceCreateInfo>& imageCreateInfos, const std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& backbufferCreateInfos)
 {
 	for(auto& nameWithCreateInfo: imageCreateInfos)
 	{
@@ -1254,7 +1254,7 @@ void VulkanCBindings::FrameGraphBuilder::PropagateMetadatasFromImageViews(const 
 	}
 }
 
-void VulkanCBindings::FrameGraphBuilder::SetSwapchainImages(const std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& backbufferResourceCreateInfos, const std::vector<VkImage>& swapchainImages)
+void Vulkan::FrameGraphBuilder::SetSwapchainImages(const std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& backbufferResourceCreateInfos, const std::vector<VkImage>& swapchainImages)
 {
 	mGraphToBuild->mSwapchainImageRefs.clear();
 
@@ -1279,7 +1279,7 @@ void VulkanCBindings::FrameGraphBuilder::SetSwapchainImages(const std::unordered
 	}
 }
 
-void VulkanCBindings::FrameGraphBuilder::CreateImages(const std::unordered_map<SubresourceName, ImageResourceCreateInfo>& imageResourceCreateInfos, const MemoryManager* memoryAllocator)
+void Vulkan::FrameGraphBuilder::CreateImages(const std::unordered_map<SubresourceName, ImageResourceCreateInfo>& imageResourceCreateInfos, const MemoryManager* memoryAllocator)
 {
 	mGraphToBuild->mImages.clear();
 
@@ -1321,7 +1321,7 @@ void VulkanCBindings::FrameGraphBuilder::CreateImages(const std::unordered_map<S
 	ThrowIfFailed(vkBindImageMemory2(mGraphToBuild->mDeviceRef, (uint32_t)(bindImageMemoryInfos.size()), bindImageMemoryInfos.data()));
 }
 
-void VulkanCBindings::FrameGraphBuilder::CreateImageViews(const std::unordered_map<SubresourceName, ImageResourceCreateInfo>& imageResourceCreateInfos)
+void Vulkan::FrameGraphBuilder::CreateImageViews(const std::unordered_map<SubresourceName, ImageResourceCreateInfo>& imageResourceCreateInfos)
 {
 	mGraphToBuild->mImageViews.clear();
 
@@ -1350,7 +1350,7 @@ void VulkanCBindings::FrameGraphBuilder::CreateImageViews(const std::unordered_m
 	}
 }
 
-void VulkanCBindings::FrameGraphBuilder::CreateSwapchainImageViews(const std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& backbufferResourceCreateInfos, VkFormat swapchainFormat)
+void Vulkan::FrameGraphBuilder::CreateSwapchainImageViews(const std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& backbufferResourceCreateInfos, VkFormat swapchainFormat)
 {
 	mGraphToBuild->mSwapchainImageViews.clear();
 	mGraphToBuild->mSwapchainViewsSwapMap.clear();
@@ -1397,7 +1397,7 @@ void VulkanCBindings::FrameGraphBuilder::CreateSwapchainImageViews(const std::un
 	}
 }
 
-void VulkanCBindings::FrameGraphBuilder::CreateImageView(const ImageViewInfo& imageViewInfo, VkImage image, VkFormat defaultFormat, VkImageView* outImageView)
+void Vulkan::FrameGraphBuilder::CreateImageView(const ImageViewInfo& imageViewInfo, VkImage image, VkFormat defaultFormat, VkImageView* outImageView)
 {
 	assert(outImageView != nullptr);
 
@@ -1432,7 +1432,7 @@ void VulkanCBindings::FrameGraphBuilder::CreateImageView(const ImageViewInfo& im
 	ThrowIfFailed(vkCreateImageView(mGraphToBuild->mDeviceRef, &imageViewCreateInfo, nullptr, outImageView));
 }
 
-bool VulkanCBindings::FrameGraphBuilder::PassesIntersect(const RenderPassName& writingPass, const RenderPassName& readingPass)
+bool Vulkan::FrameGraphBuilder::PassesIntersect(const RenderPassName& writingPass, const RenderPassName& readingPass)
 {
 	if(mRenderPassesSubresourceNameIds[writingPass].size() <= mRenderPassesSubresourceNameIds[readingPass].size())
 	{
@@ -1474,7 +1474,7 @@ bool VulkanCBindings::FrameGraphBuilder::PassesIntersect(const RenderPassName& w
 	return false;
 }
 
-void VulkanCBindings::FrameGraphBuilder::SetDebugObjectName(VkImage image, const SubresourceName& name) const
+void Vulkan::FrameGraphBuilder::SetDebugObjectName(VkImage image, const SubresourceName& name) const
 {
 #if defined(VK_EXT_debug_utils) && (defined(DEBUG) || defined(_DEBUG))
 	

@@ -1,16 +1,16 @@
-#include "VulkanCSwapChain.hpp"
+#include "VulkanSwapChain.hpp"
+#include "VulkanFunctions.hpp"
+#include "VulkanUtils.hpp"
 #include <VulkanGenericStructures.h>
-#include "VulkanCFunctions.hpp"
-#include "VulkanCUtils.hpp"
 #include <unordered_set>
 #include <array>
 #include <algorithm>
 
-VulkanCBindings::SwapChain::SwapChain(LoggerQueue* logger, VkInstance instance, VkDevice device): mLogger(logger), mInstanceRef(instance), mDeviceRef(device), mPresentQueueFamilyIndex((uint32_t)(-1)),
-                                                                                                  mSwapchainWidth(0), mSwapchainHeight(0),
-                                                                                                  mSwapChainColorSpace(VK_COLOR_SPACE_SRGB_NONLINEAR_KHR), mSwapChainFormat(VK_FORMAT_B8G8R8A8_UNORM),
-	                                                                                              mCurrentImageIndex((uint32_t)(-1)), mSurface(VK_NULL_HANDLE), mSwapchain(VK_NULL_HANDLE),
-	                                                                                              mPresentQueue(VK_NULL_HANDLE)
+Vulkan::SwapChain::SwapChain(LoggerQueue* logger, VkInstance instance, VkDevice device): mLogger(logger), mInstanceRef(instance), mDeviceRef(device), mPresentQueueFamilyIndex((uint32_t)(-1)),
+                                                                                         mSwapchainWidth(0), mSwapchainHeight(0),
+                                                                                         mSwapChainColorSpace(VK_COLOR_SPACE_SRGB_NONLINEAR_KHR), mSwapChainFormat(VK_FORMAT_B8G8R8A8_UNORM),
+	                                                                                     mCurrentImageIndex((uint32_t)(-1)), mSurface(VK_NULL_HANDLE), mSwapchain(VK_NULL_HANDLE),
+	                                                                                     mPresentQueue(VK_NULL_HANDLE)
 {
 	for(uint32_t i = 0; i < VulkanUtils::InFlightFrameCount; i++)
 	{
@@ -23,7 +23,7 @@ VulkanCBindings::SwapChain::SwapChain(LoggerQueue* logger, VkInstance instance, 
 	}
 }
 
-VulkanCBindings::SwapChain::~SwapChain()
+Vulkan::SwapChain::~SwapChain()
 {
 	SafeDestroyObject(vkDestroySwapchainKHR, mDeviceRef, mSwapchain);
 	SafeDestroyObject(vkDestroySurfaceKHR,   mInstanceRef, mSurface);
@@ -34,7 +34,7 @@ VulkanCBindings::SwapChain::~SwapChain()
 	}
 }
 
-void VulkanCBindings::SwapChain::BindToWindow(VkPhysicalDevice physicalDevice, const InstanceParameters& instanceParameters, const DeviceParameters& deviceParameters, Window* window)
+void Vulkan::SwapChain::BindToWindow(VkPhysicalDevice physicalDevice, const InstanceParameters& instanceParameters, const DeviceParameters& deviceParameters, Window* window)
 {
 	SafeDestroyObject(vkDestroySurfaceKHR, mInstanceRef, mSurface);
 
@@ -54,7 +54,7 @@ void VulkanCBindings::SwapChain::BindToWindow(VkPhysicalDevice physicalDevice, c
 	ThrowIfFailed(vkGetSwapchainImagesKHR(mDeviceRef, mSwapchain, &swapchainImageCount, &mSwapchainImages[0]));
 }
 
-void VulkanCBindings::SwapChain::Recreate(VkPhysicalDevice physicalDevice, const InstanceParameters& instanceParameters, const DeviceParameters& deviceParameters, Window* window)
+void Vulkan::SwapChain::Recreate(VkPhysicalDevice physicalDevice, const InstanceParameters& instanceParameters, const DeviceParameters& deviceParameters, Window* window)
 {
 	SafeDestroyObject(vkDestroySwapchainKHR, mDeviceRef,   mSwapchain);
 	SafeDestroyObject(vkDestroySurfaceKHR,   mInstanceRef, mSurface);
@@ -73,7 +73,7 @@ void VulkanCBindings::SwapChain::Recreate(VkPhysicalDevice physicalDevice, const
 	ThrowIfFailed(vkGetSwapchainImagesKHR(mDeviceRef, mSwapchain, &swapchainImageCount, &mSwapchainImages[0]));
 }
 
-void VulkanCBindings::SwapChain::AcquireImage(VkDevice device, uint32_t frameInFlightIndex)
+void Vulkan::SwapChain::AcquireImage(VkDevice device, uint32_t frameInFlightIndex)
 {
 	//TODO: mGPU?
 	VkAcquireNextImageInfoKHR acquireNextImageInfo;
@@ -88,14 +88,14 @@ void VulkanCBindings::SwapChain::AcquireImage(VkDevice device, uint32_t frameInF
 	ThrowIfFailed(vkAcquireNextImage2KHR(device, &acquireNextImageInfo, &mCurrentImageIndex));
 }
 
-VkSemaphore VulkanCBindings::SwapChain::GetImageAcquiredSemaphore(uint32_t frameInFlightIndex) const
+VkSemaphore Vulkan::SwapChain::GetImageAcquiredSemaphore(uint32_t frameInFlightIndex) const
 {
 	assert(frameInFlightIndex < SwapchainImageCount);
 
 	return mImageAcquiredSemaphores[frameInFlightIndex];
 }
 
-void VulkanCBindings::SwapChain::Present(VkSemaphore presentSemaphore)
+void Vulkan::SwapChain::Present(VkSemaphore presentSemaphore)
 {
 	std::array presentSemaphores = {presentSemaphore};
 	std::array swapchains        = {mSwapchain};
@@ -114,39 +114,39 @@ void VulkanCBindings::SwapChain::Present(VkSemaphore presentSemaphore)
 	ThrowIfFailed(vkQueuePresentKHR(mPresentQueue, &presentInfo));
 }
 
-uint32_t VulkanCBindings::SwapChain::GetPresentQueueFamilyIndex() const
+uint32_t Vulkan::SwapChain::GetPresentQueueFamilyIndex() const
 {
 	return mPresentQueueFamilyIndex;
 }
 
-VkImage VulkanCBindings::SwapChain::GetSwapchainImage(uint32_t index) const
+VkImage Vulkan::SwapChain::GetSwapchainImage(uint32_t index) const
 {
 	assert(index < SwapchainImageCount);
 
 	return mSwapchainImages[index];
 }
 
-VkImage VulkanCBindings::SwapChain::GetCurrentImage() const
+VkImage Vulkan::SwapChain::GetCurrentImage() const
 {
 	return mSwapchainImages[mCurrentImageIndex];
 }
 
-VkFormat VulkanCBindings::SwapChain::GetBackbufferFormat() const
+VkFormat Vulkan::SwapChain::GetBackbufferFormat() const
 {
 	return mSwapChainFormat;
 }
 
-bool VulkanCBindings::SwapChain::IsBackbufferHDR() const
+bool Vulkan::SwapChain::IsBackbufferHDR() const
 {
 	return (mSwapChainColorSpace == VK_COLOR_SPACE_HDR10_HLG_EXT) || (mSwapChainColorSpace == VK_COLOR_SPACE_HDR10_ST2084_EXT) || (mSwapChainColorSpace == VK_COLOR_SPACE_DOLBYVISION_EXT);
 }
 
-void VulkanCBindings::SwapChain::CreateSurface(VkInstance instance, Window* window)
+void Vulkan::SwapChain::CreateSurface(VkInstance instance, Window* window)
 {
 	CreateSurface(instance, window->NativeHandle());
 }
 
-void VulkanCBindings::SwapChain::CreateSwapChain(VkPhysicalDevice physicalDevice, VkDevice device, Window* window)
+void Vulkan::SwapChain::CreateSwapChain(VkPhysicalDevice physicalDevice, VkDevice device, Window* window)
 {
 	SafeDestroyObject(vkDestroySwapchainKHR, device, mSwapchain);
 
@@ -279,7 +279,7 @@ void VulkanCBindings::SwapChain::CreateSwapChain(VkPhysicalDevice physicalDevice
 	mSwapchain = newSwapchain;
 }
 
-void VulkanCBindings::SwapChain::InvalidateSurfaceCapabilities(VkPhysicalDevice physicalDevice, const InstanceParameters& instanceParameters, const DeviceParameters& deviceParameters, Window* window)
+void Vulkan::SwapChain::InvalidateSurfaceCapabilities(VkPhysicalDevice physicalDevice, const InstanceParameters& instanceParameters, const DeviceParameters& deviceParameters, Window* window)
 {	
 	if(instanceParameters.IsSurfaceCapabilities2ExtensionEnabled())
 	{
@@ -326,7 +326,7 @@ void VulkanCBindings::SwapChain::InvalidateSurfaceCapabilities(VkPhysicalDevice 
 	}
 }
 
-void VulkanCBindings::SwapChain::FindPresentQueueIndex(VkPhysicalDevice physicalDevice)
+void Vulkan::SwapChain::FindPresentQueueIndex(VkPhysicalDevice physicalDevice)
 {
 	uint32_t presentQueueFamilyIndex = (uint32_t)(-1);
 
@@ -355,7 +355,7 @@ void VulkanCBindings::SwapChain::FindPresentQueueIndex(VkPhysicalDevice physical
 	mPresentQueueFamilyIndex = presentQueueFamilyIndex;
 }
 
-void VulkanCBindings::SwapChain::GetPresentQueue(VkDevice device, uint32_t presentIndex)
+void Vulkan::SwapChain::GetPresentQueue(VkDevice device, uint32_t presentIndex)
 {
 	VkDeviceQueueInfo2 presentQueueInfo;
 	presentQueueInfo.sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2;
@@ -372,7 +372,7 @@ void VulkanCBindings::SwapChain::GetPresentQueue(VkDevice device, uint32_t prese
 }
 
 #if defined(_WIN32) && defined(VK_USE_PLATFORM_WIN32_KHR)
-	void VulkanCBindings::SwapChain::CreateSurface(VkInstance instance, HWND hwnd)
+	void Vulkan::SwapChain::CreateSurface(VkInstance instance, HWND hwnd)
 	{
 		VkWin32SurfaceCreateInfoKHR surfaceCreateInfo;
 		surfaceCreateInfo.sType     = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;

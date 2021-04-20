@@ -1,4 +1,4 @@
-#include "VulkanCFunctions.hpp"
+#include "VulkanFunctions.hpp"
 
 #ifdef VK_NO_PROTOTYPES
 

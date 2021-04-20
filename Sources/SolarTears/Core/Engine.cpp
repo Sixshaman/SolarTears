@@ -4,7 +4,7 @@
 #include "Scene/SceneDescription.hpp"
 #include "Scene/Scene.hpp"
 #include "../Input/Inputter.hpp"
-#include "../Rendering/VulkanC/VulkanCRenderer.hpp"
+#include "../Rendering/Vulkan/VulkanRenderer.hpp"
 #include "../Rendering/D3D12/D3D12Renderer.hpp"
 #include "../Logging/LoggerQueue.hpp"
 #include "../Logging/VisualStudioDebugLogger.hpp"

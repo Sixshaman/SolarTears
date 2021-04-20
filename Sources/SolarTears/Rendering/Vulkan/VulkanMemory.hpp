@@ -2,10 +2,10 @@
 
 #include <vulkan/vulkan.h>
 #include "../../Logging/LoggerQueue.hpp"
-#include "VulkanCDeviceParameters.hpp"
+#include "VulkanDeviceParameters.hpp"
 #include <vector>
 
-namespace VulkanCBindings
+namespace Vulkan
 {
 	class MemoryManager
 	{

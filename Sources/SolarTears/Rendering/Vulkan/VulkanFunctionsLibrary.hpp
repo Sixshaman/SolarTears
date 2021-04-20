@@ -13,7 +13,7 @@ using LIBRARY_TYPE = HMODULE;
 
 #include <vulkan/vulkan.h>
 
-namespace VulkanCBindings
+namespace Vulkan
 {
 	class FunctionsLibrary
 	{

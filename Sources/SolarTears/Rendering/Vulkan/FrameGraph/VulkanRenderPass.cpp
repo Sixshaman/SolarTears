@@ -1,9 +1,9 @@
-#include "VulkanCRenderPass.hpp"
+#include "VulkanRenderPass.hpp"
 
-VulkanCBindings::RenderPass::RenderPass(VkDevice device): mDeviceRef(device)
+Vulkan::RenderPass::RenderPass(VkDevice device): mDeviceRef(device)
 {
 }
 
-VulkanCBindings::RenderPass::~RenderPass()
+Vulkan::RenderPass::~RenderPass()
 {
 }

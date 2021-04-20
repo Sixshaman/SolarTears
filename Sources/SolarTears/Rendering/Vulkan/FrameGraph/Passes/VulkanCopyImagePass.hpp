@@ -1,10 +1,10 @@
 #pragma once
 
-#include "../VulkanCRenderPass.hpp"
+#include "../VulkanRenderPass.hpp"
 
 class FrameGraphConfig;
 
-namespace VulkanCBindings
+namespace Vulkan
 {
 	class FrameGraphBuilder;
 

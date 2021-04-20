@@ -1,8 +1,8 @@
-#include "VulkanCFunctionsLibrary.hpp"
-#include "VulkanCFunctions.hpp"
+#include "VulkanFunctionsLibrary.hpp"
+#include "VulkanFunctions.hpp"
 #include <cassert>
 
-VulkanCBindings::FunctionsLibrary::FunctionsLibrary(): mLibrary(nullptr)
+Vulkan::FunctionsLibrary::FunctionsLibrary(): mLibrary(nullptr)
 {
 #ifdef WIN32
 	mLibrary = LoadLibraryA("vulkan-1.dll");
@@ -12,14 +12,14 @@ VulkanCBindings::FunctionsLibrary::FunctionsLibrary(): mLibrary(nullptr)
 #endif // WIN32
 }
 
-VulkanCBindings::FunctionsLibrary::~FunctionsLibrary()
+Vulkan::FunctionsLibrary::~FunctionsLibrary()
 {
 #ifdef WIN32
 	FreeLibrary(mLibrary);
 #endif // WIN32
 }
 
-void VulkanCBindings::FunctionsLibrary::LoadGlobalFunctions()
+void Vulkan::FunctionsLibrary::LoadGlobalFunctions()
 {
 	vkCreateInstance                       = (PFN_vkCreateInstance)(vkGetInstanceProcAddr(nullptr,                       "vkCreateInstance"));
 	vkEnumerateInstanceVersion             = (PFN_vkEnumerateInstanceVersion)(vkGetInstanceProcAddr(nullptr,             "vkEnumerateInstanceVersion"));
@@ -27,7 +27,7 @@ void VulkanCBindings::FunctionsLibrary::LoadGlobalFunctions()
 	vkEnumerateInstanceExtensionProperties = (PFN_vkEnumerateInstanceExtensionProperties)(vkGetInstanceProcAddr(nullptr, "vkEnumerateInstanceExtensionProperties"));
 }
 
-void VulkanCBindings::FunctionsLibrary::LoadInstanceFunctions(VkInstance instance)
+void Vulkan::FunctionsLibrary::LoadInstanceFunctions(VkInstance instance)
 {
 	vkDestroyInstance                                                 = (PFN_vkDestroyInstance)(vkGetInstanceProcAddr(instance,                                                 "vkDestroyInstance"));
 	vkEnumeratePhysicalDevices                                        = (PFN_vkEnumeratePhysicalDevices)(vkGetInstanceProcAddr(instance,                                        "vkEnumeratePhysicalDevices"));
@@ -208,7 +208,7 @@ void VulkanCBindings::FunctionsLibrary::LoadInstanceFunctions(VkInstance instanc
 #endif
 }
 
-void VulkanCBindings::FunctionsLibrary::LoadDeviceFunctions(VkDevice device)
+void Vulkan::FunctionsLibrary::LoadDeviceFunctions(VkDevice device)
 {
 	vkDestroyDevice                                   = (PFN_vkDestroyDevice)(vkGetDeviceProcAddr(device,                                   "vkDestroyDevice"));
 	vkGetDeviceQueue                                  = (PFN_vkGetDeviceQueue)(vkGetDeviceProcAddr(device,                                  "vkGetDeviceQueue"));

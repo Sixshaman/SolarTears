@@ -1,11 +1,11 @@
-#include "VulkanCDeviceQueues.hpp"
+#include "VulkanDeviceQueues.hpp"
+#include "VulkanFunctions.hpp"
+#include "VulkanUtils.hpp"
 #include <cassert>
 #include <vector>
-#include "VulkanCFunctions.hpp"
-#include "VulkanCUtils.hpp"
 #include <array>
 
-VulkanCBindings::DeviceQueues::DeviceQueues(VkPhysicalDevice physicalDevice)
+Vulkan::DeviceQueues::DeviceQueues(VkPhysicalDevice physicalDevice)
 {
 	mGraphicsQueue = VK_NULL_HANDLE;
 	mComputeQueue  = VK_NULL_HANDLE;
@@ -14,7 +14,7 @@ VulkanCBindings::DeviceQueues::DeviceQueues(VkPhysicalDevice physicalDevice)
 	FindDeviceQueueIndices(physicalDevice);
 }
 
-void VulkanCBindings::DeviceQueues::InitQueueHandles(VkDevice device)
+void Vulkan::DeviceQueues::InitQueueHandles(VkDevice device)
 {
 	VkDeviceQueueInfo2 graphicsQueueInfo;
 	graphicsQueueInfo.sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_INFO_2;
@@ -58,121 +58,121 @@ void VulkanCBindings::DeviceQueues::InitQueueHandles(VkDevice device)
 	}
 }
 
-uint32_t VulkanCBindings::DeviceQueues::GetGraphicsQueueFamilyIndex() const
+uint32_t Vulkan::DeviceQueues::GetGraphicsQueueFamilyIndex() const
 {
 	return mGraphicsQueueFamilyIndex;
 }
 
-uint32_t VulkanCBindings::DeviceQueues::GetComputeQueueFamilyIndex() const
+uint32_t Vulkan::DeviceQueues::GetComputeQueueFamilyIndex() const
 {
 	return mComputeQueueFamilyIndex;
 }
 
-uint32_t VulkanCBindings::DeviceQueues::GetTransferQueueFamilyIndex() const
+uint32_t Vulkan::DeviceQueues::GetTransferQueueFamilyIndex() const
 {
 	return mTransferQueueFamilyIndex;
 }
 
-void VulkanCBindings::DeviceQueues::GraphicsQueueWait() const
+void Vulkan::DeviceQueues::GraphicsQueueWait() const
 {
 	ThrowIfFailed(vkQueueWaitIdle(mGraphicsQueue));
 }
 
-void VulkanCBindings::DeviceQueues::ComputeQueueWait() const
+void Vulkan::DeviceQueues::ComputeQueueWait() const
 {
 	ThrowIfFailed(vkQueueWaitIdle(mComputeQueue));
 }
 
-void VulkanCBindings::DeviceQueues::TransferQueueWait() const
+void Vulkan::DeviceQueues::TransferQueueWait() const
 {
 	ThrowIfFailed(vkQueueWaitIdle(mTransferQueue));
 }
 
-void VulkanCBindings::DeviceQueues::GraphicsQueueSubmit(VkCommandBuffer commandBuffer) const
+void Vulkan::DeviceQueues::GraphicsQueueSubmit(VkCommandBuffer commandBuffer) const
 {
 	std::array commandBuffersToExecute = {commandBuffer};
 	GraphicsQueueSubmit(commandBuffersToExecute.data(), (uint32_t)commandBuffersToExecute.size());
 }
 
-void VulkanCBindings::DeviceQueues::ComputeQueueSubmit(VkCommandBuffer commandBuffer) const
+void Vulkan::DeviceQueues::ComputeQueueSubmit(VkCommandBuffer commandBuffer) const
 {
 	std::array commandBuffersToExecute = {commandBuffer};
 	ComputeQueueSubmit(commandBuffersToExecute.data(), (uint32_t)commandBuffersToExecute.size());
 }
 
-void VulkanCBindings::DeviceQueues::TransferQueueSubmit(VkCommandBuffer commandBuffer) const
+void Vulkan::DeviceQueues::TransferQueueSubmit(VkCommandBuffer commandBuffer) const
 {
 	std::array commandBuffersToExecute = {commandBuffer};
 	TransferQueueSubmit(commandBuffersToExecute.data(), (uint32_t)commandBuffersToExecute.size());
 }
 
-void VulkanCBindings::DeviceQueues::GraphicsQueueSubmit(VkCommandBuffer commandBuffer, VkSemaphore signalSemaphore) const
+void Vulkan::DeviceQueues::GraphicsQueueSubmit(VkCommandBuffer commandBuffer, VkSemaphore signalSemaphore) const
 {
 	std::array commandBuffersToExecute = {commandBuffer};
 	QueueSubmit(mGraphicsQueue, commandBuffersToExecute.data(), (uint32_t)commandBuffersToExecute.size(), signalSemaphore, nullptr);
 }
 
-void VulkanCBindings::DeviceQueues::ComputeQueueSubmit(VkCommandBuffer commandBuffer, VkSemaphore signalSemaphore) const
+void Vulkan::DeviceQueues::ComputeQueueSubmit(VkCommandBuffer commandBuffer, VkSemaphore signalSemaphore) const
 {
 	std::array commandBuffersToExecute = {commandBuffer};
 	QueueSubmit(mComputeQueue, commandBuffersToExecute.data(), (uint32_t)commandBuffersToExecute.size(), signalSemaphore, nullptr);
 }
 
-void VulkanCBindings::DeviceQueues::TransferQueueSubmit(VkCommandBuffer commandBuffer, VkSemaphore signalSemaphore) const
+void Vulkan::DeviceQueues::TransferQueueSubmit(VkCommandBuffer commandBuffer, VkSemaphore signalSemaphore) const
 {
 	std::array commandBuffersToExecute = {commandBuffer};
 	QueueSubmit(mTransferQueue, commandBuffersToExecute.data(), (uint32_t)commandBuffersToExecute.size(), signalSemaphore, nullptr);
 }
 
-void VulkanCBindings::DeviceQueues::GraphicsQueueSubmit(VkCommandBuffer commandBuffer, VkSemaphore waitSemaphore, VkPipelineStageFlags waitStageFlags) const
+void Vulkan::DeviceQueues::GraphicsQueueSubmit(VkCommandBuffer commandBuffer, VkSemaphore waitSemaphore, VkPipelineStageFlags waitStageFlags) const
 {
 	std::array commandBuffersToExecute = {commandBuffer};
 	QueueSubmit(mGraphicsQueue, commandBuffersToExecute.data(), (uint32_t)commandBuffersToExecute.size(), waitStageFlags, waitSemaphore, nullptr);
 }
 
-void VulkanCBindings::DeviceQueues::ComputeQueueSubmit(VkCommandBuffer commandBuffer, VkSemaphore waitSemaphore, VkPipelineStageFlags waitStageFlags) const
+void Vulkan::DeviceQueues::ComputeQueueSubmit(VkCommandBuffer commandBuffer, VkSemaphore waitSemaphore, VkPipelineStageFlags waitStageFlags) const
 {
 	std::array commandBuffersToExecute = {commandBuffer};
 	QueueSubmit(mComputeQueue, commandBuffersToExecute.data(), (uint32_t)commandBuffersToExecute.size(), waitStageFlags, waitSemaphore, nullptr);
 }
 
-void VulkanCBindings::DeviceQueues::TransferQueueSubmit(VkCommandBuffer commandBuffer, VkSemaphore waitSemaphore, VkPipelineStageFlags waitStageFlags) const
+void Vulkan::DeviceQueues::TransferQueueSubmit(VkCommandBuffer commandBuffer, VkSemaphore waitSemaphore, VkPipelineStageFlags waitStageFlags) const
 {
 	std::array commandBuffersToExecute = {commandBuffer};
 	QueueSubmit(mTransferQueue, commandBuffersToExecute.data(), (uint32_t)commandBuffersToExecute.size(), waitStageFlags, waitSemaphore, nullptr);
 }
 
-void VulkanCBindings::DeviceQueues::GraphicsQueueSubmit(VkCommandBuffer* commandBuffers, size_t commandBufferCount) const
+void Vulkan::DeviceQueues::GraphicsQueueSubmit(VkCommandBuffer* commandBuffers, size_t commandBufferCount) const
 {
 	QueueSubmit(mGraphicsQueue, commandBuffers, (uint32_t)commandBufferCount);
 }
 
-void VulkanCBindings::DeviceQueues::ComputeQueueSubmit(VkCommandBuffer* commandBuffers, size_t commandBufferCount) const
+void Vulkan::DeviceQueues::ComputeQueueSubmit(VkCommandBuffer* commandBuffers, size_t commandBufferCount) const
 {
 	QueueSubmit(mComputeQueue, commandBuffers, (uint32_t)commandBufferCount);
 }
 
-void VulkanCBindings::DeviceQueues::TransferQueueSubmit(VkCommandBuffer* commandBuffers, size_t commandBufferCount) const
+void Vulkan::DeviceQueues::TransferQueueSubmit(VkCommandBuffer* commandBuffers, size_t commandBufferCount) const
 {
 	QueueSubmit(mTransferQueue, commandBuffers, (uint32_t)commandBufferCount);
 }
 
-void VulkanCBindings::DeviceQueues::GraphicsQueueSubmit(VkCommandBuffer* commandBuffers, size_t commandBufferCount, VkPipelineStageFlags waitStageFlags, VkSemaphore waitSemaphore, VkSemaphore signalSemaphore, VkFence signalFence) const
+void Vulkan::DeviceQueues::GraphicsQueueSubmit(VkCommandBuffer* commandBuffers, size_t commandBufferCount, VkPipelineStageFlags waitStageFlags, VkSemaphore waitSemaphore, VkSemaphore signalSemaphore, VkFence signalFence) const
 {
 	QueueSubmit(mGraphicsQueue, commandBuffers, (uint32_t)commandBufferCount, waitStageFlags, waitSemaphore, signalSemaphore, signalFence);
 }
 
-void VulkanCBindings::DeviceQueues::ComputeQueueSubmit(VkCommandBuffer* commandBuffers, size_t commandBufferCount, VkPipelineStageFlags waitStageFlags, VkSemaphore waitSemaphore, VkSemaphore signalSemaphore, VkFence signalFence) const
+void Vulkan::DeviceQueues::ComputeQueueSubmit(VkCommandBuffer* commandBuffers, size_t commandBufferCount, VkPipelineStageFlags waitStageFlags, VkSemaphore waitSemaphore, VkSemaphore signalSemaphore, VkFence signalFence) const
 {
 	QueueSubmit(mComputeQueue, commandBuffers, (uint32_t)commandBufferCount, waitStageFlags, waitSemaphore, signalSemaphore, signalFence);
 }
 
-void VulkanCBindings::DeviceQueues::TransferQueueSubmit(VkCommandBuffer* commandBuffers, size_t commandBufferCount, VkPipelineStageFlags waitStageFlags, VkSemaphore waitSemaphore, VkSemaphore signalSemaphore, VkFence signalFence) const
+void Vulkan::DeviceQueues::TransferQueueSubmit(VkCommandBuffer* commandBuffers, size_t commandBufferCount, VkPipelineStageFlags waitStageFlags, VkSemaphore waitSemaphore, VkSemaphore signalSemaphore, VkFence signalFence) const
 {
 	QueueSubmit(mTransferQueue, commandBuffers, (uint32_t)commandBufferCount, waitStageFlags, waitSemaphore, signalSemaphore, signalFence);
 }
 
-void VulkanCBindings::DeviceQueues::FindDeviceQueueIndices(VkPhysicalDevice physicalDevice)
+void Vulkan::DeviceQueues::FindDeviceQueueIndices(VkPhysicalDevice physicalDevice)
 {
 	//Use dedicated queues
 	uint32_t graphicsQueueFamilyIndex = (uint32_t)(-1);
@@ -227,7 +227,7 @@ void VulkanCBindings::DeviceQueues::FindDeviceQueueIndices(VkPhysicalDevice phys
 	mTransferQueueFamilyIndex = transferQueueFamilyIndex;
 }
 
-void VulkanCBindings::DeviceQueues::QueueSubmit(VkQueue queue, VkCommandBuffer* commandBuffers, uint32_t commandBufferCount) const
+void Vulkan::DeviceQueues::QueueSubmit(VkQueue queue, VkCommandBuffer* commandBuffers, uint32_t commandBufferCount) const
 {
 	//TODO: mGPU?
 	//TODO: Performance query?
@@ -246,7 +246,7 @@ void VulkanCBindings::DeviceQueues::QueueSubmit(VkQueue queue, VkCommandBuffer* 
 	ThrowIfFailed(vkQueueSubmit(queue, (uint32_t)submitInfos.size(), submitInfos.data(), nullptr));
 }
 
-void VulkanCBindings::DeviceQueues::QueueSubmit(VkQueue queue, VkCommandBuffer* commandBuffers, uint32_t commandBufferCount, VkSemaphore signalSemaphore, VkFence signalFence) const
+void Vulkan::DeviceQueues::QueueSubmit(VkQueue queue, VkCommandBuffer* commandBuffers, uint32_t commandBufferCount, VkSemaphore signalSemaphore, VkFence signalFence) const
 {
 	std::array signalSemaphores = {signalSemaphore};
 
@@ -267,7 +267,7 @@ void VulkanCBindings::DeviceQueues::QueueSubmit(VkQueue queue, VkCommandBuffer* 
 	ThrowIfFailed(vkQueueSubmit(queue, (uint32_t)submitInfos.size(), submitInfos.data(), signalFence));
 }
 
-void VulkanCBindings::DeviceQueues::QueueSubmit(VkQueue queue, VkCommandBuffer* commandBuffers, uint32_t commandBufferCount, VkPipelineStageFlags waitStageFlags, VkSemaphore waitSemaphore, VkFence signalFence) const
+void Vulkan::DeviceQueues::QueueSubmit(VkQueue queue, VkCommandBuffer* commandBuffers, uint32_t commandBufferCount, VkPipelineStageFlags waitStageFlags, VkSemaphore waitSemaphore, VkFence signalFence) const
 {
 	std::array waitSemaphores   = {waitSemaphore};
 	std::array waitStages       = {waitStageFlags};
@@ -289,7 +289,7 @@ void VulkanCBindings::DeviceQueues::QueueSubmit(VkQueue queue, VkCommandBuffer* 
 	ThrowIfFailed(vkQueueSubmit(queue, (uint32_t)submitInfos.size(), submitInfos.data(), signalFence));
 }
 
-void VulkanCBindings::DeviceQueues::QueueSubmit(VkQueue queue, VkCommandBuffer* commandBuffers, uint32_t commandBufferCount, VkPipelineStageFlags waitStageFlags, VkSemaphore waitSemaphore, VkSemaphore signalSemaphore, VkFence signalFence) const
+void Vulkan::DeviceQueues::QueueSubmit(VkQueue queue, VkCommandBuffer* commandBuffers, uint32_t commandBufferCount, VkPipelineStageFlags waitStageFlags, VkSemaphore waitSemaphore, VkSemaphore signalSemaphore, VkFence signalFence) const
 {
 	std::array waitSemaphores   = {waitSemaphore};
 	std::array waitStages       = {waitStageFlags};

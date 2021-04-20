@@ -1,11 +1,11 @@
-#include "VulkanCDeviceParameters.hpp"
+#include "VulkanDeviceParameters.hpp"
+#include "VulkanFunctions.hpp"
+#include "VulkanUtils.hpp"
 #include <VulkanGenericStructures.h>
-#include "VulkanCFunctions.hpp"
-#include "VulkanCUtils.hpp"
 #include <unordered_set>
 #include <cassert>
 
-namespace VulkanCBindings
+namespace Vulkan
 {
 	static const std::vector<std::string> global_config_device_extensions =
 	{
@@ -224,7 +224,7 @@ namespace VulkanCBindings
 	};
 }
 
-const std::unordered_map<std::string, size_t> VulkanCBindings::DeviceParameters::global_config_device_extension_flags_offsets =
+const std::unordered_map<std::string, size_t> Vulkan::DeviceParameters::global_config_device_extension_flags_offsets =
 {
 	{
 		VK_EXT_BLEND_OPERATION_ADVANCED_EXTENSION_NAME,
@@ -517,25 +517,25 @@ offsetof(DeviceExtensionFlags, IsHDRMetadataExtensionPresent)
 	}
 };
 
-VulkanCBindings::DeviceParameters::DeviceParameters(LoggerQueue* loggingBoard) : mLoggingBoard(loggingBoard)
+Vulkan::DeviceParameters::DeviceParameters(LoggerQueue* loggingBoard) : mLoggingBoard(loggingBoard)
 {
 	assert(global_config_device_extension_flags_offsets.size() * sizeof(bool) == sizeof(DeviceExtensionFlags));
 
 	memset(&mEnabledExtensionFlags, 0, sizeof(DeviceExtensionFlags));
 }
 
-VulkanCBindings::DeviceParameters::~DeviceParameters()
+Vulkan::DeviceParameters::~DeviceParameters()
 {
 }
 
-void VulkanCBindings::DeviceParameters::InvalidateDeviceParameters(const VkPhysicalDevice& physicalDevice)
+void Vulkan::DeviceParameters::InvalidateDeviceParameters(const VkPhysicalDevice& physicalDevice)
 {
 	InvalidateDeviceFeatures(physicalDevice);
 	InvalidateDeviceProperties(physicalDevice);
 	InvalidateDeviceMemoryProperties(physicalDevice);
 }
 
-void VulkanCBindings::DeviceParameters::InvalidateDeviceExtensions(const VkPhysicalDevice& physicalDevice, std::vector<std::string>& outEnabledExtensions, vgs::StructureChainBlob<VkDeviceCreateInfo>& outStructureChain)
+void Vulkan::DeviceParameters::InvalidateDeviceExtensions(const VkPhysicalDevice& physicalDevice, std::vector<std::string>& outEnabledExtensions, vgs::StructureChainBlob<VkDeviceCreateInfo>& outStructureChain)
 {
 	outStructureChain.AppendToChain(mFeatures);
 
@@ -623,297 +623,297 @@ void VulkanCBindings::DeviceParameters::InvalidateDeviceExtensions(const VkPhysi
 	}
 }
 
-bool VulkanCBindings::DeviceParameters::IsBlendOperationAdvancedFeaturesExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsBlendOperationAdvancedFeaturesExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsBlendOperationAdvancedFeaturesEXTExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsBufferDeviceAddressFeaturesExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsBufferDeviceAddressFeaturesExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsBufferDeviceAddressFeaturesExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsComputeShaderDerivativesFeaturesExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsComputeShaderDerivativesFeaturesExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsComputeShaderDerivativesFeaturesNVExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsConditionalRenderingFeaturesExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsConditionalRenderingFeaturesExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsConditionalRenderingFeaturesEXTExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsDescriptorIndexingFeaturesExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsDescriptorIndexingFeaturesExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsDescriptorIndexingFeaturesExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsDeviceGeneratedCommandsFeaturesExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsDeviceGeneratedCommandsFeaturesExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsDeviceGeneratedCommandsFeaturesNVExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsFragmentDensityMap2FeaturesExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsFragmentDensityMap2FeaturesExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsFragmentDensityMap2FeaturesEXTExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsFragmentShaderBarycentricFeaturesExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsFragmentShaderBarycentricFeaturesExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsFragmentShaderBarycentricFeaturesNVExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsFragmentShaderInterlockFeaturesExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsFragmentShaderInterlockFeaturesExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsFragmentShaderInterlockFeaturesEXTExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsHostQueryResetFeaturesExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsHostQueryResetFeaturesExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsHostQueryResetFeaturesExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsRobustness2FeaturesExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsRobustness2FeaturesExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsRobustness2FeaturesEXTExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsImagelessFramebufferFeaturesExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsImagelessFramebufferFeaturesExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsImagelessFramebufferFeaturesExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsInlineUniformBlockFeaturesExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsInlineUniformBlockFeaturesExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsInlineUniformBlockFeaturesEXTExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsMeshShaderFeaturesExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsMeshShaderFeaturesExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsMeshShaderFeaturesNVExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsPerformanceQueryFeaturesExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsPerformanceQueryFeaturesExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsPerformanceQueryFeaturesKHRExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsShaderAtomicFloatFeaturesExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsShaderAtomicFloatFeaturesExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsShaderAtomicFloatFeaturesEXTExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsShaderAtomicInt64FeaturesExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsShaderAtomicInt64FeaturesExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsShaderAtomicInt64FeaturesExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsShaderClockFeaturesExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsShaderClockFeaturesExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsShaderClockFeaturesKHRExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsShaderDemoteToHelperInvocationFeaturesExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsShaderDemoteToHelperInvocationFeaturesExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsShaderDemoteToHelperInvocationFeaturesEXTExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsShaderFloat16Int8FeaturesExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsShaderFloat16Int8FeaturesExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsShaderFloat16Int8FeaturesExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsShaderImageFootprintFeaturesExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsShaderImageFootprintFeaturesExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsShaderImageFootprintFeaturesNVExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsShaderIntegerFunctions2FeaturesExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsShaderIntegerFunctions2FeaturesExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsShaderIntegerFunctions2FeaturesINTELExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsShaderSubgroupExtendedTypesFeaturesExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsShaderSubgroupExtendedTypesFeaturesExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsShaderSubgroupExtendedTypesFeaturesExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsShadingRateImageFeaturesExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsShadingRateImageFeaturesExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsShadingRateImageFeaturesNVExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsTexelBufferAlignmentFeaturesExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsTexelBufferAlignmentFeaturesExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsTexelBufferAlignmentFeaturesEXTExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsUniformBufferStandardLayoutFeaturesExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsUniformBufferStandardLayoutFeaturesExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsUniformBufferStandardLayoutFeaturesExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsVulkanMemoryModelFeaturesExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsVulkanMemoryModelFeaturesExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsVulkanMemoryModelFeaturesExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsDrawIndirectCountExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsDrawIndirectCountExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsDrawIndirectCountExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsImageFormatListExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsImageFormatListExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsImageFormatListExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsIncrementalPresentExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsIncrementalPresentExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsIncrementalPresentExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsPushDescriptorExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsPushDescriptorExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsPushDescriptorExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsShaderFloatControlsExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsShaderFloatControlsExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsShaderFloatControlsExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsSpirV14ExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsSpirV14ExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsSpirV14ExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsConservativeRasterizationExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsConservativeRasterizationExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsConservativeRasterizationExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsDiscardRectanglesExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsDiscardRectanglesExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsDiscardRectanglesExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsFilterCubicExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsFilterCubicExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsFilterCubicExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsHDRMetadataExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsHDRMetadataExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsHDRMetadataExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsMemoryBudgetExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsMemoryBudgetExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsMemoryBudgetExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsPipelineCreationFeedbackExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsPipelineCreationFeedbackExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsPipelineCreationFeedbackExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsShaderStencilExportExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsShaderStencilExportExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsShaderStencilExportExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsDisplayNativeHDRExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsDisplayNativeHDRExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsDisplayNativeHDRExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsGCNShaderExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsGCNShaderExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsGCNShaderExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsRasterizationOrderExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsRasterizationOrderExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsRasterizationOrderExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsShaderBallotExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsShaderBallotExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsShaderBallotExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsShaderTrinaryMinmaxExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsShaderTrinaryMinmaxExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsShaderTrinaryMinmaxExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsImageFilterCubicExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsImageFilterCubicExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsImageFilterCubicExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsClipspaceWScalingExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsClipspaceWScalingExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsClipspaceWScalingExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsFragmentCoverageToColorExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsFragmentCoverageToColorExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsFragmentCoverageToColorExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsGeometryShaderPassthroughExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsGeometryShaderPassthroughExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsGeometryShaderPassthroughExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsRaytracingExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsRaytracingExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsRaytracingExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsShaderSubgroupPartitionedExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsShaderSubgroupPartitionedExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsShaderSubgroupPartitionedExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsViewportArray2ExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsViewportArray2ExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsViewportArray2ExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsViewportSwizzleExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsViewportSwizzleExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsViewportSwizzleExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsMultiviewPerViewAttributesExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsMultiviewPerViewAttributesExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsMultiviewPerViewAttributesExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsCreateRenderpass2ExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsCreateRenderpass2ExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsCreateRenderpass2ExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsShaderViewportIndexLayerExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsShaderViewportIndexLayerExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsShaderViewportIndexLayerExtensionPresent;
 }
 
-bool VulkanCBindings::DeviceParameters::IsFullscreenExclusiveExtensionEnabled() const
+bool Vulkan::DeviceParameters::IsFullscreenExclusiveExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.IsFullscreenExclusiveExtensionPresent;
 }
 
-const VkPhysicalDeviceProperties& VulkanCBindings::DeviceParameters::GetDeviceProperties() const
+const VkPhysicalDeviceProperties& Vulkan::DeviceParameters::GetDeviceProperties() const
 {
 	return mProperties.properties;
 }
 
-void VulkanCBindings::DeviceParameters::InvalidateDeviceFeatures(VkPhysicalDevice physicalDevice)
+void Vulkan::DeviceParameters::InvalidateDeviceFeatures(VkPhysicalDevice physicalDevice)
 {
 	vgs::GenericStructureChain<VkPhysicalDeviceFeatures2> physicalDeviceFeaturesChain;
 	physicalDeviceFeaturesChain.AppendToChain(mBlendOperationAdvancedFeatures);
@@ -949,7 +949,7 @@ void VulkanCBindings::DeviceParameters::InvalidateDeviceFeatures(VkPhysicalDevic
 	mFeatures = physicalDeviceFeaturesChain.GetChainHead();
 }
 
-void VulkanCBindings::DeviceParameters::InvalidateDeviceProperties(VkPhysicalDevice physicalDevice)
+void Vulkan::DeviceParameters::InvalidateDeviceProperties(VkPhysicalDevice physicalDevice)
 {
 	//And here I want: VR, performance query, push descriptors, advanced blending, conservative rasterization, discard rectangles, fragment density map,
 	//inline uniform blocks, robustness, texel buffer alignment, device generated commands, mesh shader, raytracing, shading rate image, more VR,
@@ -980,7 +980,7 @@ void VulkanCBindings::DeviceParameters::InvalidateDeviceProperties(VkPhysicalDev
 	mProperties = physicalDevicePropertiesChain.GetChainHead();
 }
 
-void VulkanCBindings::DeviceParameters::InvalidateDeviceMemoryProperties(VkPhysicalDevice physicalDevice)
+void Vulkan::DeviceParameters::InvalidateDeviceMemoryProperties(VkPhysicalDevice physicalDevice)
 {
 	//And here there's only memory budget
 

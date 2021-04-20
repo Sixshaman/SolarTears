@@ -1,16 +1,16 @@
 #pragma once
 
 #include "../Renderer.hpp"
-#include "VulkanCUtils.hpp"
-#include "VulkanCInstanceParameters.hpp"
-#include "VulkanCDeviceParameters.hpp"
+#include "VulkanUtils.hpp"
+#include "VulkanInstanceParameters.hpp"
+#include "VulkanDeviceParameters.hpp"
 #include <unordered_set>
 #include <memory>
 
 class ThreadPool;
 class FrameCounter;
 
-namespace VulkanCBindings
+namespace Vulkan
 {
 	class FunctionsLibrary;
 	class WorkerCommandBuffers;
@@ -54,8 +54,8 @@ namespace VulkanCBindings
 
 		VkFence mRenderFences[VulkanUtils::InFlightFrameCount];
 
-		VulkanCBindings::InstanceParameters mInstanceParameters;
-		VulkanCBindings::DeviceParameters   mDeviceParameters;
+		InstanceParameters mInstanceParameters;
+		DeviceParameters   mDeviceParameters;
 
 		//TODO: Stack allocator for heap-allocated class members
 		std::unique_ptr<RenderableScene> mScene;

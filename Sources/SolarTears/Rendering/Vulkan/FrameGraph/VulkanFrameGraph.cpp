@@ -1,13 +1,13 @@
-#include "VulkanCFrameGraph.hpp"
-#include "../VulkanCWorkerCommandBuffers.hpp"
-#include "../VulkanCFunctions.hpp"
-#include "../VulkanCSwapChain.hpp"
-#include "../VulkanCDeviceQueues.hpp"
+#include "VulkanFrameGraph.hpp"
+#include "../VulkanWorkerCommandBuffers.hpp"
+#include "../VulkanFunctions.hpp"
+#include "../VulkanSwapChain.hpp"
+#include "../VulkanDeviceQueues.hpp"
 #include "../../../Core/ThreadPool.hpp"
 #include <array>
 #include <latch>
 
-VulkanCBindings::FrameGraph::FrameGraph(VkDevice device, const FrameGraphConfig& frameGraphConfig): mDeviceRef(device)
+Vulkan::FrameGraph::FrameGraph(VkDevice device, const FrameGraphConfig& frameGraphConfig): mDeviceRef(device)
 {
 	mImageMemory = VK_NULL_HANDLE;
 
@@ -18,7 +18,7 @@ VulkanCBindings::FrameGraph::FrameGraph(VkDevice device, const FrameGraphConfig&
 	CreateSemaphores();
 }
 
-VulkanCBindings::FrameGraph::~FrameGraph()
+Vulkan::FrameGraph::~FrameGraph()
 {
 	UnsetSwapchainPasses();
 	UnsetSwapchainImages();
@@ -46,7 +46,7 @@ VulkanCBindings::FrameGraph::~FrameGraph()
 	SafeDestroyObject(vkFreeMemory, mDeviceRef, mImageMemory);
 }
 
-void VulkanCBindings::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommandBuffers* commandBuffers, RenderableScene* scene, SwapChain* swapChain, DeviceQueues* deviceQueues, VkFence traverseFence, uint32_t currentFrameResourceIndex, uint32_t currentSwapchainImageIndex)
+void Vulkan::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommandBuffers* commandBuffers, RenderableScene* scene, SwapChain* swapChain, DeviceQueues* deviceQueues, VkFence traverseFence, uint32_t currentFrameResourceIndex, uint32_t currentSwapchainImageIndex)
 {
 	SwitchSwapchainPasses(currentSwapchainImageIndex);
 	SwitchSwapchainImages(currentSwapchainImageIndex);
@@ -65,12 +65,12 @@ void VulkanCBindings::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommand
 		{
 			struct JobData
 			{
-				const WorkerCommandBuffers*             CommandBuffers;
-				const FrameGraph*                       FrameGraph;
-				const VulkanCBindings::RenderableScene* Scene;
-				std::latch*                             Waitable;
-				uint32_t                                DependencyLevelSpanIndex;
-				uint32_t                                FrameResourceIndex;
+				const WorkerCommandBuffers* CommandBuffers;
+				const FrameGraph*           FrameGraph;
+				const RenderableScene*      Scene;
+				std::latch*                 Waitable;
+				uint32_t                    DependencyLevelSpanIndex;
+				uint32_t                    FrameResourceIndex;
 			}
 			jobData =
 			{
@@ -127,7 +127,7 @@ void VulkanCBindings::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommand
 	mLastSwapchainImageIndex = currentSwapchainImageIndex;
 }
 
-void VulkanCBindings::FrameGraph::CreateSemaphores()
+void Vulkan::FrameGraph::CreateSemaphores()
 {
 	for(uint32_t i = 0; i < VulkanUtils::InFlightFrameCount; i++)
 	{
@@ -140,7 +140,7 @@ void VulkanCBindings::FrameGraph::CreateSemaphores()
 	}
 }
 
-void VulkanCBindings::FrameGraph::SwitchSwapchainPasses(uint32_t swapchainImageIndex)
+void Vulkan::FrameGraph::SwitchSwapchainPasses(uint32_t swapchainImageIndex)
 {
 	uint32_t swapchainImageCount = (uint32_t)mSwapchainImageRefs.size();
 
@@ -153,7 +153,7 @@ void VulkanCBindings::FrameGraph::SwitchSwapchainPasses(uint32_t swapchainImageI
 	}
 }
 
-void VulkanCBindings::FrameGraph::SwitchSwapchainImages(uint32_t swapchainImageIndex)
+void Vulkan::FrameGraph::SwitchSwapchainImages(uint32_t swapchainImageIndex)
 {
 	//Swap images
 	std::swap(mImages[mBackbufferRefIndex], mSwapchainImageRefs[mLastSwapchainImageIndex]);
@@ -178,7 +178,7 @@ void VulkanCBindings::FrameGraph::SwitchSwapchainImages(uint32_t swapchainImageI
 	}
 }
 
-void VulkanCBindings::FrameGraph::UnsetSwapchainPasses()
+void Vulkan::FrameGraph::UnsetSwapchainPasses()
 {
 	uint32_t swapchainImageCount = (uint32_t)mSwapchainImageRefs.size();
 	for(uint32_t i = 0; i < (uint32_t)mSwapchainPassesSwapMap.size(); i += (swapchainImageCount + 1u))
@@ -188,7 +188,7 @@ void VulkanCBindings::FrameGraph::UnsetSwapchainPasses()
 	}
 }
 
-void VulkanCBindings::FrameGraph::UnsetSwapchainImages()
+void Vulkan::FrameGraph::UnsetSwapchainImages()
 {
 	//Swap images
 	std::swap(mImages[mBackbufferRefIndex], mSwapchainImageRefs[mLastSwapchainImageIndex]);
@@ -208,7 +208,7 @@ void VulkanCBindings::FrameGraph::UnsetSwapchainImages()
 	}
 }
 
-void VulkanCBindings::FrameGraph::BeginCommandBuffer(VkCommandBuffer cmdBuffer, VkCommandPool cmdPool) const
+void Vulkan::FrameGraph::BeginCommandBuffer(VkCommandBuffer cmdBuffer, VkCommandPool cmdPool) const
 {
 	ThrowIfFailed(vkResetCommandPool(mDeviceRef, cmdPool, 0));
 
@@ -221,12 +221,12 @@ void VulkanCBindings::FrameGraph::BeginCommandBuffer(VkCommandBuffer cmdBuffer, 
 	ThrowIfFailed(vkBeginCommandBuffer(cmdBuffer, &cmdBufferBeginInfo));
 }
 
-void VulkanCBindings::FrameGraph::EndCommandBuffer(VkCommandBuffer cmdBuffer) const
+void Vulkan::FrameGraph::EndCommandBuffer(VkCommandBuffer cmdBuffer) const
 {
 	ThrowIfFailed(vkEndCommandBuffer(cmdBuffer));
 }
 
-void VulkanCBindings::FrameGraph::RecordGraphicsPasses(VkCommandBuffer graphicsCommandBuffer, const RenderableScene* scene, uint32_t dependencyLevelSpanIndex) const
+void Vulkan::FrameGraph::RecordGraphicsPasses(VkCommandBuffer graphicsCommandBuffer, const RenderableScene* scene, uint32_t dependencyLevelSpanIndex) const
 {
 	DependencyLevelSpan levelSpan = mGraphicsPassSpans[dependencyLevelSpanIndex];
 	for(uint32_t renderPassIndex = levelSpan.DependencyLevelBegin; renderPassIndex < levelSpan.DependencyLevelEnd; renderPassIndex++)

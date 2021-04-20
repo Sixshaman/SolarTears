@@ -11,7 +11,7 @@ namespace vgs
 	template<typename T> class StructureChainBlob;
 }
 
-namespace VulkanCBindings
+namespace Vulkan
 {
 	class DeviceParameters
 	{

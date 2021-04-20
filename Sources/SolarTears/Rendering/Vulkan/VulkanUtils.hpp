@@ -7,7 +7,7 @@
 
 class LoggerQueue;
 
-namespace VulkanCBindings
+namespace Vulkan
 {
 	namespace VulkanUtils
 	{
@@ -62,14 +62,14 @@ namespace VulkanCBindings
 }
 
 #ifndef ThrowIfFailed
-#define ThrowIfFailed(x)                                                              \
-{                                                                                     \
-	VkResult vkres__ = (x);                                                           \
-	if(vkres__ != VK_SUCCESS)                                                         \
-	{                                                                                 \
-		std::wstring wfn = __FILEW__;                                                 \
-		throw VulkanCBindings::VulkanUtils::VkException(vkres__, L#x, wfn, __LINE__); \
-	}                                                                                 \
+#define ThrowIfFailed(x)                                                     \
+{                                                                            \
+	VkResult vkres__ = (x);                                                  \
+	if(vkres__ != VK_SUCCESS)                                                \
+	{                                                                        \
+		std::wstring wfn = __FILEW__;                                        \
+		throw Vulkan::VulkanUtils::VkException(vkres__, L#x, wfn, __LINE__); \
+	}                                                                        \
 }
 #endif
 

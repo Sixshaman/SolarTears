@@ -1,11 +1,11 @@
-#include "VulkanCInstanceParameters.hpp"
+#include "VulkanInstanceParameters.hpp"
+#include "VulkanUtils.hpp"
+#include "VulkanFunctions.hpp"
 #include <VulkanGenericStructures.h>
-#include "VulkanCUtils.hpp"
-#include "VulkanCFunctions.hpp"
 #include <unordered_set>
 #include <array>
 
-namespace VulkanCBindings
+namespace Vulkan
 {
 	//Enable KHRONOS validation
 	static const std::vector<std::string> global_config_instance_layers =
@@ -80,7 +80,7 @@ namespace VulkanCBindings
 	};
 }
 
-const std::unordered_map<std::string, size_t> VulkanCBindings::InstanceParameters::global_config_instance_extension_flags_offsets =
+const std::unordered_map<std::string, size_t> Vulkan::InstanceParameters::global_config_instance_extension_flags_offsets =
 {
 	{
 		VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
@@ -113,18 +113,18 @@ const std::unordered_map<std::string, size_t> VulkanCBindings::InstanceParameter
 	}
 };
 
-VulkanCBindings::InstanceParameters::InstanceParameters(LoggerQueue* loggingBoard): mLoggingBoard(loggingBoard)
+Vulkan::InstanceParameters::InstanceParameters(LoggerQueue* loggingBoard): mLoggingBoard(loggingBoard)
 {
 	assert(global_config_instance_extension_flags_offsets.size() * sizeof(bool) == sizeof(InstanceExtensionFlags));
 
 	memset(&mEnabledExtensionFlags, 0, sizeof(InstanceExtensionFlags));
 }
 
-VulkanCBindings::InstanceParameters::~InstanceParameters()
+Vulkan::InstanceParameters::~InstanceParameters()
 {
 }
 
-void VulkanCBindings::InstanceParameters::InvalidateInstanceLayers(std::vector<std::string>& outEnabledLayers)
+void Vulkan::InstanceParameters::InvalidateInstanceLayers(std::vector<std::string>& outEnabledLayers)
 {
 	outEnabledLayers.clear();
 	std::vector<VkLayerProperties> availableLayers;
@@ -153,7 +153,7 @@ void VulkanCBindings::InstanceParameters::InvalidateInstanceLayers(std::vector<s
 	}
 }
 
-void VulkanCBindings::InstanceParameters::InvalidateInstanceExtensions(std::vector<std::string>& outEnabledExtensions, vgs::StructureChainBlob<VkInstanceCreateInfo>& outStructureChain)
+void Vulkan::InstanceParameters::InvalidateInstanceExtensions(std::vector<std::string>& outEnabledExtensions, vgs::StructureChainBlob<VkInstanceCreateInfo>& outStructureChain)
 {
 	outEnabledExtensions.clear();
 
@@ -204,32 +204,32 @@ void VulkanCBindings::InstanceParameters::InvalidateInstanceExtensions(std::vect
 	}
 }
 
-bool VulkanCBindings::InstanceParameters::IsDebugUtilsExtensionEnabled() const
+bool Vulkan::InstanceParameters::IsDebugUtilsExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.DebugUtilsExtensionEnabled;
 }
 
-bool VulkanCBindings::InstanceParameters::IsDisplayExtensionEnabled() const
+bool Vulkan::InstanceParameters::IsDisplayExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.DisplayExtensionPresent;
 }
 
-bool VulkanCBindings::InstanceParameters::IsDisplayProperties2ExtensionEnabled() const
+bool Vulkan::InstanceParameters::IsDisplayProperties2ExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.DisplayProperties2ExtensionPresent;
 }
 
-bool VulkanCBindings::InstanceParameters::IsDirectModeDisplayExtensionEnabled() const
+bool Vulkan::InstanceParameters::IsDirectModeDisplayExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.DirectModeDisplayExtensionPresent;
 }
 
-bool VulkanCBindings::InstanceParameters::IsSurfaceCapabilities2ExtensionEnabled() const
+bool Vulkan::InstanceParameters::IsSurfaceCapabilities2ExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.SurfaceCapabilities2ExtensionPresent;
 }
 
-bool VulkanCBindings::InstanceParameters::IsHeadlessSurfaceExtensionEnabled() const
+bool Vulkan::InstanceParameters::IsHeadlessSurfaceExtensionEnabled() const
 {
 	return mEnabledExtensionFlags.HeadlessSurfaceExtensionPresent;
 }

@@ -3,12 +3,12 @@
 #include <vector>
 #include <memory>
 #include <unordered_set>
-#include "VulkanCRenderPass.hpp"
+#include "VulkanRenderPass.hpp"
 #include "../../FrameGraphConfig.hpp"
 
 class ThreadPool;
 
-namespace VulkanCBindings
+namespace Vulkan
 {
 	class WorkerCommandBuffers;
 	class SwapChain;

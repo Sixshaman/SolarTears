@@ -34,17 +34,8 @@
     <Filter Include="Core\Scene">
       <UniqueIdentifier>{00b68438-2c0c-4987-910e-cf36b55c6c76}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Rendering\VulkanC">
-      <UniqueIdentifier>{29f306f9-2995-4efb-80d2-c36dfd88cf8d}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Rendering\VulkanC\FrameGraph">
-      <UniqueIdentifier>{2e204e23-0eea-43d2-8c41-c6275f0b7a31}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Core\DataStructures">
       <UniqueIdentifier>{b24293cf-14ce-4c91-b00f-b05ef05b0435}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Rendering\VulkanC\FrameGraph\Passes">
-      <UniqueIdentifier>{54f7c0de-05d2-443b-a13b-661f4442d518}</UniqueIdentifier>
     </Filter>
     <Filter Include="Shaders">
       <UniqueIdentifier>{cdd2a9be-cf43-4274-ad24-069df544e357}</UniqueIdentifier>
@@ -54,9 +45,6 @@
     </Filter>
     <Filter Include="Shaders\Vulkan\GBuffer">
       <UniqueIdentifier>{05875a98-8a54-4bec-aaae-6d781e036a6e}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Rendering\VulkanC\Scene">
-      <UniqueIdentifier>{c333e294-6c60-41cc-9227-20168a7588c4}</UniqueIdentifier>
     </Filter>
     <Filter Include="3rdParty">
       <UniqueIdentifier>{4527da74-7ce3-4e16-810b-48ed8f0f9fe5}</UniqueIdentifier>
@@ -99,6 +87,18 @@
     </Filter>
     <Filter Include="Rendering\D3D12\FrameGraph\Passes">
       <UniqueIdentifier>{a8812f67-3801-4386-916e-8c44261db329}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Rendering\Vulkan">
+      <UniqueIdentifier>{786fb3a7-f1c4-45bb-bf4f-d2190c7b6871}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Rendering\Vulkan\Scene">
+      <UniqueIdentifier>{935a24b9-57a7-41e1-8c07-f908695465e5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Rendering\Vulkan\FrameGraph">
+      <UniqueIdentifier>{3a48052a-d1d4-4a48-9319-5deb53a17547}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Rendering\Vulkan\FrameGraph\Passes">
+      <UniqueIdentifier>{dcc72873-6abb-4b2a-9e13-8324d5720238}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -144,45 +144,6 @@
     <ClInclude Include="Core\Scene\SceneDescription.hpp">
       <Filter>Core\Scene</Filter>
     </ClInclude>
-    <ClInclude Include="Rendering\VulkanC\VulkanCDeviceParameters.hpp">
-      <Filter>Rendering\VulkanC</Filter>
-    </ClInclude>
-    <ClInclude Include="Rendering\VulkanC\VulkanCFunctions.hpp">
-      <Filter>Rendering\VulkanC</Filter>
-    </ClInclude>
-    <ClInclude Include="Rendering\VulkanC\VulkanCFunctionsLibrary.hpp">
-      <Filter>Rendering\VulkanC</Filter>
-    </ClInclude>
-    <ClInclude Include="Rendering\VulkanC\VulkanCInstanceParameters.hpp">
-      <Filter>Rendering\VulkanC</Filter>
-    </ClInclude>
-    <ClInclude Include="Rendering\VulkanC\VulkanCMemory.hpp">
-      <Filter>Rendering\VulkanC</Filter>
-    </ClInclude>
-    <ClInclude Include="Rendering\VulkanC\VulkanCRenderer.hpp">
-      <Filter>Rendering\VulkanC</Filter>
-    </ClInclude>
-    <ClInclude Include="Rendering\VulkanC\VulkanCSwapChain.hpp">
-      <Filter>Rendering\VulkanC</Filter>
-    </ClInclude>
-    <ClInclude Include="Rendering\VulkanC\VulkanCUtils.hpp">
-      <Filter>Rendering\VulkanC</Filter>
-    </ClInclude>
-    <ClInclude Include="Rendering\VulkanC\VulkanCWorkerCommandBuffers.hpp">
-      <Filter>Rendering\VulkanC</Filter>
-    </ClInclude>
-    <ClInclude Include="Rendering\VulkanC\FrameGraph\VulkanCRenderPass.hpp">
-      <Filter>Rendering\VulkanC\FrameGraph</Filter>
-    </ClInclude>
-    <ClInclude Include="Rendering\VulkanC\FrameGraph\VulkanCFrameGraph.hpp">
-      <Filter>Rendering\VulkanC\FrameGraph</Filter>
-    </ClInclude>
-    <ClInclude Include="Rendering\VulkanC\FrameGraph\Passes\VulkanCCopyImagePass.hpp">
-      <Filter>Rendering\VulkanC\FrameGraph\Passes</Filter>
-    </ClInclude>
-    <ClInclude Include="Rendering\VulkanC\VulkanCShaders.hpp">
-      <Filter>Rendering\VulkanC</Filter>
-    </ClInclude>
     <ClInclude Include="Rendering\RenderableSceneBuilderBase.hpp">
       <Filter>Rendering</Filter>
     </ClInclude>
@@ -200,18 +161,6 @@
     </ClInclude>
     <ClInclude Include="Rendering\RenderableSceneMisc.hpp">
       <Filter>Rendering</Filter>
-    </ClInclude>
-    <ClInclude Include="Rendering\VulkanC\Scene\VulkanCSceneBuilder.hpp">
-      <Filter>Rendering\VulkanC\Scene</Filter>
-    </ClInclude>
-    <ClInclude Include="Rendering\VulkanC\Scene\VulkanCScene.hpp">
-      <Filter>Rendering\VulkanC\Scene</Filter>
-    </ClInclude>
-    <ClInclude Include="Rendering\VulkanC\FrameGraph\VulkanCFrameGraphBuilder.hpp">
-      <Filter>Rendering\VulkanC\FrameGraph</Filter>
-    </ClInclude>
-    <ClInclude Include="Rendering\VulkanC\VulkanCDeviceQueues.hpp">
-      <Filter>Rendering\VulkanC</Filter>
     </ClInclude>
     <ClInclude Include="Core\DataStructures\SmallVector.hpp">
       <Filter>Core\DataStructures</Filter>
@@ -321,8 +270,59 @@
     <ClInclude Include="Rendering\D3D12\FrameGraph\Passes\D3D12GBufferPass.hpp">
       <Filter>Rendering\D3D12\FrameGraph\Passes</Filter>
     </ClInclude>
-    <ClInclude Include="Rendering\VulkanC\FrameGraph\Passes\VulkanCGBufferPass.hpp">
-      <Filter>Rendering\VulkanC\FrameGraph\Passes</Filter>
+    <ClInclude Include="Rendering\Vulkan\FrameGraph\Passes\VulkanGBufferPass.hpp">
+      <Filter>Rendering\Vulkan\FrameGraph\Passes</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Vulkan\FrameGraph\Passes\VulkanCopyImagePass.hpp">
+      <Filter>Rendering\Vulkan\FrameGraph\Passes</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Vulkan\FrameGraph\VulkanFrameGraphBuilder.hpp">
+      <Filter>Rendering\Vulkan\FrameGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Vulkan\FrameGraph\VulkanRenderPass.hpp">
+      <Filter>Rendering\Vulkan\FrameGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Vulkan\FrameGraph\VulkanFrameGraph.hpp">
+      <Filter>Rendering\Vulkan\FrameGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Vulkan\Scene\VulkanSceneBuilder.hpp">
+      <Filter>Rendering\Vulkan\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Vulkan\Scene\VulkanScene.hpp">
+      <Filter>Rendering\Vulkan\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Vulkan\VulkanShaders.hpp">
+      <Filter>Rendering\Vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Vulkan\VulkanSwapChain.hpp">
+      <Filter>Rendering\Vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Vulkan\VulkanUtils.hpp">
+      <Filter>Rendering\Vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Vulkan\VulkanWorkerCommandBuffers.hpp">
+      <Filter>Rendering\Vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Vulkan\VulkanDeviceParameters.hpp">
+      <Filter>Rendering\Vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Vulkan\VulkanDeviceQueues.hpp">
+      <Filter>Rendering\Vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Vulkan\VulkanFunctions.hpp">
+      <Filter>Rendering\Vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Vulkan\VulkanFunctionsLibrary.hpp">
+      <Filter>Rendering\Vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Vulkan\VulkanInstanceParameters.hpp">
+      <Filter>Rendering\Vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Vulkan\VulkanMemory.hpp">
+      <Filter>Rendering\Vulkan</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Vulkan\VulkanRenderer.hpp">
+      <Filter>Rendering\Vulkan</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -365,45 +365,6 @@
     <ClCompile Include="Core\Scene\SceneDescription.cpp">
       <Filter>Core\Scene</Filter>
     </ClCompile>
-    <ClCompile Include="Rendering\VulkanC\VulkanCDeviceParameters.cpp">
-      <Filter>Rendering\VulkanC</Filter>
-    </ClCompile>
-    <ClCompile Include="Rendering\VulkanC\VulkanCFunctions.cpp">
-      <Filter>Rendering\VulkanC</Filter>
-    </ClCompile>
-    <ClCompile Include="Rendering\VulkanC\VulkanCFunctionsLibrary.cpp">
-      <Filter>Rendering\VulkanC</Filter>
-    </ClCompile>
-    <ClCompile Include="Rendering\VulkanC\VulkanCInstanceParameters.cpp">
-      <Filter>Rendering\VulkanC</Filter>
-    </ClCompile>
-    <ClCompile Include="Rendering\VulkanC\VulkanCMemory.cpp">
-      <Filter>Rendering\VulkanC</Filter>
-    </ClCompile>
-    <ClCompile Include="Rendering\VulkanC\VulkanCRenderer.cpp">
-      <Filter>Rendering\VulkanC</Filter>
-    </ClCompile>
-    <ClCompile Include="Rendering\VulkanC\VulkanCSwapChain.cpp">
-      <Filter>Rendering\VulkanC</Filter>
-    </ClCompile>
-    <ClCompile Include="Rendering\VulkanC\VulkanCUtils.cpp">
-      <Filter>Rendering\VulkanC</Filter>
-    </ClCompile>
-    <ClCompile Include="Rendering\VulkanC\VulkanCWorkerCommandBuffers.cpp">
-      <Filter>Rendering\VulkanC</Filter>
-    </ClCompile>
-    <ClCompile Include="Rendering\VulkanC\FrameGraph\VulkanCRenderPass.cpp">
-      <Filter>Rendering\VulkanC\FrameGraph</Filter>
-    </ClCompile>
-    <ClCompile Include="Rendering\VulkanC\FrameGraph\VulkanCFrameGraph.cpp">
-      <Filter>Rendering\VulkanC\FrameGraph</Filter>
-    </ClCompile>
-    <ClCompile Include="Rendering\VulkanC\FrameGraph\Passes\VulkanCCopyImagePass.cpp">
-      <Filter>Rendering\VulkanC\FrameGraph\Passes</Filter>
-    </ClCompile>
-    <ClCompile Include="Rendering\VulkanC\VulkanCShaders.cpp">
-      <Filter>Rendering\VulkanC</Filter>
-    </ClCompile>
     <ClCompile Include="Rendering\RenderableSceneBuilderBase.cpp">
       <Filter>Rendering</Filter>
     </ClCompile>
@@ -418,18 +379,6 @@
     </ClCompile>
     <ClCompile Include="Rendering\RenderableSceneBase.cpp">
       <Filter>Rendering</Filter>
-    </ClCompile>
-    <ClCompile Include="Rendering\VulkanC\Scene\VulkanCSceneBuilder.cpp">
-      <Filter>Rendering\VulkanC\Scene</Filter>
-    </ClCompile>
-    <ClCompile Include="Rendering\VulkanC\Scene\VulkanCScene.cpp">
-      <Filter>Rendering\VulkanC\Scene</Filter>
-    </ClCompile>
-    <ClCompile Include="Rendering\VulkanC\FrameGraph\VulkanCFrameGraphBuilder.cpp">
-      <Filter>Rendering\VulkanC\FrameGraph</Filter>
-    </ClCompile>
-    <ClCompile Include="Rendering\VulkanC\VulkanCDeviceQueues.cpp">
-      <Filter>Rendering\VulkanC</Filter>
     </ClCompile>
     <ClCompile Include="Core\FrameCounter.cpp">
       <Filter>Core</Filter>
@@ -518,8 +467,59 @@
     <ClCompile Include="Rendering\D3D12\FrameGraph\Passes\D3D12GBufferPass.cpp">
       <Filter>Rendering\D3D12\FrameGraph\Passes</Filter>
     </ClCompile>
-    <ClCompile Include="Rendering\VulkanC\FrameGraph\Passes\VulkanCGBufferPass.cpp">
-      <Filter>Rendering\VulkanC\FrameGraph\Passes</Filter>
+    <ClCompile Include="Rendering\Vulkan\FrameGraph\Passes\VulkanGBufferPass.cpp">
+      <Filter>Rendering\Vulkan\FrameGraph\Passes</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Vulkan\FrameGraph\Passes\VulkanCopyImagePass.cpp">
+      <Filter>Rendering\Vulkan\FrameGraph\Passes</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Vulkan\FrameGraph\VulkanFrameGraphBuilder.cpp">
+      <Filter>Rendering\Vulkan\FrameGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Vulkan\FrameGraph\VulkanRenderPass.cpp">
+      <Filter>Rendering\Vulkan\FrameGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Vulkan\FrameGraph\VulkanFrameGraph.cpp">
+      <Filter>Rendering\Vulkan\FrameGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Vulkan\Scene\VulkanScene.cpp">
+      <Filter>Rendering\Vulkan\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Vulkan\Scene\VulkanSceneBuilder.cpp">
+      <Filter>Rendering\Vulkan\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Vulkan\VulkanSwapChain.cpp">
+      <Filter>Rendering\Vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Vulkan\VulkanUtils.cpp">
+      <Filter>Rendering\Vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Vulkan\VulkanWorkerCommandBuffers.cpp">
+      <Filter>Rendering\Vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Vulkan\VulkanDeviceParameters.cpp">
+      <Filter>Rendering\Vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Vulkan\VulkanDeviceQueues.cpp">
+      <Filter>Rendering\Vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Vulkan\VulkanFunctions.cpp">
+      <Filter>Rendering\Vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Vulkan\VulkanFunctionsLibrary.cpp">
+      <Filter>Rendering\Vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Vulkan\VulkanInstanceParameters.cpp">
+      <Filter>Rendering\Vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Vulkan\VulkanMemory.cpp">
+      <Filter>Rendering\Vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Vulkan\VulkanRenderer.cpp">
+      <Filter>Rendering\Vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Vulkan\VulkanShaders.cpp">
+      <Filter>Rendering\Vulkan</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -528,9 +528,6 @@
     </None>
     <None Include="Core\Allocators\StackAllocator.inl">
       <Filter>Core\Allocators</Filter>
-    </None>
-    <None Include="Rendering\VulkanC\Scene\VulkanCSceneBuilder.inl">
-      <Filter>Rendering\VulkanC\Scene</Filter>
     </None>
     <None Include="Core\Scene\SceneObjectLocation.hpp">
       <Filter>Core\Scene</Filter>
@@ -546,6 +543,9 @@
     </None>
     <None Include="Rendering\D3D12\D3D12Utils.inl">
       <Filter>Rendering\D3D12</Filter>
+    </None>
+    <None Include="Rendering\Vulkan\Scene\VulkanSceneBuilder.inl">
+      <Filter>Rendering\Vulkan\Scene</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>

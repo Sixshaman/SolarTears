@@ -1,10 +1,10 @@
-#include "VulkanCMemory.hpp"
-#include "VulkanCFunctions.hpp"
-#include "VulkanCUtils.hpp"
+#include "VulkanMemory.hpp"
+#include "VulkanFunctions.hpp"
+#include "VulkanUtils.hpp"
 #include <VulkanGenericStructures.h>
 #include <cassert>
 
-VulkanCBindings::MemoryManager::MemoryManager(LoggerQueue* logger, VkPhysicalDevice physicalDevice, const DeviceParameters& deviceParameters): mLogger(logger)
+Vulkan::MemoryManager::MemoryManager(LoggerQueue* logger, VkPhysicalDevice physicalDevice, const DeviceParameters& deviceParameters): mLogger(logger)
 {
 	vgs::GenericStructureChain<VkPhysicalDeviceMemoryProperties2> memoryPropertiesChain;
 	if(deviceParameters.IsMemoryBudgetExtensionEnabled())
@@ -18,11 +18,11 @@ VulkanCBindings::MemoryManager::MemoryManager(LoggerQueue* logger, VkPhysicalDev
 	mMemoryProperties = memoryPropertiesChain.GetChainHead().memoryProperties;
 }
 
-VulkanCBindings::MemoryManager::~MemoryManager()
+Vulkan::MemoryManager::~MemoryManager()
 {
 }
 
-VkDeviceMemory VulkanCBindings::MemoryManager::AllocateImagesMemory(VkDevice device, const std::vector<VkImage>& images, std::vector<VkDeviceSize>& outMemoryOffsets) const
+VkDeviceMemory Vulkan::MemoryManager::AllocateImagesMemory(VkDevice device, const std::vector<VkImage>& images, std::vector<VkDeviceSize>& outMemoryOffsets) const
 {
 	outMemoryOffsets.clear();
 
@@ -82,7 +82,7 @@ VkDeviceMemory VulkanCBindings::MemoryManager::AllocateImagesMemory(VkDevice dev
 	return allocatedMemory;
 }
 
-VkDeviceMemory VulkanCBindings::MemoryManager::AllocateBuffersMemory(VkDevice device, const std::vector<VkBuffer>& buffers, BufferAllocationType allocationType, std::vector<VkDeviceSize>& outMemoryOffsets) const
+VkDeviceMemory Vulkan::MemoryManager::AllocateBuffersMemory(VkDevice device, const std::vector<VkBuffer>& buffers, BufferAllocationType allocationType, std::vector<VkDeviceSize>& outMemoryOffsets) const
 {
 	outMemoryOffsets.clear();
 
@@ -155,7 +155,7 @@ VkDeviceMemory VulkanCBindings::MemoryManager::AllocateBuffersMemory(VkDevice de
 	return allocatedMemory;
 }
 
-VkDeviceMemory VulkanCBindings::MemoryManager::AllocateIntermediateBufferMemory(VkDevice device, VkBuffer buffer) const
+VkDeviceMemory Vulkan::MemoryManager::AllocateIntermediateBufferMemory(VkDevice device, VkBuffer buffer) const
 {
 	VkMemoryRequirements bufferMemoryRequirements;
 	vkGetBufferMemoryRequirements(device, buffer, &bufferMemoryRequirements);

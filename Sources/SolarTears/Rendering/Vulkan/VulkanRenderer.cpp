@@ -1,16 +1,16 @@
-#include "VulkanCRenderer.hpp"
-#include "VulkanCFunctions.hpp"
-#include "VulkanCFunctionsLibrary.hpp"
-#include "VulkanCSwapChain.hpp"
-#include "VulkanCMemory.hpp"
-#include "VulkanCWorkerCommandBuffers.hpp"
-#include "VulkanCShaders.hpp"
-#include "VulkanCDeviceQueues.hpp"
-#include "FrameGraph/VulkanCRenderPass.hpp"
-#include "FrameGraph/VulkanCFrameGraph.hpp"
-#include "FrameGraph/VulkanCFrameGraphBuilder.hpp"
-#include "Scene/VulkanCScene.hpp"
-#include "Scene/VulkanCSceneBuilder.hpp"
+#include "VulkanRenderer.hpp"
+#include "VulkanFunctions.hpp"
+#include "VulkanFunctionsLibrary.hpp"
+#include "VulkanSwapChain.hpp"
+#include "VulkanMemory.hpp"
+#include "VulkanWorkerCommandBuffers.hpp"
+#include "VulkanShaders.hpp"
+#include "VulkanDeviceQueues.hpp"
+#include "FrameGraph/VulkanRenderPass.hpp"
+#include "FrameGraph/VulkanFrameGraph.hpp"
+#include "FrameGraph/VulkanFrameGraphBuilder.hpp"
+#include "Scene/VulkanScene.hpp"
+#include "Scene/VulkanSceneBuilder.hpp"
 #include "../../Core/Util.hpp"
 #include "../../Core/ThreadPool.hpp"
 #include "../../Core/FrameCounter.hpp"
@@ -18,12 +18,12 @@
 #include <array>
 #include <unordered_set>
 
-#include "FrameGraph/Passes/VulkanCGBufferPass.hpp"
-#include "FrameGraph/Passes/VulkanCCopyImagePass.hpp"
+#include "FrameGraph/Passes/VulkanGBufferPass.hpp"
+#include "FrameGraph/Passes/VulkanCopyImagePass.hpp"
 
-VulkanCBindings::Renderer::Renderer(LoggerQueue* loggerQueue, FrameCounter* frameCounter, ThreadPool* threadPool): ::Renderer(loggerQueue), mInstanceParameters(loggerQueue), mDeviceParameters(loggerQueue), mThreadPoolRef(threadPool), mFrameCounterRef(frameCounter)
+Vulkan::Renderer::Renderer(LoggerQueue* loggerQueue, FrameCounter* frameCounter, ThreadPool* threadPool): ::Renderer(loggerQueue), mInstanceParameters(loggerQueue), mDeviceParameters(loggerQueue), mThreadPoolRef(threadPool), mFrameCounterRef(frameCounter)
 {
-	mDynamicLibrary = std::make_unique<VulkanCBindings::FunctionsLibrary>();
+	mDynamicLibrary = std::make_unique<FunctionsLibrary>();
 
 	mDynamicLibrary->LoadGlobalFunctions();
 
@@ -53,7 +53,7 @@ VulkanCBindings::Renderer::Renderer(LoggerQueue* loggerQueue, FrameCounter* fram
 	mShaderManager = std::make_unique<ShaderManager>(mLoggingBoard);
 }
 
-VulkanCBindings::Renderer::~Renderer()
+Vulkan::Renderer::~Renderer()
 {
 	vkDeviceWaitIdle(mDevice); //No ThrowIfFailed in desctructors
 	
@@ -71,7 +71,7 @@ VulkanCBindings::Renderer::~Renderer()
 	SafeDestroyInstance(mInstance);
 }
 
-void VulkanCBindings::Renderer::AttachToWindow(Window* window)
+void Vulkan::Renderer::AttachToWindow(Window* window)
 {
 	assert(mPhysicalDevice != VK_NULL_HANDLE);
 
@@ -101,7 +101,7 @@ void VulkanCBindings::Renderer::AttachToWindow(Window* window)
 	CreateFrameGraph(window->GetWidth(), window->GetHeight());
 }
 
-void VulkanCBindings::Renderer::ResizeWindowBuffers(Window* window)
+void Vulkan::Renderer::ResizeWindowBuffers(Window* window)
 {
 	assert(mPhysicalDevice);
 
@@ -114,30 +114,30 @@ void VulkanCBindings::Renderer::ResizeWindowBuffers(Window* window)
 	CreateFrameGraph(window->GetWidth(), window->GetHeight());
 }
 
-void VulkanCBindings::Renderer::InitScene(SceneDescription* sceneDescription)
+void Vulkan::Renderer::InitScene(SceneDescription* sceneDescription)
 {
 	ThrowIfFailed(vkDeviceWaitIdle(mDevice));
 
-	mScene = std::make_unique<VulkanCBindings::RenderableScene>(mDevice, mFrameCounterRef, mDeviceParameters, mShaderManager.get());
+	mScene = std::make_unique<RenderableScene>(mDevice, mFrameCounterRef, mDeviceParameters, mShaderManager.get());
 	sceneDescription->BindRenderableComponent(mScene.get());
 
-	VulkanCBindings::RenderableSceneBuilder sceneBuilder(mScene.get());
+	RenderableSceneBuilder sceneBuilder(mScene.get());
 	sceneDescription->BuildRenderableComponent(&sceneBuilder);
 
 	sceneBuilder.BakeSceneFirstPart(mDeviceQueues.get(), mMemoryAllocator.get(), mShaderManager.get(), mDeviceParameters);
 	sceneBuilder.BakeSceneSecondPart(mDeviceQueues.get(), mCommandBuffers.get());
 }
 
-void VulkanCBindings::Renderer::CreateFrameGraph(uint32_t viewportWidth, uint32_t viewportHeight)
+void Vulkan::Renderer::CreateFrameGraph(uint32_t viewportWidth, uint32_t viewportHeight)
 {
 	mFrameGraph.reset();
 
 	FrameGraphConfig frameGraphConfig;
 	frameGraphConfig.SetScreenSize((uint16_t)viewportWidth, (uint16_t)viewportHeight);
 
-	mFrameGraph = std::make_unique<VulkanCBindings::FrameGraph>(mDevice, frameGraphConfig);
+	mFrameGraph = std::make_unique<FrameGraph>(mDevice, frameGraphConfig);
 
-	VulkanCBindings::FrameGraphBuilder frameGraphBuilder(mFrameGraph.get(), mScene.get(), &mInstanceParameters, &mDeviceParameters, mShaderManager.get());
+	FrameGraphBuilder frameGraphBuilder(mFrameGraph.get(), mScene.get(), &mInstanceParameters, &mDeviceParameters, mShaderManager.get());
 
 	GBufferPass::Register(&frameGraphBuilder, "GBuffer");
 	CopyImagePass::Register(&frameGraphBuilder, "CopyImage");
@@ -151,7 +151,7 @@ void VulkanCBindings::Renderer::CreateFrameGraph(uint32_t viewportWidth, uint32_
 	frameGraphBuilder.Build(mDeviceQueues.get(), mCommandBuffers.get(), mMemoryAllocator.get(), mSwapChain.get());
 }
 
-void VulkanCBindings::Renderer::RenderScene()
+void Vulkan::Renderer::RenderScene()
 {
 	const uint32_t currentFrameResourceIndex = mFrameCounterRef->GetFrameCount() % VulkanUtils::InFlightFrameCount;
 	const uint32_t currentSwapchainIndex     = currentFrameResourceIndex;
@@ -165,7 +165,7 @@ void VulkanCBindings::Renderer::RenderScene()
 	mFrameGraph->Traverse(mThreadPoolRef, mCommandBuffers.get(), mScene.get(), mSwapChain.get(), mDeviceQueues.get(), frameFence, currentFrameResourceIndex, currentSwapchainIndex);
 }
 
-void VulkanCBindings::Renderer::InitInstance()
+void Vulkan::Renderer::InitInstance()
 {
 	std::vector<std::string> enabledLayers;
 	mInstanceParameters.InvalidateInstanceLayers(enabledLayers);
@@ -208,7 +208,7 @@ void VulkanCBindings::Renderer::InitInstance()
 	ThrowIfFailed(vkCreateInstance(&instanceCreateInfo, nullptr, &mInstance));
 }
 
-void VulkanCBindings::Renderer::SelectPhysicalDevice(VkPhysicalDevice* outPhysicalDevice)
+void Vulkan::Renderer::SelectPhysicalDevice(VkPhysicalDevice* outPhysicalDevice)
 {
 	assert(outPhysicalDevice != nullptr);
 
@@ -225,7 +225,7 @@ void VulkanCBindings::Renderer::SelectPhysicalDevice(VkPhysicalDevice* outPhysic
 	*outPhysicalDevice = physicalDevices[0];
 }
 
-void VulkanCBindings::Renderer::CreateLogicalDevice(VkPhysicalDevice physicalDevice, const std::unordered_set<uint32_t>& queueFamilies)
+void Vulkan::Renderer::CreateLogicalDevice(VkPhysicalDevice physicalDevice, const std::unordered_set<uint32_t>& queueFamilies)
 {
 	SelectPhysicalDevice(&mPhysicalDevice);
 
@@ -274,7 +274,7 @@ void VulkanCBindings::Renderer::CreateLogicalDevice(VkPhysicalDevice physicalDev
 	ThrowIfFailed(vkCreateDevice(mPhysicalDevice, &deviceCreateInfo, nullptr, &mDevice));
 }
 
-void VulkanCBindings::Renderer::CreateFences()
+void Vulkan::Renderer::CreateFences()
 {
 	for(uint32_t i = 0; i < VulkanUtils::InFlightFrameCount; i++)
 	{
@@ -287,7 +287,7 @@ void VulkanCBindings::Renderer::CreateFences()
 	}
 }
 
-void VulkanCBindings::Renderer::InitializeSwapchainImages()
+void Vulkan::Renderer::InitializeSwapchainImages()
 {
 	VkCommandBuffer commandBuffer = mCommandBuffers->GetMainThreadGraphicsCommandBuffer(0);
 	VkCommandPool   commandPool   = mCommandBuffers->GetMainThreadComputeCommandPool(0);
@@ -303,8 +303,8 @@ void VulkanCBindings::Renderer::InitializeSwapchainImages()
 
 	vkBeginCommandBuffer(commandBuffer, &graphicsCmdBufferBeginInfo);
 
-	std::array<VkImageMemoryBarrier, VulkanCBindings::SwapChain::SwapchainImageCount> imageBarriers;
-	for(uint32_t i = 0; i < VulkanCBindings::SwapChain::SwapchainImageCount; i++)
+	std::array<VkImageMemoryBarrier, SwapChain::SwapchainImageCount> imageBarriers;
+	for(uint32_t i = 0; i < SwapChain::SwapchainImageCount; i++)
 	{
 		imageBarriers[i].sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 		imageBarriers[i].pNext                           = nullptr;

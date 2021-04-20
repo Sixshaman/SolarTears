@@ -75,24 +75,24 @@
     <ClInclude Include="Rendering\RenderableSceneBuilderBase.hpp" />
     <ClInclude Include="Rendering\RenderableSceneMisc.hpp" />
     <ClInclude Include="Rendering\Renderer.hpp" />
-    <ClInclude Include="Rendering\VulkanC\FrameGraph\Passes\VulkanCCopyImagePass.hpp" />
-    <ClInclude Include="Rendering\VulkanC\FrameGraph\Passes\VulkanCGBufferPass.hpp" />
-    <ClInclude Include="Rendering\VulkanC\FrameGraph\VulkanCFrameGraph.hpp" />
-    <ClInclude Include="Rendering\VulkanC\FrameGraph\VulkanCFrameGraphBuilder.hpp" />
-    <ClInclude Include="Rendering\VulkanC\FrameGraph\VulkanCRenderPass.hpp" />
-    <ClInclude Include="Rendering\VulkanC\Scene\VulkanCScene.hpp" />
-    <ClInclude Include="Rendering\VulkanC\Scene\VulkanCSceneBuilder.hpp" />
-    <ClInclude Include="Rendering\VulkanC\VulkanCDeviceParameters.hpp" />
-    <ClInclude Include="Rendering\VulkanC\VulkanCDeviceQueues.hpp" />
-    <ClInclude Include="Rendering\VulkanC\VulkanCFunctions.hpp" />
-    <ClInclude Include="Rendering\VulkanC\VulkanCFunctionsLibrary.hpp" />
-    <ClInclude Include="Rendering\VulkanC\VulkanCInstanceParameters.hpp" />
-    <ClInclude Include="Rendering\VulkanC\VulkanCMemory.hpp" />
-    <ClInclude Include="Rendering\VulkanC\VulkanCRenderer.hpp" />
-    <ClInclude Include="Rendering\VulkanC\VulkanCShaders.hpp" />
-    <ClInclude Include="Rendering\VulkanC\VulkanCSwapChain.hpp" />
-    <ClInclude Include="Rendering\VulkanC\VulkanCUtils.hpp" />
-    <ClInclude Include="Rendering\VulkanC\VulkanCWorkerCommandBuffers.hpp" />
+    <ClInclude Include="Rendering\Vulkan\FrameGraph\Passes\VulkanCopyImagePass.hpp" />
+    <ClInclude Include="Rendering\Vulkan\FrameGraph\Passes\VulkanGBufferPass.hpp" />
+    <ClInclude Include="Rendering\Vulkan\FrameGraph\VulkanFrameGraph.hpp" />
+    <ClInclude Include="Rendering\Vulkan\FrameGraph\VulkanFrameGraphBuilder.hpp" />
+    <ClInclude Include="Rendering\Vulkan\FrameGraph\VulkanRenderPass.hpp" />
+    <ClInclude Include="Rendering\Vulkan\Scene\VulkanScene.hpp" />
+    <ClInclude Include="Rendering\Vulkan\Scene\VulkanSceneBuilder.hpp" />
+    <ClInclude Include="Rendering\Vulkan\VulkanDeviceParameters.hpp" />
+    <ClInclude Include="Rendering\Vulkan\VulkanDeviceQueues.hpp" />
+    <ClInclude Include="Rendering\Vulkan\VulkanFunctions.hpp" />
+    <ClInclude Include="Rendering\Vulkan\VulkanFunctionsLibrary.hpp" />
+    <ClInclude Include="Rendering\Vulkan\VulkanInstanceParameters.hpp" />
+    <ClInclude Include="Rendering\Vulkan\VulkanMemory.hpp" />
+    <ClInclude Include="Rendering\Vulkan\VulkanRenderer.hpp" />
+    <ClInclude Include="Rendering\Vulkan\VulkanShaders.hpp" />
+    <ClInclude Include="Rendering\Vulkan\VulkanSwapChain.hpp" />
+    <ClInclude Include="Rendering\Vulkan\VulkanUtils.hpp" />
+    <ClInclude Include="Rendering\Vulkan\VulkanWorkerCommandBuffers.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\3rdParty\DDSTextureLoaderVk\DDSTextureLoaderVk.cpp" />
@@ -142,24 +142,24 @@
     <ClCompile Include="Rendering\RenderableSceneBase.cpp" />
     <ClCompile Include="Rendering\RenderableSceneBuilderBase.cpp" />
     <ClCompile Include="Rendering\Renderer.cpp" />
-    <ClCompile Include="Rendering\VulkanC\FrameGraph\Passes\VulkanCCopyImagePass.cpp" />
-    <ClCompile Include="Rendering\VulkanC\FrameGraph\Passes\VulkanCGBufferPass.cpp" />
-    <ClCompile Include="Rendering\VulkanC\FrameGraph\VulkanCFrameGraph.cpp" />
-    <ClCompile Include="Rendering\VulkanC\FrameGraph\VulkanCFrameGraphBuilder.cpp" />
-    <ClCompile Include="Rendering\VulkanC\FrameGraph\VulkanCRenderPass.cpp" />
-    <ClCompile Include="Rendering\VulkanC\Scene\VulkanCScene.cpp" />
-    <ClCompile Include="Rendering\VulkanC\Scene\VulkanCSceneBuilder.cpp" />
-    <ClCompile Include="Rendering\VulkanC\VulkanCDeviceParameters.cpp" />
-    <ClCompile Include="Rendering\VulkanC\VulkanCDeviceQueues.cpp" />
-    <ClCompile Include="Rendering\VulkanC\VulkanCFunctions.cpp" />
-    <ClCompile Include="Rendering\VulkanC\VulkanCFunctionsLibrary.cpp" />
-    <ClCompile Include="Rendering\VulkanC\VulkanCInstanceParameters.cpp" />
-    <ClCompile Include="Rendering\VulkanC\VulkanCMemory.cpp" />
-    <ClCompile Include="Rendering\VulkanC\VulkanCRenderer.cpp" />
-    <ClCompile Include="Rendering\VulkanC\VulkanCShaders.cpp" />
-    <ClCompile Include="Rendering\VulkanC\VulkanCSwapChain.cpp" />
-    <ClCompile Include="Rendering\VulkanC\VulkanCUtils.cpp" />
-    <ClCompile Include="Rendering\VulkanC\VulkanCWorkerCommandBuffers.cpp" />
+    <ClCompile Include="Rendering\Vulkan\FrameGraph\Passes\VulkanCopyImagePass.cpp" />
+    <ClCompile Include="Rendering\Vulkan\FrameGraph\Passes\VulkanGBufferPass.cpp" />
+    <ClCompile Include="Rendering\Vulkan\FrameGraph\VulkanFrameGraph.cpp" />
+    <ClCompile Include="Rendering\Vulkan\FrameGraph\VulkanFrameGraphBuilder.cpp" />
+    <ClCompile Include="Rendering\Vulkan\FrameGraph\VulkanRenderPass.cpp" />
+    <ClCompile Include="Rendering\Vulkan\Scene\VulkanScene.cpp" />
+    <ClCompile Include="Rendering\Vulkan\Scene\VulkanSceneBuilder.cpp" />
+    <ClCompile Include="Rendering\Vulkan\VulkanDeviceParameters.cpp" />
+    <ClCompile Include="Rendering\Vulkan\VulkanDeviceQueues.cpp" />
+    <ClCompile Include="Rendering\Vulkan\VulkanFunctions.cpp" />
+    <ClCompile Include="Rendering\Vulkan\VulkanFunctionsLibrary.cpp" />
+    <ClCompile Include="Rendering\Vulkan\VulkanInstanceParameters.cpp" />
+    <ClCompile Include="Rendering\Vulkan\VulkanMemory.cpp" />
+    <ClCompile Include="Rendering\Vulkan\VulkanRenderer.cpp" />
+    <ClCompile Include="Rendering\Vulkan\VulkanShaders.cpp" />
+    <ClCompile Include="Rendering\Vulkan\VulkanSwapChain.cpp" />
+    <ClCompile Include="Rendering\Vulkan\VulkanUtils.cpp" />
+    <ClCompile Include="Rendering\Vulkan\VulkanWorkerCommandBuffers.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Core\Allocators\StackAllocator.inl" />
@@ -185,7 +185,7 @@
     </CustomBuild>
     <None Include="Rendering\D3D12\D3D12Utils.inl" />
     <None Include="Rendering\D3D12\Scene\D3D12SceneBuilder.inl" />
-    <None Include="Rendering\VulkanC\Scene\VulkanCSceneBuilder.inl" />
+    <None Include="Rendering\Vulkan\Scene\VulkanSceneBuilder.inl" />
     <None Include="Shaders\D3D12\CommonHeader.hlsli" />
     <None Include="Shaders\D3D12\GBuffer\GBufferInclude.hlsli" />
   </ItemGroup>
