@@ -192,7 +192,7 @@
   <ItemGroup>
     <CustomBuild Include="Shaders\D3D12\GBuffer\GBufferDrawPS.hlsl">
       <FileType>Document</FileType>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)..\Utils\DXC\Debug\bin\dxc.exe -Od -T ps_6_5 -E "main" -Zi -Zpr -Fo "$(OutDir)Shaders\D3D12\GBuffer\%(Filename).cso" -Fd "$(OutDir)Shaders\D3D12\GBuffer\%(Filename).pdb" "%(Identity)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)..\Utils\DXC\Debug\bin\dxc.exe -Od -T ps_6_5 -all-resources-bound -E "main" -Zi -Zpr -Fo "$(OutDir)Shaders\D3D12\GBuffer\%(Filename).cso" -Fd "$(OutDir)Shaders\D3D12\GBuffer\%(Filename).pdb" "%(Identity)"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling %(Identity): %(Command)</Message>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Shaders\D3D12\GBuffer\%(Filename).cso;$(OutDir)Shaders\D3D12\GBuffer\%(Filename).pdb</Outputs>
     </CustomBuild>
@@ -200,7 +200,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
       </ExcludedFromBuild>
       <FileType>Document</FileType>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)..\Utils\DXC\Debug\bin\dxc.exe -Od -T vs_6_5 -E "main" -Zi -Zpr -Fo "$(OutDir)Shaders\D3D12\GBuffer\%(Filename).cso" -Fd "$(OutDir)Shaders\D3D12\GBuffer\%(Filename).pdb" "%(Identity)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)..\Utils\DXC\Debug\bin\dxc.exe -Od -T vs_6_5 -all-resources-bound -E "main" -Zi -Zpr -Fo "$(OutDir)Shaders\D3D12\GBuffer\%(Filename).cso" -Fd "$(OutDir)Shaders\D3D12\GBuffer\%(Filename).pdb" "%(Identity)"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling %(Identity): %(Command)</Message>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Shaders\D3D12\GBuffer\%(Filename).cso;$(OutDir)Shaders\D3D12\GBuffer\%(Filename).pdb</Outputs>
     </CustomBuild>

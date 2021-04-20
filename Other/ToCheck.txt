@@ -76,3 +76,4 @@
 - DX12: DRED
 - DX12: ID3D12GraphicsCommandList::Reset with pipeline state parameter (requires some kind of pipeline tracking?)
 - DX12: Multiple queue fences combining with FrameGraph::Traverse, requires some architectural thinking
+- DX12: Why is my DX12 renderer slower than Vulkan one? Maybe I'm doing something wrong with fences?
