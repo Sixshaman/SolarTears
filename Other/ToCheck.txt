@@ -18,6 +18,7 @@
 - Revise scene world structure - maybe do principal XYZ axes instead of scale+rotation+translation? Google it
 - Right-handed instead of left-handed
 - Blit pass
+- Automatically building DXC and downloading dxil.dll... Or at least add dxil.dll to Github
 - Pipeline layout/root signature management: either do both as in Vulkan (owned by render passes) or both as in D3D12 (owned by the shader manager)
 - More fine-grained barriers (no TOP_OF_PIPE/BOTTOM_OF_PIPE)
 - Async compute: Async compute passes should be in the end of the frame. BUT! They should be executed AT THE START of THE PREVIOUS frame. Need to reorder stuff for that
@@ -74,3 +75,4 @@
 - DX12: Descriptor indexing (seriously, not using bindless in 2021?)
 - DX12: DRED
 - DX12: ID3D12GraphicsCommandList::Reset with pipeline state parameter (requires some kind of pipeline tracking?)
+- DX12: Multiple queue fences combining with FrameGraph::Traverse, requires some architectural thinking

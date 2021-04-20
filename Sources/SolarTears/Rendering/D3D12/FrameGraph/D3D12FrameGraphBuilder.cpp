@@ -883,21 +883,22 @@ void D3D12::FrameGraphBuilder::BuildBarriers() //When present from compute is ou
 					/*
 					*    After barrier:
 					*
-					*    1.  Same queue, state unchanged:                              No barrier needed
-					*    2.  Same queue, state changed, Promoted read-only -> PRESENT: No barrier needed, state decays
-					*    3.  Same queue, state changed, other cases:                   Need a barrier Old state -> New state
+					*    1.  Same queue, state unchanged:                                           No barrier needed
+					*    2.  Same queue, state changed, Promoted read-only -> PRESENT:              No barrier needed, state decays
+					*    3.  Same queue, state changed, Promoted writeable/Non-promoted -> PRESENT: Need a barrier Old State -> PRESENT
+					*    4.  Same queue, state changed, other cases:                                No barrier needed, will be handled by the next state's barrier
 					*
-					*    4.  Graphics -> Compute,  state will be automatically promoted:               No barrier needed
-					*    5.  Graphics -> Compute,  state will not be promoted, was promoted read-only: No barrier needed, will be handled by the next state's barrier
-					*    6.  Graphics -> Compute,  state unchanged:                                    No barrier needed
-					*    7.  Graphics -> Compute,  state changed other cases:                          Need a barrier Old state -> New state
+					*    5.  Graphics -> Compute,  state will be automatically promoted:               No barrier needed
+					*    6.  Graphics -> Compute,  state will not be promoted, was promoted read-only: No barrier needed, will be handled by the next state's barrier
+					*    7.  Graphics -> Compute,  state unchanged:                                    No barrier needed
+					*    8.  Graphics -> Compute,  state changed other cases:                          Need a barrier Old state -> New state
 					* 
-					*    8.  Compute  -> Graphics, state will be automatically promoted:                 No barrier needed
-					* 	 9.  Compute  -> Graphics, state will not be promoted, was promoted read-only:   No barrier needed, will be handled by the next state's barrier     
-					*    10. Compute  -> Graphics, state changed Promoted read-only -> PRESENT:          No barrier needed, state will decay
-					*    11. Compute  -> Graphics, state changed Compute/graphics   -> Compute/Graphics: Need a barrier Old state -> New state
-					*    12. Compute  -> Graphics, state changed Compute/Graphics   -> Graphics:         No barrier needed, will be handled by the next state's barrier
-					*    13. Compute  -> Graphics, state unchanged:                                      No barrier needed
+					*    9.  Compute  -> Graphics, state will be automatically promoted:                 No barrier needed
+					* 	 10. Compute  -> Graphics, state will not be promoted, was promoted read-only:   No barrier needed, will be handled by the next state's barrier     
+					*    11. Compute  -> Graphics, state changed Promoted read-only -> PRESENT:          No barrier needed, state will decay
+					*    12. Compute  -> Graphics, state changed Compute/graphics   -> Compute/Graphics: Need a barrier Old state -> New state
+					*    13. Compute  -> Graphics, state changed Compute/Graphics   -> Graphics:         No barrier needed, will be handled by the next state's barrier
+					*    14. Compute  -> Graphics, state unchanged:                                      No barrier needed
 					*   
 					*    15. Graphics/Compute -> Copy, from Promoted read-only: No barrier needed
 					*    16. Graphics/Compute -> Copy, other cases:             Need a barrier Old state -> COMMON
@@ -918,42 +919,42 @@ void D3D12::FrameGraphBuilder::BuildBarriers() //When present from compute is ou
 
 					if(prevStateQueue == nextStateQueue) //Rules 1, 2, 3, 4
 					{
-						if(nextPassState == D3D12_RESOURCE_STATE_PRESENT)
+						if(nextPassState == D3D12_RESOURCE_STATE_PRESENT) //Rules 2, 3
 						{
-							needBarrier = !prevWasPromoted || D3D12Utils::IsStateWriteable(prevPassState);
+							needBarrier = (!prevWasPromoted || D3D12Utils::IsStateWriteable(prevPassState));
 						}
-						else
-						{
-							needBarrier = (prevPassState != nextPassState);
-						}
-					}
-					else if(prevStateQueue == D3D12_COMMAND_LIST_TYPE_DIRECT && nextStateQueue == D3D12_COMMAND_LIST_TYPE_COMPUTE) //Rules 4, 5, 6, 7
-					{
-						if(prevWasPromoted && !D3D12Utils::IsStateWriteable(prevPassState)) //Rule 5
+						else //Rules 1, 4
 						{
 							needBarrier = false;
 						}
-						else //Rules 4, 6, 7
+					}
+					else if(prevStateQueue == D3D12_COMMAND_LIST_TYPE_DIRECT && nextStateQueue == D3D12_COMMAND_LIST_TYPE_COMPUTE) //Rules 5, 6, 7, 8
+					{
+						if(prevWasPromoted && !D3D12Utils::IsStateWriteable(prevPassState)) //Rule 6
+						{
+							needBarrier = false;
+						}
+						else //Rules 5, 7, 8
 						{
 							needBarrier = !nextIsPromoted && (prevPassState != nextPassState);
 						}
 					}
-					else if(prevStateQueue == D3D12_COMMAND_LIST_TYPE_COMPUTE && nextStateQueue == D3D12_COMMAND_LIST_TYPE_DIRECT) //Rules 8, 9, 10, 11, 12, 13
+					else if(prevStateQueue == D3D12_COMMAND_LIST_TYPE_COMPUTE && nextStateQueue == D3D12_COMMAND_LIST_TYPE_DIRECT) //Rules 9, 10, 11, 12, 13, 14
 					{
-						if(prevWasPromoted && !D3D12Utils::IsStateWriteable(prevPassState)) //Rule 9, 10
+						if(prevWasPromoted && !D3D12Utils::IsStateWriteable(prevPassState)) //Rule 10, 11
 						{
 							needBarrier = false;
 						}
-						else //Rules 8, 11, 12, 13
+						else //Rules 9, 12, 13, 14
 						{
 							needBarrier = !nextIsPromoted && (prevPassState != nextPassState) && D3D12Utils::IsStateComputeFriendly(nextPassState);
 						}
 					}
-					else if(nextStateQueue == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 14, 15
+					else if(nextStateQueue == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 15, 16
 					{
 						needBarrier = !prevWasPromoted || D3D12Utils::IsStateWriteable(prevPassState);
 					}
-					else if(prevStateQueue == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 16, 17
+					else if(prevStateQueue == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 17, 18
 					{
 						needBarrier = false;
 					}
@@ -1263,6 +1264,7 @@ void D3D12::FrameGraphBuilder::SetSwapchainTextures(const std::unordered_map<Sub
 	for(size_t i = 0; i < swapchainTextures.size(); i++)
 	{
 		mGraphToBuild->mSwapchainImageRefs.push_back(swapchainTextures[i]);
+		SetDebugObjectName(mGraphToBuild->mSwapchainImageRefs.back(), mBackbufferName);
 	}
 	
 	for(const auto& nameWithCreateInfo: backbufferResourceCreateInfos)
@@ -1323,7 +1325,7 @@ void D3D12::FrameGraphBuilder::CreateTextures(ID3D12Device8* device, const std::
 			}
 		}
 		
-		SetDebugObjectName(mGraphToBuild->mOwnedResources.back().get(), nameWithCreateInfo.first); //Only does something in debug
+		SetDebugObjectName(mGraphToBuild->mTextures.back(), nameWithCreateInfo.first); //Only does something in debug
 	}
 }
 
