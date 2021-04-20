@@ -4,15 +4,16 @@
 #include <vector>
 #include <string>
 #include <memory>
-#include "VulkanCScene.hpp"
-#include "../VulkanCDeviceParameters.hpp"
-#include "../VulkanCUtils.hpp"
+#include "VulkanScene.hpp"
+#include "../VulkanDeviceParameters.hpp"
+#include "../VulkanUtils.hpp"
 #include "../../RenderableSceneBuilderBase.hpp"
 
-namespace VulkanCBindings
+namespace Vulkan
 {
 	class MemoryManager;
 	class DeviceQueues;
+	class ShaderManager;
 	class WorkerCommandBuffers;
 
 	class RenderableSceneBuilder: public RenderableSceneBuilderBase
@@ -73,4 +74,4 @@ namespace VulkanCBindings
 	};
 }
 
-#include "VulkanCSceneBuilder.inl"
+#include "VulkanSceneBuilder.inl"

@@ -1,11 +1,11 @@
-#include "VulkanCShaders.hpp"
-#include "VulkanCUtils.hpp"
+#include "VulkanShaders.hpp"
+#include "VulkanUtils.hpp"
 #include "../../Core/Util.hpp"
 #include "../../Logging/Logger.hpp"
 #include <cassert>
 #include <array>
 
-VulkanCBindings::ShaderManager::ShaderManager(LoggerQueue* logger): mLogger(logger)
+Vulkan::ShaderManager::ShaderManager(LoggerQueue* logger): mLogger(logger)
 {
 	mSpvToVkDescriptorTypes[SPV_REFLECT_DESCRIPTOR_TYPE_SAMPLER]                = VK_DESCRIPTOR_TYPE_SAMPLER;
 	mSpvToVkDescriptorTypes[SPV_REFLECT_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER] = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -37,31 +37,31 @@ VulkanCBindings::ShaderManager::ShaderManager(LoggerQueue* logger): mLogger(logg
 	FindDescriptorBindings();
 }
 
-VulkanCBindings::ShaderManager::~ShaderManager()
+Vulkan::ShaderManager::~ShaderManager()
 {
 }
 
-const uint32_t* VulkanCBindings::ShaderManager::GetGBufferVertexShaderData() const
+const uint32_t* Vulkan::ShaderManager::GetGBufferVertexShaderData() const
 {
 	return mGBufferVertexShaderModule->GetCode();
 }
 
-const uint32_t* VulkanCBindings::ShaderManager::GetGBufferFragmentShaderData() const
+const uint32_t* Vulkan::ShaderManager::GetGBufferFragmentShaderData() const
 {
 	return mGBufferFragmentShaderModule->GetCode();
 }
 
-size_t VulkanCBindings::ShaderManager::GetGBufferVertexShaderSize() const
+size_t Vulkan::ShaderManager::GetGBufferVertexShaderSize() const
 {
 	return mGBufferVertexShaderModule->GetCodeSize();
 }
 
-size_t VulkanCBindings::ShaderManager::GetGBufferFragmentShaderSize() const
+size_t Vulkan::ShaderManager::GetGBufferFragmentShaderSize() const
 {
 	return mGBufferFragmentShaderModule->GetCodeSize();
 }
 
-void VulkanCBindings::ShaderManager::GetGBufferDrawDescriptorBindingInfo(const std::string& bindingName, uint32_t* outBinding, uint32_t* outSet, uint32_t* outCount, VkShaderStageFlags* outStageFlags, VkDescriptorType* outDescriptorType) const
+void Vulkan::ShaderManager::GetGBufferDrawDescriptorBindingInfo(const std::string& bindingName, uint32_t* outBinding, uint32_t* outSet, uint32_t* outCount, VkShaderStageFlags* outStageFlags, VkDescriptorType* outDescriptorType) const
 {
 	DescriptorBindingInfo bindingInfo = mGBufferDrawBindings.at(bindingName);
 
@@ -91,7 +91,7 @@ void VulkanCBindings::ShaderManager::GetGBufferDrawDescriptorBindingInfo(const s
 	}
 }
 
-void VulkanCBindings::ShaderManager::LoadShaderData()
+void Vulkan::ShaderManager::LoadShaderData()
 {
 	//Shader states
 	const std::wstring gbufferShaderDir = Utils::GetMainDirectory() + L"Shaders/Vulkan/GBuffer/";
@@ -109,13 +109,13 @@ void VulkanCBindings::ShaderManager::LoadShaderData()
 	assert(mGBufferFragmentShaderModule->GetResult() == SPV_REFLECT_RESULT_SUCCESS);
 }
 
-void VulkanCBindings::ShaderManager::FindDescriptorBindings()
+void Vulkan::ShaderManager::FindDescriptorBindings()
 {
 	GatherDescriptorBindings(mGBufferVertexShaderModule.get(),   mGBufferDrawBindings, VK_SHADER_STAGE_VERTEX_BIT);
 	GatherDescriptorBindings(mGBufferFragmentShaderModule.get(), mGBufferDrawBindings, VK_SHADER_STAGE_FRAGMENT_BIT);
 }
 
-void VulkanCBindings::ShaderManager::GatherDescriptorBindings(const spv_reflect::ShaderModule* shaderModule, std::unordered_map<std::string, DescriptorBindingInfo>& descriptorBindingMap, VkShaderStageFlagBits shaderStage) const
+void Vulkan::ShaderManager::GatherDescriptorBindings(const spv_reflect::ShaderModule* shaderModule, std::unordered_map<std::string, DescriptorBindingInfo>& descriptorBindingMap, VkShaderStageFlagBits shaderStage) const
 {
 	uint32_t descriptorBindingCount = 0;
 	shaderModule->EnumerateDescriptorBindings(&descriptorBindingCount, nullptr);

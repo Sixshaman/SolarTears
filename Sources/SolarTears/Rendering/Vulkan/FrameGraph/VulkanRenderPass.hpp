@@ -2,13 +2,13 @@
 
 #include <unordered_set>
 #include <vulkan/vulkan.h>
-#include "../VulkanCUtils.hpp"
-#include "../Scene/VulkanCScene.hpp"
+#include "../VulkanUtils.hpp"
+#include "../Scene/VulkanScene.hpp"
 
 class LoggerQueue;
 class FrameGraphConfig;
 
-namespace VulkanCBindings
+namespace Vulkan
 {
 	class FrameGraphBuilder;
 

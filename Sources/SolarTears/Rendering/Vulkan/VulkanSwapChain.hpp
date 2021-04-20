@@ -1,12 +1,12 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
-#include "VulkanCInstanceParameters.hpp"
-#include "VulkanCDeviceParameters.hpp"
-#include "VulkanCUtils.hpp"
+#include "VulkanInstanceParameters.hpp"
+#include "VulkanDeviceParameters.hpp"
+#include "VulkanUtils.hpp"
 #include "../../Core/Window.hpp"
 
-namespace VulkanCBindings
+namespace Vulkan
 {
 	class SwapChain
 	{

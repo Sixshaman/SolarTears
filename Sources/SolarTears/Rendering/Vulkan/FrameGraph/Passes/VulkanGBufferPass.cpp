@@ -1,15 +1,15 @@
-#include "VulkanCGBufferPass.hpp"
-#include "../../VulkanCFunctions.hpp"
-#include "../../VulkanCDeviceParameters.hpp"
-#include "../../VulkanCShaders.hpp"
-#include "../../Scene/VulkanCSceneBuilder.hpp"
-#include "../VulkanCFrameGraph.hpp"
-#include "../VulkanCFrameGraphBuilder.hpp"
+#include "VulkanGBufferPass.hpp"
+#include "../../VulkanFunctions.hpp"
+#include "../../VulkanDeviceParameters.hpp"
+#include "../../VulkanShaders.hpp"
+#include "../../Scene/VulkanSceneBuilder.hpp"
 #include "../../../FrameGraphConfig.hpp"
+#include "../VulkanFrameGraph.hpp"
+#include "../VulkanFrameGraphBuilder.hpp"
 #include <array>
 #include <VulkanGenericStructures.h>
 
-VulkanCBindings::GBufferPass::GBufferPass(VkDevice device, const FrameGraphBuilder* frameGraphBuilder, const std::string& passName): RenderPass(device)
+Vulkan::GBufferPass::GBufferPass(VkDevice device, const FrameGraphBuilder* frameGraphBuilder, const std::string& passName): RenderPass(device)
 {
 	mRenderPass  = VK_NULL_HANDLE;
 	mFramebuffer = VK_NULL_HANDLE;
@@ -24,7 +24,7 @@ VulkanCBindings::GBufferPass::GBufferPass(VkDevice device, const FrameGraphBuild
 	CreatePipeline(frameGraphBuilder->GetShaderManager(), frameGraphBuilder->GetConfig());
 }
 
-VulkanCBindings::GBufferPass::~GBufferPass()
+Vulkan::GBufferPass::~GBufferPass()
 {
 	SafeDestroyObject(vkDestroyPipeline, mDeviceRef, mPipeline);
 	SafeDestroyObject(vkDestroyPipelineLayout, mDeviceRef, mPipelineLayout);
@@ -33,7 +33,7 @@ VulkanCBindings::GBufferPass::~GBufferPass()
 	SafeDestroyObject(vkDestroyFramebuffer, mDeviceRef, mFramebuffer);
 }
 
-void VulkanCBindings::GBufferPass::Register(FrameGraphBuilder* frameGraphBuilder, const std::string& passName)
+void Vulkan::GBufferPass::Register(FrameGraphBuilder* frameGraphBuilder, const std::string& passName)
 {
 	auto PassCreateFunc = [](VkDevice device, const FrameGraphBuilder* builder, const std::string& name) -> std::unique_ptr<RenderPass>
 	{
@@ -52,7 +52,7 @@ void VulkanCBindings::GBufferPass::Register(FrameGraphBuilder* frameGraphBuilder
 	frameGraphBuilder->SetPassSubresourceUsage(passName, ColorBufferImageId, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
 }
 
-void VulkanCBindings::GBufferPass::RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig) const
+void Vulkan::GBufferPass::RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig) const
 {
 	constexpr uint32_t WriteAttachmentCount = 1;
 
@@ -90,7 +90,7 @@ void VulkanCBindings::GBufferPass::RecordExecution(VkCommandBuffer commandBuffer
 	vkCmdEndRenderPass(commandBuffer);
 }
 
-void VulkanCBindings::GBufferPass::CreateRenderPass(const FrameGraphBuilder* frameGraphBuilder, const DeviceParameters* deviceParameters, const std::string& currentPassName)
+void Vulkan::GBufferPass::CreateRenderPass(const FrameGraphBuilder* frameGraphBuilder, const DeviceParameters* deviceParameters, const std::string& currentPassName)
 {
 	//TODO: may alias?
 	//TODO: multisampling?
@@ -160,7 +160,7 @@ void VulkanCBindings::GBufferPass::CreateRenderPass(const FrameGraphBuilder* fra
 	ThrowIfFailed(vkCreateRenderPass(mDeviceRef, &renderPassCreateInfo, nullptr, &mRenderPass));
 }
 
-void VulkanCBindings::GBufferPass::CreateFramebuffer(const FrameGraphBuilder* frameGraphBuilder, const FrameGraphConfig* frameGraphConfig, const std::string& currentPassName)
+void Vulkan::GBufferPass::CreateFramebuffer(const FrameGraphBuilder* frameGraphBuilder, const FrameGraphConfig* frameGraphConfig, const std::string& currentPassName)
 {
 	vgs::GenericStructureChain<VkFramebufferCreateInfo> framebufferCreateInfoChain;
 
@@ -185,7 +185,7 @@ void VulkanCBindings::GBufferPass::CreateFramebuffer(const FrameGraphBuilder* fr
 	ThrowIfFailed(vkCreateFramebuffer(mDeviceRef, &framebufferCreateInfo, nullptr, &mFramebuffer));
 }
 
-void VulkanCBindings::GBufferPass::CreatePipelineLayout(const RenderableScene* sceneBaked1stPart)
+void Vulkan::GBufferPass::CreatePipelineLayout(const RenderableScene* sceneBaked1stPart)
 {
 	std::array descriptorSetLayouts = {sceneBaked1stPart->GetGBufferTexturesDescriptorSetLayout(), sceneBaked1stPart->GetGBufferUniformsDescriptorSetLayout()};
 
@@ -201,7 +201,7 @@ void VulkanCBindings::GBufferPass::CreatePipelineLayout(const RenderableScene* s
 	ThrowIfFailed(vkCreatePipelineLayout(mDeviceRef, &gbufferPipelineLayoutCreateInfo, nullptr, &mPipelineLayout));
 }
 
-void VulkanCBindings::GBufferPass::CreatePipeline(const ShaderManager* shaderManager, const FrameGraphConfig* frameGraphConfig)
+void Vulkan::GBufferPass::CreatePipeline(const ShaderManager* shaderManager, const FrameGraphConfig* frameGraphConfig)
 {
 	VkShaderModuleCreateInfo vertexShaderModuleCreateInfo;
 	vertexShaderModuleCreateInfo.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;

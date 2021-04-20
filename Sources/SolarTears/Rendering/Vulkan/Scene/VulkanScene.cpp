@@ -1,14 +1,14 @@
-#include "VulkanCScene.hpp"
-#include "../VulkanCUtils.hpp"
-#include "../VulkanCMemory.hpp"
-#include "../VulkanCFunctions.hpp"
-#include "../VulkanCShaders.hpp"
+#include "VulkanScene.hpp"
+#include "../VulkanUtils.hpp"
+#include "../VulkanMemory.hpp"
+#include "../VulkanFunctions.hpp"
+#include "../VulkanShaders.hpp"
 #include "../../../../3rdParty/SPIRV-Reflect/spirv_reflect.h"
 #include "../../../Core/Scene/SceneDescription.hpp"
 #include "../../RenderableSceneMisc.hpp"
 #include <array>
 
-VulkanCBindings::RenderableScene::RenderableScene(const VkDevice device, const FrameCounter* frameCounter, const DeviceParameters& deviceParameters, const ShaderManager* shaderManager) :RenderableSceneBase(VulkanUtils::InFlightFrameCount), mFrameCounterRef(frameCounter), mDeviceRef(device)
+Vulkan::RenderableScene::RenderableScene(const VkDevice device, const FrameCounter* frameCounter, const DeviceParameters& deviceParameters, const ShaderManager* shaderManager) :RenderableSceneBase(VulkanUtils::InFlightFrameCount), mFrameCounterRef(frameCounter), mDeviceRef(device)
 {
 	mSceneVertexBuffer = VK_NULL_HANDLE;
 	mSceneIndexBuffer  = VK_NULL_HANDLE;
@@ -40,7 +40,7 @@ VulkanCBindings::RenderableScene::RenderableScene(const VkDevice device, const F
 	CreateDescriptorSetLayouts(shaderManager);
 }
 
-VulkanCBindings::RenderableScene::~RenderableScene()
+Vulkan::RenderableScene::~RenderableScene()
 {
 	if(mSceneUniformDataBufferPointer != nullptr)
 	{
@@ -74,7 +74,7 @@ VulkanCBindings::RenderableScene::~RenderableScene()
 	SafeDestroyObject(vkFreeMemory, mDeviceRef, mBufferHostVisibleMemory);
 }
 
-void VulkanCBindings::RenderableScene::FinalizeSceneUpdating()
+void Vulkan::RenderableScene::FinalizeSceneUpdating()
 {
 	uint32_t frameResourceIndex = mFrameCounterRef->GetFrameCount() % VulkanUtils::InFlightFrameCount;
 
@@ -168,7 +168,7 @@ void VulkanCBindings::RenderableScene::FinalizeSceneUpdating()
 	}
 }
 
-void VulkanCBindings::RenderableScene::DrawObjectsOntoGBuffer(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout) const
+void Vulkan::RenderableScene::DrawObjectsOntoGBuffer(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout) const
 {
 	//TODO: extended dynamic state
 	std::array sceneVertexBuffers = {mSceneVertexBuffer};
@@ -202,17 +202,17 @@ void VulkanCBindings::RenderableScene::DrawObjectsOntoGBuffer(VkCommandBuffer co
 	}
 }
 
-VkDescriptorSetLayout VulkanCBindings::RenderableScene::GetGBufferUniformsDescriptorSetLayout() const
+VkDescriptorSetLayout Vulkan::RenderableScene::GetGBufferUniformsDescriptorSetLayout() const
 {
 	return mGBufferUniformsDescriptorSetLayout;
 }
 
-VkDescriptorSetLayout VulkanCBindings::RenderableScene::GetGBufferTexturesDescriptorSetLayout() const
+VkDescriptorSetLayout Vulkan::RenderableScene::GetGBufferTexturesDescriptorSetLayout() const
 {
 	return mGBufferTexturesDescriptorSetLayout;
 }
 
-void VulkanCBindings::RenderableScene::CreateSamplers()
+void Vulkan::RenderableScene::CreateSamplers()
 {
 	//TODO: Fragment density map flags
 	//TODO: Cubic filter
@@ -239,7 +239,7 @@ void VulkanCBindings::RenderableScene::CreateSamplers()
 	ThrowIfFailed(vkCreateSampler(mDeviceRef, &samplerCreateInfo, nullptr, &mLinearSampler));
 }
 
-void VulkanCBindings::RenderableScene::CreateDescriptorSetLayouts(const ShaderManager* shaderManager)
+void Vulkan::RenderableScene::CreateDescriptorSetLayouts(const ShaderManager* shaderManager)
 {
 	std::array gbufferImmutableSamplers = {mLinearSampler};
 
@@ -308,12 +308,12 @@ void VulkanCBindings::RenderableScene::CreateDescriptorSetLayouts(const ShaderMa
 	ThrowIfFailed(vkCreateDescriptorSetLayout(mDeviceRef, &gbufferTexturesDescriptorSetLayoutCreateInfo, nullptr, &mGBufferTexturesDescriptorSetLayout));
 }
 
-VkDeviceSize VulkanCBindings::RenderableScene::CalculatePerObjectDataOffset(uint32_t objectIndex, uint32_t currentFrameResourceIndex)
+VkDeviceSize Vulkan::RenderableScene::CalculatePerObjectDataOffset(uint32_t objectIndex, uint32_t currentFrameResourceIndex)
 {
 	return mSceneDataUniformObjectBufferOffset + (mScenePerObjectData.size() * currentFrameResourceIndex + objectIndex) * mGBufferObjectChunkDataSize;
 }
 
-VkDeviceSize VulkanCBindings::RenderableScene::CalculatePerFrameDataOffset(uint32_t currentFrameResourceIndex)
+VkDeviceSize Vulkan::RenderableScene::CalculatePerFrameDataOffset(uint32_t currentFrameResourceIndex)
 {
 	return mSceneDataUniformFrameBufferOffset + currentFrameResourceIndex * mGBufferFrameChunkDataSize;
 }

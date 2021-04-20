@@ -3,11 +3,11 @@
 #include <vulkan/vulkan.h>
 #include <vector>
 #include <string>
-#include "../VulkanCDeviceParameters.hpp"
+#include "../VulkanDeviceParameters.hpp"
 #include "../../RenderableSceneBase.hpp"
 #include "../../../Core/FrameCounter.hpp"
 
-namespace VulkanCBindings
+namespace Vulkan
 {
 	class ShaderManager;
 

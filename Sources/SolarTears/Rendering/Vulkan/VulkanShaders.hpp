@@ -7,7 +7,7 @@
 
 class LoggerQueue;
 
-namespace VulkanCBindings
+namespace Vulkan
 {
 	class ShaderManager
 	{

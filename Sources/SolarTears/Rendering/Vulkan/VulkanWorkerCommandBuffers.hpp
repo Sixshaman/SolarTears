@@ -2,9 +2,9 @@
 
 #include <vulkan/vulkan.h>
 #include <vector>
-#include "VulkanCUtils.hpp"
+#include "VulkanUtils.hpp"
 
-namespace VulkanCBindings
+namespace Vulkan
 {
 	class DeviceQueues;
 

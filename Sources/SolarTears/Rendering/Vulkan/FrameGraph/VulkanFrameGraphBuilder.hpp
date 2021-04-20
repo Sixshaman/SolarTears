@@ -1,17 +1,20 @@
 #pragma once
 
-#include "VulkanCRenderPass.hpp"
-#include "VulkanCFrameGraph.hpp"
+#include "VulkanRenderPass.hpp"
+#include "VulkanFrameGraph.hpp"
 #include <unordered_map>
 #include <memory>
 #include <array>
 #include <variant>
 
-namespace VulkanCBindings
+namespace Vulkan
 {
 	class MemoryManager;
 	class DeviceQueues;
 	class InstanceParameters;
+	class RenderableScene;
+	class DeviceParameters;
+	class ShaderManager;
 
 	using RenderPassCreateFunc = std::unique_ptr<RenderPass>(*)(VkDevice, const FrameGraphBuilder*, const std::string&);
 

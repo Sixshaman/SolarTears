@@ -1,10 +1,10 @@
-#include "VulkanCCopyImagePass.hpp"
-#include "../../VulkanCFunctions.hpp"
+#include "VulkanCopyImagePass.hpp"
+#include "../../VulkanFunctions.hpp"
 #include "../../../FrameGraphConfig.hpp"
-#include "../VulkanCFrameGraphBuilder.hpp"
+#include "../VulkanFrameGraphBuilder.hpp"
 #include <array>
 
-VulkanCBindings::CopyImagePass::CopyImagePass(VkDevice device, const FrameGraphBuilder* frameGraphBuilder, const std::string& currentPassName): RenderPass(device)
+Vulkan::CopyImagePass::CopyImagePass(VkDevice device, const FrameGraphBuilder* frameGraphBuilder, const std::string& currentPassName): RenderPass(device)
 {
 	mSrcImageRef = frameGraphBuilder->GetRegisteredResource(currentPassName, SrcImageId);
 	mDstImageRef = frameGraphBuilder->GetRegisteredResource(currentPassName, DstImageId);
@@ -13,7 +13,7 @@ VulkanCBindings::CopyImagePass::CopyImagePass(VkDevice device, const FrameGraphB
 	mDstImageAspectFlags = frameGraphBuilder->GetRegisteredSubresourceAspectFlags(currentPassName, DstImageId);
 }
 
-void VulkanCBindings::CopyImagePass::Register(FrameGraphBuilder* frameGraphBuilder, const std::string& passName)
+void Vulkan::CopyImagePass::Register(FrameGraphBuilder* frameGraphBuilder, const std::string& passName)
 {
 	auto PassCreateFunc = [](VkDevice device, const FrameGraphBuilder* builder, const std::string& name) -> std::unique_ptr<RenderPass>
 	{
@@ -36,11 +36,11 @@ void VulkanCBindings::CopyImagePass::Register(FrameGraphBuilder* frameGraphBuild
 	frameGraphBuilder->SetPassSubresourceUsage(passName, DstImageId, VK_IMAGE_USAGE_TRANSFER_DST_BIT);
 }
 
-VulkanCBindings::CopyImagePass::~CopyImagePass()
+Vulkan::CopyImagePass::~CopyImagePass()
 {
 }
 
-void VulkanCBindings::CopyImagePass::RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig) const
+void Vulkan::CopyImagePass::RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig) const
 {
 	UNREFERENCED_PARAMETER(scene);
 
