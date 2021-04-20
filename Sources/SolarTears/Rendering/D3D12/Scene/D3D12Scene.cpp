@@ -15,6 +15,9 @@ D3D12::RenderableScene::RenderableScene(const FrameCounter* frameCounter): Rende
 
 	mGBufferObjectChunkDataSize = sizeof(RenderableSceneBase::PerObjectData);
 	mGBufferFrameChunkDataSize  = sizeof(RenderableSceneBase::PerFrameData);
+
+	mGBufferObjectChunkDataSize = (uint32_t)D3D12Utils::AlignMemory(mGBufferObjectChunkDataSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
+	mGBufferFrameChunkDataSize  = (uint32_t)D3D12Utils::AlignMemory(mGBufferFrameChunkDataSize,  D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
 }
 
 D3D12::RenderableScene::~RenderableScene()

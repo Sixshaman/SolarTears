@@ -17,10 +17,10 @@ D3D12::FrameGraph::~FrameGraph()
 {
 }
 
-void D3D12::FrameGraph::Traverse(ThreadPool* threadPool, const WorkerCommandLists* commandLists, const RenderableScene* scene, const ShaderManager* shaderManager, const SrvDescriptorManager* descriptorManager, const SwapChain* swapChain, DeviceQueues* deviceQueues, uint32_t currentFrameResourceIndex)
+void D3D12::FrameGraph::Traverse(ThreadPool* threadPool, const WorkerCommandLists* commandLists, const RenderableScene* scene, const ShaderManager* shaderManager, const SrvDescriptorManager* descriptorManager, DeviceQueues* deviceQueues, uint32_t currentFrameResourceIndex, uint32_t currentSwapchainImageIndex)
 {
-	SwitchSwapchainPasses(swapChain->GetCurrentImageIndex());
-	SwitchSwapchainImages(swapChain->GetCurrentImageIndex());
+	SwitchSwapchainPasses(currentSwapchainImageIndex);
+	SwitchSwapchainImages(currentSwapchainImageIndex);
 
 	if(mGraphicsPassSpans.size() > 0)
 	{
@@ -103,7 +103,7 @@ void D3D12::FrameGraph::Traverse(ThreadPool* threadPool, const WorkerCommandList
 		graphicsQueue->ExecuteCommandLists((UINT)mGraphicsPassSpans.size(), mFrameRecordedGraphicsCommandLists.data());
 	}
 
-	swapChain->Present();
+	mLastSwapchainImageIndex = currentSwapchainImageIndex;
 }
 
 void D3D12::FrameGraph::BeginCommandList(ID3D12GraphicsCommandList* commandList, ID3D12CommandAllocator* commandAllocator, uint32_t dependencyLevelSpanIndex) const

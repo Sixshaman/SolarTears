@@ -5,8 +5,8 @@
 #include "D3D12DeviceFeatures.hpp"
 #include <d3d12.h>
 #include <dxgi1_6.h>
-#include <unordered_set>
 #include <memory>
+#include <array>
 #include <wil/com.h>
 
 class ThreadPool;
@@ -62,5 +62,7 @@ namespace D3D12
 		std::unique_ptr<MemoryManager>        mMemoryAllocator;
 		std::unique_ptr<ShaderManager>        mShaderManager;
 		std::unique_ptr<SrvDescriptorManager> mDescriptorManager;
+
+		std::array<UINT64, D3D12Utils::InFlightFrameCount> mFrameGraphicsFenceValues;
 	};
 }

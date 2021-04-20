@@ -38,7 +38,7 @@ namespace D3D12
 		FrameGraph(const FrameGraphConfig& frameGraphConfig);
 		~FrameGraph();
 
-		void Traverse(ThreadPool* threadPool, const WorkerCommandLists* commandLists, const RenderableScene* scene, const ShaderManager* shaderManager, const SrvDescriptorManager* descriptorManager, const SwapChain* swapChain, DeviceQueues* deviceQueues, uint32_t currentFrameResourceIndex);
+		void Traverse(ThreadPool* threadPool, const WorkerCommandLists* commandLists, const RenderableScene* scene, const ShaderManager* shaderManager, const SrvDescriptorManager* descriptorManager, DeviceQueues* deviceQueues, uint32_t currentFrameResourceIndex, uint32_t currentSwapchainImageIndex);
 
 	private:
 		void SwitchSwapchainPasses(uint32_t swapchainImageIndex);

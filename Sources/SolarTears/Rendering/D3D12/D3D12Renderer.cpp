@@ -36,6 +36,8 @@ D3D12::Renderer::Renderer(LoggerQueue* loggerQueue, FrameCounter* frameCounter, 
 	mMemoryAllocator   = std::make_unique<MemoryManager>(mLoggingBoard);
 	mShaderManager     = std::make_unique<ShaderManager>(mLoggingBoard, mDevice.get());
 	mDescriptorManager = std::make_unique<SrvDescriptorManager>();
+
+	mFrameGraphicsFenceValues.fill(0);
 }
 
 D3D12::Renderer::~Renderer()
@@ -79,13 +81,11 @@ void D3D12::Renderer::RenderScene()
 {
 	const uint32_t currentFrameResourceIndex = mFrameCounterRef->GetFrameCount() % D3D12Utils::InFlightFrameCount;
 
-	//VkFence frameFence = mRenderFences[currentFrameResourceIndex];
-	//std::array frameFences = {frameFence};
-	//ThrowIfFailed(vkWaitForFences(mDevice, (uint32_t)(frameFences.size()), frameFences.data(), VK_TRUE, 3000000000));
+	mDeviceQueues->GraphicsQueueCpuWait(mFrameGraphicsFenceValues[currentFrameResourceIndex]);
 
-	//ThrowIfFailed(vkResetFences(mDevice, (uint32_t)(frameFences.size()), frameFences.data()));
+	mFrameGraph->Traverse(mThreadPoolRef, mWorkerCommandLists.get(), mScene.get(), mShaderManager.get(), mDescriptorManager.get(), mDeviceQueues.get(), currentFrameResourceIndex, mSwapChain->GetCurrentImageIndex());
 
-	mFrameGraph->Traverse(mThreadPoolRef, mWorkerCommandLists.get(), mScene.get(), mShaderManager.get(), mDescriptorManager.get(), mSwapChain.get(), mDeviceQueues.get(), currentFrameResourceIndex);
+	mFrameGraphicsFenceValues[currentFrameResourceIndex] = mDeviceQueues->GraphicsFenceSignal();
 
 	mSwapChain->Present();
 }
@@ -125,7 +125,7 @@ void D3D12::Renderer::CreateDevice(IDXGIAdapter4* adapter)
 	mLoggingBoard->PostLogMessage(std::wstring(L"GPU: ") + adapterDesc.Description);
 	mLoggingBoard->PostLogMessage(L"");
 
-	THROW_IF_FAILED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(mDevice.put())));
+	THROW_IF_FAILED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(mDevice.put())));
 }
 
 void D3D12::Renderer::CreateFrameGraph(uint32_t viewportWidth, uint32_t viewportHeight)
