@@ -30,6 +30,7 @@
 - Dedicated allocation (VkMemoryDedicatedRequirements::prefersDedicatedAllocation)
 - Try to compress vertices and compare compressed + uncompressed performance.
 - Depth prepass
+- AlignPower2 and AlignGeneral functions
 - Render scale parameter in each buffer of the frame graph
 - BATCH pipeline creation calls (maybe something like pipeline allocator will help? Instead of calling vkCreateGraphicsPipelines, schedule it to creation in allocator)
 - Pipeline cache (allocator again)
@@ -63,6 +64,7 @@
 - How can I merge some D3D12 and Vulkan classes? Some things like CreateSceneMeshMetadata() or half of frame graph builder can be common in base classes and it changes nothing
 - Fullscreen
 - In scene builders replace vector of vectors for flat vector + vector of spans 
+- Architecture of algorithms: noise, isosurface, simple objects, etc. They should be placed somewhere in the engine.
 
 - DX12: Dedicated present queue is good (https://gpuopen.com/performance/)
 - DX12: Use DXC with /Zpr option
