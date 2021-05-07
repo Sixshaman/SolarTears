@@ -1,7 +1,7 @@
 #include "D3D12Scene.hpp"
 #include "../D3D12Utils.hpp"
 #include "../../../Core/Scene/SceneDescription.hpp"
-#include "../../RenderableSceneMisc.hpp"
+#include "../../Common/Scene/RenderableSceneMisc.hpp"
 #include "../D3D12Shaders.hpp"
 #include <array>
 

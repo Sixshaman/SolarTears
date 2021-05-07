@@ -70,20 +70,29 @@ UINT64 D3D12::DeviceQueues::CopyFenceSignal()
 
 void D3D12::DeviceQueues::GraphicsQueueCpuWait(UINT64 fenceValue)
 {
-	THROW_IF_FAILED(mGraphicsFence->SetEventOnCompletion(fenceValue, mGraphicsFenceCompletionEvent.get()));
-	WaitForSingleObject(mGraphicsFenceCompletionEvent.get(), INFINITE);
+	if(mGraphicsFence->GetCompletedValue() < fenceValue)
+	{
+		THROW_IF_FAILED(mGraphicsFence->SetEventOnCompletion(fenceValue, mGraphicsFenceCompletionEvent.get()));
+		WaitForSingleObject(mGraphicsFenceCompletionEvent.get(), INFINITE);
+	}
 }
 
 void D3D12::DeviceQueues::ComputeQueueCpuWait(UINT64 fenceValue)
 {
-	THROW_IF_FAILED(mComputeFence->SetEventOnCompletion(fenceValue, mComputeFenceCompletionEvent.get()));
-	WaitForSingleObject(mComputeFenceCompletionEvent.get(), INFINITE);
+	if(mComputeFence->GetCompletedValue() < fenceValue)
+	{
+		THROW_IF_FAILED(mComputeFence->SetEventOnCompletion(fenceValue, mComputeFenceCompletionEvent.get()));
+		WaitForSingleObject(mComputeFenceCompletionEvent.get(), INFINITE);
+	}
 }
 
 void D3D12::DeviceQueues::CopyQueueCpuWait(UINT64 fenceValue)
 {
-	THROW_IF_FAILED(mCopyFence->SetEventOnCompletion(fenceValue, mCopyFenceCompletionEvent.get()));
-	WaitForSingleObject(mCopyFenceCompletionEvent.get(), INFINITE);
+	if(mCopyFence->GetCompletedValue() < fenceValue)
+	{
+		THROW_IF_FAILED(mCopyFence->SetEventOnCompletion(fenceValue, mCopyFenceCompletionEvent.get()));
+		WaitForSingleObject(mCopyFenceCompletionEvent.get(), INFINITE);
+	}
 }
 
 void D3D12::DeviceQueues::CreateQueueObjects(ID3D12Device* device)

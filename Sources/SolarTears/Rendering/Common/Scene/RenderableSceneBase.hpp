@@ -1,8 +1,8 @@
 #pragma once
 
 #include <DirectXMath.h>
-#include "../Core/Scene/Scene.hpp"
 #include "RenderableSceneMisc.hpp"
+#include "../../../Core/Scene/Scene.hpp"
 
 class RenderableSceneBase
 {

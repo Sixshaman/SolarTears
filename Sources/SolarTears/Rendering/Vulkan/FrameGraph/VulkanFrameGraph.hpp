@@ -4,7 +4,7 @@
 #include <memory>
 #include <unordered_set>
 #include "VulkanRenderPass.hpp"
-#include "../../FrameGraphConfig.hpp"
+#include "../../Common/FrameGraph/FrameGraphConfig.hpp"
 
 class ThreadPool;
 
@@ -42,7 +42,7 @@ namespace Vulkan
 		FrameGraph(VkDevice device, const FrameGraphConfig& frameGraphConfig);
 		~FrameGraph();
 
-		void Traverse(ThreadPool* threadPool, WorkerCommandBuffers* commandBuffers, RenderableScene* scene, SwapChain* swapChain, DeviceQueues* deviceQueues, VkFence traverseFence, uint32_t currentFrameResourceIndex, uint32_t currentSwapchainImageIndex);
+		void Traverse(ThreadPool* threadPool, WorkerCommandBuffers* commandBuffers, RenderableScene* scene, DeviceQueues* deviceQueues, VkFence traverseFence, uint32_t currentFrameResourceIndex, uint32_t currentSwapchainImageIndex, VkSemaphore preTraverseSemaphore, VkSemaphore* outPostTraverseSemaphore);
 
 	private:
 		void CreateSemaphores();

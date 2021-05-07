@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../Renderer.hpp"
+#include "../Common/Renderer.hpp"
 #include "D3D12SwapChain.hpp"
 #include "D3D12DeviceFeatures.hpp"
 #include <d3d12.h>

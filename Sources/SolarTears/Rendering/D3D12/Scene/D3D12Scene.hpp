@@ -4,7 +4,7 @@
 #include <vector>
 #include <string>
 #include <wil/com.h>
-#include "../../RenderableSceneBase.hpp"
+#include "../../Common/Scene/RenderableSceneBase.hpp"
 #include "../../../Core/FrameCounter.hpp"
 
 namespace D3D12

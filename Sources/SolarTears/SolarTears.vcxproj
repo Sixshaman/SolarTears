@@ -52,6 +52,11 @@
     <ClInclude Include="Platform\Win32\Win32KeyboardKeyMap.hpp" />
     <ClInclude Include="Platform\Win32\Win32MouseKeyMap.hpp" />
     <ClInclude Include="Platform\Win32\Win32Window.hpp" />
+    <ClInclude Include="Rendering\Common\FrameGraph\FrameGraphConfig.hpp" />
+    <ClInclude Include="Rendering\Common\Renderer.hpp" />
+    <ClInclude Include="Rendering\Common\Scene\RenderableSceneBase.hpp" />
+    <ClInclude Include="Rendering\Common\Scene\RenderableSceneBuilderBase.hpp" />
+    <ClInclude Include="Rendering\Common\Scene\RenderableSceneMisc.hpp" />
     <ClInclude Include="Rendering\D3D12\D3D12DeviceFeatures.hpp" />
     <ClInclude Include="Rendering\D3D12\D3D12DeviceQueues.hpp" />
     <ClInclude Include="Rendering\D3D12\D3D12Memory.hpp" />
@@ -70,11 +75,6 @@
     <ClInclude Include="Rendering\D3D12\Scene\D3D12Scene.hpp" />
     <ClInclude Include="Rendering\D3D12\Scene\D3D12SceneBuilder.hpp" />
     <ClInclude Include="Rendering\D3D12\Scene\D3D12SceneDescriptorCreator.hpp" />
-    <ClInclude Include="Rendering\FrameGraphConfig.hpp" />
-    <ClInclude Include="Rendering\RenderableSceneBase.hpp" />
-    <ClInclude Include="Rendering\RenderableSceneBuilderBase.hpp" />
-    <ClInclude Include="Rendering\RenderableSceneMisc.hpp" />
-    <ClInclude Include="Rendering\Renderer.hpp" />
     <ClInclude Include="Rendering\Vulkan\FrameGraph\Passes\VulkanCopyImagePass.hpp" />
     <ClInclude Include="Rendering\Vulkan\FrameGraph\Passes\VulkanGBufferPass.hpp" />
     <ClInclude Include="Rendering\Vulkan\FrameGraph\VulkanFrameGraph.hpp" />
@@ -120,6 +120,10 @@
     <ClCompile Include="Platform\Win32\Win32KeyboardKeyMap.cpp" />
     <ClCompile Include="Platform\Win32\Win32MouseKeyMap.cpp" />
     <ClCompile Include="Platform\Win32\Win32Window.cpp" />
+    <ClCompile Include="Rendering\Common\FrameGraph\FrameGraphConfig.cpp" />
+    <ClCompile Include="Rendering\Common\Renderer.cpp" />
+    <ClCompile Include="Rendering\Common\Scene\RenderableSceneBase.cpp" />
+    <ClCompile Include="Rendering\Common\Scene\RenderableSceneBuilderBase.cpp" />
     <ClCompile Include="Rendering\D3D12\D3D12SrvDescriptorManager.cpp" />
     <ClCompile Include="Rendering\D3D12\D3D12DeviceFeatures.cpp" />
     <ClCompile Include="Rendering\D3D12\D3D12DeviceQueues.cpp" />
@@ -138,10 +142,6 @@
     <ClCompile Include="Rendering\D3D12\Scene\D3D12Scene.cpp" />
     <ClCompile Include="Rendering\D3D12\Scene\D3D12SceneBuilder.cpp" />
     <ClCompile Include="Rendering\D3D12\Scene\D3D12SceneDescriptorCreator.cpp" />
-    <ClCompile Include="Rendering\FrameGraphConfig.cpp" />
-    <ClCompile Include="Rendering\RenderableSceneBase.cpp" />
-    <ClCompile Include="Rendering\RenderableSceneBuilderBase.cpp" />
-    <ClCompile Include="Rendering\Renderer.cpp" />
     <ClCompile Include="Rendering\Vulkan\FrameGraph\Passes\VulkanCopyImagePass.cpp" />
     <ClCompile Include="Rendering\Vulkan\FrameGraph\Passes\VulkanGBufferPass.cpp" />
     <ClCompile Include="Rendering\Vulkan\FrameGraph\VulkanFrameGraph.cpp" />

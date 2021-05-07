@@ -4,7 +4,7 @@
 #include "../../Scene/D3D12SceneBuilder.hpp"
 #include "../D3D12FrameGraph.hpp"
 #include "../D3D12FrameGraphBuilder.hpp"
-#include "../../../FrameGraphConfig.hpp"
+#include "../../../Common/FrameGraph/FrameGraphConfig.hpp"
 #include <array>
 
 D3D12::GBufferPass::GBufferPass(ID3D12Device8* device, const FrameGraphBuilder* frameGraphBuilder, const std::string& passName)

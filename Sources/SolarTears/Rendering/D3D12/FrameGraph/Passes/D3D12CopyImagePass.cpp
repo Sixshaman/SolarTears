@@ -1,5 +1,5 @@
 #include "D3D12CopyImagePass.hpp"
-#include "../../../FrameGraphConfig.hpp"
+#include "../../../Common/FrameGraph/FrameGraphConfig.hpp"
 #include "../D3D12FrameGraphBuilder.hpp"
 #include <array>
 

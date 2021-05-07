@@ -1,5 +1,5 @@
 #include "Scene.hpp"
-#include "../../Rendering/RenderableSceneBase.hpp"
+#include "../../Rendering/Common/Scene/RenderableSceneBase.hpp"
 #include "../../Input/Inputter.hpp"
 
 Scene::Scene()

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../Renderer.hpp"
+#include "../Common/Renderer.hpp"
 #include "VulkanUtils.hpp"
 #include "VulkanInstanceParameters.hpp"
 #include "VulkanDeviceParameters.hpp"

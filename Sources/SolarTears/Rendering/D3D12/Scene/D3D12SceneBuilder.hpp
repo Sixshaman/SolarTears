@@ -6,7 +6,7 @@
 #include <memory>
 #include "D3D12Scene.hpp"
 #include "../D3D12Utils.hpp"
-#include "../../RenderableSceneBuilderBase.hpp"
+#include "../../Common/Scene/RenderableSceneBuilderBase.hpp"
 
 namespace D3D12
 {
