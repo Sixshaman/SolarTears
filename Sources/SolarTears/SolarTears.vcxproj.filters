@@ -100,6 +100,15 @@
     <Filter Include="Rendering\Vulkan\FrameGraph\Passes">
       <UniqueIdentifier>{dcc72873-6abb-4b2a-9e13-8324d5720238}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Rendering\Common">
+      <UniqueIdentifier>{4fd0c3b6-fcdd-47a7-a409-f5ea386a6e75}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Rendering\Common\FrameGraph">
+      <UniqueIdentifier>{f3888659-f0a3-42f7-a7f5-d26371f2a0f3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Rendering\Common\Scene">
+      <UniqueIdentifier>{7c0f8120-5022-4610-8845-7801a1d2affc}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Platform\Win32\Win32Application.hpp">
@@ -129,9 +138,6 @@
     <ClInclude Include="Core\Util.hpp">
       <Filter>Core</Filter>
     </ClInclude>
-    <ClInclude Include="Rendering\Renderer.hpp">
-      <Filter>Rendering</Filter>
-    </ClInclude>
     <ClInclude Include="Core\Allocators\StackAllocator.hpp">
       <Filter>Core\Allocators</Filter>
     </ClInclude>
@@ -144,12 +150,6 @@
     <ClInclude Include="Core\Scene\SceneDescription.hpp">
       <Filter>Core\Scene</Filter>
     </ClInclude>
-    <ClInclude Include="Rendering\RenderableSceneBuilderBase.hpp">
-      <Filter>Rendering</Filter>
-    </ClInclude>
-    <ClInclude Include="Rendering\RenderableSceneBase.hpp">
-      <Filter>Rendering</Filter>
-    </ClInclude>
     <ClInclude Include="Core\Scene\Scene.hpp">
       <Filter>Core\Scene</Filter>
     </ClInclude>
@@ -158,9 +158,6 @@
     </ClInclude>
     <ClInclude Include="Core\Scene\Camera.hpp">
       <Filter>Core\Scene</Filter>
-    </ClInclude>
-    <ClInclude Include="Rendering\RenderableSceneMisc.hpp">
-      <Filter>Rendering</Filter>
     </ClInclude>
     <ClInclude Include="Core\DataStructures\SmallVector.hpp">
       <Filter>Core\DataStructures</Filter>
@@ -255,9 +252,6 @@
     <ClInclude Include="Rendering\D3D12\FrameGraph\D3D12FrameGraph.hpp">
       <Filter>Rendering\D3D12\FrameGraph</Filter>
     </ClInclude>
-    <ClInclude Include="Rendering\FrameGraphConfig.hpp">
-      <Filter>Rendering</Filter>
-    </ClInclude>
     <ClInclude Include="Rendering\D3D12\FrameGraph\D3D12RenderPass.hpp">
       <Filter>Rendering\D3D12\FrameGraph</Filter>
     </ClInclude>
@@ -324,6 +318,21 @@
     <ClInclude Include="Rendering\Vulkan\VulkanRenderer.hpp">
       <Filter>Rendering\Vulkan</Filter>
     </ClInclude>
+    <ClInclude Include="Rendering\Common\Renderer.hpp">
+      <Filter>Rendering\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Common\FrameGraph\FrameGraphConfig.hpp">
+      <Filter>Rendering\Common\FrameGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Common\Scene\RenderableSceneBuilderBase.hpp">
+      <Filter>Rendering\Common\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Common\Scene\RenderableSceneMisc.hpp">
+      <Filter>Rendering\Common\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Common\Scene\RenderableSceneBase.hpp">
+      <Filter>Rendering\Common\Scene</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Platform\Win32\Win32Application.cpp">
@@ -347,9 +356,6 @@
     <ClCompile Include="Logging\VisualStudioDebugLogger.cpp">
       <Filter>Logging</Filter>
     </ClCompile>
-    <ClCompile Include="Rendering\Renderer.cpp">
-      <Filter>Rendering</Filter>
-    </ClCompile>
     <ClCompile Include="Core\Util.cpp">
       <Filter>Core</Filter>
     </ClCompile>
@@ -365,9 +371,6 @@
     <ClCompile Include="Core\Scene\SceneDescription.cpp">
       <Filter>Core\Scene</Filter>
     </ClCompile>
-    <ClCompile Include="Rendering\RenderableSceneBuilderBase.cpp">
-      <Filter>Rendering</Filter>
-    </ClCompile>
     <ClCompile Include="Core\Scene\SceneDescriptionObject.cpp">
       <Filter>Core\Scene</Filter>
     </ClCompile>
@@ -376,9 +379,6 @@
     </ClCompile>
     <ClCompile Include="Core\Scene\Scene.cpp">
       <Filter>Core\Scene</Filter>
-    </ClCompile>
-    <ClCompile Include="Rendering\RenderableSceneBase.cpp">
-      <Filter>Rendering</Filter>
     </ClCompile>
     <ClCompile Include="Core\FrameCounter.cpp">
       <Filter>Core</Filter>
@@ -449,9 +449,6 @@
     <ClCompile Include="Rendering\D3D12\FrameGraph\D3D12FrameGraph.cpp">
       <Filter>Rendering\D3D12\FrameGraph</Filter>
     </ClCompile>
-    <ClCompile Include="Rendering\FrameGraphConfig.cpp">
-      <Filter>Rendering</Filter>
-    </ClCompile>
     <ClCompile Include="Rendering\D3D12\FrameGraph\D3D12FrameGraphDescriptorCreator.cpp">
       <Filter>Rendering\D3D12\FrameGraph</Filter>
     </ClCompile>
@@ -520,6 +517,18 @@
     </ClCompile>
     <ClCompile Include="Rendering\Vulkan\VulkanShaders.cpp">
       <Filter>Rendering\Vulkan</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Common\Renderer.cpp">
+      <Filter>Rendering\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Common\FrameGraph\FrameGraphConfig.cpp">
+      <Filter>Rendering\Common\FrameGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Common\Scene\RenderableSceneBuilderBase.cpp">
+      <Filter>Rendering\Common\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Common\Scene\RenderableSceneBase.cpp">
+      <Filter>Rendering\Common\Scene</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

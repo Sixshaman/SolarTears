@@ -7,7 +7,7 @@
 #include "VulkanScene.hpp"
 #include "../VulkanDeviceParameters.hpp"
 #include "../VulkanUtils.hpp"
-#include "../../RenderableSceneBuilderBase.hpp"
+#include "../../Common/Scene/RenderableSceneBuilderBase.hpp"
 
 namespace Vulkan
 {

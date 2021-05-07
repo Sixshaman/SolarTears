@@ -46,15 +46,12 @@ Vulkan::FrameGraph::~FrameGraph()
 	SafeDestroyObject(vkFreeMemory, mDeviceRef, mImageMemory);
 }
 
-void Vulkan::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommandBuffers* commandBuffers, RenderableScene* scene, SwapChain* swapChain, DeviceQueues* deviceQueues, VkFence traverseFence, uint32_t currentFrameResourceIndex, uint32_t currentSwapchainImageIndex)
+void Vulkan::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommandBuffers* commandBuffers, RenderableScene* scene, DeviceQueues* deviceQueues, VkFence traverseFence, uint32_t currentFrameResourceIndex, uint32_t currentSwapchainImageIndex, VkSemaphore preTraverseSemaphore, VkSemaphore* outPostTraverseSemaphore)
 {
 	SwitchSwapchainPasses(currentSwapchainImageIndex);
 	SwitchSwapchainImages(currentSwapchainImageIndex);
 
-	VkSemaphore acquireSemaphore = swapChain->GetImageAcquiredSemaphore(currentFrameResourceIndex);
-	swapChain->AcquireImage(mDeviceRef, currentSwapchainImageIndex);
-
-	VkSemaphore lastSemaphore = acquireSemaphore;
+	VkSemaphore lastTraverseSemaphore = nullptr;
 	if(mGraphicsPassSpans.size() > 0)
 	{
 		VkSemaphore graphicsSemaphore = mGraphicsToPresentSemaphores[currentFrameResourceIndex];
@@ -117,14 +114,17 @@ void Vulkan::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommandBuffers* 
 		}
 
 		mFrameRecordedGraphicsCommandBuffers[mGraphicsPassSpans.size() - 1] = mainGraphicsCommandBuffer;
-		deviceQueues->GraphicsQueueSubmit(mFrameRecordedGraphicsCommandBuffers.data(), mGraphicsPassSpans.size(), VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, acquireSemaphore, graphicsSemaphore, graphicsFence);
+		deviceQueues->GraphicsQueueSubmit(mFrameRecordedGraphicsCommandBuffers.data(), mGraphicsPassSpans.size(), VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, preTraverseSemaphore, graphicsSemaphore, graphicsFence);
 
-		lastSemaphore = graphicsSemaphore;
+		lastTraverseSemaphore = graphicsSemaphore;
 	}
 
-	swapChain->Present(lastSemaphore);
-
 	mLastSwapchainImageIndex = currentSwapchainImageIndex;
+
+	if(outPostTraverseSemaphore)
+	{
+		*outPostTraverseSemaphore = lastTraverseSemaphore;
+	}
 }
 
 void Vulkan::FrameGraph::CreateSemaphores()

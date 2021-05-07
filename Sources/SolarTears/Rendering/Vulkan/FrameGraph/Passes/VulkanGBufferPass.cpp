@@ -3,7 +3,7 @@
 #include "../../VulkanDeviceParameters.hpp"
 #include "../../VulkanShaders.hpp"
 #include "../../Scene/VulkanSceneBuilder.hpp"
-#include "../../../FrameGraphConfig.hpp"
+#include "../../../Common/FrameGraph/FrameGraphConfig.hpp"
 #include "../VulkanFrameGraph.hpp"
 #include "../VulkanFrameGraphBuilder.hpp"
 #include <array>

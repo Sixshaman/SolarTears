@@ -162,7 +162,13 @@ void Vulkan::Renderer::RenderScene()
 
 	ThrowIfFailed(vkResetFences(mDevice, (uint32_t)(frameFences.size()), frameFences.data()));
 
-	mFrameGraph->Traverse(mThreadPoolRef, mCommandBuffers.get(), mScene.get(), mSwapChain.get(), mDeviceQueues.get(), frameFence, currentFrameResourceIndex, currentSwapchainIndex);
+	VkSemaphore preTraverseSemaphore = mSwapChain->GetImageAcquiredSemaphore(currentFrameResourceIndex);
+	mSwapChain->AcquireImage(mDevice, currentFrameResourceIndex);
+
+	VkSemaphore postTraverseSemaphore = VK_NULL_HANDLE;
+	mFrameGraph->Traverse(mThreadPoolRef, mCommandBuffers.get(), mScene.get(), mDeviceQueues.get(), frameFence, currentFrameResourceIndex, currentSwapchainIndex, preTraverseSemaphore, &postTraverseSemaphore);
+
+	mSwapChain->Present(postTraverseSemaphore);
 }
 
 void Vulkan::Renderer::InitInstance()

@@ -5,7 +5,7 @@
 #include <unordered_map>
 #include "Camera.hpp"
 #include "SceneObjectLocation.hpp"
-#include "../../Rendering/RenderableSceneMisc.hpp"
+#include "../../Rendering/Common/Scene/RenderableSceneMisc.hpp"
 
 class RenderableSceneBase;
 class Inputter;

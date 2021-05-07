@@ -3,7 +3,7 @@
 #include <d3d12.h>
 #include <vector>
 #include "D3D12RenderPass.hpp"
-#include "../../FrameGraphConfig.hpp"
+#include "../../Common/FrameGraph/FrameGraphConfig.hpp"
 
 class ThreadPool;
 

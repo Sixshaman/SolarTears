@@ -4,7 +4,7 @@
 #include <string>
 #include <unordered_map>
 #include "SceneDescriptionObject.hpp"
-#include "../../Rendering/RenderableSceneBuilderBase.hpp"
+#include "../../Rendering/Common/Scene/RenderableSceneBuilderBase.hpp"
 
 class SceneDescription
 {

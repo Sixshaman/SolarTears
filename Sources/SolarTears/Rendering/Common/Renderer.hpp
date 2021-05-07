@@ -1,8 +1,8 @@
 #pragma once
 
-#include "../Core/Window.hpp"
-#include "../Core/Scene/SceneDescription.hpp"
-#include "../Logging/LoggerQueue.hpp"
+#include "../../Core/Window.hpp"
+#include "../../Core/Scene/SceneDescription.hpp"
+#include "../../Logging/LoggerQueue.hpp"
 
 /*	
 	My manifesto:

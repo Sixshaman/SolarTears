@@ -5,7 +5,7 @@
 #include "../VulkanShaders.hpp"
 #include "../../../../3rdParty/SPIRV-Reflect/spirv_reflect.h"
 #include "../../../Core/Scene/SceneDescription.hpp"
-#include "../../RenderableSceneMisc.hpp"
+#include "../../Common/Scene/RenderableSceneMisc.hpp"
 #include <array>
 
 Vulkan::RenderableScene::RenderableScene(const VkDevice device, const FrameCounter* frameCounter, const DeviceParameters& deviceParameters, const ShaderManager* shaderManager) :RenderableSceneBase(VulkanUtils::InFlightFrameCount), mFrameCounterRef(frameCounter), mDeviceRef(device)
