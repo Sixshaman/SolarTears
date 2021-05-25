@@ -90,4 +90,5 @@ void ThreadPool::EnqueueWork(JobFunc func, void* userData, size_t userDataSize)
 	memcpy(mThreadQueues[currentQueue].back().AdditionalData, userData, userDataSize);
 
 	mQueueMutexes[currentQueue].unlock();
+	mLastTaskedThread = currentQueue;
 }

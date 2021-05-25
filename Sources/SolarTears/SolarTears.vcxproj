@@ -54,6 +54,8 @@
     <ClInclude Include="Platform\Win32\Win32Window.hpp" />
     <ClInclude Include="Rendering\Common\FrameGraph\FrameGraphConfig.hpp" />
     <ClInclude Include="Rendering\Common\Renderer.hpp" />
+    <ClInclude Include="Rendering\Common\RenderingUtils.hpp" />
+    <ClInclude Include="Rendering\Common\Scene\ModernRenderableScene.hpp" />
     <ClInclude Include="Rendering\Common\Scene\RenderableSceneBase.hpp" />
     <ClInclude Include="Rendering\Common\Scene\RenderableSceneBuilderBase.hpp" />
     <ClInclude Include="Rendering\Common\Scene\RenderableSceneMisc.hpp" />
@@ -82,6 +84,8 @@
     <ClInclude Include="Rendering\Vulkan\FrameGraph\VulkanRenderPass.hpp" />
     <ClInclude Include="Rendering\Vulkan\Scene\VulkanScene.hpp" />
     <ClInclude Include="Rendering\Vulkan\Scene\VulkanSceneBuilder.hpp" />
+    <ClInclude Include="Rendering\Vulkan\Scene\VulkanSceneDescriptorCreater.hpp" />
+    <ClInclude Include="Rendering\Vulkan\VulkanDescriptorManager.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanDeviceParameters.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanDeviceQueues.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanFunctions.hpp" />
@@ -122,6 +126,8 @@
     <ClCompile Include="Platform\Win32\Win32Window.cpp" />
     <ClCompile Include="Rendering\Common\FrameGraph\FrameGraphConfig.cpp" />
     <ClCompile Include="Rendering\Common\Renderer.cpp" />
+    <ClCompile Include="Rendering\Common\RenderingUtils.cpp" />
+    <ClCompile Include="Rendering\Common\Scene\ModernRenderableScene.cpp" />
     <ClCompile Include="Rendering\Common\Scene\RenderableSceneBase.cpp" />
     <ClCompile Include="Rendering\Common\Scene\RenderableSceneBuilderBase.cpp" />
     <ClCompile Include="Rendering\D3D12\D3D12SrvDescriptorManager.cpp" />
@@ -149,6 +155,7 @@
     <ClCompile Include="Rendering\Vulkan\FrameGraph\VulkanRenderPass.cpp" />
     <ClCompile Include="Rendering\Vulkan\Scene\VulkanScene.cpp" />
     <ClCompile Include="Rendering\Vulkan\Scene\VulkanSceneBuilder.cpp" />
+    <ClCompile Include="Rendering\Vulkan\VulkanDescriptorManager.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanDeviceParameters.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanDeviceQueues.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanFunctions.cpp" />

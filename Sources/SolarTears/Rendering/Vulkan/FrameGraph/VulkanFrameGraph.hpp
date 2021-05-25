@@ -4,6 +4,7 @@
 #include <memory>
 #include <unordered_set>
 #include "VulkanRenderPass.hpp"
+#include "../../Common/RenderingUtils.hpp"
 #include "../../Common/FrameGraph/FrameGraphConfig.hpp"
 
 class ThreadPool;
@@ -91,7 +92,7 @@ namespace Vulkan
 
 		VkDeviceMemory mImageMemory;
 
-		VkSemaphore mGraphicsToPresentSemaphores[VulkanUtils::InFlightFrameCount];
+		VkSemaphore mGraphicsToPresentSemaphores[Utils::InFlightFrameCount];
 
 		//Used to track the command buffers that were used to record render passes
 		std::vector<VkCommandBuffer> mFrameRecordedGraphicsCommandBuffers;

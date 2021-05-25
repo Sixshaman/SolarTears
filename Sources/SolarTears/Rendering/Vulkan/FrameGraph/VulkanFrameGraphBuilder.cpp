@@ -8,7 +8,7 @@
 #include "../VulkanDeviceQueues.hpp"
 #include <algorithm>
 
-Vulkan::FrameGraphBuilder::FrameGraphBuilder(FrameGraph* graphToBuild, const RenderableScene* scene, const InstanceParameters* instanceParameters, const DeviceParameters* deviceParameters, const ShaderManager* shaderManager): mGraphToBuild(graphToBuild), mScene(scene), mInstanceParameters(instanceParameters), mDeviceParameters(deviceParameters), mShaderManager(shaderManager)
+Vulkan::FrameGraphBuilder::FrameGraphBuilder(FrameGraph* graphToBuild, const DescriptorManager* descriptorManager, const InstanceParameters* instanceParameters, const DeviceParameters* deviceParameters, const ShaderManager* shaderManager): mGraphToBuild(graphToBuild), mDescriptorManager(descriptorManager), mInstanceParameters(instanceParameters), mDeviceParameters(deviceParameters), mShaderManager(shaderManager)
 {
 	mSubresourceMetadataCounter = 0;
 
@@ -220,9 +220,9 @@ void Vulkan::FrameGraphBuilder::EnableSubresourceAutoBarrier(const std::string_v
 	}
 }
 
-const Vulkan::RenderableScene* Vulkan::FrameGraphBuilder::GetScene() const
+const Vulkan::DescriptorManager* Vulkan::FrameGraphBuilder::GetDescriptorManager() const
 {
-	return mScene;
+	return mDescriptorManager;
 }
 
 const Vulkan::DeviceParameters* Vulkan::FrameGraphBuilder::GetDeviceParameters() const

@@ -3,6 +3,7 @@
 #include "VulkanFunctions.hpp"
 #include "VulkanDeviceQueues.hpp"
 #include "../../Core/ThreadPool.hpp"
+#include "../Common/RenderingUtils.hpp"
 #include <unordered_set>
 #include <array>
 
@@ -37,7 +38,7 @@ void Vulkan::WorkerCommandBuffers::InitCommandBuffers(uint32_t graphicsQueueFami
 	//1 for each worker thread plus 1 for the main thread per queue per frame
 	for(uint32_t t = 0; t < mWorkerThreadCount + 1; t++)
 	{
-		for(uint32_t f = 0; f < VulkanUtils::InFlightFrameCount; f++)
+		for(uint32_t f = 0; f < Utils::InFlightFrameCount; f++)
 		{
 			for(uint32_t queueIndex: queues)
 			{
@@ -76,77 +77,77 @@ void Vulkan::WorkerCommandBuffers::InitCommandBuffers(uint32_t graphicsQueueFami
 VkCommandPool Vulkan::WorkerCommandBuffers::GetMainThreadGraphicsCommandPool(uint32_t frameIndex) const
 {
 	//Main thread command buffers/pools are always at the end
-	size_t poolIndex = (size_t)mWorkerThreadCount * (size_t)VulkanUtils::InFlightFrameCount * mSeparateQueueCount + frameIndex * mSeparateQueueCount + mCommandBufferIndexForGraphics;
+	size_t poolIndex = (size_t)mWorkerThreadCount * (size_t)Utils::InFlightFrameCount * mSeparateQueueCount + frameIndex * mSeparateQueueCount + mCommandBufferIndexForGraphics;
 	return mCommandPools[poolIndex];
 }
 
 VkCommandPool Vulkan::WorkerCommandBuffers::GetMainThreadComputeCommandPool(uint32_t frameIndex) const
 {
 	//Main thread command buffers/pools are always at the end
-	size_t poolIndex = (size_t)mWorkerThreadCount * (size_t)VulkanUtils::InFlightFrameCount * mSeparateQueueCount + frameIndex * mSeparateQueueCount + mCommandBufferIndexForCompute;
+	size_t poolIndex = (size_t)mWorkerThreadCount * (size_t)Utils::InFlightFrameCount * mSeparateQueueCount + frameIndex * mSeparateQueueCount + mCommandBufferIndexForCompute;
 	return mCommandPools[poolIndex];
 }
 
 VkCommandPool Vulkan::WorkerCommandBuffers::GetMainThreadTransferCommandPool(uint32_t frameIndex) const
 {
 	//Main thread command buffers/pools are always at the end
-	size_t poolIndex = (size_t)mWorkerThreadCount * (size_t)VulkanUtils::InFlightFrameCount * mSeparateQueueCount + frameIndex * mSeparateQueueCount + mCommandBufferIndexForTransfer;
+	size_t poolIndex = (size_t)mWorkerThreadCount * (size_t)Utils::InFlightFrameCount * mSeparateQueueCount + frameIndex * mSeparateQueueCount + mCommandBufferIndexForTransfer;
 	return mCommandPools[poolIndex];
 }
 
 VkCommandBuffer Vulkan::WorkerCommandBuffers::GetMainThreadGraphicsCommandBuffer(uint32_t frameIndex) const
 {
 	//Main thread command buffers/pools are always at the end
-	size_t bufferIndex = (size_t)mWorkerThreadCount * (size_t)VulkanUtils::InFlightFrameCount * mSeparateQueueCount + frameIndex * mSeparateQueueCount + mCommandBufferIndexForGraphics;
+	size_t bufferIndex = (size_t)mWorkerThreadCount * (size_t)Utils::InFlightFrameCount * mSeparateQueueCount + frameIndex * mSeparateQueueCount + mCommandBufferIndexForGraphics;
 	return mCommandBuffers[bufferIndex];
 }
 
 VkCommandBuffer Vulkan::WorkerCommandBuffers::GetMainThreadComputeCommandBuffer(uint32_t frameIndex) const
 {
 	//Main thread command buffers/pools are always at the end
-	size_t bufferIndex = (size_t)mWorkerThreadCount * (size_t)VulkanUtils::InFlightFrameCount * mSeparateQueueCount + frameIndex * mSeparateQueueCount + mCommandBufferIndexForCompute;
+	size_t bufferIndex = (size_t)mWorkerThreadCount * (size_t)Utils::InFlightFrameCount * mSeparateQueueCount + frameIndex * mSeparateQueueCount + mCommandBufferIndexForCompute;
 	return mCommandBuffers[bufferIndex];
 }
 
 VkCommandBuffer Vulkan::WorkerCommandBuffers::GetMainThreadTransferCommandBuffer(uint32_t frameIndex) const
 {
 	//Main thread command buffers/pools are always at the end
-	size_t bufferIndex = (size_t)mWorkerThreadCount * (size_t)VulkanUtils::InFlightFrameCount * mSeparateQueueCount + frameIndex * mSeparateQueueCount + mCommandBufferIndexForTransfer;
+	size_t bufferIndex = (size_t)mWorkerThreadCount * (size_t)Utils::InFlightFrameCount * mSeparateQueueCount + frameIndex * mSeparateQueueCount + mCommandBufferIndexForTransfer;
 	return mCommandBuffers[bufferIndex];
 }
 
 VkCommandPool Vulkan::WorkerCommandBuffers::GetThreadGraphicsCommandPool(uint32_t threadIndex, uint32_t frameIndex) const
 {
-	size_t poolIndex = (size_t)threadIndex * (size_t)VulkanUtils::InFlightFrameCount * mSeparateQueueCount + frameIndex * mSeparateQueueCount + mCommandBufferIndexForGraphics;
+	size_t poolIndex = (size_t)threadIndex * (size_t)Utils::InFlightFrameCount * mSeparateQueueCount + frameIndex * mSeparateQueueCount + mCommandBufferIndexForGraphics;
 	return mCommandPools[poolIndex];
 }
 
 VkCommandPool Vulkan::WorkerCommandBuffers::GetThreadComputeCommandPool(uint32_t threadIndex, uint32_t frameIndex) const
 {
-	size_t poolIndex = (size_t)threadIndex * (size_t)VulkanUtils::InFlightFrameCount * mSeparateQueueCount + frameIndex * mSeparateQueueCount + mCommandBufferIndexForCompute;
+	size_t poolIndex = (size_t)threadIndex * (size_t)Utils::InFlightFrameCount * mSeparateQueueCount + frameIndex * mSeparateQueueCount + mCommandBufferIndexForCompute;
 	return mCommandPools[poolIndex];
 }
 
 VkCommandPool Vulkan::WorkerCommandBuffers::GetThreadTransferCommandPool(uint32_t threadIndex, uint32_t frameIndex) const
 {
-	size_t poolIndex = (size_t)threadIndex * (size_t)VulkanUtils::InFlightFrameCount * mSeparateQueueCount + frameIndex * mSeparateQueueCount + mCommandBufferIndexForTransfer;
+	size_t poolIndex = (size_t)threadIndex * (size_t)Utils::InFlightFrameCount * mSeparateQueueCount + frameIndex * mSeparateQueueCount + mCommandBufferIndexForTransfer;
 	return mCommandPools[poolIndex];
 }
 
 VkCommandBuffer Vulkan::WorkerCommandBuffers::GetThreadGraphicsCommandBuffer(uint32_t threadIndex, uint32_t frameIndex) const
 {
-	size_t bufferIndex = (size_t)threadIndex * (size_t)VulkanUtils::InFlightFrameCount * mSeparateQueueCount + frameIndex * mSeparateQueueCount + mCommandBufferIndexForGraphics;
+	size_t bufferIndex = (size_t)threadIndex * (size_t)Utils::InFlightFrameCount * mSeparateQueueCount + frameIndex * mSeparateQueueCount + mCommandBufferIndexForGraphics;
 	return mCommandBuffers[bufferIndex];
 }
 
 VkCommandBuffer Vulkan::WorkerCommandBuffers::GetThreadComputeCommandBuffer(uint32_t threadIndex, uint32_t frameIndex) const
 {
-	size_t bufferIndex = (size_t)threadIndex * (size_t)VulkanUtils::InFlightFrameCount * mSeparateQueueCount + frameIndex * mSeparateQueueCount + mCommandBufferIndexForCompute;
+	size_t bufferIndex = (size_t)threadIndex * (size_t)Utils::InFlightFrameCount * mSeparateQueueCount + frameIndex * mSeparateQueueCount + mCommandBufferIndexForCompute;
 	return mCommandBuffers[bufferIndex];
 }
 
 VkCommandBuffer Vulkan::WorkerCommandBuffers::GetThreadTransferCommandBuffer(uint32_t threadIndex, uint32_t frameIndex) const
 {
-	size_t bufferIndex = (size_t)threadIndex * (size_t)VulkanUtils::InFlightFrameCount * mSeparateQueueCount + frameIndex * mSeparateQueueCount + mCommandBufferIndexForTransfer;
+	size_t bufferIndex = (size_t)threadIndex * (size_t)Utils::InFlightFrameCount * mSeparateQueueCount + frameIndex * mSeparateQueueCount + mCommandBufferIndexForTransfer;
 	return mCommandBuffers[bufferIndex];
 }

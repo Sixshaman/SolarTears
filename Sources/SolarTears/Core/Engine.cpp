@@ -20,7 +20,7 @@ Engine::Engine(): mPaused(false)
 	mFrameCounter = std::make_unique<FrameCounter>();
 	mFPSCounter   = std::make_unique<FPSCounter>();
 
-	mRenderingSystem = std::make_unique<D3D12::Renderer>(mLoggerQueue.get(), mFrameCounter.get(), mThreadPool.get());
+	mRenderingSystem = std::make_unique<Vulkan::Renderer>(mLoggerQueue.get(), mFrameCounter.get(), mThreadPool.get());
 	mInputSystem     = std::make_unique<Inputter>(mLoggerQueue.get());
 
 	CreateScene();

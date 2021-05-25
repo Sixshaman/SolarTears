@@ -3,6 +3,7 @@
 #include "../D3D12Memory.hpp"
 #include "../D3D12DeviceQueues.hpp"
 #include "../D3D12WorkerCommandLists.hpp"
+#include "../../Common/RenderingUtils.hpp"
 #include "../../../../3rdParty/DirectXTex/DDSTextureLoader/DDSTextureLoader12.h"
 #include <array>
 #include <cassert>
@@ -223,8 +224,8 @@ UINT64 D3D12::RenderableSceneBuilder::CreateSceneDataBufferDescs(UINT64 currentI
 	intermediateBufferSize            += indexDataSize;
 
 
-	const UINT64 constantPerObjectDataSize = mSceneToBuild->mScenePerObjectData.size() * mSceneToBuild->mGBufferObjectChunkDataSize * D3D12Utils::InFlightFrameCount;
-	const UINT64 constantPerFrameDataSize  = mSceneToBuild->mGBufferFrameChunkDataSize * D3D12Utils::InFlightFrameCount;
+	const UINT64 constantPerObjectDataSize = mSceneToBuild->mScenePerObjectData.size() * mSceneToBuild->mGBufferObjectChunkDataSize * Utils::InFlightFrameCount;
+	const UINT64 constantPerFrameDataSize  = mSceneToBuild->mGBufferFrameChunkDataSize * Utils::InFlightFrameCount;
 
 	mConstantBufferDesc.Dimension                       = D3D12_RESOURCE_DIMENSION_BUFFER;
 	mConstantBufferDesc.Alignment                       = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
@@ -249,7 +250,7 @@ UINT64 D3D12::RenderableSceneBuilder::CreateSceneDataBufferDescs(UINT64 currentI
 
 UINT64 D3D12::RenderableSceneBuilder::LoadTextureImages(ID3D12Device8* device, const std::vector<std::wstring>& sceneTextures, UINT64 currentIntermediateBufferSize)
 {
-	mIntermediateBufferTextureDataOffset = D3D12Utils::AlignMemory(currentIntermediateBufferSize, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
+	mIntermediateBufferTextureDataOffset = Utils::AlignMemory(currentIntermediateBufferSize, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);
 	UINT64 intermediateBufferSize        = mIntermediateBufferTextureDataOffset;
 
 	mTextureData.clear();

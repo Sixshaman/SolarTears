@@ -14,11 +14,6 @@ std::wstring Vulkan::VulkanUtils::VkException::ToString() const
     return FunctionName + L" failed in " + Filename + L"; line " + std::to_wstring(LineNumber) + L"; error code: " + std::to_wstring(ErrorCode);
 }
 
-VkDeviceSize Vulkan::VulkanUtils::AlignMemory(VkDeviceSize value, VkDeviceSize alignment)
-{
-    return value + (alignment - value % alignment) % alignment;
-}
-
 void Vulkan::VulkanUtils::LoadShaderModuleFromFile(const std::wstring& filename, std::vector<uint32_t>& dataBlob, LoggerQueue* logger)
 {
     std::ifstream fin(filename, std::ios::binary); //Открываем файл

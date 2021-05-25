@@ -15,6 +15,7 @@ namespace Vulkan
 	class RenderableScene;
 	class DeviceParameters;
 	class ShaderManager;
+	class DescriptorManager;
 
 	using RenderPassCreateFunc = std::unique_ptr<RenderPass>(*)(VkDevice, const FrameGraphBuilder*, const std::string&);
 
@@ -81,7 +82,7 @@ namespace Vulkan
 		};
 
 	public:
-		FrameGraphBuilder(FrameGraph* graphToBuild, const RenderableScene* scene, const InstanceParameters* instanceParameters, const DeviceParameters* deviceParameters, const ShaderManager* shaderManager);
+		FrameGraphBuilder(FrameGraph* graphToBuild, const DescriptorManager* descriptorManager, const InstanceParameters* instanceParameters, const DeviceParameters* deviceParameters, const ShaderManager* shaderManager);
 		~FrameGraphBuilder();
 
 		void RegisterRenderPass(const std::string_view passName, RenderPassCreateFunc createFunc, RenderPassType passType);
@@ -100,10 +101,10 @@ namespace Vulkan
 
 		void EnableSubresourceAutoBarrier(const std::string_view passName, const std::string_view subresourceId, bool autoBaarrier = true);
 
-		const RenderableScene*  GetScene()            const;
-		const DeviceParameters* GetDeviceParameters() const;
-		const ShaderManager*    GetShaderManager()    const;
-		const FrameGraphConfig* GetConfig()           const;
+		const DeviceParameters*  GetDeviceParameters()  const;
+		const ShaderManager*     GetShaderManager()     const;
+		const DescriptorManager* GetDescriptorManager() const;
+		const FrameGraphConfig*  GetConfig()            const;
 
 		VkImage              GetRegisteredResource(const std::string_view passName,               const std::string_view subresourceId) const;
 		VkImageView          GetRegisteredSubresource(const std::string_view passName,            const std::string_view subresourceId) const;
@@ -207,7 +208,7 @@ namespace Vulkan
 		SubresourceName mBackbufferName;
 
 		//Several things that might be needed to create some of the passes
-		const RenderableScene*    mScene;
+		const DescriptorManager*  mDescriptorManager;
 		const InstanceParameters* mInstanceParameters;
 		const DeviceParameters*   mDeviceParameters;
 		const ShaderManager*      mShaderManager;
