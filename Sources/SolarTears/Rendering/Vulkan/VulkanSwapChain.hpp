@@ -5,13 +5,14 @@
 #include "VulkanDeviceParameters.hpp"
 #include "VulkanUtils.hpp"
 #include "../../Core/Window.hpp"
+#include "../Common/RenderingUtils.hpp"
 
 namespace Vulkan
 {
 	class SwapChain
 	{
 	public:
-		static constexpr uint32_t SwapchainImageCount = VulkanUtils::InFlightFrameCount;
+		static constexpr uint32_t SwapchainImageCount = Utils::InFlightFrameCount;
 
 	public:
 		SwapChain(LoggerQueue* logger, VkInstance instance, VkDevice device);
@@ -69,7 +70,7 @@ namespace Vulkan
 		uint32_t mSwapchainWidth;
 		uint32_t mSwapchainHeight;
 
-		VkSemaphore mImageAcquiredSemaphores[VulkanUtils::InFlightFrameCount];
+		VkSemaphore mImageAcquiredSemaphores[Utils::InFlightFrameCount];
 
 		VkImage mSwapchainImages[SwapchainImageCount];
 

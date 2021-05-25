@@ -3,7 +3,9 @@
 #include "../VulkanFunctions.hpp"
 #include "../VulkanSwapChain.hpp"
 #include "../VulkanDeviceQueues.hpp"
+#include "../Scene/VulkanScene.hpp"
 #include "../../../Core/ThreadPool.hpp"
+#include "../../Common/RenderingUtils.hpp"
 #include <array>
 #include <latch>
 
@@ -38,7 +40,7 @@ Vulkan::FrameGraph::~FrameGraph()
 		SafeDestroyObject(vkDestroyImage, mDeviceRef, mImages[i]);
 	}
 
-	for(size_t i = 0; i < VulkanUtils::InFlightFrameCount; i++)
+	for(size_t i = 0; i < Utils::InFlightFrameCount; i++)
 	{
 		SafeDestroyObject(vkDestroySemaphore, mDeviceRef, mGraphicsToPresentSemaphores[i]);
 	}
@@ -129,7 +131,7 @@ void Vulkan::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommandBuffers* 
 
 void Vulkan::FrameGraph::CreateSemaphores()
 {
-	for(uint32_t i = 0; i < VulkanUtils::InFlightFrameCount; i++)
+	for(uint32_t i = 0; i < Utils::InFlightFrameCount; i++)
 	{
 		VkSemaphoreCreateInfo semaphoreCreateInfo;
 		semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;

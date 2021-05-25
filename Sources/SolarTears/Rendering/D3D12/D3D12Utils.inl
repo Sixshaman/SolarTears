@@ -65,7 +65,7 @@ void D3D12::D3D12Utils::StateSubobjectHelper::AddStreamData(const T* data)
 	size_t dataAlignment = alignof(T);
 	size_t dataSize      = sizeof(T);
 
-	size_t currentSize = AlignMemory(mStreamBlobSize, dataAlignment);
+	size_t currentSize = Utils::AlignMemory(mStreamBlobSize, dataAlignment);
 	assert(currentSize + dataSize <= mStreamBlobCapacity);
 
 	memcpy(mSubobjectStreamBlob + currentSize, data, dataSize);

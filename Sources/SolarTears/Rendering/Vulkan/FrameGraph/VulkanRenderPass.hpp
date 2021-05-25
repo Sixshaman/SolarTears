@@ -3,7 +3,6 @@
 #include <unordered_set>
 #include <vulkan/vulkan.h>
 #include "../VulkanUtils.hpp"
-#include "../Scene/VulkanScene.hpp"
 
 class LoggerQueue;
 class FrameGraphConfig;
@@ -11,6 +10,7 @@ class FrameGraphConfig;
 namespace Vulkan
 {
 	class FrameGraphBuilder;
+	class RenderableScene;
 
 	enum class RenderPassType : uint32_t
 	{

@@ -10,6 +10,7 @@
 #include "FrameGraph/D3D12FrameGraphDescriptorCreator.hpp"
 #include "FrameGraph/D3D12FrameGraphBuilder.hpp"
 #include "../../Core/ThreadPool.hpp"
+#include "../Common/RenderingUtils.hpp"
 
 #include "FrameGraph/Passes/D3D12GBufferPass.hpp"
 #include "FrameGraph/Passes/D3D12CopyImagePass.hpp"
@@ -80,7 +81,7 @@ void D3D12::Renderer::InitScene(SceneDescription* sceneDescription)
 
 void D3D12::Renderer::RenderScene()
 {
-	const uint32_t currentFrameResourceIndex = mFrameCounterRef->GetFrameCount() % D3D12Utils::InFlightFrameCount;
+	const uint32_t currentFrameResourceIndex = mFrameCounterRef->GetFrameCount() % Utils::InFlightFrameCount;
 
 	mDeviceQueues->GraphicsQueueCpuWait(mFrameGraphicsFenceValues[currentFrameResourceIndex]);
 

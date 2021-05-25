@@ -3,8 +3,10 @@
 #include "../VulkanFunctions.hpp"
 #include "../VulkanMemory.hpp"
 #include "../VulkanShaders.hpp"
+#include "../VulkanDescriptorManager.hpp"
 #include "../VulkanDeviceQueues.hpp"
 #include "../VulkanWorkerCommandBuffers.hpp"
+#include "../../Common/RenderingUtils.hpp"
 #include "../../../../3rdParty/DDSTextureLoaderVk/DDSTextureLoaderVk.h"
 #include <array>
 #include <cassert>
@@ -27,7 +29,7 @@ Vulkan::RenderableSceneBuilder::~RenderableSceneBuilder()
 	SafeDestroyObject(vkFreeMemory,    mSceneToBuild->mDeviceRef, mIntermediateBufferMemory);
 }
 
-void Vulkan::RenderableSceneBuilder::BakeSceneFirstPart(const DeviceQueues* deviceQueues, const MemoryManager* memoryAllocator, const ShaderManager* shaderManager, const DeviceParameters& deviceParameters)
+void Vulkan::RenderableSceneBuilder::BakeSceneFirstPart(const DeviceQueues* deviceQueues, const MemoryManager* memoryAllocator, const ShaderManager* shaderManager, const DescriptorManager* descriptorManager, const DeviceParameters& deviceParameters)
 {
 	//Create scene subobjects
 	std::vector<std::wstring> sceneTexturesVec;
@@ -54,7 +56,7 @@ void Vulkan::RenderableSceneBuilder::BakeSceneFirstPart(const DeviceQueues* devi
 	FillIntermediateBufferData();
 
 	CreateDescriptorPool();
-	AllocateDescriptorSets();
+	AllocateDescriptorSets(descriptorManager);
 	FillDescriptorSets(shaderManager);
 }
 
@@ -350,8 +352,8 @@ VkDeviceSize Vulkan::RenderableSceneBuilder::CreateSceneDataBuffers(const Device
 	intermediateBufferSize            += indexDataSize;
 
 
-	VkDeviceSize uniformPerObjectDataSize = mSceneToBuild->mScenePerObjectData.size() * mSceneToBuild->mGBufferObjectChunkDataSize * VulkanUtils::InFlightFrameCount;
-	VkDeviceSize uniformPerFrameDataSize  = mSceneToBuild->mGBufferFrameChunkDataSize * VulkanUtils::InFlightFrameCount;
+	VkDeviceSize uniformPerObjectDataSize = mSceneToBuild->mScenePerObjectData.size() * mSceneToBuild->mGBufferObjectChunkDataSize * Utils::InFlightFrameCount;
+	VkDeviceSize uniformPerFrameDataSize  = mSceneToBuild->mGBufferFrameChunkDataSize * Utils::InFlightFrameCount;
 
 	//TODO: buffer device address
 	//TODO: dedicated allocation
@@ -367,8 +369,8 @@ VkDeviceSize Vulkan::RenderableSceneBuilder::CreateSceneDataBuffers(const Device
 
 	ThrowIfFailed(vkCreateBuffer(mSceneToBuild->mDeviceRef, &uniformBufferCreateInfo, nullptr, &mSceneToBuild->mSceneUniformBuffer));
 
-	mSceneToBuild->mSceneDataUniformObjectBufferOffset = 0;
-	mSceneToBuild->mSceneDataUniformFrameBufferOffset  = mSceneToBuild->mSceneDataUniformObjectBufferOffset + uniformPerObjectDataSize;
+	mSceneToBuild->mSceneDataConstantObjectBufferOffset = 0;
+	mSceneToBuild->mSceneDataConstantFrameBufferOffset  = mSceneToBuild->mSceneDataConstantObjectBufferOffset + uniformPerObjectDataSize;
 
 
 	return intermediateBufferSize;
@@ -486,7 +488,7 @@ void Vulkan::RenderableSceneBuilder::AllocateBuffersMemory(const MemoryManager* 
 
 	ThrowIfFailed(vkBindBufferMemory2(mSceneToBuild->mDeviceRef, (uint32_t)(bindHostVisibleBufferMemoryInfos.size()), bindHostVisibleBufferMemoryInfos.data()));
 
-	ThrowIfFailed(vkMapMemory(mSceneToBuild->mDeviceRef, mSceneToBuild->mBufferHostVisibleMemory, 0, VK_WHOLE_SIZE, 0, &mSceneToBuild->mSceneUniformDataBufferPointer));
+	ThrowIfFailed(vkMapMemory(mSceneToBuild->mDeviceRef, mSceneToBuild->mBufferHostVisibleMemory, 0, VK_WHOLE_SIZE, 0, &mSceneToBuild->mSceneConstantDataBufferPointer));
 }
 
 void Vulkan::RenderableSceneBuilder::CreateImageViews()
@@ -557,9 +559,9 @@ void Vulkan::RenderableSceneBuilder::CreateDescriptorPool() //ÏÓËß ÄÅÑÊÐÈÏÒÎÐÎÂ!
 	ThrowIfFailed(vkCreateDescriptorPool(mSceneToBuild->mDeviceRef, &descriptorPoolCreateInfo, nullptr, &mSceneToBuild->mDescriptorPool));
 }
 
-void Vulkan::RenderableSceneBuilder::AllocateDescriptorSets()
+void Vulkan::RenderableSceneBuilder::AllocateDescriptorSets(const DescriptorManager* descriptorManager)
 {
-	std::array bufferDescriptorSetLayouts = {mSceneToBuild->mGBufferUniformsDescriptorSetLayout};
+	std::array bufferDescriptorSetLayouts = {descriptorManager->GetGBufferUniformsDescriptorSetLayout()};
 
 	//TODO: variable descriptor count
 	VkDescriptorSetAllocateInfo bufferDescriptorSetAllocateInfo;
@@ -577,7 +579,7 @@ void Vulkan::RenderableSceneBuilder::AllocateDescriptorSets()
 	std::vector<VkDescriptorSetLayout> textureDescriptorSetLayouts(mSceneToBuild->mSceneTextures.size());
 	for(size_t i = 0; i < mSceneToBuild->mSceneTextures.size(); i++)
 	{
-		textureDescriptorSetLayouts[i] = mSceneToBuild->mGBufferTexturesDescriptorSetLayout;
+		textureDescriptorSetLayouts[i] = descriptorManager->GetGBufferTexturesDescriptorSetLayout();
 	}
 
 	//TODO: variable descriptor count
@@ -601,8 +603,8 @@ void Vulkan::RenderableSceneBuilder::FillDescriptorSets(const ShaderManager* sha
 	VkDeviceSize uniformFrameDataSize  = mSceneToBuild->mGBufferFrameChunkDataSize;
 
 	std::array gbufferUniformBindingNames = {"UniformBufferObject",                              "UniformBufferFrame"};
-	std::array gbufferUniformOffsets      = {mSceneToBuild->mSceneDataUniformObjectBufferOffset, mSceneToBuild->mSceneDataUniformFrameBufferOffset};
-	std::array gbufferUniformRanges       = {uniformObjectDataSize,                              uniformFrameDataSize};
+	std::array gbufferUniformOffsets      = {mSceneToBuild->mSceneDataConstantObjectBufferOffset, mSceneToBuild->mSceneDataConstantFrameBufferOffset};
+	std::array gbufferUniformRanges       = {uniformObjectDataSize,                               uniformFrameDataSize};
 
 	uint32_t minUniformBindingNumber = UINT32_MAX; //Uniform buffer descriptor set has sequentional bindings
 

@@ -5,6 +5,10 @@
 namespace Vulkan
 {
 	class FrameGraphBuilder;
+	class ShaderManager;
+	class DeviceParameters;
+	class DescriptorManager;
+	class RenderableScene;
 
 	class GBufferPass: public RenderPass
 	{
@@ -14,7 +18,7 @@ namespace Vulkan
 	public:
 		~GBufferPass();
 
-		void RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig) const override;
+		void RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* renderableScene, const FrameGraphConfig& frameGraphConfig) const override;
 
 		static void Register(FrameGraphBuilder* frameGraphBuilder, const std::string& passName);
 
@@ -24,7 +28,7 @@ namespace Vulkan
 	private:
 		void CreateRenderPass(const FrameGraphBuilder* frameGraphBuilder, const DeviceParameters* deviceParameters, const std::string& currentPassName);
 		void CreateFramebuffer(const FrameGraphBuilder* frameGraphBuilder, const FrameGraphConfig* frameGraphConfig, const std::string& currentPassName);
-		void CreatePipelineLayout(const RenderableScene* sceneBaked1stPart);
+		void CreatePipelineLayout(const DescriptorManager* descriptorManager);
 		void CreatePipeline(const ShaderManager* shaderManager, const FrameGraphConfig* frameGraphConfig);
 
 	private:

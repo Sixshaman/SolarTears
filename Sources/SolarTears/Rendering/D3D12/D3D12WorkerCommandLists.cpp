@@ -1,6 +1,7 @@
 #include "D3D12WorkerCommandLists.hpp"
 #include "D3D12Utils.hpp"
 #include "D3D12DeviceQueues.hpp"
+#include "../Common/RenderingUtils.hpp"
 #include <unordered_set>
 #include <array>
 
@@ -30,7 +31,7 @@ void D3D12::WorkerCommandLists::InitCommandLists(ID3D12Device8* device)
 	{
 		for(D3D12_COMMAND_LIST_TYPE commandListType: commandListTypes)
 		{
-			for(uint32_t f = 0; f < D3D12::D3D12Utils::InFlightFrameCount; f++)
+			for(uint32_t f = 0; f < Utils::InFlightFrameCount; f++)
 			{
 				mCommandAllocators.emplace_back();
 				THROW_IF_FAILED(device->CreateCommandAllocator(commandListType, IID_PPV_ARGS(mCommandAllocators.back().put())));
@@ -52,21 +53,21 @@ void D3D12::WorkerCommandLists::InitCommandLists(ID3D12Device8* device)
 ID3D12CommandAllocator* D3D12::WorkerCommandLists::GetMainThreadDirectCommandAllocator(uint32_t frameIndex) const
 {
 	//Main thread command buffers/pools are always at the end
-	size_t alligatorIndex = (size_t)mWorkerThreadCount * mSeparateQueueCount * (size_t)D3D12::D3D12Utils::InFlightFrameCount + mCommandListIndexForGraphics * D3D12::D3D12Utils::InFlightFrameCount + frameIndex;
+	size_t alligatorIndex = (size_t)mWorkerThreadCount * mSeparateQueueCount * (size_t)Utils::InFlightFrameCount + mCommandListIndexForGraphics * Utils::InFlightFrameCount + frameIndex;
 	return mCommandAllocators[alligatorIndex].get();
 }
 
 ID3D12CommandAllocator* D3D12::WorkerCommandLists::GetMainThreadComputeCommandAllocator(uint32_t frameIndex) const
 {
 	//Main thread command buffers/pools are always at the end
-	size_t allocatorIndex = (size_t)mWorkerThreadCount * mSeparateQueueCount * (size_t)D3D12::D3D12Utils::InFlightFrameCount + mCommandListIndexForCompute * D3D12::D3D12Utils::InFlightFrameCount + frameIndex;
+	size_t allocatorIndex = (size_t)mWorkerThreadCount * mSeparateQueueCount * (size_t)Utils::InFlightFrameCount + mCommandListIndexForCompute * Utils::InFlightFrameCount + frameIndex;
 	return mCommandAllocators[allocatorIndex].get();
 }
 
 ID3D12CommandAllocator* D3D12::WorkerCommandLists::GetMainThreadCopyCommandAllocator(uint32_t frameIndex) const
 {
 	//Main thread command buffers/pools are always at the end
-	size_t allocatorIndex = (size_t)mWorkerThreadCount * mSeparateQueueCount * (size_t)D3D12::D3D12Utils::InFlightFrameCount + mCommandListIndexForCopy * D3D12::D3D12Utils::InFlightFrameCount + frameIndex;
+	size_t allocatorIndex = (size_t)mWorkerThreadCount * mSeparateQueueCount * (size_t)Utils::InFlightFrameCount + mCommandListIndexForCopy * Utils::InFlightFrameCount + frameIndex;
 	return mCommandAllocators[allocatorIndex].get();
 }
 
@@ -93,19 +94,19 @@ ID3D12GraphicsCommandList6* D3D12::WorkerCommandLists::GetMainThreadCopyCommandL
 
 ID3D12CommandAllocator* D3D12::WorkerCommandLists::GetThreadDirectCommandAllocator(uint32_t threadIndex, uint32_t frameIndex) const
 {
-	size_t allocatorIndex = (size_t)threadIndex * mSeparateQueueCount * (size_t)D3D12::D3D12Utils::InFlightFrameCount + mCommandListIndexForGraphics * D3D12::D3D12Utils::InFlightFrameCount + frameIndex;
+	size_t allocatorIndex = (size_t)threadIndex * mSeparateQueueCount * (size_t)Utils::InFlightFrameCount + mCommandListIndexForGraphics * Utils::InFlightFrameCount + frameIndex;
 	return mCommandAllocators[allocatorIndex].get();
 }
 
 ID3D12CommandAllocator* D3D12::WorkerCommandLists::GetThreadComputeCommandAllocator(uint32_t threadIndex, uint32_t frameIndex) const
 {
-	size_t allocatorIndex = (size_t)threadIndex * mSeparateQueueCount * (size_t)D3D12::D3D12Utils::InFlightFrameCount + mCommandListIndexForCompute * D3D12::D3D12Utils::InFlightFrameCount + frameIndex;
+	size_t allocatorIndex = (size_t)threadIndex * mSeparateQueueCount * (size_t)Utils::InFlightFrameCount + mCommandListIndexForCompute * Utils::InFlightFrameCount + frameIndex;
 	return mCommandAllocators[allocatorIndex].get();
 }
 
 ID3D12CommandAllocator* D3D12::WorkerCommandLists::GetThreadCopyCommandAllocator(uint32_t threadIndex, uint32_t frameIndex) const
 {
-	size_t allocatorIndex = (size_t)threadIndex * mSeparateQueueCount * (size_t)D3D12::D3D12Utils::InFlightFrameCount + mCommandListIndexForCopy * D3D12::D3D12Utils::InFlightFrameCount + frameIndex;
+	size_t allocatorIndex = (size_t)threadIndex * mSeparateQueueCount * (size_t)Utils::InFlightFrameCount + mCommandListIndexForCopy * Utils::InFlightFrameCount + frameIndex;
 	return mCommandAllocators[allocatorIndex].get();
 }
 

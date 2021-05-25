@@ -11,9 +11,6 @@ namespace Vulkan
 {
 	namespace VulkanUtils
 	{
-		//3 frames in flight is good enough
-		constexpr uint32_t InFlightFrameCount = 3;
-
 		template<typename T>
 		static constexpr VkFormat FormatForVectorType = VK_FORMAT_UNDEFINED;
 
@@ -52,8 +49,6 @@ namespace Vulkan
 			std::wstring Filename;
 			int LineNumber = -1;
 		};
-
-		VkDeviceSize AlignMemory(VkDeviceSize value, VkDeviceSize alignment);
 
 		void LoadShaderModuleFromFile(const std::wstring& filename, std::vector<uint32_t>& dataBlob, LoggerQueue* logger);
 

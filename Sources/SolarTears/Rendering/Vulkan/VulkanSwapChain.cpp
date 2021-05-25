@@ -1,6 +1,7 @@
 #include "VulkanSwapChain.hpp"
 #include "VulkanFunctions.hpp"
 #include "VulkanUtils.hpp"
+#include "../Common/RenderingUtils.hpp"
 #include <VulkanGenericStructures.h>
 #include <unordered_set>
 #include <array>
@@ -12,7 +13,7 @@ Vulkan::SwapChain::SwapChain(LoggerQueue* logger, VkInstance instance, VkDevice 
 	                                                                                     mCurrentImageIndex((uint32_t)(-1)), mSurface(VK_NULL_HANDLE), mSwapchain(VK_NULL_HANDLE),
 	                                                                                     mPresentQueue(VK_NULL_HANDLE)
 {
-	for(uint32_t i = 0; i < VulkanUtils::InFlightFrameCount; i++)
+	for(uint32_t i = 0; i < Utils::InFlightFrameCount; i++)
 	{
 		VkSemaphoreCreateInfo semaphoreCreateInfo;
 		semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -28,7 +29,7 @@ Vulkan::SwapChain::~SwapChain()
 	SafeDestroyObject(vkDestroySwapchainKHR, mDeviceRef, mSwapchain);
 	SafeDestroyObject(vkDestroySurfaceKHR,   mInstanceRef, mSurface);
 
-	for(size_t i = 0; i < VulkanUtils::InFlightFrameCount; i++)
+	for(size_t i = 0; i < Utils::InFlightFrameCount; i++)
 	{
 		SafeDestroyObject(vkDestroySemaphore, mDeviceRef, mImageAcquiredSemaphores[i]);
 	}

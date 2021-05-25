@@ -5,12 +5,14 @@
 #include "VulkanMemory.hpp"
 #include "VulkanWorkerCommandBuffers.hpp"
 #include "VulkanShaders.hpp"
+#include "VulkanDescriptorManager.hpp"
 #include "VulkanDeviceQueues.hpp"
 #include "FrameGraph/VulkanRenderPass.hpp"
 #include "FrameGraph/VulkanFrameGraph.hpp"
 #include "FrameGraph/VulkanFrameGraphBuilder.hpp"
 #include "Scene/VulkanScene.hpp"
 #include "Scene/VulkanSceneBuilder.hpp"
+#include "../Common/RenderingUtils.hpp"
 #include "../../Core/Util.hpp"
 #include "../../Core/ThreadPool.hpp"
 #include "../../Core/FrameCounter.hpp"
@@ -50,14 +52,15 @@ Vulkan::Renderer::Renderer(LoggerQueue* loggerQueue, FrameCounter* frameCounter,
 
 	mMemoryAllocator = std::make_unique<MemoryManager>(mLoggingBoard, mPhysicalDevice, mDeviceParameters);
 
-	mShaderManager = std::make_unique<ShaderManager>(mLoggingBoard);
+	mShaderManager     = std::make_unique<ShaderManager>(mLoggingBoard);
+	mDescriptorManager = std::make_unique<DescriptorManager>(mDevice, mShaderManager.get());
 }
 
 Vulkan::Renderer::~Renderer()
 {
 	vkDeviceWaitIdle(mDevice); //No ThrowIfFailed in desctructors
 	
-	for(uint32_t i = 0; i < VulkanUtils::InFlightFrameCount; i++)
+	for(uint32_t i = 0; i < Utils::InFlightFrameCount; i++)
 	{
 		SafeDestroyObject(vkDestroyFence, mDevice, mRenderFences[i]);
 	}
@@ -66,6 +69,7 @@ Vulkan::Renderer::~Renderer()
 	mFrameGraph.reset();
 	mSwapChain.reset();
 	mCommandBuffers.reset();
+	mDescriptorManager.reset();
 
 	SafeDestroyDevice(mDevice);
 	SafeDestroyInstance(mInstance);
@@ -118,13 +122,13 @@ void Vulkan::Renderer::InitScene(SceneDescription* sceneDescription)
 {
 	ThrowIfFailed(vkDeviceWaitIdle(mDevice));
 
-	mScene = std::make_unique<RenderableScene>(mDevice, mFrameCounterRef, mDeviceParameters, mShaderManager.get());
+	mScene = std::make_unique<RenderableScene>(mDevice, mFrameCounterRef, mDeviceParameters);
 	sceneDescription->BindRenderableComponent(mScene.get());
 
 	RenderableSceneBuilder sceneBuilder(mScene.get());
 	sceneDescription->BuildRenderableComponent(&sceneBuilder);
 
-	sceneBuilder.BakeSceneFirstPart(mDeviceQueues.get(), mMemoryAllocator.get(), mShaderManager.get(), mDeviceParameters);
+	sceneBuilder.BakeSceneFirstPart(mDeviceQueues.get(), mMemoryAllocator.get(), mShaderManager.get(), mDescriptorManager.get(), mDeviceParameters);
 	sceneBuilder.BakeSceneSecondPart(mDeviceQueues.get(), mCommandBuffers.get());
 }
 
@@ -137,7 +141,7 @@ void Vulkan::Renderer::CreateFrameGraph(uint32_t viewportWidth, uint32_t viewpor
 
 	mFrameGraph = std::make_unique<FrameGraph>(mDevice, frameGraphConfig);
 
-	FrameGraphBuilder frameGraphBuilder(mFrameGraph.get(), mScene.get(), &mInstanceParameters, &mDeviceParameters, mShaderManager.get());
+	FrameGraphBuilder frameGraphBuilder(mFrameGraph.get(), mDescriptorManager.get(), &mInstanceParameters, &mDeviceParameters, mShaderManager.get());
 
 	GBufferPass::Register(&frameGraphBuilder, "GBuffer");
 	CopyImagePass::Register(&frameGraphBuilder, "CopyImage");
@@ -153,7 +157,7 @@ void Vulkan::Renderer::CreateFrameGraph(uint32_t viewportWidth, uint32_t viewpor
 
 void Vulkan::Renderer::RenderScene()
 {
-	const uint32_t currentFrameResourceIndex = mFrameCounterRef->GetFrameCount() % VulkanUtils::InFlightFrameCount;
+	const uint32_t currentFrameResourceIndex = mFrameCounterRef->GetFrameCount() % Utils::InFlightFrameCount;
 	const uint32_t currentSwapchainIndex     = currentFrameResourceIndex;
 
 	VkFence frameFence = mRenderFences[currentFrameResourceIndex];
@@ -282,7 +286,7 @@ void Vulkan::Renderer::CreateLogicalDevice(VkPhysicalDevice physicalDevice, cons
 
 void Vulkan::Renderer::CreateFences()
 {
-	for(uint32_t i = 0; i < VulkanUtils::InFlightFrameCount; i++)
+	for(uint32_t i = 0; i < Utils::InFlightFrameCount; i++)
 	{
 		VkFenceCreateInfo fenceCreateInfo;
 		fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;

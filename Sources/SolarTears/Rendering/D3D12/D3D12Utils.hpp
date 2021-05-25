@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <DirectXMath.h>
+#include "../Common/RenderingUtils.hpp"
 
 class LoggerQueue;
 
@@ -11,9 +12,6 @@ namespace D3D12
 {
 	namespace D3D12Utils
 	{
-		//3 frames in flight is good enough
-		constexpr uint32_t InFlightFrameCount = 3;
-
 		template<typename T>
 		static constexpr DXGI_FORMAT FormatForVectorType = DXGI_FORMAT_UNKNOWN;
 
@@ -37,9 +35,6 @@ namespace D3D12
 
 		template<>
 		static constexpr DXGI_FORMAT FormatForIndexType<uint8_t> = DXGI_FORMAT_R8_UINT;
-
-
-		UINT64 AlignMemory(UINT64 value, UINT64 alignment);
 
 		bool IsStateWriteable(D3D12_RESOURCE_STATES state);
 		bool IsStateComputeFriendly(D3D12_RESOURCE_STATES state);

@@ -2,6 +2,7 @@
 #include "../../VulkanFunctions.hpp"
 #include "../../VulkanDeviceParameters.hpp"
 #include "../../VulkanShaders.hpp"
+#include "../../VulkanDescriptorManager.hpp"
 #include "../../Scene/VulkanSceneBuilder.hpp"
 #include "../../../Common/FrameGraph/FrameGraphConfig.hpp"
 #include "../VulkanFrameGraph.hpp"
@@ -20,7 +21,7 @@ Vulkan::GBufferPass::GBufferPass(VkDevice device, const FrameGraphBuilder* frame
 	//TODO: subpasses (AND SECONDARY COMMAND BUFFERS)
 	CreateRenderPass(frameGraphBuilder, frameGraphBuilder->GetDeviceParameters(), passName);
 	CreateFramebuffer(frameGraphBuilder, frameGraphBuilder->GetConfig(), passName);
-	CreatePipelineLayout(frameGraphBuilder->GetScene());
+	CreatePipelineLayout(frameGraphBuilder->GetDescriptorManager());
 	CreatePipeline(frameGraphBuilder->GetShaderManager(), frameGraphBuilder->GetConfig());
 }
 
@@ -185,9 +186,9 @@ void Vulkan::GBufferPass::CreateFramebuffer(const FrameGraphBuilder* frameGraphB
 	ThrowIfFailed(vkCreateFramebuffer(mDeviceRef, &framebufferCreateInfo, nullptr, &mFramebuffer));
 }
 
-void Vulkan::GBufferPass::CreatePipelineLayout(const RenderableScene* sceneBaked1stPart)
+void Vulkan::GBufferPass::CreatePipelineLayout(const DescriptorManager* descriptorManager)
 {
-	std::array descriptorSetLayouts = {sceneBaked1stPart->GetGBufferTexturesDescriptorSetLayout(), sceneBaked1stPart->GetGBufferUniformsDescriptorSetLayout()};
+	std::array descriptorSetLayouts = {descriptorManager->GetGBufferTexturesDescriptorSetLayout(), descriptorManager->GetGBufferUniformsDescriptorSetLayout()};
 
 	VkPipelineLayoutCreateInfo gbufferPipelineLayoutCreateInfo;
 	gbufferPipelineLayoutCreateInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;

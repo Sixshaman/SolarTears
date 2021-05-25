@@ -1,15 +1,11 @@
 #include "D3D12Utils.hpp"
-#include "..\..\Core\Util.hpp"
-#include "..\..\Logging\LoggerQueue.hpp"
+#include "../../Core/Util.hpp"
+#include "../../Logging/LoggerQueue.hpp"
+#include "../Common/RenderingUtils.hpp"
 #include <string>
 #include <fstream>
 #include <cinttypes>
 #include <malloc.h>
-
-UINT64 D3D12::D3D12Utils::AlignMemory(UINT64 value, UINT64 alignment)
-{
-    return value + (alignment - value % alignment) % alignment;
-}
 
 bool D3D12::D3D12Utils::IsStateWriteable(D3D12_RESOURCE_STATES state)
 {
@@ -274,8 +270,8 @@ size_t D3D12::D3D12Utils::StateSubobjectHelper::GetStreamSize() const
 
 void D3D12::D3D12Utils::StateSubobjectHelper::AllocateStreamData(size_t dataSize)
 {
-    size_t addedSpace  = AlignMemory(dataSize, alignof(void*));
-    size_t currentSize = AlignMemory(mStreamBlobSize, alignof(void*));
+    size_t addedSpace  = Utils::AlignMemory(dataSize, alignof(void*));
+    size_t currentSize = Utils::AlignMemory(mStreamBlobSize, alignof(void*));
     if(currentSize + addedSpace > mStreamBlobCapacity)
     {
         ReallocateData(addedSpace);
@@ -284,7 +280,7 @@ void D3D12::D3D12Utils::StateSubobjectHelper::AllocateStreamData(size_t dataSize
 
 void D3D12::D3D12Utils::StateSubobjectHelper::AddPadding()
 {
-    size_t alignedSize = AlignMemory(mStreamBlobSize, alignof(void*));
+    size_t alignedSize = Utils::AlignMemory(mStreamBlobSize, alignof(void*));
     assert(alignedSize < mStreamBlobCapacity);
 
     mStreamBlobSize = alignedSize;

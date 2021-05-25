@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../Common/Renderer.hpp"
+#include "../Common/RenderingUtils.hpp"
 #include "VulkanUtils.hpp"
 #include "VulkanInstanceParameters.hpp"
 #include "VulkanDeviceParameters.hpp"
@@ -20,6 +21,7 @@ namespace Vulkan
 	class RenderableScene;
 	class FrameGraph;
 	class ShaderManager;
+	class DescriptorManager;
 
 	class Renderer: public ::Renderer
 	{
@@ -52,7 +54,7 @@ namespace Vulkan
 		VkPhysicalDevice mPhysicalDevice;
 		VkDevice         mDevice;
 
-		VkFence mRenderFences[VulkanUtils::InFlightFrameCount];
+		VkFence mRenderFences[Utils::InFlightFrameCount];
 
 		InstanceParameters mInstanceParameters;
 		DeviceParameters   mDeviceParameters;
@@ -63,7 +65,8 @@ namespace Vulkan
 		
 		std::unique_ptr<FunctionsLibrary> mDynamicLibrary;
 
-		std::unique_ptr<ShaderManager> mShaderManager;
+		std::unique_ptr<ShaderManager>     mShaderManager;
+		std::unique_ptr<DescriptorManager> mDescriptorManager;
 
 		std::unique_ptr<SwapChain>            mSwapChain;
 		std::unique_ptr<DeviceQueues>         mDeviceQueues;

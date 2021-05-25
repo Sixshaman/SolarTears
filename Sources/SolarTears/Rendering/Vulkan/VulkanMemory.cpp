@@ -1,6 +1,7 @@
 #include "VulkanMemory.hpp"
 #include "VulkanFunctions.hpp"
 #include "VulkanUtils.hpp"
+#include "../Common/RenderingUtils.hpp"
 #include <VulkanGenericStructures.h>
 #include <cassert>
 
@@ -47,7 +48,7 @@ VkDeviceMemory Vulkan::MemoryManager::AllocateImagesMemory(VkDevice device, cons
 		vkGetImageMemoryRequirements2(device, &imageMemoryRequirementsInfo, &imageMemoryRequirements);
 
 		VkDeviceSize memoryAlignment = std::max(memoryRequirements.alignment, imageMemoryRequirements.memoryRequirements.alignment);
-		VkDeviceSize memorySize      = VulkanUtils::AlignMemory(imageMemoryRequirements.memoryRequirements.size, memoryAlignment);
+		VkDeviceSize memorySize      = Utils::AlignMemory(imageMemoryRequirements.memoryRequirements.size, memoryAlignment);
 
 		outMemoryOffsets.push_back(currMemoryOffset);
 		currMemoryOffset += memorySize;
@@ -107,7 +108,7 @@ VkDeviceMemory Vulkan::MemoryManager::AllocateBuffersMemory(VkDevice device, con
 		vkGetBufferMemoryRequirements2(device, &bufferMemoryRequirementsInfo, &bufferMemoryRequirements);
 
 		VkDeviceSize memoryAlignment = std::max(memoryRequirements.alignment, bufferMemoryRequirements.memoryRequirements.alignment);
-		VkDeviceSize memorySize      = VulkanUtils::AlignMemory(bufferMemoryRequirements.memoryRequirements.size, memoryAlignment);
+		VkDeviceSize memorySize      = Utils::AlignMemory(bufferMemoryRequirements.memoryRequirements.size, memoryAlignment);
 
 		outMemoryOffsets.push_back(currMemoryOffset);
 		currMemoryOffset += memorySize;
@@ -126,7 +127,7 @@ VkDeviceMemory Vulkan::MemoryManager::AllocateBuffersMemory(VkDevice device, con
 		memoryFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 		break;
 	case BufferAllocationType::HOST_VISIBLE:
-		memoryFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+		memoryFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT; //For now need HOST_COHERENT, without it the scene update management is much more complex
 		break;
 	default:
 		break;

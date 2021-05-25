@@ -4,6 +4,7 @@
 #include <dxgi1_6.h>
 #include <wil/com.h>
 #include "D3D12Utils.hpp"
+#include "../Common/RenderingUtils.hpp"
 #include "../../Core/Window.hpp"
 
 namespace D3D12
@@ -13,7 +14,7 @@ namespace D3D12
 	class SwapChain
 	{
 	public:
-		static constexpr uint32_t SwapchainImageCount = D3D12Utils::InFlightFrameCount;
+		static constexpr uint32_t SwapchainImageCount = Utils::InFlightFrameCount;
 
 	public:
 		SwapChain(LoggerQueue* logger);

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../Common/Renderer.hpp"
+#include "../Common/RenderingUtils.hpp"
 #include "D3D12SwapChain.hpp"
 #include "D3D12DeviceFeatures.hpp"
 #include <d3d12.h>
@@ -63,6 +64,6 @@ namespace D3D12
 		std::unique_ptr<ShaderManager>        mShaderManager;
 		std::unique_ptr<SrvDescriptorManager> mDescriptorManager;
 
-		std::array<UINT64, D3D12Utils::InFlightFrameCount> mFrameGraphicsFenceValues;
+		std::array<UINT64, Utils::InFlightFrameCount> mFrameGraphicsFenceValues;
 	};
 }
