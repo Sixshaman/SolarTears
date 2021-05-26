@@ -345,6 +345,9 @@
     <ClInclude Include="Rendering\Common\RenderingUtils.hpp">
       <Filter>Rendering\Common</Filter>
     </ClInclude>
+    <ClInclude Include="Rendering\Common\Scene\ModernRenderableSceneBuilder.hpp">
+      <Filter>Rendering\Common\Scene</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Platform\Win32\Win32Application.cpp">
@@ -550,6 +553,9 @@
     </ClCompile>
     <ClCompile Include="Rendering\Common\RenderingUtils.cpp">
       <Filter>Rendering\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Common\Scene\ModernRenderableSceneBuilder.cpp">
+      <Filter>Rendering\Common\Scene</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

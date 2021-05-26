@@ -12,6 +12,7 @@ namespace Vulkan
 	class RenderableScene: public ModernRenderableScene
 	{
 		friend class RenderableSceneBuilder;
+		friend class SceneDescriptorCreator;
 
 	public:
 		RenderableScene(const VkDevice device, const FrameCounter* frameCounter, const DeviceParameters& deviceParameters);
