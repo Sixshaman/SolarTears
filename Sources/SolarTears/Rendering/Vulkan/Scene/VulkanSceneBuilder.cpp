@@ -11,308 +11,30 @@
 #include <array>
 #include <cassert>
 
-Vulkan::RenderableSceneBuilder::RenderableSceneBuilder(RenderableScene* sceneToBuild): mSceneToBuild(sceneToBuild)
+Vulkan::RenderableSceneBuilder::RenderableSceneBuilder(RenderableScene* sceneToBuild, const DeviceQueues* deviceQueues, const DeviceParameters* deviceParameters): ModernRenderableSceneBuilder(sceneToBuild), mVulkanSceneToBuild(sceneToBuild),
+                                                                                                                                                                   mDeviceQueuesRef(deviceQueues), mDeviceParametersRef(deviceParameters)
 {
 	assert(sceneToBuild != nullptr);
 
 	mIntermediateBuffer        = VK_NULL_HANDLE;
 	mIntermediateBufferMemory  = VK_NULL_HANDLE;
 
-	mIntermediateBufferVertexDataOffset  = 0;
-	mIntermediateBufferIndexDataOffset   = 0;
-	mIntermediateBufferTextureDataOffset = 0;
+	DDSTextureLoaderVk::SetVkCreateImageFuncPtr(vkCreateImage);
+
+	mTexturePlacementAlignment = 1;
 }
 
 Vulkan::RenderableSceneBuilder::~RenderableSceneBuilder()
 {
-	SafeDestroyObject(vkDestroyBuffer, mSceneToBuild->mDeviceRef, mIntermediateBuffer);
-	SafeDestroyObject(vkFreeMemory,    mSceneToBuild->mDeviceRef, mIntermediateBufferMemory);
+	SafeDestroyObject(vkDestroyBuffer, mVulkanSceneToBuild->mDeviceRef, mIntermediateBuffer);
+	SafeDestroyObject(vkFreeMemory,    mVulkanSceneToBuild->mDeviceRef, mIntermediateBufferMemory);
 }
 
-void Vulkan::RenderableSceneBuilder::BakeSceneFirstPart(const DeviceQueues* deviceQueues, const MemoryManager* memoryAllocator, const ShaderManager* shaderManager, const DescriptorManager* descriptorManager, const DeviceParameters& deviceParameters)
+void Vulkan::RenderableSceneBuilder::PreCreateVertexBuffer(size_t vertexDataSize)
 {
-	//Create scene subobjects
-	std::vector<std::wstring> sceneTexturesVec;
-	CreateSceneMeshMetadata(sceneTexturesVec);
+	SafeDestroyObject(vkDestroyBuffer, mVulkanSceneToBuild->mDeviceRef, mVulkanSceneToBuild->mSceneVertexBuffer);
 
-	VkDeviceSize intermediateBufferSize = 0;
-
-	//Create buffers for model and uniform data
-	intermediateBufferSize = CreateSceneDataBuffers(deviceQueues, intermediateBufferSize);
-
-	//Load texture images
-	intermediateBufferSize = LoadTextureImages(sceneTexturesVec, deviceParameters, intermediateBufferSize);
-
-	//Allocate memory for images and buffers
-	AllocateImageMemory(memoryAllocator);
-	AllocateBuffersMemory(memoryAllocator);
-
-	CreateImageViews();
-
-	//Create intermediate buffers
-	CreateIntermediateBuffer(deviceQueues, memoryAllocator, intermediateBufferSize);
-
-	//Fill intermediate buffers
-	FillIntermediateBufferData();
-
-	CreateDescriptorPool();
-	AllocateDescriptorSets(descriptorManager);
-	FillDescriptorSets(shaderManager);
-}
-
-void Vulkan::RenderableSceneBuilder::BakeSceneSecondPart(DeviceQueues* deviceQueues, WorkerCommandBuffers* workerCommandBuffers)
-{
-	VkCommandPool   transferCommandPool   = workerCommandBuffers->GetMainThreadTransferCommandPool(0);
-	VkCommandBuffer transferCommandBuffer = workerCommandBuffers->GetMainThreadTransferCommandBuffer(0);
-
-	VkCommandPool   graphicsCommandPool   = workerCommandBuffers->GetMainThreadGraphicsCommandPool(0);
-	VkCommandBuffer graphicsCommandBuffer = workerCommandBuffers->GetMainThreadGraphicsCommandBuffer(0);
-
-	VkPipelineStageFlags invalidateStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
-
-	VkSemaphore transferToGraphicsSemaphore = VK_NULL_HANDLE;
-	{
-		VkSemaphoreCreateInfo semaphoreCreateInfo;
-		semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-		semaphoreCreateInfo.pNext = nullptr;
-		semaphoreCreateInfo.flags = 0;
-
-		ThrowIfFailed(vkCreateSemaphore(mSceneToBuild->mDeviceRef, &semaphoreCreateInfo, nullptr, &transferToGraphicsSemaphore));
-	}
-
-	//Baking
-	ThrowIfFailed(vkResetCommandPool(mSceneToBuild->mDeviceRef, transferCommandPool, 0));
-
-	//TODO: mGPU?
-	VkCommandBufferBeginInfo transferCmdBufferBeginInfo;
-	transferCmdBufferBeginInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	transferCmdBufferBeginInfo.pNext            = nullptr;
-	transferCmdBufferBeginInfo.flags            = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-	transferCmdBufferBeginInfo.pInheritanceInfo = nullptr;
-
-	ThrowIfFailed(vkBeginCommandBuffer(transferCommandBuffer, &transferCmdBufferBeginInfo));
-
-	std::array sceneBuffers           = {mSceneToBuild->mSceneVertexBuffer,   mSceneToBuild->mSceneIndexBuffer};
-	std::array sceneBufferAccessMasks = {VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, VK_ACCESS_INDEX_READ_BIT};
-
-	//TODO: multithread this!
-	std::vector<VkImageMemoryBarrier> imageTransferBarriers(mSceneToBuild->mSceneTextures.size());
-	for(size_t i = 0; i < mSceneToBuild->mSceneTextures.size(); i++)
-	{
-		imageTransferBarriers[i].sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		imageTransferBarriers[i].pNext                           = nullptr;
-		imageTransferBarriers[i].srcAccessMask                   = 0;
-		imageTransferBarriers[i].dstAccessMask                   = VK_ACCESS_TRANSFER_WRITE_BIT;
-		imageTransferBarriers[i].oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;
-		imageTransferBarriers[i].newLayout                       = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-		imageTransferBarriers[i].srcQueueFamilyIndex             = deviceQueues->GetTransferQueueFamilyIndex();
-		imageTransferBarriers[i].dstQueueFamilyIndex             = deviceQueues->GetTransferQueueFamilyIndex();
-		imageTransferBarriers[i].image                           = mSceneToBuild->mSceneTextures[i];
-		imageTransferBarriers[i].subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-		imageTransferBarriers[i].subresourceRange.baseMipLevel   = 0;
-		imageTransferBarriers[i].subresourceRange.levelCount     = VK_REMAINING_MIP_LEVELS;
-		imageTransferBarriers[i].subresourceRange.baseArrayLayer = 0;
-		imageTransferBarriers[i].subresourceRange.layerCount     = VK_REMAINING_ARRAY_LAYERS;
-	}
-
-	std::array<VkBufferMemoryBarrier, sceneBuffers.size()> bufferTransferBarriers;
-	for(size_t i = 0; i < sceneBuffers.size(); i++)
-	{
-		bufferTransferBarriers[i].sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-		bufferTransferBarriers[i].pNext               = nullptr;
-		bufferTransferBarriers[i].srcAccessMask       = 0;
-		bufferTransferBarriers[i].dstAccessMask       = VK_ACCESS_TRANSFER_WRITE_BIT;
-		bufferTransferBarriers[i].srcQueueFamilyIndex = deviceQueues->GetTransferQueueFamilyIndex();
-		bufferTransferBarriers[i].dstQueueFamilyIndex = deviceQueues->GetTransferQueueFamilyIndex();
-		bufferTransferBarriers[i].buffer              = sceneBuffers[i];
-		bufferTransferBarriers[i].offset              = 0;
-		bufferTransferBarriers[i].size                = VK_WHOLE_SIZE;
-	}
-
-	std::array<VkMemoryBarrier, 0> memoryTransferBarriers;
-	vkCmdPipelineBarrier(transferCommandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
-		                 (uint32_t)memoryTransferBarriers.size(), memoryTransferBarriers.data(),
-		                 (uint32_t)bufferTransferBarriers.size(), bufferTransferBarriers.data(),
-		                 (uint32_t)imageTransferBarriers.size(),  imageTransferBarriers.data());
-
-
-	for(size_t i = 0; i < mSceneTextures.size(); i++)
-	{
-		vkCmdCopyBufferToImage(transferCommandBuffer, mIntermediateBuffer, mSceneToBuild->mSceneTextures[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, (uint32_t)mSceneTextureCopyInfos[i].size(), mSceneTextureCopyInfos[i].data());
-	}
-
-	std::array sceneBufferDataOffsets = {mIntermediateBufferVertexDataOffset,                      mIntermediateBufferIndexDataOffset};
-	std::array sceneBufferDataSizes   = {mVertexBufferData.size() * sizeof(RenderableSceneVertex), mIndexBufferData.size() * sizeof(RenderableSceneIndex)};
-	for(size_t i = 0; i < sceneBuffers.size(); i++)
-	{
-		VkBufferCopy copyRegion;
-		copyRegion.srcOffset = sceneBufferDataOffsets[i];
-		copyRegion.dstOffset = 0;
-		copyRegion.size      = sceneBufferDataSizes[i];
-
-		std::array copyRegions = {copyRegion};
-		vkCmdCopyBuffer(transferCommandBuffer, mIntermediateBuffer, sceneBuffers[i], (uint32_t)(copyRegions.size()), copyRegions.data());
-	}
-
-	std::vector<VkImageMemoryBarrier> releaseImageInvalidateBarriers(mSceneToBuild->mSceneTextures.size());
-	for(size_t i = 0; i < mSceneToBuild->mSceneTextures.size(); i++)
-	{
-		releaseImageInvalidateBarriers[i].sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		releaseImageInvalidateBarriers[i].pNext                           = nullptr;
-		releaseImageInvalidateBarriers[i].srcAccessMask                   = VK_ACCESS_TRANSFER_WRITE_BIT;
-		releaseImageInvalidateBarriers[i].dstAccessMask                   = 0;
-		releaseImageInvalidateBarriers[i].oldLayout                       = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-		releaseImageInvalidateBarriers[i].newLayout                       = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-		releaseImageInvalidateBarriers[i].srcQueueFamilyIndex             = deviceQueues->GetTransferQueueFamilyIndex();
-		releaseImageInvalidateBarriers[i].dstQueueFamilyIndex             = deviceQueues->GetGraphicsQueueFamilyIndex();
-		releaseImageInvalidateBarriers[i].image                           = mSceneToBuild->mSceneTextures[i];
-		releaseImageInvalidateBarriers[i].subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-		releaseImageInvalidateBarriers[i].subresourceRange.baseMipLevel   = 0;
-		releaseImageInvalidateBarriers[i].subresourceRange.levelCount     = VK_REMAINING_MIP_LEVELS;
-		releaseImageInvalidateBarriers[i].subresourceRange.baseArrayLayer = 0;
-		releaseImageInvalidateBarriers[i].subresourceRange.layerCount     = VK_REMAINING_ARRAY_LAYERS;
-	}
-
-	std::array<VkBufferMemoryBarrier, sceneBuffers.size()> releaseBufferInvalidateBarriers;
-	for(size_t i = 0; i < sceneBuffers.size(); i++)
-	{
-		releaseBufferInvalidateBarriers[i].sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-		releaseBufferInvalidateBarriers[i].pNext               = nullptr;
-		releaseBufferInvalidateBarriers[i].srcAccessMask       = VK_ACCESS_TRANSFER_WRITE_BIT;
-		releaseBufferInvalidateBarriers[i].dstAccessMask       = 0;
-		releaseBufferInvalidateBarriers[i].srcQueueFamilyIndex = deviceQueues->GetTransferQueueFamilyIndex();
-		releaseBufferInvalidateBarriers[i].dstQueueFamilyIndex = deviceQueues->GetGraphicsQueueFamilyIndex();
-		releaseBufferInvalidateBarriers[i].buffer              = sceneBuffers[i];
-		releaseBufferInvalidateBarriers[i].offset              = 0;
-		releaseBufferInvalidateBarriers[i].size                = VK_WHOLE_SIZE;
-	}
-
-	std::array<VkMemoryBarrier, 0>       memoryInvalidateBarriers;
-	vkCmdPipelineBarrier(transferCommandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, invalidateStageMask, 0,
-		                 (uint32_t)memoryInvalidateBarriers.size(),        memoryInvalidateBarriers.data(),
-		                 (uint32_t)releaseBufferInvalidateBarriers.size(), releaseBufferInvalidateBarriers.data(),
-		                 (uint32_t)releaseImageInvalidateBarriers.size(),  releaseImageInvalidateBarriers.data());
-
-	ThrowIfFailed(vkEndCommandBuffer(transferCommandBuffer));
-
-	deviceQueues->TransferQueueSubmit(transferCommandBuffer, transferToGraphicsSemaphore);
-
-	//Graphics queue ownership
-	ThrowIfFailed(vkResetCommandPool(mSceneToBuild->mDeviceRef, graphicsCommandPool, 0));
-
-	//TODO: mGPU?
-	VkCommandBufferBeginInfo graphicsCmdBufferBeginInfo;
-	graphicsCmdBufferBeginInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	graphicsCmdBufferBeginInfo.pNext            = nullptr;
-	graphicsCmdBufferBeginInfo.flags            = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-	graphicsCmdBufferBeginInfo.pInheritanceInfo = nullptr;
-
-	ThrowIfFailed(vkBeginCommandBuffer(graphicsCommandBuffer, &graphicsCmdBufferBeginInfo));
-
-	std::vector<VkImageMemoryBarrier> acquireImageInvalidateBarriers(mSceneToBuild->mSceneTextures.size());
-	for(size_t i = 0; i < mSceneToBuild->mSceneTextures.size(); i++)
-	{
-		acquireImageInvalidateBarriers[i].sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		acquireImageInvalidateBarriers[i].pNext                           = nullptr;
-		acquireImageInvalidateBarriers[i].srcAccessMask                   = 0;
-		acquireImageInvalidateBarriers[i].dstAccessMask                   = VK_ACCESS_SHADER_READ_BIT;
-		acquireImageInvalidateBarriers[i].oldLayout                       = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-		acquireImageInvalidateBarriers[i].newLayout                       = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		acquireImageInvalidateBarriers[i].srcQueueFamilyIndex             = deviceQueues->GetTransferQueueFamilyIndex();
-		acquireImageInvalidateBarriers[i].dstQueueFamilyIndex             = deviceQueues->GetGraphicsQueueFamilyIndex();
-		acquireImageInvalidateBarriers[i].image                           = mSceneToBuild->mSceneTextures[i];
-		acquireImageInvalidateBarriers[i].subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-		acquireImageInvalidateBarriers[i].subresourceRange.baseMipLevel   = 0;
-		acquireImageInvalidateBarriers[i].subresourceRange.levelCount     = VK_REMAINING_MIP_LEVELS;
-		acquireImageInvalidateBarriers[i].subresourceRange.baseArrayLayer = 0;
-		acquireImageInvalidateBarriers[i].subresourceRange.layerCount     = VK_REMAINING_ARRAY_LAYERS;
-	}
-
-	std::array<VkBufferMemoryBarrier, sceneBuffers.size()> acquireBufferInvalidateBarriers;
-	for(size_t i = 0; i < sceneBuffers.size(); i++)
-	{
-		acquireBufferInvalidateBarriers[i].sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-		acquireBufferInvalidateBarriers[i].pNext               = nullptr;
-		acquireBufferInvalidateBarriers[i].srcAccessMask       = 0;
-		acquireBufferInvalidateBarriers[i].dstAccessMask       = sceneBufferAccessMasks[i];
-		acquireBufferInvalidateBarriers[i].srcQueueFamilyIndex = deviceQueues->GetTransferQueueFamilyIndex();
-		acquireBufferInvalidateBarriers[i].dstQueueFamilyIndex = deviceQueues->GetGraphicsQueueFamilyIndex();
-		acquireBufferInvalidateBarriers[i].buffer              = sceneBuffers[i];
-		acquireBufferInvalidateBarriers[i].offset              = 0;
-		acquireBufferInvalidateBarriers[i].size                = VK_WHOLE_SIZE;
-	}
-
-	vkCmdPipelineBarrier(graphicsCommandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, invalidateStageMask, 0,
-		                 (uint32_t)memoryInvalidateBarriers.size(),        memoryInvalidateBarriers.data(),
-		                 (uint32_t)acquireBufferInvalidateBarriers.size(), acquireBufferInvalidateBarriers.data(),
-		                 (uint32_t)acquireImageInvalidateBarriers.size(),  acquireImageInvalidateBarriers.data());
-
-	ThrowIfFailed(vkEndCommandBuffer(graphicsCommandBuffer));
-
-	deviceQueues->GraphicsQueueSubmit(graphicsCommandBuffer, transferToGraphicsSemaphore, VK_PIPELINE_STAGE_TRANSFER_BIT);
-	deviceQueues->GraphicsQueueWait();
-
-	SafeDestroyObject(vkDestroySemaphore, mSceneToBuild->mDeviceRef, transferToGraphicsSemaphore);
-}
-
-void Vulkan::RenderableSceneBuilder::CreateSceneMeshMetadata(std::vector<std::wstring>& sceneTexturesVec)
-{
-	mVertexBufferData.clear();
-	mIndexBufferData.clear();
-
-	mSceneToBuild->mSceneMeshes.clear();
-	mSceneToBuild->mSceneSubobjects.clear();
-
-	std::unordered_map<std::wstring, size_t> textureVecIndices;
-	for(auto it = mSceneTextures.begin(); it != mSceneTextures.end(); ++it)
-	{
-		sceneTexturesVec.push_back(*it);
-		textureVecIndices[*it] = sceneTexturesVec.size() - 1;
-	}
-
-	//Create scene subobjects
-	for(size_t i = 0; i < mSceneMeshes.size(); i++)
-	{
-		//Need to change this in case of multiple subobjects for mesh
-		RenderableScene::MeshSubobjectRange subobjectRange;
-		subobjectRange.FirstSubobjectIndex     = (uint32_t)i;
-		subobjectRange.AfterLastSubobjectIndex = (uint32_t)(i + 1);
-
-		mSceneToBuild->mSceneMeshes.push_back(subobjectRange);
-
-		RenderableScene::SceneSubobject subobject;
-		subobject.FirstIndex                = (uint32_t)mIndexBufferData.size();
-		subobject.IndexCount                = (uint32_t)mSceneMeshes[i].Indices.size();
-		subobject.VertexOffset              = (int32_t)mVertexBufferData.size();
-		subobject.TextureDescriptorSetIndex = (uint32_t)textureVecIndices[mSceneMeshes[i].TextureFilename];
-
-		mVertexBufferData.insert(mVertexBufferData.end(), mSceneMeshes[i].Vertices.begin(), mSceneMeshes[i].Vertices.end());
-		mIndexBufferData.insert(mIndexBufferData.end(), mSceneMeshes[i].Indices.begin(), mSceneMeshes[i].Indices.end());
-
-		mSceneMeshes[i].Vertices.clear();
-		mSceneMeshes[i].Indices.clear();
-
-		mSceneToBuild->mSceneSubobjects.push_back(subobject);
-	}
-
-	mSceneToBuild->mScenePerObjectData.resize(mSceneToBuild->mSceneMeshes.size());
-	mSceneToBuild->mScheduledSceneUpdates.resize(mSceneToBuild->mSceneMeshes.size() + 1); //1 for each subobject and 1 for frame data
-	mSceneToBuild->mObjectDataScheduledUpdateIndices.resize(mSceneToBuild->mSceneSubobjects.size(), (uint32_t)(-1));
-	mSceneToBuild->mFrameDataScheduledUpdateIndex = (uint32_t)(-1);
-}
-
-VkDeviceSize Vulkan::RenderableSceneBuilder::CreateSceneDataBuffers(const DeviceQueues* deviceQueues, VkDeviceSize currentIntermediateBuffeSize)
-{
-	SafeDestroyObject(vkDestroyBuffer, mSceneToBuild->mDeviceRef, mSceneToBuild->mSceneVertexBuffer);
-	SafeDestroyObject(vkDestroyBuffer, mSceneToBuild->mDeviceRef, mSceneToBuild->mSceneIndexBuffer);
-	SafeDestroyObject(vkDestroyBuffer, mSceneToBuild->mDeviceRef, mSceneToBuild->mSceneUniformBuffer);
-
-
-	VkDeviceSize intermediateBufferSize = currentIntermediateBuffeSize;
-
-	std::array bufferQueueFamilies = {deviceQueues->GetGraphicsQueueFamilyIndex()};
-
-	const VkDeviceSize vertexDataSize = mVertexBufferData.size() * sizeof(RenderableSceneVertex);
+	std::array bufferQueueFamilies = {mDeviceQueuesRef->GetGraphicsQueueFamilyIndex()};
 
 	//TODO: buffer device address
 	//TODO: dedicated allocation
@@ -326,13 +48,14 @@ VkDeviceSize Vulkan::RenderableSceneBuilder::CreateSceneDataBuffers(const Device
 	vertexBufferCreateInfo.queueFamilyIndexCount = (uint32_t)bufferQueueFamilies.size();
 	vertexBufferCreateInfo.pQueueFamilyIndices   = bufferQueueFamilies.data();
 
-	ThrowIfFailed(vkCreateBuffer(mSceneToBuild->mDeviceRef, &vertexBufferCreateInfo, nullptr, &mSceneToBuild->mSceneVertexBuffer));
+	ThrowIfFailed(vkCreateBuffer(mVulkanSceneToBuild->mDeviceRef, &vertexBufferCreateInfo, nullptr, &mVulkanSceneToBuild->mSceneVertexBuffer));
+}
 
-	mIntermediateBufferVertexDataOffset = intermediateBufferSize;
-	intermediateBufferSize             += vertexDataSize;
+void Vulkan::RenderableSceneBuilder::PreCreateIndexBuffer(size_t indexDataSize)
+{
+	SafeDestroyObject(vkDestroyBuffer, mVulkanSceneToBuild->mDeviceRef, mVulkanSceneToBuild->mSceneIndexBuffer);
 
-
-	const VkDeviceSize indexDataSize = mIndexBufferData.size() * sizeof(RenderableSceneIndex);
+	std::array bufferQueueFamilies = {mDeviceQueuesRef->GetGraphicsQueueFamilyIndex()};
 
 	//TODO: buffer device address
 	//TODO: dedicated allocation
@@ -346,14 +69,14 @@ VkDeviceSize Vulkan::RenderableSceneBuilder::CreateSceneDataBuffers(const Device
 	indexBufferCreateInfo.queueFamilyIndexCount = (uint32_t)bufferQueueFamilies.size();
 	indexBufferCreateInfo.pQueueFamilyIndices   = bufferQueueFamilies.data();
 
-	ThrowIfFailed(vkCreateBuffer(mSceneToBuild->mDeviceRef, &indexBufferCreateInfo, nullptr, &mSceneToBuild->mSceneIndexBuffer));
+	ThrowIfFailed(vkCreateBuffer(mVulkanSceneToBuild->mDeviceRef, &indexBufferCreateInfo, nullptr, &mVulkanSceneToBuild->mSceneIndexBuffer));
+}
 
-	mIntermediateBufferIndexDataOffset = intermediateBufferSize;
-	intermediateBufferSize            += indexDataSize;
+void Vulkan::RenderableSceneBuilder::PreCreateConstantBuffer(size_t constantDataSize)
+{
+	SafeDestroyObject(vkDestroyBuffer, mVulkanSceneToBuild->mDeviceRef, mVulkanSceneToBuild->mSceneUniformBuffer);
 
-
-	VkDeviceSize uniformPerObjectDataSize = mSceneToBuild->mScenePerObjectData.size() * mSceneToBuild->mGBufferObjectChunkDataSize * Utils::InFlightFrameCount;
-	VkDeviceSize uniformPerFrameDataSize  = mSceneToBuild->mGBufferFrameChunkDataSize * Utils::InFlightFrameCount;
+	std::array bufferQueueFamilies = {mDeviceQueuesRef->GetGraphicsQueueFamilyIndex()};
 
 	//TODO: buffer device address
 	//TODO: dedicated allocation
@@ -361,67 +84,72 @@ VkDeviceSize Vulkan::RenderableSceneBuilder::CreateSceneDataBuffers(const Device
 	uniformBufferCreateInfo.sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	uniformBufferCreateInfo.pNext                 = nullptr;
 	uniformBufferCreateInfo.flags                 = 0;
-	uniformBufferCreateInfo.size                  = uniformPerObjectDataSize + uniformPerFrameDataSize;
+	uniformBufferCreateInfo.size                  = constantDataSize;
 	uniformBufferCreateInfo.usage                 = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 	uniformBufferCreateInfo.sharingMode           = VK_SHARING_MODE_EXCLUSIVE;
 	uniformBufferCreateInfo.queueFamilyIndexCount = (uint32_t)bufferQueueFamilies.size();
 	uniformBufferCreateInfo.pQueueFamilyIndices   = bufferQueueFamilies.data();
 
-	ThrowIfFailed(vkCreateBuffer(mSceneToBuild->mDeviceRef, &uniformBufferCreateInfo, nullptr, &mSceneToBuild->mSceneUniformBuffer));
-
-	mSceneToBuild->mSceneDataConstantObjectBufferOffset = 0;
-	mSceneToBuild->mSceneDataConstantFrameBufferOffset  = mSceneToBuild->mSceneDataConstantObjectBufferOffset + uniformPerObjectDataSize;
-
-
-	return intermediateBufferSize;
+	ThrowIfFailed(vkCreateBuffer(mVulkanSceneToBuild->mDeviceRef, &uniformBufferCreateInfo, nullptr, &mVulkanSceneToBuild->mSceneUniformBuffer));
 }
 
-VkDeviceSize Vulkan::RenderableSceneBuilder::LoadTextureImages(const std::vector<std::wstring>& sceneTextures, const DeviceParameters& deviceParameters, VkDeviceSize currentIntermediateBufferSize)
+void Vulkan::RenderableSceneBuilder::AllocateTextureMetadataArrays(size_t textureCount)
 {
-	VkDeviceSize intermediateBufferSize  = currentIntermediateBufferSize;
-	mIntermediateBufferTextureDataOffset = intermediateBufferSize;
+	mVulkanSceneToBuild->mSceneTextures.resize(textureCount);
 
-	DDSTextureLoaderVk::SetVkCreateImageFuncPtr(vkCreateImage);
+	mSceneImageCreateInfos.resize(textureCount);
+	mSceneTextureSubresourceSlices.resize(textureCount);
 
-	mTextureData.clear();
+	mSceneImageCopyInfos.clear();
+}
 
-	VkDeviceSize currentOffset = currentIntermediateBufferSize;
-	for(size_t i = 0; i < sceneTextures.size(); i++)
+size_t Vulkan::RenderableSceneBuilder::LoadTextureFromFile(const std::wstring& textureFilename, size_t textureIndex)
+{
+	std::unique_ptr<uint8_t[]>                             texData;
+	std::vector<DDSTextureLoaderVk::LoadedSubresourceData> texSubresources;
+
+	VkImage texture = VK_NULL_HANDLE;
+	DDSTextureLoaderVk::LoadDDSTextureFromFile(mVulkanSceneToBuild->mDeviceRef, textureFilename.c_str(), &texture, texData, texSubresources, mDeviceParametersRef->GetDeviceProperties().limits.maxImageDimension2D, &mSceneImageCreateInfos[textureIndex]);
+
+	mVulkanSceneToBuild->mSceneTextures[textureIndex] = texture;
+
+	size_t currentTextureOffset = mTextureData.size();
+	mTextureData.resize(mTextureData.size() + textureByteSize);
+
+	mSceneImageSubresrourceDatas.insert(mSceneImageSubresrourceDatas.end(), texSubresources.begin(), texSubresources.end());
+	mSceneTextureSubresourceSlices[textureIndex] =
 	{
-		std::unique_ptr<uint8_t[]>                             texData;
-		std::vector<DDSTextureLoaderVk::LoadedSubresourceData> texSubresources;
+		.Begin = (uint32_t)(mSceneImageCopyInfos.size() - texSubresources.size()),
+		.End   = (uint32_t)(mSceneImageCopyInfos.size())
+	};
 
-		VkImage texture = VK_NULL_HANDLE;
-		VkImageCreateInfo textureCreateInfo;
-		DDSTextureLoaderVk::LoadDDSTextureFromFile(mSceneToBuild->mDeviceRef, sceneTextures[i].c_str(), &texture, texData, texSubresources, deviceParameters.GetDeviceProperties().limits.maxImageDimension2D, &textureCreateInfo);
+	SubresourceArraySlice subresourceSlice = mSceneTextureSubresourceSlices[textureIndex];
+	uint32_t subresourceCount = subresourceSlice.End - subresourceSlice.Begin;
 
-		mSceneToBuild->mSceneTextures.push_back(texture);
-		mSceneTextureCreateInfos.push_back(std::move(textureCreateInfo));
+	for(size_t j = 0; j < subresourceCount; j++)
+	{
+		uint32_t subresourceIndex = subresourceSlice.Begin + j;
 
-		mSceneTextureCopyInfos.push_back(std::vector<VkBufferImageCopy>());
-		for(size_t j = 0; j < texSubresources.size(); j++)
-		{
-			currentOffset = mTextureData.size();
-			mTextureData.insert(mTextureData.end(), texSubresources[j].PData, texSubresources[j].PData + texSubresources[j].DataByteSize);
+		currentOffset = mTextureData.size();
+		mTextureData.insert(mTextureData.end(), texSubresources[j].PData, texSubresources[j].PData + texSubresources[j].DataByteSize);
 
-			VkBufferImageCopy copyRegion;
-			copyRegion.bufferOffset                    = currentOffset + mIntermediateBufferTextureDataOffset;
-			copyRegion.bufferRowLength                 = 0;
-			copyRegion.bufferImageHeight               = 0;
-			copyRegion.imageSubresource.aspectMask     = texSubresources[j].SubresourceSlice.aspectMask;
-			copyRegion.imageSubresource.mipLevel       = texSubresources[j].SubresourceSlice.mipLevel;
-			copyRegion.imageSubresource.baseArrayLayer = texSubresources[j].SubresourceSlice.arrayLayer;
-			copyRegion.imageSubresource.layerCount     = 1;
-			copyRegion.imageOffset.x                   = 0;
-			copyRegion.imageOffset.y                   = 0;
-			copyRegion.imageOffset.z                   = 0;
-			copyRegion.imageExtent                     = texSubresources[j].Extent;
+		VkBufferImageCopy copyRegion;
+		copyRegion.bufferOffset                    = currentOffset + mIntermediateBufferTextureDataOffset;
+		copyRegion.bufferRowLength                 = 0;
+		copyRegion.bufferImageHeight               = 0;
+		copyRegion.imageSubresource.aspectMask     = texSubresources[j].SubresourceSlice.aspectMask;
+		copyRegion.imageSubresource.mipLevel       = texSubresources[j].SubresourceSlice.mipLevel;
+		copyRegion.imageSubresource.baseArrayLayer = texSubresources[j].SubresourceSlice.arrayLayer;
+		copyRegion.imageSubresource.layerCount     = 1;
+		copyRegion.imageOffset.x                   = 0;
+		copyRegion.imageOffset.y                   = 0;
+		copyRegion.imageOffset.z                   = 0;
+		copyRegion.imageExtent                     = texSubresources[j].Extent;
 
-			mSceneTextureCopyInfos.back().push_back(copyRegion);
-		}
+		mSceneImageCopyInfos.push_back(copyRegion);
 	}
 
-	return mIntermediateBufferTextureDataOffset + mTextureData.size() * sizeof(uint8_t);
+	return textureByteSize;
 }
 
 void Vulkan::RenderableSceneBuilder::AllocateImageMemory(const MemoryManager* memoryAllocator)
@@ -519,158 +247,6 @@ void Vulkan::RenderableSceneBuilder::CreateImageViews()
 	}
 }
 
-void Vulkan::RenderableSceneBuilder::CreateDescriptorPool() //ÏÓËß ÄÅÑÊÐÈÏÒÎÐÎÂ! ÏÀÓ!
-{	
-	std::unordered_map<VkDescriptorType, uint32_t> descriptorTypeCounts;
-
-	descriptorTypeCounts[VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER]         = 0;
-	descriptorTypeCounts[VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC] = 0;
-	descriptorTypeCounts[VK_DESCRIPTOR_TYPE_SAMPLER]                = 0;
-	descriptorTypeCounts[VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER] = 0;
-	descriptorTypeCounts[VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE]          = 0;
-
-	descriptorTypeCounts.at(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) += (uint32_t)(mSceneToBuild->mSceneTextures.size());
-	descriptorTypeCounts.at(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC) += 2; //Per-frame and per-object uniform buffers
-
-	uint32_t maxDescriptorSets = 0;
-	std::vector<VkDescriptorPoolSize> descriptorPoolSizes;
-	for(auto it = descriptorTypeCounts.begin(); it != descriptorTypeCounts.end(); it++)
-	{
-		if(it->second != 0)
-		{
-			VkDescriptorPoolSize descriptorPoolSize;
-			descriptorPoolSize.type            = it->first;
-			descriptorPoolSize.descriptorCount = it->second;
-			descriptorPoolSizes.push_back(descriptorPoolSize);
-
-			maxDescriptorSets += it->second;
-		}
-	}
-
-	//TODO: inline uniforms
-	VkDescriptorPoolCreateInfo descriptorPoolCreateInfo;
-	descriptorPoolCreateInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	descriptorPoolCreateInfo.pNext         = nullptr;
-	descriptorPoolCreateInfo.flags         = 0;
-	descriptorPoolCreateInfo.maxSets       = maxDescriptorSets;
-	descriptorPoolCreateInfo.poolSizeCount = (uint32_t)(descriptorPoolSizes.size());
-	descriptorPoolCreateInfo.pPoolSizes    = descriptorPoolSizes.data();
-
-	ThrowIfFailed(vkCreateDescriptorPool(mSceneToBuild->mDeviceRef, &descriptorPoolCreateInfo, nullptr, &mSceneToBuild->mDescriptorPool));
-}
-
-void Vulkan::RenderableSceneBuilder::AllocateDescriptorSets(const DescriptorManager* descriptorManager)
-{
-	std::array bufferDescriptorSetLayouts = {descriptorManager->GetGBufferUniformsDescriptorSetLayout()};
-
-	//TODO: variable descriptor count
-	VkDescriptorSetAllocateInfo bufferDescriptorSetAllocateInfo;
-	bufferDescriptorSetAllocateInfo.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	bufferDescriptorSetAllocateInfo.pNext              = nullptr;
-	bufferDescriptorSetAllocateInfo.descriptorPool     = mSceneToBuild->mDescriptorPool;
-	bufferDescriptorSetAllocateInfo.descriptorSetCount = (uint32_t)(bufferDescriptorSetLayouts.size());
-	bufferDescriptorSetAllocateInfo.pSetLayouts        = bufferDescriptorSetLayouts.data();
-
-	std::array bufferDescriptorSets = {mSceneToBuild->mGBufferUniformsDescriptorSet};
-	ThrowIfFailed(vkAllocateDescriptorSets(mSceneToBuild->mDeviceRef, &bufferDescriptorSetAllocateInfo, bufferDescriptorSets.data()));
-	mSceneToBuild->mGBufferUniformsDescriptorSet = bufferDescriptorSets[0];
-
-
-	std::vector<VkDescriptorSetLayout> textureDescriptorSetLayouts(mSceneToBuild->mSceneTextures.size());
-	for(size_t i = 0; i < mSceneToBuild->mSceneTextures.size(); i++)
-	{
-		textureDescriptorSetLayouts[i] = descriptorManager->GetGBufferTexturesDescriptorSetLayout();
-	}
-
-	//TODO: variable descriptor count
-	VkDescriptorSetAllocateInfo textureDescriptorSetAllocateInfo;
-	textureDescriptorSetAllocateInfo.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	textureDescriptorSetAllocateInfo.pNext              = nullptr;
-	textureDescriptorSetAllocateInfo.descriptorPool     = mSceneToBuild->mDescriptorPool;
-	textureDescriptorSetAllocateInfo.descriptorSetCount = (uint32_t)(textureDescriptorSetLayouts.size());
-	textureDescriptorSetAllocateInfo.pSetLayouts        = textureDescriptorSetLayouts.data();
-
-	mSceneToBuild->mGBufferTextureDescriptorSets.resize(mSceneToBuild->mSceneTextures.size());
-	ThrowIfFailed(vkAllocateDescriptorSets(mSceneToBuild->mDeviceRef, &textureDescriptorSetAllocateInfo, mSceneToBuild->mGBufferTextureDescriptorSets.data()));
-}
-
-void Vulkan::RenderableSceneBuilder::FillDescriptorSets(const ShaderManager* shaderManager)
-{
-	std::vector<VkWriteDescriptorSet> writeDescriptorSets;
-	std::vector<VkCopyDescriptorSet>  copyDescriptorSets;
-
-	VkDeviceSize uniformObjectDataSize = mSceneToBuild->mScenePerObjectData.size() * mSceneToBuild->mGBufferObjectChunkDataSize;
-	VkDeviceSize uniformFrameDataSize  = mSceneToBuild->mGBufferFrameChunkDataSize;
-
-	std::array gbufferUniformBindingNames = {"UniformBufferObject",                              "UniformBufferFrame"};
-	std::array gbufferUniformOffsets      = {mSceneToBuild->mSceneDataConstantObjectBufferOffset, mSceneToBuild->mSceneDataConstantFrameBufferOffset};
-	std::array gbufferUniformRanges       = {uniformObjectDataSize,                               uniformFrameDataSize};
-
-	uint32_t minUniformBindingNumber = UINT32_MAX; //Uniform buffer descriptor set has sequentional bindings
-
-	std::array<VkDescriptorBufferInfo, gbufferUniformBindingNames.size()> gbufferDescriptorBufferInfos;
-	for(size_t i = 0; i < gbufferUniformBindingNames.size(); i++)
-	{
-		uint32_t bindingNumber = 0;
-		shaderManager->GetGBufferDrawDescriptorBindingInfo(gbufferUniformBindingNames[i], &bindingNumber, nullptr, nullptr, nullptr, nullptr);
-
-		minUniformBindingNumber = std::min(minUniformBindingNumber, bindingNumber);
-
-		gbufferDescriptorBufferInfos[i].buffer = mSceneToBuild->mSceneUniformBuffer;
-		gbufferDescriptorBufferInfos[i].offset = gbufferUniformOffsets[i];
-		gbufferDescriptorBufferInfos[i].range  = gbufferUniformRanges[i];
-	}
-
-	//TODO: inline uniforms (and raytracing!)
-	VkWriteDescriptorSet uniformWriteDescriptor;
-	uniformWriteDescriptor.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	uniformWriteDescriptor.pNext            = nullptr;
-	uniformWriteDescriptor.dstSet           = mSceneToBuild->mGBufferUniformsDescriptorSet;
-	uniformWriteDescriptor.dstBinding       = minUniformBindingNumber; //Uniform buffer descriptor set is sequentional
-	uniformWriteDescriptor.dstArrayElement  = 0; //Uniform buffers have only 1 array element
-	uniformWriteDescriptor.descriptorCount  = (uint32_t)gbufferDescriptorBufferInfos.size();
-	uniformWriteDescriptor.descriptorType   = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-	uniformWriteDescriptor.pImageInfo       = nullptr;
-	uniformWriteDescriptor.pBufferInfo      = gbufferDescriptorBufferInfos.data();
-	uniformWriteDescriptor.pTexelBufferView = nullptr;
-
-	writeDescriptorSets.push_back(uniformWriteDescriptor);
-
-	std::vector<VkDescriptorImageInfo> descriptorImageInfos;
-	for(size_t i = 0; i < mSceneToBuild->mSceneTextures.size(); i++)
-	{
-		uint32_t         bindingNumber  = 0;
-		uint32_t         arraySize      = 0;
-		VkDescriptorType descriptorType = VK_DESCRIPTOR_TYPE_MAX_ENUM;
-		shaderManager->GetGBufferDrawDescriptorBindingInfo("ObjectTexture", &bindingNumber, nullptr, &arraySize, nullptr, &descriptorType);
-
-		assert(arraySize == 1); //For now only 1 descriptor is supported
-
-		VkDescriptorImageInfo descriptorImageInfo;
-		descriptorImageInfo.imageView   = mSceneToBuild->mSceneTextureViews[i];
-		descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		descriptorImageInfo.sampler     = nullptr; //Immutable samplers are used
-		descriptorImageInfos.push_back(descriptorImageInfo);
-
-		//TODO: inline uniforms (and raytracing!)
-		VkWriteDescriptorSet textureWriteDescriptor;
-		textureWriteDescriptor.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		textureWriteDescriptor.pNext            = nullptr;
-		textureWriteDescriptor.dstSet           = mSceneToBuild->mGBufferTextureDescriptorSets[i];
-		textureWriteDescriptor.dstBinding       = bindingNumber;
-		textureWriteDescriptor.dstArrayElement  = 0;
-		textureWriteDescriptor.descriptorCount  = arraySize;
-		textureWriteDescriptor.descriptorType   = descriptorType;
-		textureWriteDescriptor.pImageInfo       = &descriptorImageInfos.back();
-		textureWriteDescriptor.pBufferInfo      = nullptr;
-		textureWriteDescriptor.pTexelBufferView = nullptr;
-
-		writeDescriptorSets.push_back(textureWriteDescriptor);
-	}
-
-	vkUpdateDescriptorSets(mSceneToBuild->mDeviceRef, (uint32_t)(writeDescriptorSets.size()), writeDescriptorSets.data(), (uint32_t)(copyDescriptorSets.size()), copyDescriptorSets.data());
-}
-
 void Vulkan::RenderableSceneBuilder::CreateIntermediateBuffer(const DeviceQueues* deviceQueues, const MemoryManager* memoryAllocator, VkDeviceSize intermediateBufferSize)
 {
 	std::array intermediateBufferQueues = {deviceQueues->GetTransferQueueFamilyIndex()};
@@ -687,7 +263,7 @@ void Vulkan::RenderableSceneBuilder::CreateIntermediateBuffer(const DeviceQueues
 
 	vkCreateBuffer(mSceneToBuild->mDeviceRef, &intermediateBufferCreateInfo, nullptr, &mIntermediateBuffer);
 
-	mIntermediateBufferMemory = memoryAllocator->AllocateIntermediateBufferMemory(mSceneToBuild->mDeviceRef, mIntermediateBuffer);
+	mIntermediateBufferMemory = memoryAllocator->AllocateIntermediateBufferMemory(mVulkanSceneToBuild->mDeviceRef, mIntermediateBuffer);
 
 	//TODO: mGPU?
 	VkBindBufferMemoryInfo bindBufferMemoryInfo;

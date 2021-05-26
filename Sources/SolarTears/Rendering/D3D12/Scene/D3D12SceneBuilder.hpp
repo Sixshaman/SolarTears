@@ -6,7 +6,7 @@
 #include <memory>
 #include "D3D12Scene.hpp"
 #include "../D3D12Utils.hpp"
-#include "../../Common/Scene/RenderableSceneBuilderBase.hpp"
+#include "../../Common/Scene/ModernRenderableSceneBuilder.hpp"
 
 namespace D3D12
 {
@@ -14,67 +14,55 @@ namespace D3D12
 	class WorkerCommandLists;
 	class DeviceQueues;
 
-	class RenderableSceneBuilder: public RenderableSceneBuilderBase
+	class RenderableSceneBuilder: public ModernRenderableSceneBuilder
 	{
+		struct SubresourceArraySlice
+		{
+			uint32_t Begin;
+			uint32_t End;
+		};
+
 	public:
-		RenderableSceneBuilder(RenderableScene* sceneToBuild);
+		RenderableSceneBuilder(ID3D12Device8* device, RenderableScene* sceneToBuild);
 		~RenderableSceneBuilder();
 
-		void BakeSceneFirstPart(ID3D12Device8* device, const MemoryManager* memoryAllocator);
-		void BakeSceneSecondPart(DeviceQueues* deviceQueues, const WorkerCommandLists* commandBuffers);
+	protected:
+		void PreCreateVertexBuffer(size_t vertexDataSize)     override final;
+		void PreCreateIndexBuffer(size_t indexDataSize)       override final;
+		void PreCreateConstantBuffer(size_t constantDataSize) override final;
 
-	public:
-		static constexpr size_t GetVertexSize();
+		void   AllocateTextureMetadataArrays(size_t textureCount)                            override final;
+		size_t LoadTextureFromFile(const std::wstring& textureFilename, size_t textureIndex) override final;
 
-		static constexpr DXGI_FORMAT GetVertexPositionFormat();
-		static constexpr DXGI_FORMAT GetVertexNormalFormat();
-		static constexpr DXGI_FORMAT GetVertexTexcoordFormat();
-
-		static constexpr uint32_t GetVertexPositionOffset();
-		static constexpr uint32_t GetVertexNormalOffset();
-		static constexpr uint32_t GetVertexTexcoordOffset();
+		virtual void       CreateIntermediateBuffer(uint64_t intermediateBufferSize) override final;
+		virtual std::byte* MapIntermediateBuffer()                                   const override final;
+		virtual void       UnmapIntermediateBuffer()                                 const override final;
 
 	private:
-		void CreateSceneMeshMetadata(std::vector<std::wstring>& sceneTexturesVec);
+		void AllocateTexturesHeap(const MemoryManager* memoryAllocator);
+		void AllocateBuffersHeap(const MemoryManager* memoryAllocator);
 
-		UINT64 CreateSceneDataBufferDescs(UINT64 currentIntermediateBufferSize);
-		UINT64 LoadTextureImages(ID3D12Device8* device, const std::vector<std::wstring>& sceneTextures, UINT64 currentIntermediateBufferSize);
-
-		void AllocateTexturesHeap(ID3D12Device8* device, const MemoryManager* memoryAllocator);
-		void AllocateBuffersHeap(ID3D12Device8* device, const MemoryManager* memoryAllocator);
-
-		void CreateTextures(ID3D12Device8* device);
-		void CreateBuffers(ID3D12Device8* device);
+		void CreateTextures();
+		void CreateBuffers();
 
 		void CreateBufferViews();
 
-		void CreateIntermediateBuffer(ID3D12Device8* device, UINT64 intermediateBufferSize);
-		void FillIntermediateBufferData();
-
 	private:
-		RenderableScene* mSceneToBuild;
+		ID3D12Device8* mDeviceRef;
 
-		std::vector<uint8_t>               mTextureData;
-		std::vector<RenderableSceneVertex> mVertexBufferData;
-		std::vector<RenderableSceneIndex>  mIndexBufferData;
+		RenderableScene* mD3d12SceneToBuild;
 
 		D3D12_RESOURCE_DESC1 mVertexBufferDesc;
 		D3D12_RESOURCE_DESC1 mIndexBufferDesc;
 		D3D12_RESOURCE_DESC1 mConstantBufferDesc;
 
-		UINT64 mVertexBufferHeapOffset;
-		UINT64 mIndexBufferHeapOffset;
-		UINT64 mConstantBufferHeapOffset;
-
-		std::vector<D3D12_RESOURCE_DESC1>                            mSceneTextureDescs;
-		std::vector<UINT64>                                          mSceneTextureHeapOffsets;
-		std::vector<std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT>> mSceneTextureSubresourceFootprints;
+		std::vector<D3D12_RESOURCE_DESC1>               mSceneTextureDescs;
+		std::vector<UINT64>                             mSceneTextureHeapOffsets;
+		std::vector<D3D12_SUBRESOURCE_DATA>             mSceneTextureSubresourceDatas;
+		std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> mSceneTextureSubresourceFootprints;
+		std::vector<SubresourceArraySlice>              mSceneTextureSubresourceSlices;
 
 		wil::com_ptr_nothrow<ID3D12Resource> mIntermediateBuffer;
-
-		UINT64 mIntermediateBufferVertexDataOffset;
-		UINT64 mIntermediateBufferIndexDataOffset;
-		UINT64 mIntermediateBufferTextureDataOffset;
 	};
 }
 
