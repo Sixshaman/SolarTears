@@ -7,6 +7,8 @@ class FrameCounter;
 //Class for scene functions common to Vulkan and D3D12
 class ModernRenderableScene: public RenderableSceneBase
 {
+	friend class ModernRenderableSceneBuilder;
+
 protected:
 	struct SceneSubobject
 	{

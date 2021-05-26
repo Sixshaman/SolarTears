@@ -7,7 +7,7 @@
 #include "VulkanScene.hpp"
 #include "../VulkanDeviceParameters.hpp"
 #include "../VulkanUtils.hpp"
-#include "../../Common/Scene/RenderableSceneBuilderBase.hpp"
+#include "../../Common/Scene/ModernRenderableSceneBuilder.hpp"
 
 namespace Vulkan
 {
@@ -17,33 +17,31 @@ namespace Vulkan
 	class DescriptorManager;
 	class WorkerCommandBuffers;
 
-	class RenderableSceneBuilder: public RenderableSceneBuilderBase
+	class RenderableSceneBuilder: public ModernRenderableSceneBuilder
 	{
+		struct SubresourceArraySlice
+		{
+			uint32_t Begin;
+			uint32_t End;
+		};
+
 	public:
-		RenderableSceneBuilder(RenderableScene* sceneToBuild);
+		RenderableSceneBuilder(RenderableScene* sceneToBuild, const DeviceQueues* deviceQueues, const DeviceParameters* deviceParameters);
 		~RenderableSceneBuilder();
 
-	public:
-		void BakeSceneFirstPart(const DeviceQueues* deviceQueues, const MemoryManager* memoryAllocator, const ShaderManager* shaderManager, const DescriptorManager* descriptorManager, const DeviceParameters& deviceParameters);
-		void BakeSceneSecondPart(DeviceQueues* deviceQueues, WorkerCommandBuffers* workerCommandBuffers);
+	protected:
+		void PreCreateVertexBuffer(size_t vertexDataSize)                        override final;
+		void PreCreateIndexBuffer(size_t indexDataSize)                          override final;
+		void PreCreateConstantBuffer(size_t constantDataSize)                    override final;
 
-	public:
-		static constexpr size_t GetVertexSize();
+		void   AllocateTextureMetadataArrays(size_t textureCount)                            override final;
+		size_t LoadTextureFromFile(const std::wstring& textureFilename, size_t textureIndex) override final;
 
-		static constexpr VkFormat GetVertexPositionFormat();
-		static constexpr VkFormat GetVertexNormalFormat();
-		static constexpr VkFormat GetVertexTexcoordFormat();
-
-		static constexpr uint32_t GetVertexPositionOffset();
-		static constexpr uint32_t GetVertexNormalOffset();
-		static constexpr uint32_t GetVertexTexcoordOffset();
+		virtual void       CreateIntermediateBuffer(uint64_t intermediateBufferSize) override final;
+		virtual std::byte* MapIntermediateBuffer()                                   const override final;
+		virtual void       UnmapIntermediateBuffer()                                 const override final;
 
 	private:
-		void CreateSceneMeshMetadata(std::vector<std::wstring>& sceneTexturesVec);
-
-		VkDeviceSize CreateSceneDataBuffers(const DeviceQueues* deviceQueues, VkDeviceSize currentIntermediateBufferSize);
-		VkDeviceSize LoadTextureImages(const std::vector<std::wstring>& sceneTextures, const DeviceParameters& deviceParameters, VkDeviceSize currentIntermediateBufferSize);
-
 		void CreateIntermediateBuffer(const DeviceQueues* deviceQueues, const MemoryManager* memoryAllocator, VkDeviceSize intermediateBufferSize);
 		void FillIntermediateBufferData();
 
@@ -52,26 +50,18 @@ namespace Vulkan
 
 		void CreateImageViews();
 
-		void CreateDescriptorPool();
-		void AllocateDescriptorSets(const DescriptorManager* descriptorManager);
-		void FillDescriptorSets(const ShaderManager* shaderManager);
-
 	private:
-		RenderableScene* mSceneToBuild; 
+		RenderableScene* mVulkanSceneToBuild;
 
-		std::vector<VkImageCreateInfo>              mSceneTextureCreateInfos;
-		std::vector<std::vector<VkBufferImageCopy>> mSceneTextureCopyInfos;
+		const DeviceQueues*     mDeviceQueuesRef;
+		const DeviceParameters* mDeviceParametersRef;
 
-		std::vector<uint8_t>               mTextureData;
-		std::vector<RenderableSceneVertex> mVertexBufferData;
-		std::vector<RenderableSceneIndex>  mIndexBufferData;
+		std::vector<VkImageCreateInfo>     mSceneImageCreateInfos;
+		std::vector<VkBufferImageCopy>     mSceneImageCopyInfos;
+		std::vector<SubresourceArraySlice> mSceneTextureSubresourceSlices;
 
 		VkBuffer       mIntermediateBuffer;
 		VkDeviceMemory mIntermediateBufferMemory;
-
-		VkDeviceSize mIntermediateBufferVertexDataOffset;
-		VkDeviceSize mIntermediateBufferIndexDataOffset;
-		VkDeviceSize mIntermediateBufferTextureDataOffset;
 	};
 }
 
