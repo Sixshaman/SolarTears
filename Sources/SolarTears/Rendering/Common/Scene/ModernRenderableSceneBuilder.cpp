@@ -422,8 +422,11 @@ size_t ModernRenderableSceneBuilder::PreCreateTextures(const std::vector<std::ws
 	AllocateTextureMetadataArrays(sceneTextures.size());
 	for(size_t i = 0; i < sceneTextures.size(); i++)
 	{
-		LoadTextureFromFile(sceneTextures[i], i);
-		intermediateBufferSize += ConstructTextureSubresources(intermediateBufferSize, i);
+		std::vector<std::byte> textureData;
+		LoadTextureFromFile(sceneTextures[i], intermediateBufferSize, i, textureData);
+
+		mTextureData.insert(mTextureData.end(), textureData.begin(), textureData.end());
+		intermediateBufferSize += textureData.size();
 	}
 
 	return intermediateBufferSize;

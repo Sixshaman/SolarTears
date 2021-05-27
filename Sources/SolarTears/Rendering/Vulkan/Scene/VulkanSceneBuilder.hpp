@@ -34,8 +34,8 @@ namespace Vulkan
 		void PreCreateIndexBuffer(size_t indexDataSize)                          override final;
 		void PreCreateConstantBuffer(size_t constantDataSize)                    override final;
 
-		void   AllocateTextureMetadataArrays(size_t textureCount)                            override final;
-		size_t LoadTextureFromFile(const std::wstring& textureFilename, size_t textureIndex) override final;
+		void AllocateTextureMetadataArrays(size_t textureCount)                                                                                                              override final;
+		void LoadTextureFromFile(const std::wstring& textureFilename, uint64_t currentIntermediateBufferOffset, size_t textureIndex, std::vector<std::byte>& outTextureData) override final;
 
 		virtual void       CreateIntermediateBuffer(uint64_t intermediateBufferSize) override final;
 		virtual std::byte* MapIntermediateBuffer()                                   const override final;
