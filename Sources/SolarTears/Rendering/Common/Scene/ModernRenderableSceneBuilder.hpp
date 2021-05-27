@@ -14,8 +14,8 @@ public:
 	void BakeSceneSecondPart();
 
 protected:
-	virtual void   AllocateTextureMetadataArrays(size_t textureCount)                            = 0;
-	virtual size_t LoadTextureFromFile(const std::wstring& textureFilename, size_t textureIndex) = 0;
+	virtual void AllocateTextureMetadataArrays(size_t textureCount)                                                                                                              = 0;
+	virtual void LoadTextureFromFile(const std::wstring& textureFilename, uint64_t currentIntermediateBufferOffset, size_t textureIndex, std::vector<std::byte>& outTextureData) = 0;
 
 	virtual void   PreCreateVertexBuffer(size_t vertexDataSize)     = 0;
 	virtual void   PreCreateIndexBuffer(size_t indexDataSize)       = 0;
@@ -38,7 +38,7 @@ protected:
 
 	uint64_t mTexturePlacementAlignment;
 
-	std::vector<uint8_t>               mTextureData;
+	std::vector<std::byte>             mTextureData;
 	std::vector<RenderableSceneVertex> mVertexBufferData;
 	std::vector<RenderableSceneIndex>  mIndexBufferData;
 

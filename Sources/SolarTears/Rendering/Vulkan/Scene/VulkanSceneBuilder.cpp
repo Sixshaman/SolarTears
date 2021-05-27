@@ -103,53 +103,44 @@ void Vulkan::RenderableSceneBuilder::AllocateTextureMetadataArrays(size_t textur
 	mSceneImageCopyInfos.clear();
 }
 
-size_t Vulkan::RenderableSceneBuilder::LoadTextureFromFile(const std::wstring& textureFilename, size_t textureIndex)
+void Vulkan::RenderableSceneBuilder::LoadTextureFromFile(const std::wstring& textureFilename, uint64_t currentIntermediateBufferOffset, size_t textureIndex, std::vector<std::byte>& outTextureData)
 {
+	outTextureData.clear();
+
 	std::unique_ptr<uint8_t[]>                             texData;
-	std::vector<DDSTextureLoaderVk::LoadedSubresourceData> texSubresources;
+	std::vector<DDSTextureLoaderVk::LoadedSubresourceData> subresources;
 
 	VkImage texture = VK_NULL_HANDLE;
-	DDSTextureLoaderVk::LoadDDSTextureFromFile(mVulkanSceneToBuild->mDeviceRef, textureFilename.c_str(), &texture, texData, texSubresources, mDeviceParametersRef->GetDeviceProperties().limits.maxImageDimension2D, &mSceneImageCreateInfos[textureIndex]);
+	DDSTextureLoaderVk::LoadDDSTextureFromFile(mVulkanSceneToBuild->mDeviceRef, textureFilename.c_str(), &texture, texData, subresources, mDeviceParametersRef->GetDeviceProperties().limits.maxImageDimension2D, &mSceneImageCreateInfos[textureIndex]);
 
 	mVulkanSceneToBuild->mSceneTextures[textureIndex] = texture;
 
-	size_t currentTextureOffset = mTextureData.size();
-	mTextureData.resize(mTextureData.size() + textureByteSize);
+	uint32_t subresourceSliceBegin = (uint32_t)(mSceneImageCopyInfos.size());
+	uint32_t subresourceSliceEnd = (uint32_t)(mSceneImageCopyInfos.size() + subresources.size());
+	mSceneTextureSubresourceSlices[textureIndex] = {.Begin = subresourceSliceBegin, .End = subresourceSliceEnd};
+	mSceneImageCopyInfos.resize(mSceneImageCopyInfos.size() + subresources.size());
 
-	mSceneImageSubresrourceDatas.insert(mSceneImageSubresrourceDatas.end(), texSubresources.begin(), texSubresources.end());
-	mSceneTextureSubresourceSlices[textureIndex] =
+	VkDeviceSize currentOffset = (VkDeviceSize)currentIntermediateBufferOffset;
+	for(size_t j = 0; j < subresources.size(); j++)
 	{
-		.Begin = (uint32_t)(mSceneImageCopyInfos.size() - texSubresources.size()),
-		.End   = (uint32_t)(mSceneImageCopyInfos.size())
-	};
+		uint32_t globalSubresourceIndex = subresourceSliceBegin + j;
 
-	SubresourceArraySlice subresourceSlice = mSceneTextureSubresourceSlices[textureIndex];
-	uint32_t subresourceCount = subresourceSlice.End - subresourceSlice.Begin;
+		currentOffset = outTextureData.size();
+		outTextureData.insert(outTextureData.end(), subresources[j].PData, subresources[j].PData + subresources[j].DataByteSize);
 
-	for(size_t j = 0; j < subresourceCount; j++)
-	{
-		uint32_t subresourceIndex = subresourceSlice.Begin + j;
-
-		currentOffset = mTextureData.size();
-		mTextureData.insert(mTextureData.end(), texSubresources[j].PData, texSubresources[j].PData + texSubresources[j].DataByteSize);
-
-		VkBufferImageCopy copyRegion;
-		copyRegion.bufferOffset                    = currentOffset + mIntermediateBufferTextureDataOffset;
-		copyRegion.bufferRowLength                 = 0;
-		copyRegion.bufferImageHeight               = 0;
-		copyRegion.imageSubresource.aspectMask     = texSubresources[j].SubresourceSlice.aspectMask;
-		copyRegion.imageSubresource.mipLevel       = texSubresources[j].SubresourceSlice.mipLevel;
-		copyRegion.imageSubresource.baseArrayLayer = texSubresources[j].SubresourceSlice.arrayLayer;
-		copyRegion.imageSubresource.layerCount     = 1;
-		copyRegion.imageOffset.x                   = 0;
-		copyRegion.imageOffset.y                   = 0;
-		copyRegion.imageOffset.z                   = 0;
-		copyRegion.imageExtent                     = texSubresources[j].Extent;
-
-		mSceneImageCopyInfos.push_back(copyRegion);
+		VkBufferImageCopy& bufferImageCopy = mSceneImageCopyInfos[globalSubresourceIndex];
+		bufferImageCopy.bufferOffset                    = currentOffset + mIntermediateBufferTextureDataOffset;
+		bufferImageCopy.bufferRowLength                 = 0;
+		bufferImageCopy.bufferImageHeight               = 0;
+		bufferImageCopy.imageSubresource.aspectMask     = subresources[j].SubresourceSlice.aspectMask;
+		bufferImageCopy.imageSubresource.mipLevel       = subresources[j].SubresourceSlice.mipLevel;
+		bufferImageCopy.imageSubresource.baseArrayLayer = subresources[j].SubresourceSlice.arrayLayer;
+		bufferImageCopy.imageSubresource.layerCount     = 1;
+		bufferImageCopy.imageOffset.x                   = 0;
+		bufferImageCopy.imageOffset.y                   = 0;
+		bufferImageCopy.imageOffset.z                   = 0;
+		bufferImageCopy.imageExtent                     = subresources[j].Extent;
 	}
-
-	return textureByteSize;
 }
 
 void Vulkan::RenderableSceneBuilder::AllocateImageMemory(const MemoryManager* memoryAllocator)
