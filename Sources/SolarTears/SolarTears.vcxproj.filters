@@ -557,6 +557,9 @@
     <ClCompile Include="Rendering\Common\Scene\ModernRenderableSceneBuilder.cpp">
       <Filter>Rendering\Common\Scene</Filter>
     </ClCompile>
+    <ClCompile Include="Rendering\Vulkan\Scene\VulkanSceneDescriptorCreator.cpp">
+      <Filter>Rendering\Vulkan\Scene</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="Platform\Win32\Win32Util.inl">

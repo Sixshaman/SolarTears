@@ -11,10 +11,10 @@ namespace Vulkan
 	class SceneDescriptorCreator
 	{
 	public:
-		SceneDescriptorCreator();
+		SceneDescriptorCreator(RenderableScene* sceneToCreateDescriptors);
 		~SceneDescriptorCreator();
 
-		void RecreateSceneDescriptors(VkDevice device);
+		void RecreateSceneDescriptors(const DescriptorManager* descriptorManager, const ShaderManager* shaderManager);
 
 	private:
 		void CreateDescriptorPool();
