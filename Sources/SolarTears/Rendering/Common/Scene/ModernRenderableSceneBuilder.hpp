@@ -17,9 +17,12 @@ protected:
 	virtual void AllocateTextureMetadataArrays(size_t textureCount)                                                                                                              = 0;
 	virtual void LoadTextureFromFile(const std::wstring& textureFilename, uint64_t currentIntermediateBufferOffset, size_t textureIndex, std::vector<std::byte>& outTextureData) = 0;
 
-	virtual void   PreCreateVertexBuffer(size_t vertexDataSize)     = 0;
-	virtual void   PreCreateIndexBuffer(size_t indexDataSize)       = 0;
-	virtual void   PreCreateConstantBuffer(size_t constantDataSize) = 0;
+	virtual void PreCreateVertexBuffer(size_t vertexDataSize)     = 0;
+	virtual void PreCreateIndexBuffer(size_t indexDataSize)       = 0;
+	virtual void PreCreateConstantBuffer(size_t constantDataSize) = 0;
+
+	virtual void FinishBufferCreation()  = 0;
+	virtual void FinishTextureCreation() = 0;
 
 	virtual void       CreateIntermediateBuffer(uint64_t intermediateBufferSize)       = 0;
 	virtual std::byte* MapIntermediateBuffer()                                   const = 0;
