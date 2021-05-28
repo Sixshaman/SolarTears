@@ -77,5 +77,3 @@ namespace D3D12
 		wil::com_ptr_nothrow<ID3D12Resource> mIntermediateBuffer;
 	};
 }
-
-#include "D3D12SceneBuilder.inl"

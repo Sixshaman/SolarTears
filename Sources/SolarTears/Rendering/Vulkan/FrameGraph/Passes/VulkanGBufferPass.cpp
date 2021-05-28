@@ -242,24 +242,24 @@ void Vulkan::GBufferPass::CreatePipeline(const ShaderManager* shaderManager, con
 
 	//Vertex input state
 	std::array<VkVertexInputBindingDescription, 1> vertexInputBindingDescriptions;
-	vertexInputBindingDescriptions[0].stride    = (uint32_t)RenderableSceneBuilder::GetVertexSize();
+	vertexInputBindingDescriptions[0].stride    = (uint32_t)sizeof(RenderableSceneVertex);
 	vertexInputBindingDescriptions[0].binding   = 0;
 	vertexInputBindingDescriptions[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
 	//TODO: Shader reflection to get the location?
 	std::array<VkVertexInputAttributeDescription, 3> vertexAttributeDescriptions;
 	vertexAttributeDescriptions[0].binding  = 0;
-	vertexAttributeDescriptions[0].format   = RenderableSceneBuilder::GetVertexPositionFormat();
+	vertexAttributeDescriptions[0].format   = VulkanUtils::FormatForVectorType<decltype(RenderableSceneVertex::Position)>;
 	vertexAttributeDescriptions[0].location = 0;
-	vertexAttributeDescriptions[0].offset   = RenderableSceneBuilder::GetVertexPositionOffset();
+	vertexAttributeDescriptions[0].offset   = offsetof(RenderableSceneVertex, Position);
 	vertexAttributeDescriptions[1].binding  = 0;
-	vertexAttributeDescriptions[1].format   = RenderableSceneBuilder::GetVertexNormalFormat();
+	vertexAttributeDescriptions[1].format   = VulkanUtils::FormatForVectorType<decltype(RenderableSceneVertex::Normal)>;
 	vertexAttributeDescriptions[1].location = 1;
-	vertexAttributeDescriptions[1].offset   = RenderableSceneBuilder::GetVertexNormalOffset();
+	vertexAttributeDescriptions[1].offset   = offsetof(RenderableSceneVertex, Normal);
 	vertexAttributeDescriptions[2].binding  = 0;
-	vertexAttributeDescriptions[2].format   = RenderableSceneBuilder::GetVertexTexcoordFormat();
+	vertexAttributeDescriptions[2].format   = VulkanUtils::FormatForVectorType<decltype(RenderableSceneVertex::Texcoord)>;
 	vertexAttributeDescriptions[2].location = 2;
-	vertexAttributeDescriptions[2].offset   = RenderableSceneBuilder::GetVertexTexcoordOffset();
+	vertexAttributeDescriptions[2].offset   = offsetof(RenderableSceneVertex, Texcoord);
 
 	VkPipelineVertexInputStateCreateInfo pipelineVertexInputStateCreateInfo;
 	pipelineVertexInputStateCreateInfo.sType                           = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;

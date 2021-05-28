@@ -125,11 +125,11 @@ void Vulkan::Renderer::InitScene(SceneDescription* sceneDescription)
 	mScene = std::make_unique<RenderableScene>(mDevice, mFrameCounterRef, mDeviceParameters);
 	sceneDescription->BindRenderableComponent(mScene.get());
 
-	RenderableSceneBuilder sceneBuilder(mScene.get());
+	RenderableSceneBuilder sceneBuilder(mScene.get(), mMemoryAllocator.get(), mDeviceQueues.get(), mCommandBuffers.get(), &mDeviceParameters);
 	sceneDescription->BuildRenderableComponent(&sceneBuilder);
 
-	sceneBuilder.BakeSceneFirstPart(mDeviceQueues.get(), mMemoryAllocator.get(), mShaderManager.get(), mDescriptorManager.get(), mDeviceParameters);
-	sceneBuilder.BakeSceneSecondPart(mDeviceQueues.get(), mCommandBuffers.get());
+	sceneBuilder.BakeSceneFirstPart();
+	sceneBuilder.BakeSceneSecondPart();
 }
 
 void Vulkan::Renderer::CreateFrameGraph(uint32_t viewportWidth, uint32_t viewportHeight)

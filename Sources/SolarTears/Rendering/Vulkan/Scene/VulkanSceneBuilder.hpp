@@ -75,5 +75,3 @@ namespace Vulkan
 		VkSemaphore mGraphicsQueueSemaphore;
 	};
 }
-
-#include "VulkanSceneBuilder.inl"
