@@ -9,7 +9,9 @@
 #include <cassert>
 #include <vector>
 
-D3D12::RenderableSceneBuilder::RenderableSceneBuilder(ID3D12Device8* device, RenderableScene* sceneToBuild): ModernRenderableSceneBuilder(sceneToBuild), mDeviceRef(device), mD3d12SceneToBuild(sceneToBuild)
+D3D12::RenderableSceneBuilder::RenderableSceneBuilder(ID3D12Device8* device, RenderableScene* sceneToBuild, 
+	                                                  MemoryManager* memoryAllocator, DeviceQueues* deviceQueues, const WorkerCommandLists* commandLists): ModernRenderableSceneBuilder(sceneToBuild), mDeviceRef(device), mD3d12SceneToBuild(sceneToBuild),
+	                                                                                                                                                       mMemoryAllocator(memoryAllocator), mDeviceQueues(deviceQueues), mWorkerCommandLists(commandLists)
 {
 	mVertexBufferDesc   = {};
 	mIndexBufferDesc    = {};
@@ -20,6 +22,87 @@ D3D12::RenderableSceneBuilder::RenderableSceneBuilder(ID3D12Device8* device, Ren
 
 D3D12::RenderableSceneBuilder::~RenderableSceneBuilder()
 {
+}
+
+void D3D12::RenderableSceneBuilder::BakeSceneSecondPart()
+{
+	ID3D12CommandAllocator*    commandAllocator = mWorkerCommandLists->GetMainThreadDirectCommandAllocator(0);
+	ID3D12GraphicsCommandList* commandList      = mWorkerCommandLists->GetMainThreadDirectCommandList();
+
+	//Baking
+	THROW_IF_FAILED(commandAllocator->Reset());
+	THROW_IF_FAILED(commandList->Reset(commandAllocator, nullptr));
+	
+	for(size_t i = 0; i < mSceneTextureSubresourceSlices.size(); i++)
+	{
+		SubresourceArraySlice subresourceSlice = mSceneTextureSubresourceSlices[i];
+		for(uint32_t j = subresourceSlice.Begin; j < subresourceSlice.End; j++)
+		{
+			D3D12_TEXTURE_COPY_LOCATION dstLocation;
+			dstLocation.pResource        = mD3d12SceneToBuild->mSceneTextures[i].get();
+			dstLocation.Type             = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+			dstLocation.SubresourceIndex = (UINT)(j - subresourceSlice.Begin);
+
+			D3D12_TEXTURE_COPY_LOCATION srcLocation;
+			srcLocation.pResource       = mIntermediateBuffer.get();
+			srcLocation.Type            = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+			srcLocation.PlacedFootprint = mSceneTextureSubresourceFootprints[j];
+
+			commandList->CopyTextureRegion(&dstLocation, 0, 0, 0, &srcLocation, nullptr);
+		}
+	}
+
+
+	std::array sceneBuffers           = {mD3d12SceneToBuild->mSceneVertexBuffer.get(),             mD3d12SceneToBuild->mSceneIndexBuffer.get()};
+	std::array sceneBufferDataOffsets = {mIntermediateBufferVertexDataOffset,                      mIntermediateBufferIndexDataOffset};
+	std::array sceneBufferDataSizes   = {mVertexBufferData.size() * sizeof(RenderableSceneVertex), mIndexBufferData.size() * sizeof(RenderableSceneIndex)};
+	std::array sceneBufferStates      = {D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER,          D3D12_RESOURCE_STATE_INDEX_BUFFER};
+	for(size_t i = 0; i < sceneBuffers.size(); i++)
+	{
+		commandList->CopyBufferRegion(sceneBuffers[i], 0, mIntermediateBuffer.get(), sceneBufferDataOffsets[i], sceneBufferDataSizes[i]);
+	}
+
+
+	std::vector<D3D12_RESOURCE_BARRIER> barriers;
+	barriers.reserve(mD3d12SceneToBuild->mSceneTextures.size() + sceneBuffers.size());
+	for(int i = 0; i < mD3d12SceneToBuild->mSceneTextures.size(); i++)
+	{
+		D3D12_RESOURCE_BARRIER textureBarrier;
+		textureBarrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		textureBarrier.Flags                  = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+		textureBarrier.Transition.pResource   = mD3d12SceneToBuild->mSceneTextures[i].get();
+		textureBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		textureBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+		textureBarrier.Transition.StateAfter  = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+
+		barriers.push_back(textureBarrier);
+	}
+
+	for(int i = 0; i < sceneBuffers.size(); i++)
+	{
+		D3D12_RESOURCE_BARRIER textureBarrier;
+		textureBarrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		textureBarrier.Flags                  = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+		textureBarrier.Transition.pResource   = sceneBuffers[i];
+		textureBarrier.Transition.Subresource = 0;
+		textureBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+		textureBarrier.Transition.StateAfter  = sceneBufferStates[i];
+
+		barriers.push_back(textureBarrier);
+	}
+
+	commandList->ResourceBarrier((UINT)barriers.size(), barriers.data());
+
+
+	THROW_IF_FAILED(commandList->Close());
+
+	ID3D12CommandQueue* graphicsQueue = mDeviceQueues->GraphicsQueueHandle();
+
+	std::array commandListsToExecute = {reinterpret_cast<ID3D12CommandList*>(commandList)};
+	graphicsQueue->ExecuteCommandLists((UINT)commandListsToExecute.size(), commandListsToExecute.data());
+
+	UINT64 waitFenceValue = mDeviceQueues->GraphicsFenceSignal();
+	mDeviceQueues->GraphicsQueueCpuWait(waitFenceValue);
 }
 
 void D3D12::RenderableSceneBuilder::PreCreateVertexBuffer(size_t vertexDataSize)
@@ -150,94 +233,29 @@ void D3D12::RenderableSceneBuilder::LoadTextureFromFile(const std::wstring& text
 	}
 }
 
-void D3D12::RenderableSceneBuilder::AllocateBuffersHeap(const MemoryManager* memoryAllocator)
+void D3D12::RenderableSceneBuilder::FinishBufferCreation()
 {
-	mSceneToBuild->mHeapForGpuBuffers.reset();
-	mSceneToBuild->mHeapForCpuVisibleBuffers.reset();
-
-	std::vector gpuBufferDescs          = {mVertexBufferDesc,        mIndexBufferDesc};
-	std::vector gpuBufferOffsetPointers = {&mVertexBufferHeapOffset, &mIndexBufferHeapOffset};
-	
-	assert(gpuBufferDescs.size() == gpuBufferOffsetPointers.size()); //Just in case I add a new one and forget to add the other one
-
-	std::vector<UINT64> gpuBufferOffsets;
-	memoryAllocator->AllocateBuffersMemory(device, gpuBufferDescs, MemoryManager::BufferAllocationType::GPU_LOCAL, gpuBufferOffsets, mSceneToBuild->mHeapForGpuBuffers.put());
-
-	for(size_t i = 0; i < gpuBufferOffsets.size(); i++)
-	{
-		*gpuBufferOffsetPointers[i] = gpuBufferOffsets[i];
-	}
-
-
-	std::vector cpuVisibleBufferDescs          = {mConstantBufferDesc};
-	std::vector cpuVisibleBufferOffsetPointers = {&mConstantBufferHeapOffset};
-
-	std::vector<UINT64> cpuVisibleBufferOffsets;
-	memoryAllocator->AllocateBuffersMemory(device, cpuVisibleBufferDescs, MemoryManager::BufferAllocationType::CPU_VISIBLE, cpuVisibleBufferOffsets, mSceneToBuild->mHeapForCpuVisibleBuffers.put());
-
-	for(size_t i = 0; i < cpuVisibleBufferOffsets.size(); i++)
-	{
-		*cpuVisibleBufferOffsetPointers[i] = cpuVisibleBufferOffsets[i];
-	}
+	AllocateBuffersHeap();
+	CreateBufferObjects();
+	CreateBufferViews();
 }
 
-void D3D12::RenderableSceneBuilder::AllocateTexturesHeap(const MemoryManager* memoryAllocator)
+void D3D12::RenderableSceneBuilder::FinishTextureCreation()
 {
-	mSceneTextureHeapOffsets.clear();
-	mSceneToBuild->mHeapForTextures.reset();
-
-	memoryAllocator->AllocateTextureMemory(mDeviceRef, mSceneTextureDescs, mSceneTextureHeapOffsets, D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES, mSceneToBuild->mHeapForTextures.put());
+	AllocateTexturesHeap();
+	CreateTextureObjects();
 }
 
-void D3D12::RenderableSceneBuilder::CreateTextures()
+std::byte* D3D12::RenderableSceneBuilder::MapConstantBuffer()
 {
-	assert(mSceneTextureDescs.size() == mSceneTextureHeapOffsets.size());
-
-	mSceneToBuild->mSceneTextures.reserve(mSceneTextureDescs.size());
-	for(size_t i = 0; i < mSceneTextureDescs.size(); i++)
-	{
-		mSceneToBuild->mSceneTextures.emplace_back();
-		THROW_IF_FAILED(device->CreatePlacedResource1(mSceneToBuild->mHeapForTextures.get(), mSceneTextureHeapOffsets[i], &mSceneTextureDescs[i], D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(mSceneToBuild->mSceneTextures.back().put())));
-	}
-}
-
-void D3D12::RenderableSceneBuilder::CreateBuffers()
-{
-	std::array gpuBufferPointers    = {mSceneToBuild->mSceneVertexBuffer.put(), mSceneToBuild->mSceneIndexBuffer.put()};
-	std::array gpuBufferDescs       = {mVertexBufferDesc,                       mIndexBufferDesc};
-	std::array gpuBufferHeapOffsets = {mVertexBufferHeapOffset,                 mIndexBufferHeapOffset};
-	std::array gpuBufferStates      = {D3D12_RESOURCE_STATE_COPY_DEST,          D3D12_RESOURCE_STATE_COPY_DEST};
-	for (size_t i = 0; i < gpuBufferPointers.size(); i++)
-	{
-		THROW_IF_FAILED(device->CreatePlacedResource1(mSceneToBuild->mHeapForGpuBuffers.get(), gpuBufferHeapOffsets[i], &gpuBufferDescs[i], gpuBufferStates[i], nullptr, IID_PPV_ARGS(gpuBufferPointers[i])));
-	}
-
-
-	std::array cpuVisibleBufferPointers    = {mSceneToBuild->mSceneConstantBuffer.put()};
-	std::array cpuVisibleBufferDescs       = {mConstantBufferDesc};
-	std::array cpuVisibleBufferHeapOffsets = {mConstantBufferHeapOffset};
-	std::array cpuVisibleBufferStates      = {D3D12_RESOURCE_STATE_GENERIC_READ};
-	for (size_t i = 0; i < cpuVisibleBufferPointers.size(); i++)
-	{
-		THROW_IF_FAILED(device->CreatePlacedResource1(mSceneToBuild->mHeapForCpuVisibleBuffers.get(), cpuVisibleBufferHeapOffsets[i], &cpuVisibleBufferDescs[i], cpuVisibleBufferStates[i], nullptr, IID_PPV_ARGS(cpuVisibleBufferPointers[i])));
-	}
-
-	
 	D3D12_RANGE readRange;
 	readRange.Begin = 0;
 	readRange.End   = 0;
-	THROW_IF_FAILED(mSceneToBuild->mSceneConstantBuffer->Map(0, &readRange, &mSceneToBuild->mSceneConstantDataBufferPointer));
-}
 
-void D3D12::RenderableSceneBuilder::CreateBufferViews()
-{
-	mSceneToBuild->mSceneVertexBufferView.BufferLocation = mSceneToBuild->mSceneVertexBuffer->GetGPUVirtualAddress();
-	mSceneToBuild->mSceneVertexBufferView.SizeInBytes    = (UINT)mVertexBufferDesc.Width;
-	mSceneToBuild->mSceneVertexBufferView.StrideInBytes  = (UINT)sizeof(RenderableSceneVertex);
+	std::byte* bufferPointer = nullptr;
+	THROW_IF_FAILED(mD3d12SceneToBuild->mSceneConstantBuffer->Map(0, &readRange, reinterpret_cast<void**>(&bufferPointer)));
 
-	mSceneToBuild->mSceneIndexBufferView.BufferLocation = mSceneToBuild->mSceneIndexBuffer->GetGPUVirtualAddress();
-	mSceneToBuild->mSceneIndexBufferView.SizeInBytes    = (UINT)mIndexBufferDesc.Width;
-	mSceneToBuild->mSceneIndexBufferView.Format         = D3D12Utils::FormatForIndexType<RenderableSceneIndex>;
+	return bufferPointer;
 }
 
 void D3D12::RenderableSceneBuilder::CreateIntermediateBuffer(uint64_t intermediateBufferSize)
@@ -284,4 +302,88 @@ inline std::byte* D3D12::RenderableSceneBuilder::MapIntermediateBuffer() const
 inline void D3D12::RenderableSceneBuilder::UnmapIntermediateBuffer() const
 {
 	mIntermediateBuffer->Unmap(0, nullptr);
+}
+
+void D3D12::RenderableSceneBuilder::AllocateBuffersHeap()
+{
+	mD3d12SceneToBuild->mHeapForGpuBuffers.reset();
+	mD3d12SceneToBuild->mHeapForCpuVisibleBuffers.reset();
+
+	std::vector gpuBufferDescs          = {mVertexBufferDesc,             mIndexBufferDesc};
+	std::vector gpuBufferOffsetPointers = {&mVertexBufferGpuMemoryOffset, &mVertexBufferGpuMemoryOffset };
+	
+	assert(gpuBufferDescs.size() == gpuBufferOffsetPointers.size()); //Just in case I add a new one and forget to add the other one
+
+	std::vector<UINT64> gpuBufferOffsets;
+	mMemoryAllocator->AllocateBuffersMemory(mDeviceRef, gpuBufferDescs, MemoryManager::BufferAllocationType::GPU_LOCAL, gpuBufferOffsets, mD3d12SceneToBuild->mHeapForGpuBuffers.put());
+
+	for(size_t i = 0; i < gpuBufferOffsets.size(); i++)
+	{
+		*gpuBufferOffsetPointers[i] = gpuBufferOffsets[i];
+	}
+
+
+	std::vector cpuVisibleBufferDescs          = {mConstantBufferDesc};
+	std::vector cpuVisibleBufferOffsetPointers = {&mConstantBufferGpuMemoryOffset};
+
+	std::vector<UINT64> cpuVisibleBufferOffsets;
+	mMemoryAllocator->AllocateBuffersMemory(mDeviceRef, cpuVisibleBufferDescs, MemoryManager::BufferAllocationType::CPU_VISIBLE, cpuVisibleBufferOffsets, mD3d12SceneToBuild->mHeapForCpuVisibleBuffers.put());
+
+	for(size_t i = 0; i < cpuVisibleBufferOffsets.size(); i++)
+	{
+		*cpuVisibleBufferOffsetPointers[i] = cpuVisibleBufferOffsets[i];
+	}
+}
+
+void D3D12::RenderableSceneBuilder::AllocateTexturesHeap()
+{
+	mSceneTextureHeapOffsets.clear();
+	mD3d12SceneToBuild->mHeapForTextures.reset();
+
+	mMemoryAllocator->AllocateTextureMemory(mDeviceRef, mSceneTextureDescs, mSceneTextureHeapOffsets, D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES, mD3d12SceneToBuild->mHeapForTextures.put());
+}
+
+void D3D12::RenderableSceneBuilder::CreateBufferObjects()
+{
+	std::array gpuBufferPointers    = {mD3d12SceneToBuild->mSceneVertexBuffer.put(), mD3d12SceneToBuild->mSceneIndexBuffer.put()};
+	std::array gpuBufferDescs       = {mVertexBufferDesc,                            mIndexBufferDesc};
+	std::array gpuBufferHeapOffsets = {mVertexBufferGpuMemoryOffset,                 mIndexBufferGpuMemoryOffset};
+	std::array gpuBufferStates      = {D3D12_RESOURCE_STATE_COPY_DEST,               D3D12_RESOURCE_STATE_COPY_DEST};
+	for (size_t i = 0; i < gpuBufferPointers.size(); i++)
+	{
+		THROW_IF_FAILED(mDeviceRef->CreatePlacedResource1(mD3d12SceneToBuild->mHeapForGpuBuffers.get(), gpuBufferHeapOffsets[i], &gpuBufferDescs[i], gpuBufferStates[i], nullptr, IID_PPV_ARGS(gpuBufferPointers[i])));
+	}
+
+
+	std::array cpuVisibleBufferPointers    = {mD3d12SceneToBuild->mSceneConstantBuffer.put()};
+	std::array cpuVisibleBufferDescs       = {mConstantBufferDesc};
+	std::array cpuVisibleBufferHeapOffsets = {mConstantBufferGpuMemoryOffset};
+	std::array cpuVisibleBufferStates      = {D3D12_RESOURCE_STATE_GENERIC_READ};
+	for (size_t i = 0; i < cpuVisibleBufferPointers.size(); i++)
+	{
+		THROW_IF_FAILED(mDeviceRef->CreatePlacedResource1(mD3d12SceneToBuild->mHeapForCpuVisibleBuffers.get(), cpuVisibleBufferHeapOffsets[i], &cpuVisibleBufferDescs[i], cpuVisibleBufferStates[i], nullptr, IID_PPV_ARGS(cpuVisibleBufferPointers[i])));
+	}
+}
+
+void D3D12::RenderableSceneBuilder::CreateTextureObjects()
+{
+	assert(mSceneTextureDescs.size() == mSceneTextureHeapOffsets.size());
+
+	mD3d12SceneToBuild->mSceneTextures.reserve(mSceneTextureDescs.size());
+	for(size_t i = 0; i < mSceneTextureDescs.size(); i++)
+	{
+		mD3d12SceneToBuild->mSceneTextures.emplace_back();
+		THROW_IF_FAILED(mDeviceRef->CreatePlacedResource1(mD3d12SceneToBuild->mHeapForTextures.get(), mSceneTextureHeapOffsets[i], &mSceneTextureDescs[i], D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(mD3d12SceneToBuild->mSceneTextures.back().put())));
+	}
+}
+
+void D3D12::RenderableSceneBuilder::CreateBufferViews()
+{
+	mD3d12SceneToBuild->mSceneVertexBufferView.BufferLocation = mD3d12SceneToBuild->mSceneVertexBuffer->GetGPUVirtualAddress();
+	mD3d12SceneToBuild->mSceneVertexBufferView.SizeInBytes    = (UINT)mVertexBufferDesc.Width;
+	mD3d12SceneToBuild->mSceneVertexBufferView.StrideInBytes  = (UINT)sizeof(RenderableSceneVertex);
+
+	mD3d12SceneToBuild->mSceneIndexBufferView.BufferLocation = mD3d12SceneToBuild->mSceneIndexBuffer->GetGPUVirtualAddress();
+	mD3d12SceneToBuild->mSceneIndexBufferView.SizeInBytes    = (UINT)mIndexBufferDesc.Width;
+	mD3d12SceneToBuild->mSceneIndexBufferView.Format         = D3D12Utils::FormatForIndexType<RenderableSceneIndex>;
 }
