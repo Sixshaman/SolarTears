@@ -23,8 +23,10 @@ namespace D3D12
 		};
 
 	public:
-		RenderableSceneBuilder(ID3D12Device8* device, RenderableScene* sceneToBuild, MemoryManager* memoryAllocator);
+		RenderableSceneBuilder(ID3D12Device8* device, RenderableScene* sceneToBuild, MemoryManager* memoryAllocator, DeviceQueues* deviceQueues, const WorkerCommandLists* commandLists);
 		~RenderableSceneBuilder();
+
+		void BakeSceneSecondPart();
 
 	protected:
 		void PreCreateVertexBuffer(size_t vertexDataSize)     override final;
@@ -37,16 +39,18 @@ namespace D3D12
 		virtual void FinishBufferCreation()  override final;
 		virtual void FinishTextureCreation() override final;
 
+		virtual std::byte* MapConstantBuffer() override final;
+
 		virtual void       CreateIntermediateBuffer(uint64_t intermediateBufferSize) override final;
 		virtual std::byte* MapIntermediateBuffer()                                   const override final;
 		virtual void       UnmapIntermediateBuffer()                                 const override final;
 
 	private:
-		void AllocateTexturesHeap(const );
-		void AllocateBuffersHeap(const MemoryManager* memoryAllocator);
+		void AllocateBuffersHeap();
+		void AllocateTexturesHeap();
 
-		void CreateTextures();
-		void CreateBuffers();
+		void CreateTextureObjects();
+		void CreateBufferObjects();
 
 		void CreateBufferViews();
 
@@ -55,7 +59,9 @@ namespace D3D12
 
 		RenderableScene* mD3d12SceneToBuild;
 
-		MemoryManager* mMemoryAllocator;
+		MemoryManager*            mMemoryAllocator;
+		DeviceQueues*             mDeviceQueues;
+		const WorkerCommandLists* mWorkerCommandLists;
 
 		D3D12_RESOURCE_DESC1 mVertexBufferDesc;
 		D3D12_RESOURCE_DESC1 mIndexBufferDesc;

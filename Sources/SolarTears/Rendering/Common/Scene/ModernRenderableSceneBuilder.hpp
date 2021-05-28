@@ -24,6 +24,8 @@ protected:
 	virtual void FinishBufferCreation()  = 0;
 	virtual void FinishTextureCreation() = 0;
 
+	virtual std::byte* MapConstantBuffer() = 0;
+
 	virtual void       CreateIntermediateBuffer(uint64_t intermediateBufferSize)       = 0;
 	virtual std::byte* MapIntermediateBuffer()                                   const = 0;
 	virtual void       UnmapIntermediateBuffer()                                 const = 0;
