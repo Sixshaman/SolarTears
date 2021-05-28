@@ -23,7 +23,7 @@ namespace D3D12
 		};
 
 	public:
-		RenderableSceneBuilder(ID3D12Device8* device, RenderableScene* sceneToBuild);
+		RenderableSceneBuilder(ID3D12Device8* device, RenderableScene* sceneToBuild, MemoryManager* memoryAllocator);
 		~RenderableSceneBuilder();
 
 	protected:
@@ -34,12 +34,15 @@ namespace D3D12
 		void AllocateTextureMetadataArrays(size_t textureCount)                                                                                                              override final;
 		void LoadTextureFromFile(const std::wstring& textureFilename, uint64_t currentIntermediateBufferOffset, size_t textureIndex, std::vector<std::byte>& outTextureData) override final;
 
+		virtual void FinishBufferCreation()  override final;
+		virtual void FinishTextureCreation() override final;
+
 		virtual void       CreateIntermediateBuffer(uint64_t intermediateBufferSize) override final;
 		virtual std::byte* MapIntermediateBuffer()                                   const override final;
 		virtual void       UnmapIntermediateBuffer()                                 const override final;
 
 	private:
-		void AllocateTexturesHeap(const MemoryManager* memoryAllocator);
+		void AllocateTexturesHeap(const );
 		void AllocateBuffersHeap(const MemoryManager* memoryAllocator);
 
 		void CreateTextures();
@@ -51,6 +54,8 @@ namespace D3D12
 		ID3D12Device8* mDeviceRef;
 
 		RenderableScene* mD3d12SceneToBuild;
+
+		MemoryManager* mMemoryAllocator;
 
 		D3D12_RESOURCE_DESC1 mVertexBufferDesc;
 		D3D12_RESOURCE_DESC1 mIndexBufferDesc;
