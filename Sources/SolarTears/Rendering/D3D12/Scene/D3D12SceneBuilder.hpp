@@ -26,8 +26,6 @@ namespace D3D12
 		RenderableSceneBuilder(ID3D12Device8* device, RenderableScene* sceneToBuild, MemoryManager* memoryAllocator, DeviceQueues* deviceQueues, const WorkerCommandLists* commandLists);
 		~RenderableSceneBuilder();
 
-		void BakeSceneSecondPart();
-
 	protected:
 		void PreCreateVertexBuffer(size_t vertexDataSize)     override final;
 		void PreCreateIndexBuffer(size_t indexDataSize)       override final;
@@ -44,6 +42,10 @@ namespace D3D12
 		virtual void       CreateIntermediateBuffer(uint64_t intermediateBufferSize) override final;
 		virtual std::byte* MapIntermediateBuffer()                                   const override final;
 		virtual void       UnmapIntermediateBuffer()                                 const override final;
+
+		virtual void WriteInitializationCommands()   const override final;
+		virtual void SubmitInitializationCommands()  const override final;
+		virtual void WaitForInitializationCommands() const override final;
 
 	private:
 		void AllocateBuffersHeap();

@@ -20,211 +20,27 @@ Vulkan::RenderableSceneBuilder::RenderableSceneBuilder(RenderableScene* sceneToB
 	mIntermediateBuffer        = VK_NULL_HANDLE;
 	mIntermediateBufferMemory  = VK_NULL_HANDLE;
 
+	mGraphicsQueueSemaphore = VK_NULL_HANDLE;
+
 	DDSTextureLoaderVk::SetVkCreateImageFuncPtr(vkCreateImage);
 
 	mTexturePlacementAlignment = 1;
+
+
+	VkSemaphoreCreateInfo graphicsQueueSemaphoreCreateInfo;
+	graphicsQueueSemaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+	graphicsQueueSemaphoreCreateInfo.pNext = nullptr;
+	graphicsQueueSemaphoreCreateInfo.flags = 0;
+
+	ThrowIfFailed(vkCreateSemaphore(mVulkanSceneToBuild->mDeviceRef, &graphicsQueueSemaphoreCreateInfo, nullptr, &mGraphicsQueueSemaphore));
 }
 
 Vulkan::RenderableSceneBuilder::~RenderableSceneBuilder()
 {
 	SafeDestroyObject(vkDestroyBuffer, mVulkanSceneToBuild->mDeviceRef, mIntermediateBuffer);
 	SafeDestroyObject(vkFreeMemory,    mVulkanSceneToBuild->mDeviceRef, mIntermediateBufferMemory);
-}
 
-void Vulkan::RenderableSceneBuilder::BakeSceneSecondPart()
-{
-	VkCommandPool   transferCommandPool   = mWorkerCommandBuffers->GetMainThreadTransferCommandPool(0);
-	VkCommandBuffer transferCommandBuffer = mWorkerCommandBuffers->GetMainThreadTransferCommandBuffer(0);
-
-	VkCommandPool   graphicsCommandPool   = mWorkerCommandBuffers->GetMainThreadGraphicsCommandPool(0);
-	VkCommandBuffer graphicsCommandBuffer = mWorkerCommandBuffers->GetMainThreadGraphicsCommandBuffer(0);
-
-	VkPipelineStageFlags invalidateStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
-
-	VkSemaphore transferToGraphicsSemaphore = VK_NULL_HANDLE;
-	{
-		VkSemaphoreCreateInfo semaphoreCreateInfo;
-		semaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-		semaphoreCreateInfo.pNext = nullptr;
-		semaphoreCreateInfo.flags = 0;
-
-		ThrowIfFailed(vkCreateSemaphore(mVulkanSceneToBuild->mDeviceRef, &semaphoreCreateInfo, nullptr, &transferToGraphicsSemaphore));
-	}
-
-	//Baking
-	ThrowIfFailed(vkResetCommandPool(mVulkanSceneToBuild->mDeviceRef, transferCommandPool, 0));
-
-	//TODO: mGPU?
-	VkCommandBufferBeginInfo transferCmdBufferBeginInfo;
-	transferCmdBufferBeginInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	transferCmdBufferBeginInfo.pNext            = nullptr;
-	transferCmdBufferBeginInfo.flags            = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-	transferCmdBufferBeginInfo.pInheritanceInfo = nullptr;
-
-	ThrowIfFailed(vkBeginCommandBuffer(transferCommandBuffer, &transferCmdBufferBeginInfo));
-
-	std::array sceneBuffers           = {mVulkanSceneToBuild->mSceneVertexBuffer, mVulkanSceneToBuild->mSceneIndexBuffer};
-	std::array sceneBufferAccessMasks = {VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,     VK_ACCESS_INDEX_READ_BIT};
-
-	//TODO: multithread this!
-	std::vector<VkImageMemoryBarrier> imageTransferBarriers(mVulkanSceneToBuild->mSceneTextures.size());
-	for(size_t i = 0; i < mVulkanSceneToBuild->mSceneTextures.size(); i++)
-	{
-		imageTransferBarriers[i].sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		imageTransferBarriers[i].pNext                           = nullptr;
-		imageTransferBarriers[i].srcAccessMask                   = 0;
-		imageTransferBarriers[i].dstAccessMask                   = VK_ACCESS_TRANSFER_WRITE_BIT;
-		imageTransferBarriers[i].oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;
-		imageTransferBarriers[i].newLayout                       = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-		imageTransferBarriers[i].srcQueueFamilyIndex             = mDeviceQueues->GetTransferQueueFamilyIndex();
-		imageTransferBarriers[i].dstQueueFamilyIndex             = mDeviceQueues->GetTransferQueueFamilyIndex();
-		imageTransferBarriers[i].image                           = mVulkanSceneToBuild->mSceneTextures[i];
-		imageTransferBarriers[i].subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-		imageTransferBarriers[i].subresourceRange.baseMipLevel   = 0;
-		imageTransferBarriers[i].subresourceRange.levelCount     = VK_REMAINING_MIP_LEVELS;
-		imageTransferBarriers[i].subresourceRange.baseArrayLayer = 0;
-		imageTransferBarriers[i].subresourceRange.layerCount     = VK_REMAINING_ARRAY_LAYERS;
-	}
-
-	std::array<VkBufferMemoryBarrier, sceneBuffers.size()> bufferTransferBarriers;
-	for(size_t i = 0; i < sceneBuffers.size(); i++)
-	{
-		bufferTransferBarriers[i].sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-		bufferTransferBarriers[i].pNext               = nullptr;
-		bufferTransferBarriers[i].srcAccessMask       = 0;
-		bufferTransferBarriers[i].dstAccessMask       = VK_ACCESS_TRANSFER_WRITE_BIT;
-		bufferTransferBarriers[i].srcQueueFamilyIndex = mDeviceQueues->GetTransferQueueFamilyIndex();
-		bufferTransferBarriers[i].dstQueueFamilyIndex = mDeviceQueues->GetTransferQueueFamilyIndex();
-		bufferTransferBarriers[i].buffer              = sceneBuffers[i];
-		bufferTransferBarriers[i].offset              = 0;
-		bufferTransferBarriers[i].size                = VK_WHOLE_SIZE;
-	}
-
-	std::array<VkMemoryBarrier, 0> memoryTransferBarriers;
-	vkCmdPipelineBarrier(transferCommandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
-		                 (uint32_t)memoryTransferBarriers.size(), memoryTransferBarriers.data(),
-		                 (uint32_t)bufferTransferBarriers.size(), bufferTransferBarriers.data(),
-		                 (uint32_t)imageTransferBarriers.size(),  imageTransferBarriers.data());
-
-
-	for(size_t i = 0; i < mSceneTextures.size(); i++)
-	{
-		SubresourceArraySlice subresourceSlice = mSceneTextureSubresourceSlices[i];
-		vkCmdCopyBufferToImage(transferCommandBuffer, mIntermediateBuffer, mVulkanSceneToBuild->mSceneTextures[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, subresourceSlice.End - subresourceSlice.Begin, mSceneImageCopyInfos.data() + subresourceSlice.Begin);
-	}
-
-	std::array sceneBufferDataOffsets = {mIntermediateBufferVertexDataOffset,                      mIntermediateBufferIndexDataOffset};
-	std::array sceneBufferDataSizes   = {mVertexBufferData.size() * sizeof(RenderableSceneVertex), mIndexBufferData.size() * sizeof(RenderableSceneIndex)};
-	for(size_t i = 0; i < sceneBuffers.size(); i++)
-	{
-		VkBufferCopy copyRegion;
-		copyRegion.srcOffset = sceneBufferDataOffsets[i];
-		copyRegion.dstOffset = 0;
-		copyRegion.size      = sceneBufferDataSizes[i];
-
-		std::array copyRegions = {copyRegion};
-		vkCmdCopyBuffer(transferCommandBuffer, mIntermediateBuffer, sceneBuffers[i], (uint32_t)(copyRegions.size()), copyRegions.data());
-	}
-
-	std::vector<VkImageMemoryBarrier> releaseImageInvalidateBarriers(mVulkanSceneToBuild->mSceneTextures.size());
-	for(size_t i = 0; i < mVulkanSceneToBuild->mSceneTextures.size(); i++)
-	{
-		releaseImageInvalidateBarriers[i].sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		releaseImageInvalidateBarriers[i].pNext                           = nullptr;
-		releaseImageInvalidateBarriers[i].srcAccessMask                   = VK_ACCESS_TRANSFER_WRITE_BIT;
-		releaseImageInvalidateBarriers[i].dstAccessMask                   = 0;
-		releaseImageInvalidateBarriers[i].oldLayout                       = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-		releaseImageInvalidateBarriers[i].newLayout                       = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-		releaseImageInvalidateBarriers[i].srcQueueFamilyIndex             = mDeviceQueues->GetTransferQueueFamilyIndex();
-		releaseImageInvalidateBarriers[i].dstQueueFamilyIndex             = mDeviceQueues->GetGraphicsQueueFamilyIndex();
-		releaseImageInvalidateBarriers[i].image                           = mVulkanSceneToBuild->mSceneTextures[i];
-		releaseImageInvalidateBarriers[i].subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-		releaseImageInvalidateBarriers[i].subresourceRange.baseMipLevel   = 0;
-		releaseImageInvalidateBarriers[i].subresourceRange.levelCount     = VK_REMAINING_MIP_LEVELS;
-		releaseImageInvalidateBarriers[i].subresourceRange.baseArrayLayer = 0;
-		releaseImageInvalidateBarriers[i].subresourceRange.layerCount     = VK_REMAINING_ARRAY_LAYERS;
-	}
-
-	std::array<VkBufferMemoryBarrier, sceneBuffers.size()> releaseBufferInvalidateBarriers;
-	for(size_t i = 0; i < sceneBuffers.size(); i++)
-	{
-		releaseBufferInvalidateBarriers[i].sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-		releaseBufferInvalidateBarriers[i].pNext               = nullptr;
-		releaseBufferInvalidateBarriers[i].srcAccessMask       = VK_ACCESS_TRANSFER_WRITE_BIT;
-		releaseBufferInvalidateBarriers[i].dstAccessMask       = 0;
-		releaseBufferInvalidateBarriers[i].srcQueueFamilyIndex = mDeviceQueues->GetTransferQueueFamilyIndex();
-		releaseBufferInvalidateBarriers[i].dstQueueFamilyIndex = mDeviceQueues->GetGraphicsQueueFamilyIndex();
-		releaseBufferInvalidateBarriers[i].buffer              = sceneBuffers[i];
-		releaseBufferInvalidateBarriers[i].offset              = 0;
-		releaseBufferInvalidateBarriers[i].size                = VK_WHOLE_SIZE;
-	}
-
-	std::array<VkMemoryBarrier, 0>       memoryInvalidateBarriers;
-	vkCmdPipelineBarrier(transferCommandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, invalidateStageMask, 0,
-		                 (uint32_t)memoryInvalidateBarriers.size(),        memoryInvalidateBarriers.data(),
-		                 (uint32_t)releaseBufferInvalidateBarriers.size(), releaseBufferInvalidateBarriers.data(),
-		                 (uint32_t)releaseImageInvalidateBarriers.size(),  releaseImageInvalidateBarriers.data());
-
-	ThrowIfFailed(vkEndCommandBuffer(transferCommandBuffer));
-
-	mDeviceQueues->TransferQueueSubmit(transferCommandBuffer, transferToGraphicsSemaphore);
-
-	//Graphics queue ownership
-	ThrowIfFailed(vkResetCommandPool(mVulkanSceneToBuild->mDeviceRef, graphicsCommandPool, 0));
-
-	//TODO: mGPU?
-	VkCommandBufferBeginInfo graphicsCmdBufferBeginInfo;
-	graphicsCmdBufferBeginInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	graphicsCmdBufferBeginInfo.pNext            = nullptr;
-	graphicsCmdBufferBeginInfo.flags            = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-	graphicsCmdBufferBeginInfo.pInheritanceInfo = nullptr;
-
-	ThrowIfFailed(vkBeginCommandBuffer(graphicsCommandBuffer, &graphicsCmdBufferBeginInfo));
-
-	std::vector<VkImageMemoryBarrier> acquireImageInvalidateBarriers(mVulkanSceneToBuild->mSceneTextures.size());
-	for(size_t i = 0; i < mVulkanSceneToBuild->mSceneTextures.size(); i++)
-	{
-		acquireImageInvalidateBarriers[i].sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		acquireImageInvalidateBarriers[i].pNext                           = nullptr;
-		acquireImageInvalidateBarriers[i].srcAccessMask                   = 0;
-		acquireImageInvalidateBarriers[i].dstAccessMask                   = VK_ACCESS_SHADER_READ_BIT;
-		acquireImageInvalidateBarriers[i].oldLayout                       = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-		acquireImageInvalidateBarriers[i].newLayout                       = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		acquireImageInvalidateBarriers[i].srcQueueFamilyIndex             = mDeviceQueues->GetTransferQueueFamilyIndex();
-		acquireImageInvalidateBarriers[i].dstQueueFamilyIndex             = mDeviceQueues->GetGraphicsQueueFamilyIndex();
-		acquireImageInvalidateBarriers[i].image                           = mVulkanSceneToBuild->mSceneTextures[i];
-		acquireImageInvalidateBarriers[i].subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-		acquireImageInvalidateBarriers[i].subresourceRange.baseMipLevel   = 0;
-		acquireImageInvalidateBarriers[i].subresourceRange.levelCount     = VK_REMAINING_MIP_LEVELS;
-		acquireImageInvalidateBarriers[i].subresourceRange.baseArrayLayer = 0;
-		acquireImageInvalidateBarriers[i].subresourceRange.layerCount     = VK_REMAINING_ARRAY_LAYERS;
-	}
-
-	std::array<VkBufferMemoryBarrier, sceneBuffers.size()> acquireBufferInvalidateBarriers;
-	for(size_t i = 0; i < sceneBuffers.size(); i++)
-	{
-		acquireBufferInvalidateBarriers[i].sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-		acquireBufferInvalidateBarriers[i].pNext               = nullptr;
-		acquireBufferInvalidateBarriers[i].srcAccessMask       = 0;
-		acquireBufferInvalidateBarriers[i].dstAccessMask       = sceneBufferAccessMasks[i];
-		acquireBufferInvalidateBarriers[i].srcQueueFamilyIndex = mDeviceQueues->GetTransferQueueFamilyIndex();
-		acquireBufferInvalidateBarriers[i].dstQueueFamilyIndex = mDeviceQueues->GetGraphicsQueueFamilyIndex();
-		acquireBufferInvalidateBarriers[i].buffer              = sceneBuffers[i];
-		acquireBufferInvalidateBarriers[i].offset              = 0;
-		acquireBufferInvalidateBarriers[i].size                = VK_WHOLE_SIZE;
-	}
-
-	vkCmdPipelineBarrier(graphicsCommandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, invalidateStageMask, 0,
-		                 (uint32_t)memoryInvalidateBarriers.size(),        memoryInvalidateBarriers.data(),
-		                 (uint32_t)acquireBufferInvalidateBarriers.size(), acquireBufferInvalidateBarriers.data(),
-		                 (uint32_t)acquireImageInvalidateBarriers.size(),  acquireImageInvalidateBarriers.data());
-
-	ThrowIfFailed(vkEndCommandBuffer(graphicsCommandBuffer));
-
-	mDeviceQueues->GraphicsQueueSubmit(graphicsCommandBuffer, transferToGraphicsSemaphore, VK_PIPELINE_STAGE_TRANSFER_BIT);
-	mDeviceQueues->GraphicsQueueWait();
-
-	SafeDestroyObject(vkDestroySemaphore, mVulkanSceneToBuild->mDeviceRef, transferToGraphicsSemaphore);
+	SafeDestroyObject(vkDestroySemaphore, mVulkanSceneToBuild->mDeviceRef, mGraphicsQueueSemaphore);
 }
 
 void Vulkan::RenderableSceneBuilder::PreCreateVertexBuffer(size_t vertexDataSize)
@@ -410,6 +226,141 @@ void Vulkan::RenderableSceneBuilder::UnmapIntermediateBuffer() const
 	ThrowIfFailed(vkFlushMappedMemoryRanges(mVulkanSceneToBuild->mDeviceRef, (uint32_t)(mappedRanges.size()), mappedRanges.data()));
 
 	vkUnmapMemory(mVulkanSceneToBuild->mDeviceRef, mIntermediateBufferMemory);
+}
+
+void Vulkan::RenderableSceneBuilder::WriteInitializationCommands() const
+{
+	VkCommandPool   graphicsCommandPool   = mWorkerCommandBuffers->GetMainThreadGraphicsCommandPool(0);
+	VkCommandBuffer graphicsCommandBuffer = mWorkerCommandBuffers->GetMainThreadGraphicsCommandBuffer(0);
+
+	VkPipelineStageFlags invalidateStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+
+	//Baking
+	ThrowIfFailed(vkResetCommandPool(mVulkanSceneToBuild->mDeviceRef, graphicsCommandPool, 0));
+
+	//TODO: mGPU?
+	VkCommandBufferBeginInfo graphicsCmdBufferBeginInfo;
+	graphicsCmdBufferBeginInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	graphicsCmdBufferBeginInfo.pNext            = nullptr;
+	graphicsCmdBufferBeginInfo.flags            = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	graphicsCmdBufferBeginInfo.pInheritanceInfo = nullptr;
+
+	ThrowIfFailed(vkBeginCommandBuffer(graphicsCommandBuffer, &graphicsCmdBufferBeginInfo));
+
+	std::array sceneBuffers           = {mVulkanSceneToBuild->mSceneVertexBuffer, mVulkanSceneToBuild->mSceneIndexBuffer};
+	std::array sceneBufferAccessMasks = {VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,     VK_ACCESS_INDEX_READ_BIT};
+
+	//TODO: multithread this!
+	std::vector<VkImageMemoryBarrier> imageTransferBarriers(mVulkanSceneToBuild->mSceneTextures.size());
+	for(size_t i = 0; i < mVulkanSceneToBuild->mSceneTextures.size(); i++)
+	{
+		imageTransferBarriers[i].sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		imageTransferBarriers[i].pNext                           = nullptr;
+		imageTransferBarriers[i].srcAccessMask                   = 0;
+		imageTransferBarriers[i].dstAccessMask                   = VK_ACCESS_TRANSFER_WRITE_BIT;
+		imageTransferBarriers[i].oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;
+		imageTransferBarriers[i].newLayout                       = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		imageTransferBarriers[i].srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+		imageTransferBarriers[i].dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+		imageTransferBarriers[i].image                           = mVulkanSceneToBuild->mSceneTextures[i];
+		imageTransferBarriers[i].subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+		imageTransferBarriers[i].subresourceRange.baseMipLevel   = 0;
+		imageTransferBarriers[i].subresourceRange.levelCount     = VK_REMAINING_MIP_LEVELS;
+		imageTransferBarriers[i].subresourceRange.baseArrayLayer = 0;
+		imageTransferBarriers[i].subresourceRange.layerCount     = VK_REMAINING_ARRAY_LAYERS;
+	}
+
+	std::array<VkBufferMemoryBarrier, sceneBuffers.size()> bufferTransferBarriers;
+	for(size_t i = 0; i < sceneBuffers.size(); i++)
+	{
+		bufferTransferBarriers[i].sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+		bufferTransferBarriers[i].pNext               = nullptr;
+		bufferTransferBarriers[i].srcAccessMask       = 0;
+		bufferTransferBarriers[i].dstAccessMask       = VK_ACCESS_TRANSFER_WRITE_BIT;
+		bufferTransferBarriers[i].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		bufferTransferBarriers[i].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		bufferTransferBarriers[i].buffer              = sceneBuffers[i];
+		bufferTransferBarriers[i].offset              = 0;
+		bufferTransferBarriers[i].size                = VK_WHOLE_SIZE;
+	}
+
+	std::array<VkMemoryBarrier, 0> memoryTransferBarriers;
+	vkCmdPipelineBarrier(graphicsCommandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
+		                 (uint32_t)memoryTransferBarriers.size(), memoryTransferBarriers.data(),
+		                 (uint32_t)bufferTransferBarriers.size(), bufferTransferBarriers.data(),
+		                 (uint32_t)imageTransferBarriers.size(),  imageTransferBarriers.data());
+
+
+	for(size_t i = 0; i < mSceneTextures.size(); i++)
+	{
+		SubresourceArraySlice subresourceSlice = mSceneTextureSubresourceSlices[i];
+		vkCmdCopyBufferToImage(graphicsCommandBuffer, mIntermediateBuffer, mVulkanSceneToBuild->mSceneTextures[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, subresourceSlice.End - subresourceSlice.Begin, mSceneImageCopyInfos.data() + subresourceSlice.Begin);
+	}
+
+	std::array sceneBufferDataOffsets = {mIntermediateBufferVertexDataOffset,                      mIntermediateBufferIndexDataOffset};
+	std::array sceneBufferDataSizes   = {mVertexBufferData.size() * sizeof(RenderableSceneVertex), mIndexBufferData.size() * sizeof(RenderableSceneIndex)};
+	for(size_t i = 0; i < sceneBuffers.size(); i++)
+	{
+		VkBufferCopy copyRegion;
+		copyRegion.srcOffset = sceneBufferDataOffsets[i];
+		copyRegion.dstOffset = 0;
+		copyRegion.size      = sceneBufferDataSizes[i];
+
+		std::array copyRegions = {copyRegion};
+		vkCmdCopyBuffer(graphicsCommandBuffer, mIntermediateBuffer, sceneBuffers[i], (uint32_t)(copyRegions.size()), copyRegions.data());
+	}
+
+	std::vector<VkImageMemoryBarrier> imageValidateBarriers(mVulkanSceneToBuild->mSceneTextures.size());
+	for(size_t i = 0; i < mVulkanSceneToBuild->mSceneTextures.size(); i++)
+	{
+		imageValidateBarriers[i].sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		imageValidateBarriers[i].pNext                           = nullptr;
+		imageValidateBarriers[i].srcAccessMask                   = VK_ACCESS_TRANSFER_WRITE_BIT;
+		imageValidateBarriers[i].dstAccessMask                   = VK_ACCESS_SHADER_READ_BIT;
+		imageValidateBarriers[i].oldLayout                       = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+		imageValidateBarriers[i].newLayout                       = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		imageValidateBarriers[i].srcQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+		imageValidateBarriers[i].dstQueueFamilyIndex             = VK_QUEUE_FAMILY_IGNORED;
+		imageValidateBarriers[i].image                           = mVulkanSceneToBuild->mSceneTextures[i];
+		imageValidateBarriers[i].subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+		imageValidateBarriers[i].subresourceRange.baseMipLevel   = 0;
+		imageValidateBarriers[i].subresourceRange.levelCount     = VK_REMAINING_MIP_LEVELS;
+		imageValidateBarriers[i].subresourceRange.baseArrayLayer = 0;
+		imageValidateBarriers[i].subresourceRange.layerCount     = VK_REMAINING_ARRAY_LAYERS;
+	}
+
+	std::array<VkBufferMemoryBarrier, sceneBuffers.size()> bufferValidateBarriers;
+	for(size_t i = 0; i < sceneBuffers.size(); i++)
+	{
+		bufferValidateBarriers[i].sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+		bufferValidateBarriers[i].pNext               = nullptr;
+		bufferValidateBarriers[i].srcAccessMask       = VK_ACCESS_TRANSFER_WRITE_BIT;
+		bufferValidateBarriers[i].dstAccessMask       = sceneBufferAccessMasks[i];
+		bufferValidateBarriers[i].srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		bufferValidateBarriers[i].dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		bufferValidateBarriers[i].buffer              = sceneBuffers[i];
+		bufferValidateBarriers[i].offset              = 0;
+		bufferValidateBarriers[i].size                = VK_WHOLE_SIZE;
+	}
+
+	std::array<VkMemoryBarrier, 0> memoryValidateBarriers;
+	vkCmdPipelineBarrier(graphicsCommandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, invalidateStageMask, 0,
+		                 (uint32_t)memoryValidateBarriers.size(), memoryValidateBarriers.data(),
+		                 (uint32_t)bufferValidateBarriers.size(), bufferValidateBarriers.data(),
+		                 (uint32_t)imageValidateBarriers.size(), imageValidateBarriers.data());
+
+	ThrowIfFailed(vkEndCommandBuffer(graphicsCommandBuffer));
+}
+
+void Vulkan::RenderableSceneBuilder::SubmitInitializationCommands() const
+{
+	VkCommandBuffer graphicsCommandBuffer = mWorkerCommandBuffers->GetMainThreadGraphicsCommandBuffer(0);
+	mDeviceQueues->GraphicsQueueSubmit(graphicsCommandBuffer, mGraphicsQueueSemaphore, VK_PIPELINE_STAGE_TRANSFER_BIT);
+}
+
+void Vulkan::RenderableSceneBuilder::WaitForInitializationCommands() const
+{
+	mDeviceQueues->GraphicsQueueWait();
 }
 
 void Vulkan::RenderableSceneBuilder::AllocateImageMemory()

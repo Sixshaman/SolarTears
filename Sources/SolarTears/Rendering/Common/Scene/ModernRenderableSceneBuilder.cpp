@@ -43,7 +43,9 @@ void ModernRenderableSceneBuilder::BakeSceneFirstPart()
 
 void ModernRenderableSceneBuilder::BakeSceneSecondPart()
 {
-	
+	WriteInitializationCommands();
+	SubmitInitializationCommands();
+	WaitForInitializationCommands();
 }
 
 void ModernRenderableSceneBuilder::CreateSceneMeshMetadata(std::vector<std::wstring>& sceneTexturesVec)

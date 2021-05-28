@@ -26,83 +26,7 @@ D3D12::RenderableSceneBuilder::~RenderableSceneBuilder()
 
 void D3D12::RenderableSceneBuilder::BakeSceneSecondPart()
 {
-	ID3D12CommandAllocator*    commandAllocator = mWorkerCommandLists->GetMainThreadDirectCommandAllocator(0);
-	ID3D12GraphicsCommandList* commandList      = mWorkerCommandLists->GetMainThreadDirectCommandList();
 
-	//Baking
-	THROW_IF_FAILED(commandAllocator->Reset());
-	THROW_IF_FAILED(commandList->Reset(commandAllocator, nullptr));
-	
-	for(size_t i = 0; i < mSceneTextureSubresourceSlices.size(); i++)
-	{
-		SubresourceArraySlice subresourceSlice = mSceneTextureSubresourceSlices[i];
-		for(uint32_t j = subresourceSlice.Begin; j < subresourceSlice.End; j++)
-		{
-			D3D12_TEXTURE_COPY_LOCATION dstLocation;
-			dstLocation.pResource        = mD3d12SceneToBuild->mSceneTextures[i].get();
-			dstLocation.Type             = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-			dstLocation.SubresourceIndex = (UINT)(j - subresourceSlice.Begin);
-
-			D3D12_TEXTURE_COPY_LOCATION srcLocation;
-			srcLocation.pResource       = mIntermediateBuffer.get();
-			srcLocation.Type            = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
-			srcLocation.PlacedFootprint = mSceneTextureSubresourceFootprints[j];
-
-			commandList->CopyTextureRegion(&dstLocation, 0, 0, 0, &srcLocation, nullptr);
-		}
-	}
-
-
-	std::array sceneBuffers           = {mD3d12SceneToBuild->mSceneVertexBuffer.get(),             mD3d12SceneToBuild->mSceneIndexBuffer.get()};
-	std::array sceneBufferDataOffsets = {mIntermediateBufferVertexDataOffset,                      mIntermediateBufferIndexDataOffset};
-	std::array sceneBufferDataSizes   = {mVertexBufferData.size() * sizeof(RenderableSceneVertex), mIndexBufferData.size() * sizeof(RenderableSceneIndex)};
-	std::array sceneBufferStates      = {D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER,          D3D12_RESOURCE_STATE_INDEX_BUFFER};
-	for(size_t i = 0; i < sceneBuffers.size(); i++)
-	{
-		commandList->CopyBufferRegion(sceneBuffers[i], 0, mIntermediateBuffer.get(), sceneBufferDataOffsets[i], sceneBufferDataSizes[i]);
-	}
-
-
-	std::vector<D3D12_RESOURCE_BARRIER> barriers;
-	barriers.reserve(mD3d12SceneToBuild->mSceneTextures.size() + sceneBuffers.size());
-	for(int i = 0; i < mD3d12SceneToBuild->mSceneTextures.size(); i++)
-	{
-		D3D12_RESOURCE_BARRIER textureBarrier;
-		textureBarrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		textureBarrier.Flags                  = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-		textureBarrier.Transition.pResource   = mD3d12SceneToBuild->mSceneTextures[i].get();
-		textureBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-		textureBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-		textureBarrier.Transition.StateAfter  = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-
-		barriers.push_back(textureBarrier);
-	}
-
-	for(int i = 0; i < sceneBuffers.size(); i++)
-	{
-		D3D12_RESOURCE_BARRIER textureBarrier;
-		textureBarrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		textureBarrier.Flags                  = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-		textureBarrier.Transition.pResource   = sceneBuffers[i];
-		textureBarrier.Transition.Subresource = 0;
-		textureBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-		textureBarrier.Transition.StateAfter  = sceneBufferStates[i];
-
-		barriers.push_back(textureBarrier);
-	}
-
-	commandList->ResourceBarrier((UINT)barriers.size(), barriers.data());
-
-
-	THROW_IF_FAILED(commandList->Close());
-
-	ID3D12CommandQueue* graphicsQueue = mDeviceQueues->GraphicsQueueHandle();
-
-	std::array commandListsToExecute = {reinterpret_cast<ID3D12CommandList*>(commandList)};
-	graphicsQueue->ExecuteCommandLists((UINT)commandListsToExecute.size(), commandListsToExecute.data());
-
-	UINT64 waitFenceValue = mDeviceQueues->GraphicsFenceSignal();
-	mDeviceQueues->GraphicsQueueCpuWait(waitFenceValue);
 }
 
 void D3D12::RenderableSceneBuilder::PreCreateVertexBuffer(size_t vertexDataSize)
@@ -302,6 +226,92 @@ inline std::byte* D3D12::RenderableSceneBuilder::MapIntermediateBuffer() const
 inline void D3D12::RenderableSceneBuilder::UnmapIntermediateBuffer() const
 {
 	mIntermediateBuffer->Unmap(0, nullptr);
+}
+
+void D3D12::RenderableSceneBuilder::WriteInitializationCommands() const
+{
+	ID3D12CommandAllocator*    commandAllocator = mWorkerCommandLists->GetMainThreadDirectCommandAllocator(0);
+	ID3D12GraphicsCommandList* commandList      = mWorkerCommandLists->GetMainThreadDirectCommandList();
+
+	THROW_IF_FAILED(commandAllocator->Reset());
+	THROW_IF_FAILED(commandList->Reset(commandAllocator, nullptr));
+
+	for(size_t i = 0; i < mSceneTextureSubresourceSlices.size(); i++)
+	{
+		SubresourceArraySlice subresourceSlice = mSceneTextureSubresourceSlices[i];
+		for(uint32_t j = subresourceSlice.Begin; j < subresourceSlice.End; j++)
+		{
+			D3D12_TEXTURE_COPY_LOCATION dstLocation;
+			dstLocation.pResource        = mD3d12SceneToBuild->mSceneTextures[i].get();
+			dstLocation.Type             = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+			dstLocation.SubresourceIndex = (UINT)(j - subresourceSlice.Begin);
+
+			D3D12_TEXTURE_COPY_LOCATION srcLocation;
+			srcLocation.pResource       = mIntermediateBuffer.get();
+			srcLocation.Type            = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+			srcLocation.PlacedFootprint = mSceneTextureSubresourceFootprints[j];
+
+			commandList->CopyTextureRegion(&dstLocation, 0, 0, 0, &srcLocation, nullptr);
+		}
+	}
+
+
+	std::array sceneBuffers           = {mD3d12SceneToBuild->mSceneVertexBuffer.get(),             mD3d12SceneToBuild->mSceneIndexBuffer.get()};
+	std::array sceneBufferDataOffsets = {mIntermediateBufferVertexDataOffset,                      mIntermediateBufferIndexDataOffset};
+	std::array sceneBufferDataSizes   = {mVertexBufferData.size() * sizeof(RenderableSceneVertex), mIndexBufferData.size() * sizeof(RenderableSceneIndex)};
+	std::array sceneBufferStates      = {D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER,          D3D12_RESOURCE_STATE_INDEX_BUFFER};
+	for(size_t i = 0; i < sceneBuffers.size(); i++)
+	{
+		commandList->CopyBufferRegion(sceneBuffers[i], 0, mIntermediateBuffer.get(), sceneBufferDataOffsets[i], sceneBufferDataSizes[i]);
+	}
+
+
+	std::vector<D3D12_RESOURCE_BARRIER> barriers;
+	barriers.reserve(mD3d12SceneToBuild->mSceneTextures.size() + sceneBuffers.size());
+	for(int i = 0; i < mD3d12SceneToBuild->mSceneTextures.size(); i++)
+	{
+		D3D12_RESOURCE_BARRIER textureBarrier;
+		textureBarrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		textureBarrier.Flags                  = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+		textureBarrier.Transition.pResource   = mD3d12SceneToBuild->mSceneTextures[i].get();
+		textureBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		textureBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+		textureBarrier.Transition.StateAfter  = D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+
+		barriers.push_back(textureBarrier);
+	}
+
+	for(int i = 0; i < sceneBuffers.size(); i++)
+	{
+		D3D12_RESOURCE_BARRIER textureBarrier;
+		textureBarrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		textureBarrier.Flags                  = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+		textureBarrier.Transition.pResource   = sceneBuffers[i];
+		textureBarrier.Transition.Subresource = 0;
+		textureBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+		textureBarrier.Transition.StateAfter  = sceneBufferStates[i];
+
+		barriers.push_back(textureBarrier);
+	}
+
+	commandList->ResourceBarrier((UINT)barriers.size(), barriers.data());
+
+
+	THROW_IF_FAILED(commandList->Close());
+}
+
+void D3D12::RenderableSceneBuilder::SubmitInitializationCommands() const
+{
+	ID3D12CommandQueue* graphicsQueue = mDeviceQueues->GraphicsQueueHandle();
+
+	std::array commandListsToExecute = {reinterpret_cast<ID3D12CommandList*>(mWorkerCommandLists->GetMainThreadDirectCommandList())};
+	graphicsQueue->ExecuteCommandLists((UINT)commandListsToExecute.size(), commandListsToExecute.data());
+}
+
+void D3D12::RenderableSceneBuilder::WaitForInitializationCommands() const
+{
+	UINT64 waitFenceValue = mDeviceQueues->GraphicsFenceSignal();
+	mDeviceQueues->GraphicsQueueCpuWait(waitFenceValue);
 }
 
 void D3D12::RenderableSceneBuilder::AllocateBuffersHeap()
