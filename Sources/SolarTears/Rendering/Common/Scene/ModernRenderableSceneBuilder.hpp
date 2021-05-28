@@ -30,6 +30,10 @@ protected:
 	virtual std::byte* MapIntermediateBuffer()                                   const = 0;
 	virtual void       UnmapIntermediateBuffer()                                 const = 0;
 
+	virtual void WriteInitializationCommands()   const = 0;
+	virtual void SubmitInitializationCommands()  const = 0;
+	virtual void WaitForInitializationCommands() const = 0;
+
 private:
 	void CreateSceneMeshMetadata(std::vector<std::wstring>& sceneTexturesVec);
 

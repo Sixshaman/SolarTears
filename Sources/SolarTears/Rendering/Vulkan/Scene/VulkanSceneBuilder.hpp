@@ -29,8 +29,6 @@ namespace Vulkan
 		RenderableSceneBuilder(RenderableScene* sceneToBuild, MemoryManager* memoryAllocator, DeviceQueues* deviceQueues, WorkerCommandBuffers* workerCommandBuffers, const DeviceParameters* deviceParameters);
 		~RenderableSceneBuilder();
 
-		void BakeSceneSecondPart();
-
 	protected:
 		void PreCreateVertexBuffer(size_t vertexDataSize)                        override final;
 		void PreCreateIndexBuffer(size_t indexDataSize)                          override final;
@@ -47,6 +45,10 @@ namespace Vulkan
 		virtual void       CreateIntermediateBuffer(uint64_t intermediateBufferSize) override final;
 		virtual std::byte* MapIntermediateBuffer()                                   const override final;
 		virtual void       UnmapIntermediateBuffer()                                 const override final;
+
+		virtual void WriteInitializationCommands()   const override final;
+		virtual void SubmitInitializationCommands()  const override final;
+		virtual void WaitForInitializationCommands() const override final;
 
 	private:
 		void AllocateImageMemory();
@@ -69,6 +71,8 @@ namespace Vulkan
 
 		VkBuffer       mIntermediateBuffer;
 		VkDeviceMemory mIntermediateBufferMemory;
+
+		VkSemaphore mGraphicsQueueSemaphore;
 	};
 }
 
