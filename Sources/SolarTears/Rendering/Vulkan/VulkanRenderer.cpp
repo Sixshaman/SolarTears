@@ -12,6 +12,7 @@
 #include "FrameGraph/VulkanFrameGraphBuilder.hpp"
 #include "Scene/VulkanScene.hpp"
 #include "Scene/VulkanSceneBuilder.hpp"
+#include "Scene/VulkanSceneDescriptorCreator.hpp"
 #include "../Common/RenderingUtils.hpp"
 #include "../../Core/Util.hpp"
 #include "../../Core/ThreadPool.hpp"
@@ -130,6 +131,9 @@ void Vulkan::Renderer::InitScene(SceneDescription* sceneDescription)
 
 	sceneBuilder.BakeSceneFirstPart();
 	sceneBuilder.BakeSceneSecondPart();
+
+	SceneDescriptorCreator sceneDescriptorCreator(mScene.get());
+	sceneDescriptorCreator.RecreateSceneDescriptors(mDescriptorManager.get(), mShaderManager.get());
 }
 
 void Vulkan::Renderer::CreateFrameGraph(uint32_t viewportWidth, uint32_t viewportHeight)

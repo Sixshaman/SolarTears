@@ -5,8 +5,19 @@
 #include "../VulkanUtils.hpp"
 #include <array>
 
-void Vulkan::SceneDescriptorCreator::RecreateSceneDescriptors(VkDevice device)
+Vulkan::SceneDescriptorCreator::SceneDescriptorCreator(RenderableScene* sceneToCreateDescriptors): mSceneToCreateDescriptors(sceneToCreateDescriptors)
 {
+}
+
+Vulkan::SceneDescriptorCreator::~SceneDescriptorCreator()
+{
+}
+
+void Vulkan::SceneDescriptorCreator::RecreateSceneDescriptors(const DescriptorManager* descriptorManager, const ShaderManager* shaderManager)
+{
+	CreateDescriptorPool();
+	AllocateDescriptorSets(descriptorManager);
+	FillDescriptorSets(shaderManager);
 }
 
 void Vulkan::SceneDescriptorCreator::CreateDescriptorPool() //оскъ деяйпхорнпнб! оюс!

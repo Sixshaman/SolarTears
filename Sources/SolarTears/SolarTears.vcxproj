@@ -157,6 +157,7 @@
     <ClCompile Include="Rendering\Vulkan\FrameGraph\VulkanRenderPass.cpp" />
     <ClCompile Include="Rendering\Vulkan\Scene\VulkanScene.cpp" />
     <ClCompile Include="Rendering\Vulkan\Scene\VulkanSceneBuilder.cpp" />
+    <ClCompile Include="Rendering\Vulkan\Scene\VulkanSceneDescriptorCreator.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanDescriptorManager.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanDeviceParameters.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanDeviceQueues.cpp" />
