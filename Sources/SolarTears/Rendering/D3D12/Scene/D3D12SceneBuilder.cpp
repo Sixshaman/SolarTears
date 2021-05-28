@@ -24,11 +24,6 @@ D3D12::RenderableSceneBuilder::~RenderableSceneBuilder()
 {
 }
 
-void D3D12::RenderableSceneBuilder::BakeSceneSecondPart()
-{
-
-}
-
 void D3D12::RenderableSceneBuilder::PreCreateVertexBuffer(size_t vertexDataSize)
 {
 	mVertexBufferDesc.Dimension                       = D3D12_RESOURCE_DIMENSION_BUFFER;
@@ -128,7 +123,7 @@ void D3D12::RenderableSceneBuilder::LoadTextureFromFile(const std::wstring& text
 	UINT64 textureByteSize = 0;
 	std::vector<UINT>   footprintHeights(subresources.size());
 	std::vector<UINT64> footprintByteWidths(subresources.size());
-	mDeviceRef->GetCopyableFootprints1(&mSceneTextureDescs[textureIndex], 0, subresources.size(), currentIntermediateBufferOffset, mSceneTextureSubresourceFootprints.data() + subresourceSliceBegin, footprintHeights.data(), footprintByteWidths.data(), &textureByteSize);
+	mDeviceRef->GetCopyableFootprints1(&mSceneTextureDescs[textureIndex], 0, (UINT)subresources.size(), currentIntermediateBufferOffset, mSceneTextureSubresourceFootprints.data() + subresourceSliceBegin, footprintHeights.data(), footprintByteWidths.data(), &textureByteSize);
 
 	outTextureData.resize(textureByteSize);
 

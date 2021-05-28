@@ -128,7 +128,7 @@ size_t ModernRenderableSceneBuilder::PreCreateBuffers(size_t currentIntermediate
 size_t ModernRenderableSceneBuilder::PreCreateTextures(const std::vector<std::wstring>& sceneTextures, size_t intermediateBufferSize)
 {
 	mIntermediateBufferTextureDataOffset = Utils::AlignMemory(intermediateBufferSize, mTexturePlacementAlignment);
-	size_t intermediateBufferSize        = mIntermediateBufferTextureDataOffset;
+	size_t currentIntermediateBufferSize = mIntermediateBufferTextureDataOffset;
 
 	mTextureData.clear();
 
@@ -136,13 +136,13 @@ size_t ModernRenderableSceneBuilder::PreCreateTextures(const std::vector<std::ws
 	for(size_t i = 0; i < sceneTextures.size(); i++)
 	{
 		std::vector<std::byte> textureData;
-		LoadTextureFromFile(sceneTextures[i], intermediateBufferSize, i, textureData);
+		LoadTextureFromFile(sceneTextures[i], currentIntermediateBufferSize, i, textureData);
 
 		mTextureData.insert(mTextureData.end(), textureData.begin(), textureData.end());
-		intermediateBufferSize += textureData.size();
+		currentIntermediateBufferSize += textureData.size();
 	}
 
-	return intermediateBufferSize;
+	return currentIntermediateBufferSize;
 }
 
 void ModernRenderableSceneBuilder::FillIntermediateBufferData()

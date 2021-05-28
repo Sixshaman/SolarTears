@@ -193,7 +193,6 @@
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv</Outputs>
     </CustomBuild>
     <None Include="Rendering\D3D12\D3D12Utils.inl" />
-    <None Include="Rendering\D3D12\Scene\D3D12SceneBuilder.inl" />
     <None Include="Rendering\Vulkan\Scene\VulkanSceneBuilder.inl" />
     <None Include="Shaders\D3D12\CommonHeader.hlsli" />
     <None Include="Shaders\D3D12\GBuffer\GBufferInclude.hlsli" />

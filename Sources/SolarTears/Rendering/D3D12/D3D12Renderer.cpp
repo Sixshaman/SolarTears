@@ -68,11 +68,11 @@ void D3D12::Renderer::InitScene(SceneDescription* sceneDescription)
 	mScene = std::make_unique<D3D12::RenderableScene>(mFrameCounterRef);
 	sceneDescription->BindRenderableComponent(mScene.get());
 
-	D3D12::RenderableSceneBuilder sceneBuilder(mScene.get());
+	D3D12::RenderableSceneBuilder sceneBuilder(mDevice.get(), mScene.get(), mMemoryAllocator.get(), mDeviceQueues.get(), mWorkerCommandLists.get());
 	sceneDescription->BuildRenderableComponent(&sceneBuilder);
 
-	sceneBuilder.BakeSceneFirstPart(mDevice.get(), mMemoryAllocator.get());
-	sceneBuilder.BakeSceneSecondPart(mDeviceQueues.get(), mWorkerCommandLists.get());
+	sceneBuilder.BakeSceneFirstPart();
+	sceneBuilder.BakeSceneSecondPart();
 
 	SceneDescriptorCreator      sceneDescriptorCreator(mScene.get());
 	FrameGraphDescriptorCreator frameGraphDescriptorCreator(mFrameGraph.get());

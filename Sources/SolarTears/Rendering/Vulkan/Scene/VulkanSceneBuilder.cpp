@@ -136,10 +136,10 @@ void Vulkan::RenderableSceneBuilder::LoadTextureFromFile(const std::wstring& tex
 	VkDeviceSize currentOffset = (VkDeviceSize)currentIntermediateBufferOffset;
 	for(size_t j = 0; j < subresources.size(); j++)
 	{
-		uint32_t globalSubresourceIndex = subresourceSliceBegin + j;
+		uint32_t globalSubresourceIndex = subresourceSliceBegin + (uint32_t)j;
 
 		currentOffset = outTextureData.size();
-		outTextureData.insert(outTextureData.end(), subresources[j].PData, subresources[j].PData + subresources[j].DataByteSize);
+		outTextureData.insert(outTextureData.end(), reinterpret_cast<const std::byte*>(subresources[j].PData), reinterpret_cast<const std::byte*>(subresources[j].PData + subresources[j].DataByteSize));
 
 		VkBufferImageCopy& bufferImageCopy = mSceneImageCopyInfos[globalSubresourceIndex];
 		bufferImageCopy.bufferOffset                    = currentOffset + mIntermediateBufferTextureDataOffset;

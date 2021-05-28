@@ -568,9 +568,6 @@
     <None Include="Core\Scene\SceneObjectLocation.hpp">
       <Filter>Core\Scene</Filter>
     </None>
-    <None Include="Rendering\D3D12\Scene\D3D12SceneBuilder.inl">
-      <Filter>Rendering\D3D12\Scene</Filter>
-    </None>
     <None Include="Shaders\D3D12\GBuffer\GBufferInclude.hlsli">
       <Filter>Shaders\D3D12\GBuffer</Filter>
     </None>
