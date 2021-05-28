@@ -12,6 +12,7 @@
 #include "FrameGraph/VulkanFrameGraphBuilder.hpp"
 #include "Scene/VulkanScene.hpp"
 #include "Scene/VulkanSceneBuilder.hpp"
+#include "Scene/VulkanSceneDescriptorCreator.hpp"
 #include "../Common/RenderingUtils.hpp"
 #include "../../Core/Util.hpp"
 #include "../../Core/ThreadPool.hpp"
@@ -125,11 +126,14 @@ void Vulkan::Renderer::InitScene(SceneDescription* sceneDescription)
 	mScene = std::make_unique<RenderableScene>(mDevice, mFrameCounterRef, mDeviceParameters);
 	sceneDescription->BindRenderableComponent(mScene.get());
 
-	RenderableSceneBuilder sceneBuilder(mScene.get());
+	RenderableSceneBuilder sceneBuilder(mScene.get(), mMemoryAllocator.get(), mDeviceQueues.get(), mCommandBuffers.get(), &mDeviceParameters);
 	sceneDescription->BuildRenderableComponent(&sceneBuilder);
 
-	sceneBuilder.BakeSceneFirstPart(mDeviceQueues.get(), mMemoryAllocator.get(), mShaderManager.get(), mDescriptorManager.get(), mDeviceParameters);
-	sceneBuilder.BakeSceneSecondPart(mDeviceQueues.get(), mCommandBuffers.get());
+	sceneBuilder.BakeSceneFirstPart();
+	sceneBuilder.BakeSceneSecondPart();
+
+	SceneDescriptorCreator sceneDescriptorCreator(mScene.get());
+	sceneDescriptorCreator.RecreateSceneDescriptors(mDescriptorManager.get(), mShaderManager.get());
 }
 
 void Vulkan::Renderer::CreateFrameGraph(uint32_t viewportWidth, uint32_t viewportHeight)

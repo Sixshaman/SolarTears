@@ -56,6 +56,7 @@
     <ClInclude Include="Rendering\Common\Renderer.hpp" />
     <ClInclude Include="Rendering\Common\RenderingUtils.hpp" />
     <ClInclude Include="Rendering\Common\Scene\ModernRenderableScene.hpp" />
+    <ClInclude Include="Rendering\Common\Scene\ModernRenderableSceneBuilder.hpp" />
     <ClInclude Include="Rendering\Common\Scene\RenderableSceneBase.hpp" />
     <ClInclude Include="Rendering\Common\Scene\RenderableSceneBuilderBase.hpp" />
     <ClInclude Include="Rendering\Common\Scene\RenderableSceneMisc.hpp" />
@@ -128,6 +129,7 @@
     <ClCompile Include="Rendering\Common\Renderer.cpp" />
     <ClCompile Include="Rendering\Common\RenderingUtils.cpp" />
     <ClCompile Include="Rendering\Common\Scene\ModernRenderableScene.cpp" />
+    <ClCompile Include="Rendering\Common\Scene\ModernRenderableSceneBuilder.cpp" />
     <ClCompile Include="Rendering\Common\Scene\RenderableSceneBase.cpp" />
     <ClCompile Include="Rendering\Common\Scene\RenderableSceneBuilderBase.cpp" />
     <ClCompile Include="Rendering\D3D12\D3D12SrvDescriptorManager.cpp" />
@@ -155,6 +157,7 @@
     <ClCompile Include="Rendering\Vulkan\FrameGraph\VulkanRenderPass.cpp" />
     <ClCompile Include="Rendering\Vulkan\Scene\VulkanScene.cpp" />
     <ClCompile Include="Rendering\Vulkan\Scene\VulkanSceneBuilder.cpp" />
+    <ClCompile Include="Rendering\Vulkan\Scene\VulkanSceneDescriptorCreator.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanDescriptorManager.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanDeviceParameters.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanDeviceQueues.cpp" />
@@ -191,7 +194,6 @@
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv</Outputs>
     </CustomBuild>
     <None Include="Rendering\D3D12\D3D12Utils.inl" />
-    <None Include="Rendering\D3D12\Scene\D3D12SceneBuilder.inl" />
     <None Include="Rendering\Vulkan\Scene\VulkanSceneBuilder.inl" />
     <None Include="Shaders\D3D12\CommonHeader.hlsli" />
     <None Include="Shaders\D3D12\GBuffer\GBufferInclude.hlsli" />

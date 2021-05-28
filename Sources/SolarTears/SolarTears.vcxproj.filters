@@ -345,6 +345,9 @@
     <ClInclude Include="Rendering\Common\RenderingUtils.hpp">
       <Filter>Rendering\Common</Filter>
     </ClInclude>
+    <ClInclude Include="Rendering\Common\Scene\ModernRenderableSceneBuilder.hpp">
+      <Filter>Rendering\Common\Scene</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Platform\Win32\Win32Application.cpp">
@@ -551,6 +554,12 @@
     <ClCompile Include="Rendering\Common\RenderingUtils.cpp">
       <Filter>Rendering\Common</Filter>
     </ClCompile>
+    <ClCompile Include="Rendering\Common\Scene\ModernRenderableSceneBuilder.cpp">
+      <Filter>Rendering\Common\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Vulkan\Scene\VulkanSceneDescriptorCreator.cpp">
+      <Filter>Rendering\Vulkan\Scene</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="Platform\Win32\Win32Util.inl">
@@ -561,9 +570,6 @@
     </None>
     <None Include="Core\Scene\SceneObjectLocation.hpp">
       <Filter>Core\Scene</Filter>
-    </None>
-    <None Include="Rendering\D3D12\Scene\D3D12SceneBuilder.inl">
-      <Filter>Rendering\D3D12\Scene</Filter>
     </None>
     <None Include="Shaders\D3D12\GBuffer\GBufferInclude.hlsli">
       <Filter>Shaders\D3D12\GBuffer</Filter>

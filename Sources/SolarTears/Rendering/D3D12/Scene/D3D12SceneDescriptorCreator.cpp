@@ -1,4 +1,5 @@
 #include "D3D12SceneDescriptorCreator.hpp"
+#include "..\..\Vulkan\Scene\VulkanSceneDescriptorCreator.hpp"
 
 D3D12::SceneDescriptorCreator::SceneDescriptorCreator(RenderableScene* renderableScene): mSceneToMakeDescriptors(renderableScene)
 {
