@@ -28,12 +28,6 @@ namespace D3D12
 			uint32_t AfterPassEnd;
 		};
 
-		struct DependencyLevelSpan
-		{
-			uint32_t DependencyLevelBegin;
-			uint32_t DependencyLevelEnd;
-		};
-
 	public:
 		FrameGraph(const FrameGraphConfig& frameGraphConfig);
 		~FrameGraph();
@@ -44,17 +38,14 @@ namespace D3D12
 		void SwitchSwapchainPasses(uint32_t swapchainImageIndex);
 		void SwitchSwapchainImages(uint32_t swapchainImageIndex);
 
-		void BeginCommandList(ID3D12GraphicsCommandList* commandList, ID3D12CommandAllocator* commandAllocator, uint32_t dependencyLevelSpanIndex)                              const;
+		void BeginCommandList(ID3D12GraphicsCommandList* commandList, ID3D12CommandAllocator* commandAllocator, uint32_t dependencyLevelSpanIndex) const;
+		void EndCommandList(ID3D12GraphicsCommandList* commandList)                                                                                const;
+
 		void RecordGraphicsPasses(ID3D12GraphicsCommandList6* commandList, const RenderableScene* scene, const ShaderManager* shaderManager, uint32_t dependencyLevelSpanIndex) const;
-		void EndCommandList(ID3D12GraphicsCommandList* commandList)                                                                                                             const;
 
 	private:
-		FrameGraphConfig mFrameGraphConfig;
-
 		std::vector<std::unique_ptr<RenderPass>> mRenderPasses;           //All currently used render passes (sorted by dependency level)
 		std::vector<std::unique_ptr<RenderPass>> mSwapchainRenderPasses;  //All render passes that use swapchain images (replaced every frame)
-
-		std::vector<DependencyLevelSpan> mGraphicsPassSpans;
 
 		std::vector<ID3D12Resource2*> mTextures;
 

@@ -348,6 +348,15 @@
     <ClInclude Include="Rendering\Common\Scene\ModernRenderableSceneBuilder.hpp">
       <Filter>Rendering\Common\Scene</Filter>
     </ClInclude>
+    <ClInclude Include="Rendering\Common\FrameGraph\ModernFrameGraphBuilder.hpp">
+      <Filter>Rendering\Common\FrameGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Common\FrameGraph\ModernRenderPass.hpp">
+      <Filter>Rendering\Common\FrameGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Common\FrameGraph\ModernFrameGraph.hpp">
+      <Filter>Rendering\Common\FrameGraph</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Platform\Win32\Win32Application.cpp">
@@ -559,6 +568,9 @@
     </ClCompile>
     <ClCompile Include="Rendering\Vulkan\Scene\VulkanSceneDescriptorCreator.cpp">
       <Filter>Rendering\Vulkan\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Common\FrameGraph\ModernFrameGraphBuilder.cpp">
+      <Filter>Rendering\Common\FrameGraph</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
