@@ -26,9 +26,6 @@ private:
 		Rgba16,
 		Rgba32,
 		R32,
-		R32AsDepth,
-		R24X8AsDepth,
-		R24G8AsDepth,
 		D24X8,
 		D24S8,
 		D32,
@@ -55,7 +52,7 @@ private:
 		uint32_t            ImageViewIndex;
 		SubresourceViewType ViewType;
 		RenderPassType      PassType;
-		SubresourceFormat   MainFormat;
+		SubresourceFormat   Format;
 	};
 
 	struct SubresourceAddress
@@ -72,6 +69,7 @@ private:
 
 	struct TextureResourceCreateInfo
 	{
+		SubresourceFormat            Format;
 		std::vector<TextureViewInfo> ImageViewInfos;
 	};
 
@@ -111,11 +109,17 @@ private:
 	//Validates queue families in each subresource info
 	void ValidateSubresourcePassTypes();
 
+	//Create subresources
+	void BuildSubresources(std::unordered_set<RenderPassName>& swapchainPassNames);
+
 	//Merges all image view create descriptions with same Format and Aspect Flags into single structures with multiple ViewAddresses
 	void MergeImageViewInfos(std::unordered_map<SubresourceName, TextureResourceCreateInfo>& inoutImageResourceCreateInfos);
 
 	//Fixes 0 aspect flags and UNDEFINED formats in subresource metadatas from the information from image create infos
 	void PropagateMetadatasFromImageViews(const std::unordered_map<SubresourceName, TextureResourceCreateInfo>& imageCreateInfos, const std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& backbufferCreateInfos);
+
+	//Creates descriptions for resource creation
+	void BuildResourceCreateInfos(std::unordered_map<SubresourceName, TextureResourceCreateInfo>& outImageCreateInfos, std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& outBackbufferCreateInfos, std::unordered_set<RenderPassName>& swapchainPassNames);
 
 	//Creates swapchain images and views (non-owning, ping-ponging)
 	void CreateSwapchainImageViews(const std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& backbufferResourceCreateInfos, SubresourceFormat swapchainFormat);
