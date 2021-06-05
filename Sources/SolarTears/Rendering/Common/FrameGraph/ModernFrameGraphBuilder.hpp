@@ -18,7 +18,6 @@ protected:
 	constexpr static std::string_view PresentPassName         = "SPECIAL_PRESENT_ACQUIRE_PASS";
 	constexpr static std::string_view BackbufferPresentPassId = "SpecialPresentAcquirePass-Backbuffer";
 
-private:
 	enum class SubresourceFormat: uint32_t
 	{
 		Rgba8,
@@ -33,26 +32,14 @@ private:
 		Unknown
 	};
 
-	enum class SubresourceViewType: uint32_t
+	enum class SubresourceViewTypeFlag: uint32_t
 	{
-		ShaderResource,
-		UnorderedAccess,
-		RenderTarget,
-		DepthStencil,
-		
-		Unknown
-	};
+		Unknown = 0,
 
-	struct TextureSubresourceMetadata
-	{
-		TextureSubresourceMetadata* PrevPassMetadata;
-		TextureSubresourceMetadata* NextPassMetadata;
-
-		uint32_t            ImageIndex;
-		uint32_t            ImageViewIndex;
-		SubresourceViewType ViewType;
-		RenderPassType      PassType;
-		SubresourceFormat   Format;
+		ShaderResource  = 0x01,
+		UnorderedAccess = 0x02,
+		RenderTarget    = 0x04,
+		DepthStencil    = 0x08,
 	};
 
 	struct SubresourceAddress
@@ -70,9 +57,29 @@ private:
 	struct TextureResourceCreateInfo
 	{
 		SubresourceFormat            Format;
+		uint32_t                     SubresourceFlags;
+		SubresourceName              Name;
 		std::vector<TextureViewInfo> ImageViewInfos;
 	};
 
+private:
+	struct TextureSubresourceMetadataNode
+	{
+		TextureSubresourceMetadataNode* PrevPassMetadata;
+		TextureSubresourceMetadataNode* NextPassMetadata;
+
+		uint32_t MetadataInfoIndex;
+	};
+
+	struct TextureSubresourceMetadataInfo
+	{
+		uint32_t                ImageIndex;
+		uint32_t                ImageViewIndex;
+		SubresourceViewTypeFlag ViewTypeFlag;
+		RenderPassType          PassType;
+		SubresourceFormat       Format;
+	};
+	
 	struct BackbufferResourceCreateInfo
 	{
 		std::vector<TextureViewInfo> ImageViewInfos;
@@ -121,6 +128,9 @@ private:
 	//Creates descriptions for resource creation
 	void BuildResourceCreateInfos(std::unordered_map<SubresourceName, TextureResourceCreateInfo>& outImageCreateInfos, std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& outBackbufferCreateInfos, std::unordered_set<RenderPassName>& swapchainPassNames);
 
+	//Builds flat lists of TextureResourceCreateInfo and TextureViewInfo, indexed with ImageIndex and ImageViewIndex of TextureSubresourceMetadata
+	void BuildIndexedFlatCreateInfoLists(const std::unordered_map<SubresourceName, TextureResourceCreateInfo>& imageResourceCreateInfos, std::vector<TextureResourceCreateInfo>& outTextureCreateInfos, std::vector<TextureViewInfo>& outViewInfos);
+
 	//Creates swapchain images and views (non-owning, ping-ponging)
 	void CreateSwapchainImageViews(const std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& backbufferResourceCreateInfos, SubresourceFormat swapchainFormat);
 
@@ -129,6 +139,13 @@ private:
 
 	//Test if two writingPass writes to readingPass
 	bool PassesIntersect(const RenderPassName& writingPass, const RenderPassName& readingPass);
+
+protected:
+	//Creates image objects
+	virtual void CreateImages(const std::vector<TextureResourceCreateInfo>& textureCreateInfos) const = 0;
+
+	//Creates image view/descriptor objects
+	virtual void CreateImageViews(const std::vector<TextureViewInfo>& viewInfos) const = 0;
 
 protected:
 	ModernFrameGraph* mGraphToBuild;
@@ -141,8 +158,10 @@ protected:
 	std::unordered_map<RenderPassName, std::unordered_set<SubresourceId>> mRenderPassesReadSubresourceIds;
 	std::unordered_map<RenderPassName, std::unordered_set<SubresourceId>> mRenderPassesWriteSubresourceIds;
 
-	std::unordered_map<RenderPassName, std::unordered_map<SubresourceName, SubresourceId>>              mRenderPassesSubresourceNameIds;
-	std::unordered_map<RenderPassName, std::unordered_map<SubresourceId,   TextureSubresourceMetadata>> mRenderPassesSubresourceMetadatas;
+	std::unordered_map<RenderPassName, std::unordered_map<SubresourceName, SubresourceId>>                  mRenderPassesSubresourceNameIds;
+	std::unordered_map<RenderPassName, std::unordered_map<SubresourceId,   TextureSubresourceMetadataNode>> mRenderPassesSubresourceMetadatas;
+
+	std::vector<TextureSubresourceMetadataInfo> mMetadataInfos;
 
 	SubresourceName mBackbufferName;
 };

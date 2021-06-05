@@ -767,15 +767,9 @@ void D3D12::FrameGraphBuilder::CreateTextures(ID3D12Device8* device, const std::
 	mGraphToBuild->mTextures.clear();
 	mGraphToBuild->mTextureHeap.reset();
 
-	std::unordered_map<SubresourceName, size_t> textureIndices;
-
 	std::vector<D3D12_RESOURCE_DESC1> textureDescsVec;
 	textureDescsVec.reserve(textureCreateInfos.size());
-	for(const auto& it: textureCreateInfos)
-	{
-		textureDescsVec.push_back(it.second.ResourceDesc);
-		textureIndices[it.first] = (textureDescsVec.size() - 1);
-	}
+
 
 	std::vector<UINT64> textureHeapOffsets;
 	textureHeapOffsets.reserve(textureDescsVec.size());

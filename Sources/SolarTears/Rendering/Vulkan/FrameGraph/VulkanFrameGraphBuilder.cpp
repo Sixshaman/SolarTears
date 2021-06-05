@@ -635,91 +635,6 @@ void Vulkan::FrameGraphBuilder::BarrierImages(const DeviceQueues* deviceQueues, 
 	deviceQueues->GraphicsQueueWait();
 }
 
-void Vulkan::FrameGraphBuilder::BuildResourceCreateInfos(const std::vector<uint32_t>& defaultQueueIndices, std::unordered_map<SubresourceName, ImageResourceCreateInfo>& outImageCreateInfos, std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& outBackbufferCreateInfos, std::unordered_set<RenderPassName>& swapchainPassNames)
-{
-	for(const auto& renderPassName: mRenderPassNames)
-	{
-		const auto& nameIdMap = mRenderPassesSubresourceNameIds[renderPassName];
-		for(const auto& nameId: nameIdMap)
-		{
-			const SubresourceName subresourceName = nameId.first;
-			const SubresourceId   subresourceId   = nameId.second;
-
-			if(subresourceName == mBackbufferName)
-			{
-				ImageSubresourceMetadata metadata = mRenderPassesSubresourceMetadatas[renderPassName][subresourceId];
-
-				BackbufferResourceCreateInfo backbufferCreateInfo;
-
-				ImageViewInfo imageViewInfo;
-				imageViewInfo.Format     = metadata.Format;
-				imageViewInfo.AspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-				imageViewInfo.ViewAddresses.push_back({.PassName = renderPassName, .SubresId = subresourceId});
-
-				backbufferCreateInfo.ImageViewInfos.push_back(imageViewInfo);
-
-				outBackbufferCreateInfos[subresourceName] = backbufferCreateInfo;
-
-				swapchainPassNames.insert(renderPassName);
-			}
-			else
-			{
-				ImageSubresourceMetadata metadata = mRenderPassesSubresourceMetadatas[renderPassName][subresourceId];
-				if(!outImageCreateInfos.contains(subresourceName))
-				{
-					ImageResourceCreateInfo imageResourceCreateInfo;
-
-					//TODO: Multisampling
-					VkImageCreateInfo imageCreateInfo;
-					imageCreateInfo.sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-					imageCreateInfo.pNext                 = nullptr;
-					imageCreateInfo.flags                 = 0;
-					imageCreateInfo.imageType             = VK_IMAGE_TYPE_2D;
-					imageCreateInfo.format                = metadata.Format;
-					imageCreateInfo.extent.width          = mGraphToBuild->mFrameGraphConfig.GetViewportWidth();
-					imageCreateInfo.extent.height         = mGraphToBuild->mFrameGraphConfig.GetViewportHeight();
-					imageCreateInfo.extent.depth          = 1;
-					imageCreateInfo.mipLevels             = 1;
-					imageCreateInfo.arrayLayers           = 1;
-					imageCreateInfo.samples               = VK_SAMPLE_COUNT_1_BIT;
-					imageCreateInfo.tiling                = VK_IMAGE_TILING_OPTIMAL;
-					imageCreateInfo.usage                 = metadata.UsageFlags;
-					imageCreateInfo.sharingMode           = VK_SHARING_MODE_EXCLUSIVE;
-					imageCreateInfo.queueFamilyIndexCount = (uint32_t)(defaultQueueIndices.size());
-					imageCreateInfo.pQueueFamilyIndices   = defaultQueueIndices.data();
-					imageCreateInfo.initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED;
-
-					imageResourceCreateInfo.ImageCreateInfo = imageCreateInfo;
-
-					outImageCreateInfos[subresourceName] = imageResourceCreateInfo;
-				}
-
-				auto& imageResourceCreateInfo = outImageCreateInfos[subresourceName];
-				if(metadata.Format != VK_FORMAT_UNDEFINED)
-				{
-					if(imageResourceCreateInfo.ImageCreateInfo.format == VK_FORMAT_UNDEFINED)
-					{
-						//Not all passes specify the format
-						imageResourceCreateInfo.ImageCreateInfo.format = metadata.Format;
-					}
-				}
-
-				//It's fine if format is UNDEFINED or AspectFlags is 0. It means it can be arbitrary and we'll fix it later based on other image view infos for this resource
-				ImageViewInfo imageViewInfo;
-				imageViewInfo.Format     = metadata.Format;
-				imageViewInfo.AspectMask = metadata.AspectFlags;
-				imageViewInfo.ViewAddresses.push_back({.PassName = renderPassName, .SubresId = subresourceId});
-
-				imageResourceCreateInfo.ImageViewInfos.push_back(imageViewInfo);
-
-				imageResourceCreateInfo.ImageCreateInfo.usage |= metadata.UsageFlags;
-			}
-		}
-	}
-
-	MergeImageViewInfos(outImageCreateInfos);
-}
-
 void Vulkan::FrameGraphBuilder::SetSwapchainImages(const std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& backbufferResourceCreateInfos, const std::vector<VkImage>& swapchainImages)
 {
 	mGraphToBuild->mSwapchainImageRefs.clear();
@@ -745,27 +660,37 @@ void Vulkan::FrameGraphBuilder::SetSwapchainImages(const std::unordered_map<Subr
 	}
 }
 
-void Vulkan::FrameGraphBuilder::CreateImages(const std::unordered_map<SubresourceName, ImageResourceCreateInfo>& imageResourceCreateInfos, const MemoryManager* memoryAllocator)
+void Vulkan::FrameGraphBuilder::CreateImages(const std::vector<TextureResourceCreateInfo>& textureCreateInfos) const
 {
 	mGraphToBuild->mImages.clear();
 
-	for(const auto& nameWithCreateInfo: imageResourceCreateInfos)
+	for(const TextureResourceCreateInfo& createInfo: textureCreateInfos)
 	{
+		VkImageCreateInfo imageCreateInfo;
+		imageCreateInfo.sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+		imageCreateInfo.pNext                 = nullptr;
+		imageCreateInfo.flags                 = 0;
+		imageCreateInfo.imageType             = VK_IMAGE_TYPE_2D;
+		imageCreateInfo.format                = ApiAgnosticToVulkanFormat(createInfo.Format);
+		imageCreateInfo.extent.width          = mGraphToBuild->mFrameGraphConfig.GetViewportWidth();
+		imageCreateInfo.extent.height         = mGraphToBuild->mFrameGraphConfig.GetViewportHeight();
+		imageCreateInfo.extent.depth          = 1;
+		imageCreateInfo.mipLevels             = 1;
+		imageCreateInfo.arrayLayers           = 1;
+		imageCreateInfo.samples               = VK_SAMPLE_COUNT_1_BIT;
+		imageCreateInfo.tiling                = VK_IMAGE_TILING_OPTIMAL;
+		imageCreateInfo.usage                 = metadata.UsageFlags;
+		imageCreateInfo.sharingMode           = VK_SHARING_MODE_EXCLUSIVE;
+		imageCreateInfo.queueFamilyIndexCount = (uint32_t)(defaultQueueIndices.size());
+		imageCreateInfo.pQueueFamilyIndices   = defaultQueueIndices.data();
+		imageCreateInfo.initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED;
+
 		VkImage image = VK_NULL_HANDLE;
-		ThrowIfFailed(vkCreateImage(mGraphToBuild->mDeviceRef, &nameWithCreateInfo.second.ImageCreateInfo, nullptr, &image));
+		ThrowIfFailed(vkCreateImage(mGraphToBuild->mDeviceRef, &imageCreateInfo, nullptr, &image));
 
 		mGraphToBuild->mImages.push_back(image);
 		
-		//IMAGE VIEWS
-		for(const auto& imageViewInfo: nameWithCreateInfo.second.ImageViewInfos)
-		{
-			for(const auto& viewAddress: imageViewInfo.ViewAddresses)
-			{
-				mRenderPassesSubresourceMetadatas[viewAddress.PassName][viewAddress.SubresId].ImageIndex = (uint32_t)(mGraphToBuild->mImages.size() - 1);
-			}
-		}
-		
-		SetDebugObjectName(image, nameWithCreateInfo.first); //Only does something in debug
+		SetDebugObjectName(image, createInfo.Name); //Only does something in debug
 	}
 
 	SafeDestroyObject(vkFreeMemory, mGraphToBuild->mDeviceRef, mGraphToBuild->mImageMemory);
@@ -785,6 +710,29 @@ void Vulkan::FrameGraphBuilder::CreateImages(const std::unordered_map<Subresourc
 	}
 
 	ThrowIfFailed(vkBindImageMemory2(mGraphToBuild->mDeviceRef, (uint32_t)(bindImageMemoryInfos.size()), bindImageMemoryInfos.data()));
+}
+
+void Vulkan::FrameGraphBuilder::CreateImageViews(const std::vector<TextureViewInfo>& viewInfos) const
+{
+	mGraphToBuild->mImageViews.clear();
+
+	for(const auto& nameWithCreateInfo: imageResourceCreateInfos)
+	{
+		//Image is the same for all image views
+		const SubresourceAddress firstViewAddress = nameWithCreateInfo.second.ImageViewInfos[0].ViewAddresses[0];
+		uint32_t imageIndex                       = mRenderPassesSubresourceMetadatas[firstViewAddress.PassName][firstViewAddress.SubresId].ImageIndex;
+		VkImage image                             = mGraphToBuild->mImages[imageIndex];
+
+		for(size_t j = 0; j < nameWithCreateInfo.second.ImageViewInfos.size(); j++)
+		{
+			const ImageViewInfo& imageViewInfo = nameWithCreateInfo.second.ImageViewInfos[j];
+
+			VkImageView imageView = VK_NULL_HANDLE;
+			CreateImageView(imageViewInfo, image, nameWithCreateInfo.second.ImageCreateInfo.format, &imageView);
+
+			mGraphToBuild->mImageViews.push_back(imageView);
+		}
+	}
 }
 
 void Vulkan::FrameGraphBuilder::CreateImageView(const ImageViewInfo& imageViewInfo, VkImage image, VkFormat defaultFormat, VkImageView* outImageView)
@@ -841,4 +789,31 @@ void Vulkan::FrameGraphBuilder::SetDebugObjectName(VkImage image, const Subresou
 	UNREFERENCED_PARAMETER(image);
 	UNREFERENCED_PARAMETER(name);
 #endif
+}
+
+VkFormat Vulkan::FrameGraphBuilder::ApiAgnosticToVulkanFormat(SubresourceFormat subresourceFormat) const
+{
+	switch (subresourceFormat)
+	{
+	case ModernFrameGraphBuilder::SubresourceFormat::Rgba8:
+		return VK_FORMAT_R8G8B8A8_UNORM;
+	case ModernFrameGraphBuilder::SubresourceFormat::Bgra8:
+		return VK_FORMAT_B8G8R8A8_UNORM;
+	case ModernFrameGraphBuilder::SubresourceFormat::Rgba16:
+		return VK_FORMAT_B8G8R8A8_UNORM;
+	case ModernFrameGraphBuilder::SubresourceFormat::Rgba32:
+		return VK_FORMAT_R32G32B32A32_SFLOAT;
+	case ModernFrameGraphBuilder::SubresourceFormat::R32:
+		return VK_FORMAT_R32_SFLOAT;
+	case ModernFrameGraphBuilder::SubresourceFormat::D24X8:
+		return VK_FORMAT_X8_D24_UNORM_PACK32;
+	case ModernFrameGraphBuilder::SubresourceFormat::D24S8:
+		return VK_FORMAT_D24_UNORM_S8_UINT;
+	case ModernFrameGraphBuilder::SubresourceFormat::D32:
+		return VK_FORMAT_D32_SFLOAT;
+	case ModernFrameGraphBuilder::SubresourceFormat::Unknown:
+		return VK_FORMAT_UNDEFINED;
+	}
+
+	return VK_FORMAT_UNDEFINED;
 }

@@ -83,14 +83,22 @@ namespace Vulkan
 
 		//Functions for creating actual frame graph resources/subresources
 		void SetSwapchainImages(const std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& backbufferResourceCreateInfos, const std::vector<VkImage>& swapchainImages);
-		void CreateImages(const std::unordered_map<SubresourceName, ImageResourceCreateInfo>& imageResourceCreateInfos, const MemoryManager* memoryAllocator);
-		void CreateImageViews(const std::unordered_map<SubresourceName, ImageResourceCreateInfo>& imageResourceCreateInfos);
 
 		//Creates VkImageView from imageViewInfo
 		void CreateImageView(const ImageViewInfo& imageViewInfo, VkImage image, VkFormat defaultFormat, VkImageView* outImageView);
 
 		//Set object name for debug messages
 		void SetDebugObjectName(VkImage image, const SubresourceName& name) const;
+
+		//Conversion functions
+		VkFormat ApiAgnosticToVulkanFormat(SubresourceFormat subresourceFormat) const;
+
+	private:
+		//Creates image objects
+		virtual void CreateImages(const std::vector<TextureResourceCreateInfo>& textureCreateInfos) const override;
+
+		//Creates image view/descriptor objects
+		virtual void CreateImageViews(const std::vector<TextureViewInfo>& viewInfos) const override;
 
 	private:
 		FrameGraph* mGraphToBuild;
