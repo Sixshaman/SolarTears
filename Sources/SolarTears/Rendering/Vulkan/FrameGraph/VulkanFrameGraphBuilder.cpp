@@ -770,6 +770,80 @@ void Vulkan::FrameGraphBuilder::CreateImageView(const ImageViewInfo& imageViewIn
 	ThrowIfFailed(vkCreateImageView(mGraphToBuild->mDeviceRef, &imageViewCreateInfo, nullptr, outImageView));
 }
 
+void Vulkan::FrameGraphBuilder::PlaceholderFunc(const std::vector<TextureResourceCreateInfo>& textureCreateInfos)
+{
+	for(const TextureResourceCreateInfo& textureCreateInfo: textureCreateInfos)
+	{
+		const SubresourceMetadataNode* headNode    = textureCreateInfo.MetadataHead;
+		const SubresourceMetadataNode* currentNode = headNode;
+
+		do
+		{
+			if(!PropagateSubresourceParameters(currentNode->SubresourceInfoIndex, currentNode->NextPassNode->SubresourceInfoIndex))
+			{
+				//Reset the head node if propagation failed. This may happen if the current pass doesn't know some info about the resource and needs it to be propagated from the pass before
+				headNode = currentNode;
+			}
+
+			currentNode = currentNode->NextPassNode;
+
+		} while(currentNode != headNode);
+	}
+
+					SubresourceMetadataNode metadataNode = mRenderPassesSubresourceMetadatas[renderPassName][subresourceId];
+				if(!outTextureCreateInfos.contains(subresourceName))
+				{
+					TextureResourceCreateInfo textureResourceCreateInfo;
+					textureResourceCreateInfo.Name = subresourceName;
+
+					outTextureCreateInfos[subresourceName] = textureResourceCreateInfo;
+				}
+
+				auto& imageResourceCreateInfo = outTextureCreateInfos[subresourceName];
+				if(metadata.Format != SubresourceFormat::Unknown)
+				{
+					if(imageResourceCreateInfo.Format == SubresourceFormat::Unknown)
+					{
+						//Not all passes specify the format
+						imageResourceCreateInfo.Format = metadata.Format;
+					}
+				}
+
+				//It's fine if format is Unknown. It means it can be arbitrary and we'll fix it later based on other image view infos for this resource
+				TextureViewInfo textureViewInfo;
+				textureViewInfo.Format = metadata.Format;
+				textureViewInfo.ViewAddresses.push_back({.PassName = renderPassName, .SubresId = subresourceId});
+
+				imageResourceCreateInfo.ImageViewInfos.push_back(textureViewInfo);
+
+				imageResourceCreateInfo.SubresourceFlags |= (uint32_t)metadata.ViewTypeFlag;
+}
+
+bool Vulkan::FrameGraphBuilder::PropagateSubresourceParameters(uint32_t indexFrom, uint32_t indexTo)
+{
+	SubresourceInfo& currentPassSubresourceInfo = mSubresourceInfos[indexFrom];
+	SubresourceInfo& nextPassSubresourceInfo    = mSubresourceInfos[indexTo];
+
+	if(nextPassSubresourceInfo.Format == VK_FORMAT_UNDEFINED && currentPassSubresourceInfo.Format != VK_FORMAT_UNDEFINED)
+	{
+		nextPassSubresourceInfo.Format = currentPassSubresourceInfo.Format;
+	}
+
+	if(nextPassSubresourceInfo.Aspect == 0 && currentPassSubresourceInfo.Aspect != 0)
+	{
+		nextPassSubresourceInfo.Aspect = currentPassSubresourceInfo.Aspect;
+	}
+
+	//Other parameters are known always
+
+	if(currentPassSubresourceInfo.Format == VK_FORMAT_UNDEFINED || currentPassSubresourceInfo.Aspect == 0)
+	{
+		return false;
+	}
+
+	return true;
+}
+
 void Vulkan::FrameGraphBuilder::SetDebugObjectName(VkImage image, const SubresourceName& name) const
 {
 #if defined(VK_EXT_debug_utils) && (defined(DEBUG) || defined(_DEBUG))
@@ -789,31 +863,4 @@ void Vulkan::FrameGraphBuilder::SetDebugObjectName(VkImage image, const Subresou
 	UNREFERENCED_PARAMETER(image);
 	UNREFERENCED_PARAMETER(name);
 #endif
-}
-
-VkFormat Vulkan::FrameGraphBuilder::ApiAgnosticToVulkanFormat(SubresourceFormat subresourceFormat) const
-{
-	switch (subresourceFormat)
-	{
-	case ModernFrameGraphBuilder::SubresourceFormat::Rgba8:
-		return VK_FORMAT_R8G8B8A8_UNORM;
-	case ModernFrameGraphBuilder::SubresourceFormat::Bgra8:
-		return VK_FORMAT_B8G8R8A8_UNORM;
-	case ModernFrameGraphBuilder::SubresourceFormat::Rgba16:
-		return VK_FORMAT_B8G8R8A8_UNORM;
-	case ModernFrameGraphBuilder::SubresourceFormat::Rgba32:
-		return VK_FORMAT_R32G32B32A32_SFLOAT;
-	case ModernFrameGraphBuilder::SubresourceFormat::R32:
-		return VK_FORMAT_R32_SFLOAT;
-	case ModernFrameGraphBuilder::SubresourceFormat::D24X8:
-		return VK_FORMAT_X8_D24_UNORM_PACK32;
-	case ModernFrameGraphBuilder::SubresourceFormat::D24S8:
-		return VK_FORMAT_D24_UNORM_S8_UINT;
-	case ModernFrameGraphBuilder::SubresourceFormat::D32:
-		return VK_FORMAT_D32_SFLOAT;
-	case ModernFrameGraphBuilder::SubresourceFormat::Unknown:
-		return VK_FORMAT_UNDEFINED;
-	}
-
-	return VK_FORMAT_UNDEFINED;
 }

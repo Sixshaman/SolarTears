@@ -22,13 +22,17 @@ namespace Vulkan
 
 	class FrameGraphBuilder: ModernFrameGraphBuilder
 	{
-		enum class ResourceType
-		{
-			ImageResource,
-			BackbufferResource
-		};
-
 		constexpr static uint32_t ImageFlagAutoBarrier = 0x01;
+
+		struct SubresourceInfo
+		{
+			VkFormat             Format;
+			VkImageLayout        Layout;
+			VkImageUsageFlags    Usage;
+			VkImageAspectFlags   Aspect;
+			VkPipelineStageFlags Stage;
+			VkAccessFlags        Access;
+		};
 
 	public:
 		FrameGraphBuilder(FrameGraph* graphToBuild, const DescriptorManager* descriptorManager, const InstanceParameters* instanceParameters, const DeviceParameters* deviceParameters, const ShaderManager* shaderManager);
@@ -87,23 +91,24 @@ namespace Vulkan
 		//Creates VkImageView from imageViewInfo
 		void CreateImageView(const ImageViewInfo& imageViewInfo, VkImage image, VkFormat defaultFormat, VkImageView* outImageView);
 
+		void PlaceholderFunc(const std::vector<TextureResourceCreateInfo>& textureCreateInfos);
+
 		//Set object name for debug messages
 		void SetDebugObjectName(VkImage image, const SubresourceName& name) const;
 
-		//Conversion functions
-		VkFormat ApiAgnosticToVulkanFormat(SubresourceFormat subresourceFormat) const;
-
 	private:
+		//Propagates info (format, access flags, etc.) from one SubresourceInfo to another. Returns true if propagation succeeded or wasn't needed
+		virtual bool PropagateSubresourceParameters(uint32_t indexFrom, uint32_t indexTo);
+
 		//Creates image objects
 		virtual void CreateImages(const std::vector<TextureResourceCreateInfo>& textureCreateInfos) const override;
-
-		//Creates image view/descriptor objects
-		virtual void CreateImageViews(const std::vector<TextureViewInfo>& viewInfos) const override;
 
 	private:
 		FrameGraph* mGraphToBuild;
 
 		std::unordered_map<RenderPassName, RenderPassCreateFunc> mRenderPassCreateFunctions;
+
+		std::vector<SubresourceInfo> mSubresourceInfos;
 
 		//Several things that might be needed to create some of the passes
 		const DescriptorManager*  mDescriptorManager;

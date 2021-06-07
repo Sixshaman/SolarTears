@@ -34,20 +34,18 @@ void ModernFrameGraphBuilder::RegisterReadSubresource(const std::string_view pas
 
 	if(!mRenderPassesSubresourceMetadatas.contains(renderPassName))
 	{
-		mRenderPassesSubresourceMetadatas[renderPassName] = std::unordered_map<SubresourceId, TextureSubresourceMetadata>();
+		mRenderPassesSubresourceMetadatas[renderPassName] = std::unordered_map<SubresourceId, SubresourceMetadataNode>();
 	}
 
-	TextureSubresourceMetadataNode subresourceMetadataNode;
-	subresourceMetadataNode.PrevPassMetadata  = nullptr;
-	subresourceMetadataNode.NextPassMetadata  = nullptr;
-	subresourceMetadataNode.MetadataInfoIndex = 100000000000000000;
+	SubresourceMetadataNode metadataNode;
+	metadataNode.PrevPassNode      = nullptr;
+	metadataNode.NextPassNode      = nullptr;
+	metadataNode.MetadataInfoIndex = AddSubresourceMetadata();
+	metadataNode.ImageIndex        = (uint32_t)(-1);
+	metadataNode.ImageViewIndex    = (uint32_t)(-1);
+	metadataNode.PassType          = RenderPassType::Graphics;
 
-	subresourceMetadata.ImageIndex       = (uint32_t)(-1);
-	subresourceMetadata.ImageViewIndex   = (uint32_t)(-1);
-	subresourceMetadata.ViewTypeFlag     = SubresourceViewTypeFlag::Unknown;
-	subresourceMetadata.PassType         = RenderPassType::Graphics;
-
-	mRenderPassesSubresourceMetadatas[renderPassName][subresId] = subresourceMetadata;
+	mRenderPassesSubresourceMetadatas[renderPassName][subresId] = metadataNode;
 }
 
 void ModernFrameGraphBuilder::RegisterWriteSubresource(const std::string_view passName, const std::string_view subresourceId)
@@ -66,19 +64,18 @@ void ModernFrameGraphBuilder::RegisterWriteSubresource(const std::string_view pa
 
 	if(!mRenderPassesSubresourceMetadatas.contains(renderPassName))
 	{
-		mRenderPassesSubresourceMetadatas[renderPassName] = std::unordered_map<SubresourceId, TextureSubresourceMetadata>();
+		mRenderPassesSubresourceMetadatas[renderPassName] = std::unordered_map<SubresourceId, SubresourceMetadataNode>();
 	}
 
-	TextureSubresourceMetadata subresourceMetadata;
-	subresourceMetadata.PrevPassMetadata = nullptr;
-	subresourceMetadata.NextPassMetadata = nullptr;
-	subresourceMetadata.Format           = SubresourceFormat::Unknown;
-	subresourceMetadata.ImageIndex       = (uint32_t)(-1);
-	subresourceMetadata.ImageViewIndex   = (uint32_t)(-1);
-	subresourceMetadata.ViewTypeFlag     = SubresourceViewTypeFlag::Unknown;
-	subresourceMetadata.PassType         = RenderPassType::Graphics;
+	SubresourceMetadataNode metadataNode;
+	metadataNode.PrevPassNode      = nullptr;
+	metadataNode.NextPassNode      = nullptr;
+	metadataNode.MetadataInfoIndex = AddSubresourceMetadata();
+	metadataNode.ImageIndex        = (uint32_t)(-1);
+	metadataNode.ImageViewIndex    = (uint32_t)(-1);
+	metadataNode.PassType          = RenderPassType::Graphics;
 
-	mRenderPassesSubresourceMetadatas[renderPassName][subresId] = subresourceMetadata;
+	mRenderPassesSubresourceMetadatas[renderPassName][subresId] = metadataNode;
 }
 
 void ModernFrameGraphBuilder::AssignSubresourceName(const std::string_view passName, const std::string_view subresourceId, const std::string_view subresourceName)
@@ -100,16 +97,15 @@ void ModernFrameGraphBuilder::AssignBackbufferName(const std::string_view backbu
 
 	AssignSubresourceName(PresentPassName, BackbufferPresentPassId, mBackbufferName);
 
-	TextureSubresourceMetadata presentAcquirePassMetadata;
-	presentAcquirePassMetadata.PrevPassMetadata = nullptr;
-	presentAcquirePassMetadata.NextPassMetadata = nullptr;
-	presentAcquirePassMetadata.Format           = SubresourceFormat::Unknown;
-	presentAcquirePassMetadata.ImageIndex       = (uint32_t)(-1);
-	presentAcquirePassMetadata.ImageViewIndex   = (uint32_t)(-1);
-	presentAcquirePassMetadata.ViewTypeFlag     = SubresourceViewTypeFlag::Unknown;
-	presentAcquirePassMetadata.PassType         = RenderPassType::Present;
+	SubresourceMetadataNode presentAcquireMetadataNode;
+	presentAcquireMetadataNode.PrevPassNode      = nullptr;
+	presentAcquireMetadataNode.NextPassNode      = nullptr;
+	presentAcquireMetadataNode.MetadataInfoIndex = AddSubresourceMetadata();
+	presentAcquireMetadataNode.ImageIndex        = (uint32_t)(-1);
+	presentAcquireMetadataNode.ImageViewIndex    = (uint32_t)(-1);
+	presentAcquireMetadataNode.PassType          = RenderPassType::Present;
 
-	mRenderPassesSubresourceMetadatas[std::string(PresentPassName)][std::string(BackbufferPresentPassId)] = presentAcquirePassMetadata;
+	mRenderPassesSubresourceMetadatas[std::string(PresentPassName)][std::string(BackbufferPresentPassId)] = presentAcquireMetadataNode;
 }
 
 void ModernFrameGraphBuilder::Build()
@@ -271,18 +267,18 @@ void ModernFrameGraphBuilder::ValidateSubresourceLinks()
 		RenderPassName renderPassName = mRenderPassNames[i];
 		for(auto& subresourceNameId: mRenderPassesSubresourceNameIds[renderPassName])
 		{
-			SubresourceName             subresourceName     = subresourceNameId.first;
-			TextureSubresourceMetadata& subresourceMetadata = mRenderPassesSubresourceMetadatas.at(renderPassName).at(subresourceNameId.second);
+			SubresourceName          subresourceName = subresourceNameId.first;
+			SubresourceMetadataNode& subresourceNode = mRenderPassesSubresourceMetadatas.at(renderPassName).at(subresourceNameId.second);
 
 			if(subresourceLastRenderPasses.contains(subresourceName))
 			{
 				RenderPassName prevPassName = subresourceLastRenderPasses.at(subresourceName);
 				
-				SubresourceId               prevSubresourceId       = mRenderPassesSubresourceNameIds.at(prevPassName).at(subresourceName);
-				TextureSubresourceMetadata& prevSubresourceMetadata = mRenderPassesSubresourceMetadatas.at(prevPassName).at(prevSubresourceId);
+				SubresourceId                   prevSubresourceId   = mRenderPassesSubresourceNameIds.at(prevPassName).at(subresourceName);
+				SubresourceMetadataNode& prevSubresourceNode = mRenderPassesSubresourceMetadatas.at(prevPassName).at(prevSubresourceId);
 
-				prevSubresourceMetadata.NextPassMetadata = &subresourceMetadata;
-				subresourceMetadata.PrevPassMetadata     = &prevSubresourceMetadata;
+				prevSubresourceNode.NextPassNode = &subresourceNode;
+				subresourceNode.PrevPassNode     = &prevSubresourceNode;
 			}
 
 			if(!subresourceFirstRenderPasses.contains(subresourceName))
@@ -302,16 +298,16 @@ void ModernFrameGraphBuilder::ValidateSubresourceLinks()
 	SubresourceId backbufferLastSubresourceId  = mRenderPassesSubresourceNameIds.at(backbufferLastPassName).at(mBackbufferName);
 	SubresourceId backbufferFirstSubresourceId = mRenderPassesSubresourceNameIds.at(backbufferFirstPassName).at(mBackbufferName);
 
-	TextureSubresourceMetadata& backbufferFirstSubresourceMetadata = mRenderPassesSubresourceMetadatas.at(backbufferFirstPassName).at(backbufferFirstSubresourceId);
-	TextureSubresourceMetadata& backbufferLastSubresourceMetadata  = mRenderPassesSubresourceMetadatas.at(backbufferLastPassName).at(backbufferLastSubresourceId);
+	SubresourceMetadataNode& backbufferFirstNode = mRenderPassesSubresourceMetadatas.at(backbufferFirstPassName).at(backbufferFirstSubresourceId);
+	SubresourceMetadataNode& backbufferLastNode  = mRenderPassesSubresourceMetadatas.at(backbufferLastPassName).at(backbufferLastSubresourceId);
 
-	TextureSubresourceMetadata& backbufferPresentSubresourceMetadata = mRenderPassesSubresourceMetadatas.at(std::string(PresentPassName)).at(std::string(BackbufferPresentPassId));
+	SubresourceMetadataNode& backbufferPresentNode = mRenderPassesSubresourceMetadatas.at(std::string(PresentPassName)).at(std::string(BackbufferPresentPassId));
 
-	backbufferFirstSubresourceMetadata.PrevPassMetadata = &backbufferPresentSubresourceMetadata;
-	backbufferLastSubresourceMetadata.NextPassMetadata  = &backbufferPresentSubresourceMetadata;
+	backbufferFirstNode.PrevPassNode = &backbufferPresentNode;
+	backbufferLastNode.NextPassNode  = &backbufferPresentNode;
 
-	backbufferPresentSubresourceMetadata.PrevPassMetadata = &backbufferLastSubresourceMetadata;
-	backbufferPresentSubresourceMetadata.NextPassMetadata = &backbufferFirstSubresourceMetadata;
+	backbufferPresentNode.PrevPassNode = &backbufferLastNode;
+	backbufferPresentNode.NextPassNode = &backbufferFirstNode;
 
 
 	//Validate cyclic links (so first pass knows what state to barrier from, and the last pass knows what state to barrier to)
@@ -325,34 +321,30 @@ void ModernFrameGraphBuilder::ValidateSubresourceLinks()
 				continue;
 			}
 
-			TextureSubresourceMetadata& subresourceMetadata = mRenderPassesSubresourceMetadatas.at(renderPassName).at(subresourceNameId.second);
+			SubresourceMetadataNode& subresourceNode = mRenderPassesSubresourceMetadatas.at(renderPassName).at(subresourceNameId.second);
 
-			if(subresourceMetadata.PrevPassMetadata == nullptr)
+			if(subresourceNode.PrevPassNode == nullptr)
 			{
 				SubresourceName subresourceName = subresourceNameId.first;
+				RenderPassName  prevPassName    = subresourceLastRenderPasses.at(subresourceName);
 
-				RenderPassName prevPassName = subresourceLastRenderPasses.at(subresourceName);
+				SubresourceId            prevSubresourceId   = mRenderPassesSubresourceNameIds.at(prevPassName).at(subresourceName);
+				SubresourceMetadataNode& prevSubresourceNode = mRenderPassesSubresourceMetadatas.at(prevPassName).at(prevSubresourceId);
 
-				SubresourceId               prevSubresourceId       = mRenderPassesSubresourceNameIds.at(prevPassName).at(subresourceName);
-				TextureSubresourceMetadata& prevSubresourceMetadata = mRenderPassesSubresourceMetadatas.at(prevPassName).at(prevSubresourceId);
-
-                //The barriers should be circular
-				subresourceMetadata.PrevPassMetadata     = &prevSubresourceMetadata; //Barrier from the last state at the beginning of frame
-				prevSubresourceMetadata.NextPassMetadata = &subresourceMetadata;
+				subresourceNode.PrevPassNode     = &prevSubresourceNode;
+				prevSubresourceNode.NextPassNode = &subresourceNode;
 			}
 
-			if(subresourceMetadata.NextPassMetadata == nullptr)
+			if(subresourceNode.NextPassNode == nullptr)
 			{
 				SubresourceName subresourceName = subresourceNameId.first;
+				RenderPassName  nextPassName    = subresourceFirstRenderPasses.at(subresourceName);
 
-				RenderPassName nextPassName = subresourceFirstRenderPasses.at(subresourceName);
+				SubresourceId            nextSubresourceId       = mRenderPassesSubresourceNameIds.at(nextPassName).at(subresourceName);
+				SubresourceMetadataNode& nextSubresourceMetadata = mRenderPassesSubresourceMetadatas.at(nextPassName).at(nextSubresourceId);
 
-				SubresourceId               nextSubresourceId       = mRenderPassesSubresourceNameIds.at(nextPassName).at(subresourceName);
-				TextureSubresourceMetadata& nextSubresourceMetadata = mRenderPassesSubresourceMetadatas.at(nextPassName).at(nextSubresourceId);
-
-                //The barriers should be circular
-				subresourceMetadata.NextPassMetadata     = &nextSubresourceMetadata; //Barrier from the last state at the beginning of frame
-				nextSubresourceMetadata.PrevPassMetadata = &subresourceMetadata;
+				subresourceNode.NextPassNode         = &nextSubresourceMetadata;
+				nextSubresourceMetadata.PrevPassNode = &subresourceNode;
 			}
 		}
 	}
@@ -365,27 +357,27 @@ void ModernFrameGraphBuilder::ValidateSubresourcePassTypes()
 
 	std::string presentPassName(PresentPassName);
 
-	for (auto& subresourceNameId : mRenderPassesSubresourceNameIds[presentPassName])
+	for (auto& subresourceNameId: mRenderPassesSubresourceNameIds[presentPassName])
 	{
-		TextureSubresourceMetadata& subresourceMetadata = mRenderPassesSubresourceMetadatas.at(presentPassName).at(subresourceNameId.second);
-		subresourceMetadata.PassType = mRenderPassTypes[presentPassName];
+		SubresourceMetadataNode& metadataNode = mRenderPassesSubresourceMetadatas.at(presentPassName).at(subresourceNameId.second);
+		metadataNode.PassType = mRenderPassTypes[presentPassName];
 	}
 
 	for (size_t i = 0; i < mRenderPassNames.size(); i++)
 	{
 		RenderPassName renderPassName = mRenderPassNames[i];
-		for (auto& subresourceNameId : mRenderPassesSubresourceNameIds[renderPassName])
+		for (auto& subresourceNameId: mRenderPassesSubresourceNameIds[renderPassName])
 		{
-			TextureSubresourceMetadata& subresourceMetadata = mRenderPassesSubresourceMetadatas.at(renderPassName).at(subresourceNameId.second);
-			subresourceMetadata.PassType = mRenderPassTypes[renderPassName];
+			SubresourceMetadataNode& metadataNode = mRenderPassesSubresourceMetadatas.at(renderPassName).at(subresourceNameId.second);
+			metadataNode.PassType = mRenderPassTypes[renderPassName];
 		}
 	}
 }
 
 void ModernFrameGraphBuilder::BuildSubresources(std::unordered_set<RenderPassName>& swapchainPassNames)
 {
-	std::unordered_map<SubresourceName, TextureResourceCreateInfo>    textureResourceCreateInfos;
-	std::unordered_map<SubresourceName, BackbufferResourceCreateInfo> backbufferResourceCreateInfos;
+	std::vector<TextureResourceCreateInfo> textureResourceCreateInfos;
+	std::vector<TextureResourceCreateInfo> backbufferResourceCreateInfos;
 	BuildResourceCreateInfos(textureResourceCreateInfos, backbufferResourceCreateInfos, swapchainPassNames);
 
 	PropagateMetadatasFromImageViews(textureResourceCreateInfos, backbufferResourceCreateInfos);
@@ -398,7 +390,7 @@ void ModernFrameGraphBuilder::BuildSubresources(std::unordered_set<RenderPassNam
 	CreateImageViews(textureViewCreateInfos);
 
 	SetSwapchainImages(backbufferResourceCreateInfos, swapchainImages);
-	CreateSwapchainImageViews(backbufferResourceCreateInfos, swapchainFormat);
+	CreateSwapchainImageViews(backbufferResourceCreateInfos);
 }
 
 void ModernFrameGraphBuilder::MergeImageViewInfos(std::unordered_map<SubresourceName, TextureResourceCreateInfo>& inoutImageResourceCreateInfos)
@@ -451,7 +443,6 @@ void ModernFrameGraphBuilder::MergeImageViewInfos(std::unordered_map<Subresource
 			if(currentFormat != nameWithCreateInfo.second.ImageViewInfos[i].Format)
 			{
 				TextureViewInfo textureViewInfo;
-				textureViewInfo.Format = nameWithCreateInfo.second.ImageViewInfos[i].Format;
 				textureViewInfo.ViewAddresses.push_back(
 				{
 					.PassName = nameWithCreateInfo.second.ImageViewInfos[i].ViewAddresses[0].PassName, 
@@ -462,7 +453,11 @@ void ModernFrameGraphBuilder::MergeImageViewInfos(std::unordered_map<Subresource
 			}
 			else
 			{
-				newImageViewInfos.back().ViewAddresses.push_back({.PassName = nameWithCreateInfo.second.ImageViewInfos[i].ViewAddresses[0].PassName, .SubresId = nameWithCreateInfo.second.ImageViewInfos[i].ViewAddresses[0].SubresId});
+				newImageViewInfos.back().ViewAddresses.push_back(
+				{
+					.PassName = nameWithCreateInfo.second.ImageViewInfos[i].ViewAddresses[0].PassName, 
+					.SubresId = nameWithCreateInfo.second.ImageViewInfos[i].ViewAddresses[0].SubresId
+				});
 			}
 
 			currentFormat = nameWithCreateInfo.second.ImageViewInfos[i].Format;
@@ -501,63 +496,54 @@ void ModernFrameGraphBuilder::PropagateMetadatasFromImageViews(const std::unorde
 	}
 }
 
-void ModernFrameGraphBuilder::BuildResourceCreateInfos(std::unordered_map<SubresourceName, TextureResourceCreateInfo>& outTextureCreateInfos, std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& outBackbufferCreateInfos, std::unordered_set<RenderPassName>& swapchainPassNames)
+void ModernFrameGraphBuilder::BuildResourceCreateInfos(std::vector<TextureResourceCreateInfo>& outTextureCreateInfos, std::vector<TextureResourceCreateInfo>& outBackbufferCreateInfos, std::unordered_set<RenderPassName>& swapchainPassNames)
 {
+	std::unordered_set<SubresourceName> processedSubresourceNames;
+
+	TextureResourceCreateInfo backbufferCreateInfo;
+	backbufferCreateInfo.Name         = mBackbufferName;
+	backbufferCreateInfo.MetadataHead = &mRenderPassesSubresourceMetadatas.at(std::string(PresentPassName)).at(std::string(BackbufferPresentPassId));
+	
+	outBackbufferCreateInfos.push_back(backbufferCreateInfo);
+	processedSubresourceNames.insert(mBackbufferName);
+
 	for(const auto& renderPassName: mRenderPassNames)
 	{
-		const auto& nameIdMap = mRenderPassesSubresourceNameIds[renderPassName];
+		const auto& nameIdMap   = mRenderPassesSubresourceNameIds[renderPassName];
+		const auto& metadataMap = mRenderPassesSubresourceMetadatas[renderPassName];
+
 		for(const auto& nameId: nameIdMap)
 		{
 			const SubresourceName subresourceName = nameId.first;
 			const SubresourceId   subresourceId   = nameId.second;
 
+			if(!processedSubresourceNames.contains(subresourceName))
+			{
+				TextureResourceCreateInfo textureCreateInfo;
+				textureCreateInfo.Name         = subresourceName;
+				textureCreateInfo.MetadataHead = &metadataMap.at(subresourceId);
+
+				outTextureCreateInfos.push_back(textureCreateInfo);
+			}
+
 			if(subresourceName == mBackbufferName)
 			{
-				TextureSubresourceMetadata metadata = mRenderPassesSubresourceMetadatas[renderPassName][subresourceId];
-
-				BackbufferResourceCreateInfo backbufferCreateInfo;
-
-				TextureViewInfo textureViewInfo;
-				textureViewInfo.Format = metadata.Format;
-				textureViewInfo.ViewAddresses.push_back({.PassName = renderPassName, .SubresId = subresourceId});
-
-				backbufferCreateInfo.ImageViewInfos.push_back(textureViewInfo);
-
-				outBackbufferCreateInfos[subresourceName] = backbufferCreateInfo;
-
 				swapchainPassNames.insert(renderPassName);
+			}
+
+			if(subresourceName == mBackbufferName)
+			{
+				if(!outBackbufferCreateInfos.contains(subresourceName))
+				{
+
+				}
+
+
 			}
 			else
 			{
-				TextureSubresourceMetadata metadata = mRenderPassesSubresourceMetadatas[renderPassName][subresourceId];
-				if(!outTextureCreateInfos.contains(subresourceName))
-				{
-					TextureResourceCreateInfo textureResourceCreateInfo;
-					textureResourceCreateInfo.Format           = metadata.Format;
-					textureResourceCreateInfo.Name             = subresourceName;
-					textureResourceCreateInfo.SubresourceFlags = 0;
 
-					outTextureCreateInfos[subresourceName] = textureResourceCreateInfo;
-				}
 
-				auto& imageResourceCreateInfo = outTextureCreateInfos[subresourceName];
-				if(metadata.Format != SubresourceFormat::Unknown)
-				{
-					if(imageResourceCreateInfo.Format == SubresourceFormat::Unknown)
-					{
-						//Not all passes specify the format
-						imageResourceCreateInfo.Format = metadata.Format;
-					}
-				}
-
-				//It's fine if format is Unknow. It means it can be arbitrary and we'll fix it later based on other image view infos for this resource
-				TextureViewInfo textureViewInfo;
-				textureViewInfo.Format = metadata.Format;
-				textureViewInfo.ViewAddresses.push_back({.PassName = renderPassName, .SubresId = subresourceId});
-
-				imageResourceCreateInfo.ImageViewInfos.push_back(textureViewInfo);
-
-				imageResourceCreateInfo.SubresourceFlags |= (uint32_t)metadata.ViewTypeFlag;
 			}
 		}
 	}
@@ -565,7 +551,7 @@ void ModernFrameGraphBuilder::BuildResourceCreateInfos(std::unordered_map<Subres
 	MergeImageViewInfos(outTextureCreateInfos);
 }
 
-void ModernFrameGraphBuilder::BuildIndexedFlatCreateInfoLists(const std::unordered_map<SubresourceName, TextureResourceCreateInfo>& imageResourceCreateInfos, std::vector<TextureResourceCreateInfo>& outTextureCreateInfos, std::vector<TextureViewInfo>& outViewInfos)
+void ModernFrameGraphBuilder::ValidateImageAndViewIndices(const std::unordered_map<SubresourceName, TextureResourceCreateInfo>& imageResourceCreateInfos, std::vector<TextureResourceCreateInfo>& outTextureCreateInfos, std::vector<TextureViewInfo>& outViewInfos)
 {
 	uint32_t imageIndex = 0;
 	for(const auto& nameWithCreateInfo: imageResourceCreateInfos)
