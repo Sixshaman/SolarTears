@@ -10,6 +10,7 @@
 
 namespace Vulkan
 {
+	class FrameGraph;
 	class MemoryManager;
 	class DeviceQueues;
 	class InstanceParameters;
@@ -32,10 +33,11 @@ namespace Vulkan
 			VkImageAspectFlags   Aspect;
 			VkPipelineStageFlags Stage;
 			VkAccessFlags        Access;
+			uint32_t             Flags;
 		};
 
 	public:
-		FrameGraphBuilder(FrameGraph* graphToBuild, const DescriptorManager* descriptorManager, const InstanceParameters* instanceParameters, const DeviceParameters* deviceParameters, const ShaderManager* shaderManager);
+		FrameGraphBuilder(FrameGraph* graphToBuild, const DescriptorManager* descriptorManager, const InstanceParameters* instanceParameters, const DeviceParameters* deviceParameters, const ShaderManager* shaderManager, const MemoryManager* memoryManager, const DeviceQueues* deviceQueues);
 		~FrameGraphBuilder();
 
 		void RegisterRenderPass(const std::string_view passName, RenderPassCreateFunc createFunc, RenderPassType passType);
@@ -50,9 +52,10 @@ namespace Vulkan
 		void EnableSubresourceAutoBarrier(const std::string_view passName, const std::string_view subresourceId, bool autoBaarrier = true);
 
 		const DeviceParameters*  GetDeviceParameters()  const;
+		const MemoryManager*     GetMemoryManager()     const;
 		const ShaderManager*     GetShaderManager()     const;
 		const DescriptorManager* GetDescriptorManager() const;
-		const FrameGraphConfig*  GetConfig()            const;
+		const DeviceQueues*      GetDeviceQueues()      const;
 
 		VkImage              GetRegisteredResource(const std::string_view passName,               const std::string_view subresourceId) const;
 		VkImageView          GetRegisteredSubresource(const std::string_view passName,            const std::string_view subresourceId) const;
@@ -88,32 +91,41 @@ namespace Vulkan
 		//Functions for creating actual frame graph resources/subresources
 		void SetSwapchainImages(const std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& backbufferResourceCreateInfos, const std::vector<VkImage>& swapchainImages);
 
-		//Creates VkImageView from imageViewInfo
-		void CreateImageView(const ImageViewInfo& imageViewInfo, VkImage image, VkFormat defaultFormat, VkImageView* outImageView);
-
-		void PlaceholderFunc(const std::vector<TextureResourceCreateInfo>& textureCreateInfos);
-
 		//Set object name for debug messages
 		void SetDebugObjectName(VkImage image, const SubresourceName& name) const;
 
+		//Converts pass type to a queue family index
+		uint32_t PassTypeToQueueIndex(RenderPassType passType) const;
+
 	private:
+		//Creates a new subresource info record
+		uint32_t AddSubresourceMetadata() override;
+
+		//Finds all indices in subresourceIndices that refer to non-unique entries in mSubresourceInfos, and replaces them with unique entries
+		void BuildUniqueSubresourceList(const std::vector<uint32_t>& subresourceIndices, std::vector<uint32_t>& outUniqueIndices) override;
+
 		//Propagates info (format, access flags, etc.) from one SubresourceInfo to another. Returns true if propagation succeeded or wasn't needed
-		virtual bool PropagateSubresourceParameters(uint32_t indexFrom, uint32_t indexTo);
+		bool PropagateSubresourceParameters(uint32_t indexFrom, uint32_t indexTo) override;
 
 		//Creates image objects
-		virtual void CreateImages(const std::vector<TextureResourceCreateInfo>& textureCreateInfos) const override;
+		void CreateTextures(const std::vector<TextureResourceCreateInfo>& textureCreateInfos) const override;
+
+		//Creates image view objects
+		virtual void CreateTextureViews() const override;
 
 	private:
-		FrameGraph* mGraphToBuild;
+		FrameGraph* mVulkanGraphToBuild;
 
 		std::unordered_map<RenderPassName, RenderPassCreateFunc> mRenderPassCreateFunctions;
 
 		std::vector<SubresourceInfo> mSubresourceInfos;
 
 		//Several things that might be needed to create some of the passes
+		const DeviceQueues*       mDeviceQueues;
 		const DescriptorManager*  mDescriptorManager;
 		const InstanceParameters* mInstanceParameters;
 		const DeviceParameters*   mDeviceParameters;
 		const ShaderManager*      mShaderManager;
+		const MemoryManager*      mMemoryManager;
 	};
 }

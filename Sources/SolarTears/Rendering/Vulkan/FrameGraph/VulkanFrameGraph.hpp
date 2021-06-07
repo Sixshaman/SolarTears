@@ -6,6 +6,7 @@
 #include "VulkanRenderPass.hpp"
 #include "../../Common/RenderingUtils.hpp"
 #include "../../Common/FrameGraph/FrameGraphConfig.hpp"
+#include "../../Common/FrameGraph/ModernFrameGraph.hpp"
 
 class ThreadPool;
 
@@ -15,7 +16,7 @@ namespace Vulkan
 	class SwapChain;
 	class DeviceQueues;
 
-	class FrameGraph
+	class FrameGraph: public ModernFrameGraph
 	{
 		friend class FrameGraphBuilder;
 		

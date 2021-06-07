@@ -37,8 +37,8 @@ protected:
 
 	struct TextureResourceCreateInfo
 	{
-		SubresourceName                Name;
-		const SubresourceMetadataNode* MetadataHead;
+		SubresourceName          Name;
+		SubresourceMetadataNode* MetadataHead;
 	};
 
 public:
@@ -52,6 +52,8 @@ public:
 	void AssignBackbufferName(const std::string_view backbufferName);
 
 	void Build();
+
+	const FrameGraphConfig* GetConfig() const;
 
 private:
 	//Builds frame graph adjacency list
@@ -72,20 +74,26 @@ private:
 	//Validates queue families in each subresource info
 	void ValidateSubresourcePassTypes();
 
+	//Finds all passes that use swapchain images. Such passes need to be swapped every frame
+	void FindBackbufferPasses(std::unordered_set<RenderPassName>& swapchainPassNames);
+
 	//Create subresources
-	void BuildSubresources(std::unordered_set<RenderPassName>& swapchainPassNames);
-
-	//Validates any non-initialized resource metadata parameters
-	void MergeImageViewInfos(std::unordered_map<SubresourceName, TextureResourceCreateInfo>& inoutImageResourceCreateInfos);
-
-	//Fixes 0 aspect flags and UNDEFINED formats in subresource metadatas from the information from image create infos
-	void PropagateMetadatasFromImageViews(const std::unordered_map<SubresourceName, TextureResourceCreateInfo>& imageCreateInfos, const std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& backbufferCreateInfos);
+	void BuildSubresources();
 
 	//Creates descriptions for resource creation
-	void BuildResourceCreateInfos(std::vector<TextureResourceCreateInfo>& outTextureCreateInfos, std::vector<TextureResourceCreateInfo>& outBackbufferCreateInfos, std::unordered_set<RenderPassName>& swapchainPassNames);
+	void BuildResourceCreateInfos(std::vector<TextureResourceCreateInfo>& outTextureCreateInfos, std::vector<TextureResourceCreateInfo>& outBackbufferCreateInfos);
+
+	//Validates all uninitialized parameters in subresource infos, propagating them from passes before
+	void PropagateMetadatas(const std::vector<TextureResourceCreateInfo>& textureCreateInfos, const std::vector<TextureResourceCreateInfo>& backbufferCreateInfos);
+
+	//Propagates uninitialized parameters in a single resource
+	void PropagateMetadatasInResource(const TextureResourceCreateInfo& createInfo);
 
 	//Validates ImageIndex and ImageViewIndex of TextureSubresourceMetadata
-	void ValidateImageAndViewIndices(const std::unordered_map<SubresourceName, TextureResourceCreateInfo>& imageResourceCreateInfos);
+	void AssignImageAndViewIndices(std::vector<TextureResourceCreateInfo>& textureCreateInfos, std::vector<TextureResourceCreateInfo>& backbufferCreateInfos);
+
+	//Validates ImageIndex and ImageViewIndex of TextureSubresourceMetadata. Returns the number of different image indices that were assigned
+	uint32_t AssignImageAndViewIndicesForResource(const TextureResourceCreateInfo& createInfo, uint32_t imageIndex, uint32_t baseImageViewIndex);
 
 	//Creates swapchain images and views (non-owning, ping-ponging)
 	void CreateSwapchainImageViews(const std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& backbufferResourceCreateInfos);
@@ -97,8 +105,20 @@ private:
 	bool PassesIntersect(const RenderPassName& writingPass, const RenderPassName& readingPass);
 
 protected:
+	//Creates a new subresource info record
+	virtual uint32_t AddSubresourceMetadata() = 0;
+
+	//Finds all indices in subresourceIndices that correspond to non-unique image views, and creates a list that only points to unique entries
+	virtual void BuildUniqueSubresourceList(const std::vector<uint32_t>& subresourceIndices, std::vector<uint32_t>& outUniqueIndices) = 0;
+
+	//Propagates info (format, access flags, etc.) from one SubresourceInfo to another. Returns true if propagation succeeded or wasn't needed
+	virtual bool PropagateSubresourceParameters(uint32_t indexFrom, uint32_t indexTo) = 0;
+
 	//Creates image objects
-	virtual void CreateImages(const std::vector<TextureResourceCreateInfo>& textureCreateInfos) const = 0;
+	virtual void CreateTextures(const std::vector<TextureResourceCreateInfo>& textureCreateInfos) const = 0;
+
+	//Creates image view objects
+	virtual void CreateTextureViews() const = 0;
 
 protected:
 	ModernFrameGraph* mGraphToBuild;
