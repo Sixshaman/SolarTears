@@ -18,12 +18,6 @@ protected:
 	constexpr static std::string_view PresentPassName         = "SPECIAL_PRESENT_ACQUIRE_PASS";
 	constexpr static std::string_view BackbufferPresentPassId = "SpecialPresentAcquirePass-Backbuffer";
 
-	struct SubresourceAddress
-	{
-		RenderPassName PassName;
-		SubresourceId  SubresId;
-	};
-
 	struct SubresourceMetadataNode
 	{
 		SubresourceMetadataNode* PrevPassNode;
@@ -35,10 +29,17 @@ protected:
 		RenderPassType PassType;
 	};
 
+	struct TextureSubresourceInfoSpan
+	{
+		uint32_t FirstSubresourceInfoIndex;
+		uint32_t LastSubresourceInfoIndex;
+	};
+
 	struct TextureResourceCreateInfo
 	{
-		SubresourceName          Name;
-		SubresourceMetadataNode* MetadataHead;
+		std::string_view           Name;
+		SubresourceMetadataNode*   MetadataHead;
+		TextureSubresourceInfoSpan SubresourceSpan;
 	};
 
 public:
@@ -81,13 +82,16 @@ private:
 	void BuildSubresources();
 
 	//Creates descriptions for resource creation
-	void BuildResourceCreateInfos(std::vector<TextureResourceCreateInfo>& outTextureCreateInfos, std::vector<TextureResourceCreateInfo>& outBackbufferCreateInfos);
+	void BuildResourceCreateInfos(std::vector<TextureResourceCreateInfo>& outTextureCreateInfos, std::vector<TextureResourceCreateInfo>& outBackbufferCreateInfos, std::vector<uint32_t>& outViewSubresourceInfoIndices);
 
 	//Validates all uninitialized parameters in subresource infos, propagating them from passes before
 	void PropagateMetadatas(const std::vector<TextureResourceCreateInfo>& textureCreateInfos, const std::vector<TextureResourceCreateInfo>& backbufferCreateInfos);
 
 	//Propagates uninitialized parameters in a single resource
 	void PropagateMetadatasInResource(const TextureResourceCreateInfo& createInfo);
+
+	//Initializes SubresourceInfoSpan field of TextureResourceCreateInfo. The span points to a newly created range in viewSubresourceInfoIndices
+	void CreateSubresourceInfoSpans(std::vector<TextureResourceCreateInfo>& textureResourceCreateInfos, std::vector<uint32_t>& inoutViewSubresourceInfoIndices);
 
 	//Validates ImageIndex and ImageViewIndex of TextureSubresourceMetadata
 	void AssignImageAndViewIndices(std::vector<TextureResourceCreateInfo>& textureCreateInfos, std::vector<TextureResourceCreateInfo>& backbufferCreateInfos);
@@ -118,7 +122,7 @@ protected:
 	virtual void CreateTextures(const std::vector<TextureResourceCreateInfo>& textureCreateInfos) const = 0;
 
 	//Creates image view objects
-	virtual void CreateTextureViews() const = 0;
+	virtual void CreateTextureViews(const std::vector<TextureResourceCreateInfo>& textureCreateInfos, const std::vector<uint32_t>& subresourceInfoIndices) const = 0;
 
 protected:
 	ModernFrameGraph* mGraphToBuild;

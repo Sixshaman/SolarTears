@@ -92,7 +92,7 @@ namespace Vulkan
 		void SetSwapchainImages(const std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& backbufferResourceCreateInfos, const std::vector<VkImage>& swapchainImages);
 
 		//Set object name for debug messages
-		void SetDebugObjectName(VkImage image, const SubresourceName& name) const;
+		void SetDebugObjectName(VkImage image, const std::string_view name) const;
 
 		//Converts pass type to a queue family index
 		uint32_t PassTypeToQueueIndex(RenderPassType passType) const;
@@ -101,8 +101,9 @@ namespace Vulkan
 		//Creates a new subresource info record
 		uint32_t AddSubresourceMetadata() override;
 
-		//Finds all indices in subresourceIndices that refer to non-unique entries in mSubresourceInfos, and replaces them with unique entries
-		void BuildUniqueSubresourceList(const std::vector<uint32_t>& subresourceIndices, std::vector<uint32_t>& outUniqueIndices) override;
+		//Finds all indices in subresourceInfoIndices that refer to non-unique entries in mSubresourceInfos. 
+		//Builds a map such that if for numbers i and j subresourceInfoIndices[i] and subresourceInfoIndices[j] refer to the same subresource info, outNewIndexMap[i] will be equal to outNewIndexMap[j]
+		void BuildUniqueSubresourceList(const std::vector<uint32_t>& subresourceInfoIndices, std::vector<uint32_t>& outNewIndexMap) override;
 
 		//Propagates info (format, access flags, etc.) from one SubresourceInfo to another. Returns true if propagation succeeded or wasn't needed
 		bool PropagateSubresourceParameters(uint32_t indexFrom, uint32_t indexTo) override;
@@ -111,7 +112,7 @@ namespace Vulkan
 		void CreateTextures(const std::vector<TextureResourceCreateInfo>& textureCreateInfos) const override;
 
 		//Creates image view objects
-		virtual void CreateTextureViews() const override;
+		virtual void CreateTextureViews(const std::vector<TextureResourceCreateInfo>& textureCreateInfos, const std::vector<uint32_t>& subresourceInfoIndices) const override;
 
 	private:
 		FrameGraph* mVulkanGraphToBuild;
