@@ -90,17 +90,17 @@ private:
 	//Propagates uninitialized parameters in a single resource
 	void PropagateMetadatasInResource(const TextureResourceCreateInfo& createInfo);
 
-	//Initializes SubresourceInfoSpan field of TextureResourceCreateInfo. The span points to a newly created range in viewSubresourceInfoIndices
-	void CreateSubresourceInfoSpans(std::vector<TextureResourceCreateInfo>& textureResourceCreateInfos, std::vector<uint32_t>& inoutViewSubresourceInfoIndices);
+	//Initializes SubresourceInfoSpan field of TextureResourceCreateInfo and ImageIndex and ImageViewIndex fields of nodes. The span points to a newly created range in viewSubresourceInfoIndices
+	void ValidateImageIndices(std::vector<TextureResourceCreateInfo>& textureResourceCreateInfos, std::vector<uint32_t>& inoutViewSubresourceInfoIndices);
 
-	//Validates ImageIndex and ImageViewIndex of TextureSubresourceMetadata
-	void AssignImageAndViewIndices(std::vector<TextureResourceCreateInfo>& textureCreateInfos, std::vector<TextureResourceCreateInfo>& backbufferCreateInfos);
+	//Initializes SubresourceInfoSpan field of TextureResourceCreateInfo and ImageIndex and ImageViewIndex fields of nodes in a single resource. The span points to a newly created range in viewSubresourceInfoIndices
+	void ValidateImageIndicesInResource(TextureResourceCreateInfo* createInfo, uint32_t imageIndex, std::vector<uint32_t>& inoutViewSubresourceInfoIndices);
 
-	//Validates ImageIndex and ImageViewIndex of TextureSubresourceMetadata. Returns the number of different image indices that were assigned
-	uint32_t AssignImageAndViewIndicesForResource(const TextureResourceCreateInfo& createInfo, uint32_t imageIndex, uint32_t baseImageViewIndex);
+	//Functions for creating actual frame graph resources/subresources
+	void SetSwapchainImages(std::vector<TextureResourceCreateInfo>& backbufferResourceCreateInfos, std::vector<uint32_t>& inoutViewSubresourceInfoIndices);
 
 	//Creates swapchain images and views (non-owning, ping-ponging)
-	void CreateSwapchainImageViews(const std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& backbufferResourceCreateInfos);
+	void CreateSwapchainImageViews(const std::unordered_map<SubresourceName, TextureResourceCreateInfo>& backbufferResourceCreateInfos);
 
 	//Recursively sort subtree topologically
 	void TopologicalSortNode(const std::unordered_map<RenderPassName, std::unordered_set<RenderPassName>>& adjacencyList, std::unordered_set<RenderPassName>& visited, std::unordered_set<RenderPassName>& onStack, const RenderPassName& renderPassName, std::vector<RenderPassName>& sortedPassNames);
@@ -113,7 +113,7 @@ protected:
 	virtual uint32_t AddSubresourceMetadata() = 0;
 
 	//Finds all indices in subresourceIndices that correspond to non-unique image views, and creates a list that only points to unique entries
-	virtual void BuildUniqueSubresourceList(const std::vector<uint32_t>& subresourceIndices, std::vector<uint32_t>& outUniqueIndices) = 0;
+	virtual void BuildUniqueSubresourceList(const std::vector<uint32_t>& subresourceInfoIndices, std::vector<uint32_t>& outUniqueSubresourceInfoIndices, std::vector<uint32_t>& outNewIndexMap) = 0;
 
 	//Propagates info (format, access flags, etc.) from one SubresourceInfo to another. Returns true if propagation succeeded or wasn't needed
 	virtual bool PropagateSubresourceParameters(uint32_t indexFrom, uint32_t indexTo) = 0;
@@ -123,6 +123,9 @@ protected:
 
 	//Creates image view objects
 	virtual void CreateTextureViews(const std::vector<TextureResourceCreateInfo>& textureCreateInfos, const std::vector<uint32_t>& subresourceInfoIndices) const = 0;
+
+	//Creates swapchain images
+	virtual uint32_t AllocateBackbufferResources() const = 0;
 
 protected:
 	ModernFrameGraph* mGraphToBuild;

@@ -11,9 +11,10 @@
 
 Vulkan::FrameGraphBuilder::FrameGraphBuilder(FrameGraph* graphToBuild, const DescriptorManager* descriptorManager, 
 	                                         const InstanceParameters* instanceParameters, const DeviceParameters* deviceParameters, 
-	                                         const ShaderManager* shaderManager, const MemoryManager* memoryManager, const DeviceQueues* deviceQueues): ModernFrameGraphBuilder(graphToBuild), mVulkanGraphToBuild(graphToBuild),
-	                                                                                                                                                    mDescriptorManager(descriptorManager), mInstanceParameters(instanceParameters), mDeviceParameters(deviceParameters), 
-	                                                                                                                                                    mShaderManager(shaderManager), mMemoryManager(memoryManager), mDeviceQueues(deviceQueues)
+	                                         const ShaderManager* shaderManager, const MemoryManager* memoryManager, 
+	                                         const DeviceQueues* deviceQueues, const SwapChain* swapchain): ModernFrameGraphBuilder(graphToBuild), mVulkanGraphToBuild(graphToBuild),
+	                                                                                                        mDescriptorManager(descriptorManager), mInstanceParameters(instanceParameters), mDeviceParameters(deviceParameters), 
+	                                                                                                        mShaderManager(shaderManager), mMemoryManager(memoryManager), mDeviceQueues(deviceQueues), mSwapChain(swapchain)
 {
 }
 
@@ -110,6 +111,11 @@ const Vulkan::DescriptorManager* Vulkan::FrameGraphBuilder::GetDescriptorManager
 const Vulkan::DeviceQueues* Vulkan::FrameGraphBuilder::GetDeviceQueues() const
 {
 	return mDeviceQueues;
+}
+
+const Vulkan::SwapChain* Vulkan::FrameGraphBuilder::GetSwapChain() const
+{
+	return mSwapChain;
 }
 
 const Vulkan::DeviceParameters* Vulkan::FrameGraphBuilder::GetDeviceParameters() const
@@ -565,31 +571,6 @@ void Vulkan::FrameGraphBuilder::BarrierImages(const DeviceQueues* deviceQueues, 
 	deviceQueues->GraphicsQueueWait();
 }
 
-void Vulkan::FrameGraphBuilder::SetSwapchainImages(const std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& backbufferResourceCreateInfos, const std::vector<VkImage>& swapchainImages)
-{
-	mGraphToBuild->mSwapchainImageRefs.clear();
-
-	mGraphToBuild->mImages.push_back(VK_NULL_HANDLE);
-	mGraphToBuild->mBackbufferRefIndex = (uint32_t)(mGraphToBuild->mImages.size() - 1);
-
-	for(size_t i = 0; i < swapchainImages.size(); i++)
-	{
-		mGraphToBuild->mSwapchainImageRefs.push_back(swapchainImages[i]);
-	}
-	
-	for(const auto& nameWithCreateInfo: backbufferResourceCreateInfos)
-	{
-		//IMAGE VIEWS
-		for(const auto& imageViewInfo: nameWithCreateInfo.second.ImageViewInfos)
-		{
-			for(const auto& viewAddress: imageViewInfo.ViewAddresses)
-			{
-				mRenderPassesSubresourceMetadatas[viewAddress.PassName][viewAddress.SubresId].ImageIndex = mGraphToBuild->mBackbufferRefIndex;
-			}
-		}
-	}
-}
-
 void Vulkan::FrameGraphBuilder::CreateTextures(const std::vector<TextureResourceCreateInfo>& textureCreateInfos) const
 {
 	mVulkanGraphToBuild->mImages.resize(textureCreateInfos.size());
@@ -665,45 +646,6 @@ void Vulkan::FrameGraphBuilder::CreateTextures(const std::vector<TextureResource
 	ThrowIfFailed(vkBindImageMemory2(mVulkanGraphToBuild->mDeviceRef, (uint32_t)(bindImageMemoryInfos.size()), bindImageMemoryInfos.data()));
 }
 
-void Vulkan::FrameGraphBuilder::CreateTextureViews(const std::vector<TextureResourceCreateInfo>& textureCreateInfos, const std::vector<uint32_t>& subresourceInfoIndices) const
-{
-	mVulkanGraphToBuild->mImageViews.resize(subresourceInfoIndices.size());
-
-	for(const TextureResourceCreateInfo& textureCreateInfo: textureCreateInfos)
-	{
-		TextureSubresourceInfoSpan subresourceInfoSpan = textureCreateInfo.SubresourceSpan;
-
-		uint32_t imageIndex = textureCreateInfo.MetadataHead->ImageIndex;
-		VkImage image = mVulkanGraphToBuild->mImages[imageIndex];
-		for(uint32_t subresourceInfoIndex = subresourceInfoSpan.FirstSubresourceInfo; subresourceInfoIndex < subresourceInfoSpan.LastSubresourceInfo; subresourceInfoIndex++)
-		{
-			//TODO: fragment density map
-			VkImageViewCreateInfo imageViewCreateInfo;
-			imageViewCreateInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-			imageViewCreateInfo.pNext                           = nullptr;
-			imageViewCreateInfo.flags                           = 0;
-			imageViewCreateInfo.image                           = image;
-			imageViewCreateInfo.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
-			imageViewCreateInfo.format                          = mSubresourceInfos[subresourceInfoIndex].Format;
-			imageViewCreateInfo.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-			imageViewCreateInfo.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-			imageViewCreateInfo.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-			imageViewCreateInfo.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-			imageViewCreateInfo.subresourceRange.aspectMask     = mSubresourceInfos[subresourceInfoIndex].Aspect;
-
-			imageViewCreateInfo.subresourceRange.baseMipLevel   = 0;
-			imageViewCreateInfo.subresourceRange.levelCount     = 1;
-			imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
-			imageViewCreateInfo.subresourceRange.layerCount     = 1;
-
-			VkImageView imageView = VK_NULL_HANDLE;
-			ThrowIfFailed(vkCreateImageView(mVulkanGraphToBuild->mDeviceRef, &imageViewCreateInfo, nullptr, &imageView));
-
-			mVulkanGraphToBuild->mImageViews[subresourceInfoIndex] = imageView;
-		}
-	}
-}
-
 uint32_t Vulkan::FrameGraphBuilder::AddSubresourceMetadata()
 {
 	SubresourceInfo subresourceInfo;
@@ -743,15 +685,23 @@ bool Vulkan::FrameGraphBuilder::PropagateSubresourceParameters(uint32_t indexFro
 	return true;
 }
 
-void Vulkan::FrameGraphBuilder::BuildUniqueSubresourceList(const std::vector<uint32_t>& subresourceIndices, std::vector<uint32_t>& outNewIndexMap)
+void Vulkan::FrameGraphBuilder::BuildUniqueSubresourceList(const std::vector<uint32_t>& subresourceInfoIndices, std::vector<uint32_t>& outUniqueSubresourceInfoIndices, std::vector<uint32_t>& outNewIndexMap)
 {
-	outNewIndexMap.resize(subresourceIndices.size());
-	std::iota(outNewIndexMap.begin(), outNewIndexMap.end(), 0);
-
-	std::sort(outNewIndexMap.begin(), outNewIndexMap.end(), [this, &subresourceIndices](uint32_t left, uint32_t right)
+	if(subresourceInfoIndices.size() == 0)
 	{
-		const SubresourceInfo& leftSubresource  = mSubresourceInfos[subresourceIndices[left]];
-		const SubresourceInfo& rightSubresource = mSubresourceInfos[subresourceIndices[right]];
+		return;
+	}
+
+	std::vector<uint32_t> reorderMap(subresourceInfoIndices.size());
+	std::iota(reorderMap.begin(), reorderMap.end(), 0);
+
+	std::sort(reorderMap.begin(), reorderMap.end(), [this, &subresourceInfoIndices](uint32_t left, uint32_t right)
+	{
+		const uint32_t leftIndex  = subresourceInfoIndices[left];
+		const uint32_t rightIndex = subresourceInfoIndices[right];
+
+		const SubresourceInfo& leftSubresource  = mSubresourceInfos[leftIndex];
+		const SubresourceInfo& rightSubresource = mSubresourceInfos[rightIndex];
 
 		if(leftSubresource.Format == rightSubresource.Format)
 		{
@@ -763,22 +713,82 @@ void Vulkan::FrameGraphBuilder::BuildUniqueSubresourceList(const std::vector<uin
 		}
 	});
 
-	for(size_t i = 1; i < outNewIndexMap.size(); i++)
-	{
-		uint32_t leftIndicesIndex  = outNewIndexMap[i - 1];
-		uint32_t rightIndicesIndex = outNewIndexMap[i];
+	outUniqueSubresourceInfoIndices.clear();
+	outUniqueSubresourceInfoIndices.push_back(subresourceInfoIndices[reorderMap[0]]);
 
-		uint32_t leftIndex  = subresourceIndices[leftIndicesIndex];
-		uint32_t rightIndex = subresourceIndices[rightIndicesIndex];
+	outNewIndexMap.resize(subresourceInfoIndices.size());
+	outNewIndexMap[reorderMap[0]] = 0;
+
+	for(size_t i = 1; i < reorderMap.size(); i++)
+	{
+		uint32_t leftIndicesIndex  = reorderMap[i - 1];
+		uint32_t rightIndicesIndex = reorderMap[i];
+
+		uint32_t leftIndex  = subresourceInfoIndices[leftIndicesIndex];
+		uint32_t rightIndex = subresourceInfoIndices[rightIndicesIndex];
 
 		const SubresourceInfo& leftSubresource  = mSubresourceInfos[leftIndex];
 		const SubresourceInfo& rightSubresource = mSubresourceInfos[rightIndex];
 
-		if(leftSubresource.Format == rightSubresource.Format && leftSubresource.Aspect == rightSubresource.Aspect)
+		if(leftSubresource.Format != rightSubresource.Format || leftSubresource.Aspect != rightSubresource.Aspect)
 		{
-			outNewIndexMap[i] = leftIndicesIndex;
+			outUniqueSubresourceInfoIndices.push_back(subresourceInfoIndices[rightIndicesIndex]);
+		}
+
+		outNewIndexMap[reorderMap[i]] = outUniqueSubresourceInfoIndices.size() - 1;
+	}
+}
+
+void Vulkan::FrameGraphBuilder::CreateTextureViews(const std::vector<TextureResourceCreateInfo>& textureCreateInfos, const std::vector<uint32_t>& subresourceInfoIndices) const
+{
+	mVulkanGraphToBuild->mImageViews.resize(subresourceInfoIndices.size());
+
+	for(const TextureResourceCreateInfo& textureCreateInfo: textureCreateInfos)
+	{
+		TextureSubresourceInfoSpan subresourceInfoSpan = textureCreateInfo.SubresourceSpan;
+
+		uint32_t imageIndex = textureCreateInfo.MetadataHead->ImageIndex;
+		VkImage  image      = mVulkanGraphToBuild->mImages[imageIndex];
+		for(uint32_t subresourceInfoIndex = subresourceInfoSpan.FirstSubresourceInfoIndex; subresourceInfoIndex < subresourceInfoSpan.LastSubresourceInfoIndex; subresourceInfoIndex++)
+		{
+			//TODO: fragment density map
+			VkImageViewCreateInfo imageViewCreateInfo;
+			imageViewCreateInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+			imageViewCreateInfo.pNext                           = nullptr;
+			imageViewCreateInfo.flags                           = 0;
+			imageViewCreateInfo.image                           = image;
+			imageViewCreateInfo.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
+			imageViewCreateInfo.format                          = mSubresourceInfos[subresourceInfoIndex].Format;
+			imageViewCreateInfo.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+			imageViewCreateInfo.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+			imageViewCreateInfo.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+			imageViewCreateInfo.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+			imageViewCreateInfo.subresourceRange.aspectMask     = mSubresourceInfos[subresourceInfoIndex].Aspect;
+
+			imageViewCreateInfo.subresourceRange.baseMipLevel   = 0;
+			imageViewCreateInfo.subresourceRange.levelCount     = 1;
+			imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+			imageViewCreateInfo.subresourceRange.layerCount     = 1;
+
+			VkImageView imageView = VK_NULL_HANDLE;
+			ThrowIfFailed(vkCreateImageView(mVulkanGraphToBuild->mDeviceRef, &imageViewCreateInfo, nullptr, &imageView));
+
+			mVulkanGraphToBuild->mImageViews[subresourceInfoIndex] = imageView;
 		}
 	}
+}
+
+uint32_t Vulkan::FrameGraphBuilder::AllocateBackbufferResources() const
+{
+	mVulkanGraphToBuild->mImages.push_back(VK_NULL_HANDLE);
+
+	mVulkanGraphToBuild->mSwapchainImageRefs.clear();
+	for(size_t i = 0; i < SwapChain::SwapchainImageCount; i++)
+	{
+		mVulkanGraphToBuild->mSwapchainImageRefs.push_back(mSwapChain->GetSwapchainImage(i));
+	}
+
+	return (uint32_t)(mVulkanGraphToBuild->mImages.size() - 1);
 }
 
 void Vulkan::FrameGraphBuilder::SetDebugObjectName(VkImage image, const std::string_view name) const

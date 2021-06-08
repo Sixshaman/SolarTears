@@ -53,7 +53,6 @@ namespace D3D12
 		wil::com_ptr_nothrow<ID3D12Heap>                   mTextureHeap;
 
 		//Swapchain images and related data
-		uint32_t                      mBackbufferRefIndex;
 		uint32_t                      mLastSwapchainImageIndex;
 		std::vector<ID3D12Resource2*> mSwapchainImageRefs;
 

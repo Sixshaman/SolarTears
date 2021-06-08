@@ -409,14 +409,12 @@ void ModernFrameGraphBuilder::BuildSubresources()
 	PropagateMetadatas(textureResourceCreateInfos, backbufferResourceCreateInfos);
 
 	std::vector<uint32_t> viewSubresourceInfoIndices;
-	CreateSubresourceInfoSpans(textureResourceCreateInfos, viewSubresourceInfoIndices);
-
-	AssignImageAndViewIndices(textureResourceCreateInfos, backbufferResourceCreateInfos);
+	ValidateImageIndices(textureResourceCreateInfos, viewSubresourceInfoIndices);
 
 	CreateTextures(textureResourceCreateInfos);
 	CreateTextureViews(textureResourceCreateInfos, viewSubresourceInfoIndices);
 
-	SetSwapchainImages(backbufferResourceCreateInfos, swapchainImages);
+	SetSwapchainImages(backbufferResourceCreateInfos, viewSubresourceInfoIndices);
 	CreateSwapchainImageViews(backbufferResourceCreateInfos);
 }
 
@@ -484,91 +482,62 @@ void ModernFrameGraphBuilder::PropagateMetadatasInResource(const TextureResource
 	} while(currentNode != headNode);
 }
 
-void ModernFrameGraphBuilder::CreateSubresourceInfoSpans(std::vector<TextureResourceCreateInfo>& textureResourceCreateInfos, std::vector<uint32_t>& viewSubresourceInfoIndices)
+void ModernFrameGraphBuilder::ValidateImageIndices(std::vector<TextureResourceCreateInfo>& textureResourceCreateInfos, std::vector<uint32_t>& inoutViewSubresourceInfoIndices)
 {
-	for(TextureResourceCreateInfo& createInfo: textureResourceCreateInfos)
+	for(uint32_t imageIndex = 0; imageIndex < (uint32_t)textureResourceCreateInfos.size(); imageIndex++)
 	{
-		std::vector<SubresourceMetadataNode*> resourceMetadataNodes;
-		std::vector<uint32_t>                 subresourceInfoIndices;
-
-		SubresourceMetadataNode* headNode    = createInfo.MetadataHead;
-		SubresourceMetadataNode* currentNode = headNode;
-
-		uint32_t imageViewIndexCounter = 0;
-
-		do
-		{
-			resourceMetadataNodes.push_back(currentNode);
-			subresourceInfoIndices.push_back(currentNode->SubresourceInfoIndex);
-
-			currentNode = currentNode->NextPassNode;
-
-		} while(currentNode != headNode);
-
-		std::vector<uint32_t> uniqueSubresourceInfoIndices;
-		BuildUniqueSubresourceList(subresourceInfoIndices, uniqueSubresourceInfoIndices);
-
-		for (size_t i = 1; i < uniqueSubresourceInfoIndices.size(); i++)
-		{
-			if (uniqueSubresourceInfoIndices)
-
-			resourceMetadataNodes[i]->ImageViewIndex = uniqueSubresourceInfoIndices[i];
-		}
-
-		createInfo.SubresourceSpan.FirstSubresourceInfoIndex = viewSubresourceInfoIndices.size();
-		createInfo.SubresourceSpan.LastSubresourceInfoIndex  = ???;
+		ValidateImageIndicesInResource(&textureResourceCreateInfos[imageIndex], imageIndex, inoutViewSubresourceInfoIndices);
 	}
 }
 
-void ModernFrameGraphBuilder::AssignImageAndViewIndices(std::vector<TextureResourceCreateInfo>& textureCreateInfos, std::vector<TextureResourceCreateInfo>& backbufferCreateInfos)
+void ModernFrameGraphBuilder::ValidateImageIndicesInResource(TextureResourceCreateInfo* createInfo, uint32_t imageIndex, std::vector<uint32_t>& inoutViewSubresourceInfoIndices)
 {
-	uint32_t imageIndexCounter     = 0;
-	uint32_t imageViewIndexCounter = 0;
+	std::vector<SubresourceMetadataNode*> resourceMetadataNodes;
+	std::vector<uint32_t>                 subresourceInfoIndices;
 
-	for(TextureResourceCreateInfo& textureCreateInfo: textureCreateInfos)
-	{
-		uint32_t imageIndex            = imageIndexCounter++;
-		uint32_t imageViewsPerResource = AssignImageAndViewIndicesForResource(textureCreateInfo, imageIndex, imageViewIndexCounter);
-
-		imageViewIndexCounter += imageViewsPerResource;
-	}
-
-	for(TextureResourceCreateInfo& backbufferCreateInfo: backbufferCreateInfos)
-	{
-		uint32_t imageIndex            = imageIndexCounter++;
-		uint32_t imageViewsPerResource = AssignImageAndViewIndicesForResource(backbufferCreateInfo, imageIndex, imageViewIndexCounter);
-
-		imageViewIndexCounter += imageViewsPerResource;
-	}
-}
-
-uint32_t ModernFrameGraphBuilder::AssignImageAndViewIndicesForResource(const TextureResourceCreateInfo& createInfo, uint32_t imageIndex, uint32_t baseImageViewIndex)
-{
-	
-
-
+	SubresourceMetadataNode* headNode    = createInfo->MetadataHead;
+	SubresourceMetadataNode* currentNode = headNode;
 
 	do
 	{
-		currentNode->ImageIndex = imageIndex;
-		if(subresourceInfoToImageViewIndexMap.contains(currentNode->SubresourceInfoIndex))
-		{
-			currentNode->ImageViewIndex = subresourceInfoToImageViewIndexMap.at(currentNode->SubresourceInfoIndex);
-		}
-		else
-		{
-			currentNode->ImageViewIndex = baseImageViewIndex + imageViewIndexCounter;
-			imageViewIndexCounter += 1;
+		resourceMetadataNodes.push_back(currentNode);
+		subresourceInfoIndices.push_back(currentNode->SubresourceInfoIndex);
 
-			subresourceInfoToImageViewIndexMap[currentNode->SubresourceInfoIndex] = currentNode->ImageViewIndex;
-		}
+		currentNode = currentNode->NextPassNode;
 
 	} while(currentNode != headNode);
 
-	return imageViewIndexCounter;
+	std::vector<uint32_t> uniqueSubresourceInfoIndices;
+	std::vector<uint32_t> indexRemap;
+	BuildUniqueSubresourceList(subresourceInfoIndices, uniqueSubresourceInfoIndices, indexRemap);
+
+	uint32_t imageViewIndexStart = (uint32_t)inoutViewSubresourceInfoIndices.size();
+	for (size_t i = 0; i < uniqueSubresourceInfoIndices.size(); i++)
+	{
+		inoutViewSubresourceInfoIndices.push_back(uniqueSubresourceInfoIndices[i]);
+	}
+
+	createInfo->SubresourceSpan.FirstSubresourceInfoIndex = imageViewIndexStart;
+	createInfo->SubresourceSpan.LastSubresourceInfoIndex  = (uint32_t)inoutViewSubresourceInfoIndices.size();
+
+	for(size_t i = 0; i < subresourceInfoIndices.size(); i++)
+	{
+		resourceMetadataNodes[i]->ImageIndex     = imageIndex;
+		resourceMetadataNodes[i]->ImageViewIndex = imageViewIndexStart + indexRemap[i];
+	}
 }
 
-void ModernFrameGraphBuilder::CreateSwapchainImageViews(const std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& backbufferResourceCreateInfos, SubresourceFormat swapchainFormat)
+void ModernFrameGraphBuilder::SetSwapchainImages(std::vector<TextureResourceCreateInfo>& backbufferResourceCreateInfos, std::vector<uint32_t>& inoutViewSubresourceInfoIndices)
+{
+	mGraphToBuild->mBackbufferImageIndex = AllocateBackbufferResources();
+	
+	for(TextureResourceCreateInfo& backbufferCreateInfo: backbufferResourceCreateInfos)
+	{
+		ValidateImageIndicesInResource(&backbufferCreateInfo, mGraphToBuild->mBackbufferImageIndex, inoutViewSubresourceInfoIndices);
+	}
+}
+
+void ModernFrameGraphBuilder::CreateSwapchainImageViews(const std::unordered_map<SubresourceName, TextureResourceCreateInfo>& backbufferResourceCreateInfos)
 {
 	mGraphToBuild->mSwapchainImageViews.clear();
 	mGraphToBuild->mSwapchainViewsSwapMap.clear();

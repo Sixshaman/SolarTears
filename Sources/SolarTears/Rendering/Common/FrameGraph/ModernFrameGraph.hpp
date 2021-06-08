@@ -21,4 +21,6 @@ protected:
 	FrameGraphConfig mFrameGraphConfig;
 
 	std::vector<DependencyLevelSpan> mGraphicsPassSpans;
+
+	uint32_t mBackbufferImageIndex;
 };

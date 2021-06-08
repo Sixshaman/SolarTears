@@ -37,7 +37,7 @@ namespace Vulkan
 		};
 
 	public:
-		FrameGraphBuilder(FrameGraph* graphToBuild, const DescriptorManager* descriptorManager, const InstanceParameters* instanceParameters, const DeviceParameters* deviceParameters, const ShaderManager* shaderManager, const MemoryManager* memoryManager, const DeviceQueues* deviceQueues);
+		FrameGraphBuilder(FrameGraph* graphToBuild, const DescriptorManager* descriptorManager, const InstanceParameters* instanceParameters, const DeviceParameters* deviceParameters, const ShaderManager* shaderManager, const MemoryManager* memoryManager, const DeviceQueues* deviceQueues, const SwapChain* swapchain);
 		~FrameGraphBuilder();
 
 		void RegisterRenderPass(const std::string_view passName, RenderPassCreateFunc createFunc, RenderPassType passType);
@@ -56,6 +56,7 @@ namespace Vulkan
 		const ShaderManager*     GetShaderManager()     const;
 		const DescriptorManager* GetDescriptorManager() const;
 		const DeviceQueues*      GetDeviceQueues()      const;
+		const SwapChain*         GetSwapChain()         const;
 
 		VkImage              GetRegisteredResource(const std::string_view passName,               const std::string_view subresourceId) const;
 		VkImageView          GetRegisteredSubresource(const std::string_view passName,            const std::string_view subresourceId) const;
@@ -88,9 +89,6 @@ namespace Vulkan
 		//Transit images from UNDEFINED to usable state
 		void BarrierImages(const DeviceQueues* deviceQueues, const WorkerCommandBuffers* workerCommandBuffers, uint32_t defaultQueueIndex);
 
-		//Functions for creating actual frame graph resources/subresources
-		void SetSwapchainImages(const std::unordered_map<SubresourceName, BackbufferResourceCreateInfo>& backbufferResourceCreateInfos, const std::vector<VkImage>& swapchainImages);
-
 		//Set object name for debug messages
 		void SetDebugObjectName(VkImage image, const std::string_view name) const;
 
@@ -101,9 +99,9 @@ namespace Vulkan
 		//Creates a new subresource info record
 		uint32_t AddSubresourceMetadata() override;
 
-		//Finds all indices in subresourceInfoIndices that refer to non-unique entries in mSubresourceInfos. 
-		//Builds a map such that if for numbers i and j subresourceInfoIndices[i] and subresourceInfoIndices[j] refer to the same subresource info, outNewIndexMap[i] will be equal to outNewIndexMap[j]
-		void BuildUniqueSubresourceList(const std::vector<uint32_t>& subresourceInfoIndices, std::vector<uint32_t>& outNewIndexMap) override;
+		//Finds all indices in subresourceInfoIndices that refer to non-unique entries in mSubresourceInfos
+		//Returns a list of indices pointing to unique entries. Also builds a map to match the old list to the new list
+		void BuildUniqueSubresourceList(const std::vector<uint32_t>& subresourceInfoIndices, std::vector<uint32_t>& outUniqueSubresourceInfoIndices, std::vector<uint32_t>& outNewIndexMap) override;
 
 		//Propagates info (format, access flags, etc.) from one SubresourceInfo to another. Returns true if propagation succeeded or wasn't needed
 		bool PropagateSubresourceParameters(uint32_t indexFrom, uint32_t indexTo) override;
@@ -112,7 +110,10 @@ namespace Vulkan
 		void CreateTextures(const std::vector<TextureResourceCreateInfo>& textureCreateInfos) const override;
 
 		//Creates image view objects
-		virtual void CreateTextureViews(const std::vector<TextureResourceCreateInfo>& textureCreateInfos, const std::vector<uint32_t>& subresourceInfoIndices) const override;
+		void CreateTextureViews(const std::vector<TextureResourceCreateInfo>& textureCreateInfos, const std::vector<uint32_t>& subresourceInfoIndices) const override;
+
+		//Initializes backbuffer-related 
+		uint32_t AllocateBackbufferResources() const override;
 
 	private:
 		FrameGraph* mVulkanGraphToBuild;
@@ -121,8 +122,9 @@ namespace Vulkan
 
 		std::vector<SubresourceInfo> mSubresourceInfos;
 
-		//Several things that might be needed to create some of the passes
+		//Several things that might be needed during build
 		const DeviceQueues*       mDeviceQueues;
+		const SwapChain*          mSwapChain;
 		const DescriptorManager*  mDescriptorManager;
 		const InstanceParameters* mInstanceParameters;
 		const DeviceParameters*   mDeviceParameters;
