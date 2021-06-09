@@ -11,16 +11,6 @@ namespace D3D12
 {
 	class FrameGraphBuilder;
 
-	enum class RenderPassType : uint32_t
-	{
-		GRAPHICS = 0,
-		COMPUTE,
-		COPY,
-		PRESENT,
-
-		RENDER_PASS_TYPE_COUNT
-	};
-
 	//An alternative approach would be a single class with Execute() callback and different render pass description classes.
 	//This would eliminate the cost of dereferencing class pointer, then dereferencing vtable, then indexing through vtable.
 	//But it would require storing all possible things a renderpass can require (pipeline, VkRenderPass object, etc.), even if pass doesn't require them.

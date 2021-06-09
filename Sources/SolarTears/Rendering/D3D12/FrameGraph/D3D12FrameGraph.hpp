@@ -4,6 +4,7 @@
 #include <vector>
 #include "D3D12RenderPass.hpp"
 #include "../../Common/FrameGraph/FrameGraphConfig.hpp"
+#include "../../Common/FrameGraph/ModernFrameGraph.hpp"
 
 class ThreadPool;
 
@@ -15,7 +16,7 @@ namespace D3D12
 	class SwapChain;
 	class DeviceQueues;
 
-	class FrameGraph
+	class FrameGraph: public ModernFrameGraph
 	{
 		friend class FrameGraphDescriptorCreator;
 		friend class FrameGraphBuilder;

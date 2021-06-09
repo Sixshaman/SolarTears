@@ -6,6 +6,7 @@
 #include <unordered_set>
 #include <memory>
 #include <array>
+#include "../../Common/FrameGraph/ModernFrameGraphBuilder.hpp"
 
 namespace D3D12
 {
@@ -16,35 +17,17 @@ namespace D3D12
 
 	using RenderPassCreateFunc = std::unique_ptr<RenderPass>(*)(ID3D12Device8*, const FrameGraphBuilder*, const std::string&);
 
-	class FrameGraphBuilder
+	class FrameGraphBuilder: public ModernFrameGraphBuilder
 	{
 		constexpr static uint32_t TextureFlagAutoBarrier       = 0x01; //Barrier is handled by render pass itself
 		constexpr static uint32_t TextureFlagStateAutoPromoted = 0x02; //The current resource state was promoted automatically from COMMON
 
-		struct SubresourceAddress
+		struct SubresourceInfo
 		{
-			RenderPassName PassName;
-			SubresourceId  SubresId;
-		};
-
-		struct TextureViewInfo
-		{
-			DXGI_FORMAT                     Format;
-			SubresourceViewType             ViewType;
-			std::vector<SubresourceAddress> ViewAddresses;
-		};
-
-		struct TextureCreateInfo
-		{
-			D3D12_RESOURCE_DESC1         ResourceDesc;
-			D3D12_RESOURCE_STATES        InitialState;
-			D3D12_CLEAR_VALUE            OptimizedClearValue;
-			std::vector<TextureViewInfo> ViewInfos;
-		};
-
-		struct BackbufferCreateInfo
-		{
-			std::vector<TextureViewInfo> ViewInfos;
+			DXGI_FORMAT           Format;
+			D3D12_RESOURCE_STATES State;
+			uint32_t              DescriptorHeapIndex;
+			uint32_t              Flags;
 		};
 
 	public:
@@ -56,12 +39,11 @@ namespace D3D12
 		void SetPassSubresourceFormat(const std::string_view passName, const std::string_view subresourceId, DXGI_FORMAT format);
 		void SetPassSubresourceState(const std::string_view passName,  const std::string_view subresourceId, D3D12_RESOURCE_STATES state);
 
-		void EnableSubresourceAutoBarrier(const std::string_view passName, const std::string_view subresourceId, bool autoBaarrier = true);
+		void EnableSubresourceAutoBarrier(const std::string_view passName, const std::string_view subresourceId, bool autoBarrier = true);
 
 		const RenderableScene*  GetScene()          const;
 		const DeviceFeatures*   GetDeviceFeatures() const;
 		const ShaderManager*    GetShaderManager()  const;
-		const FrameGraphConfig* GetConfig()         const;
 
 		ID3D12Resource2*            GetRegisteredResource(const std::string_view passName,          const std::string_view subresourceId) const;
 		D3D12_CPU_DESCRIPTOR_HANDLE GetRegisteredSubresourceSrvUav(const std::string_view passName, const std::string_view subresourceId) const;
@@ -78,15 +60,6 @@ namespace D3D12
 		D3D12_CPU_DESCRIPTOR_HANDLE GetFrameGraphDsvHeapStart() const;
 
 	private:
-		//Creates descriptions for resource creation
-		void BuildResourceCreateInfos(std::unordered_map<SubresourceName, TextureCreateInfo>& outImageCreateInfos, std::unordered_map<SubresourceName, BackbufferCreateInfo>& outBackbufferCreateInfos, std::unordered_set<RenderPassName>& swapchainPassNames);
-
-		//Initializes InitialState and ClearValue fields of texture create infos
-		void InitResourceInitialStatesAndClearValues(std::unordered_map<SubresourceName, TextureCreateInfo>& inoutTextureCreateInfos);
-
-		//Clears DENY_SHADER_RESOURCE resource desc flags
-		void CleanDenyShaderResourceFlags(std::unordered_map<SubresourceName, TextureCreateInfo>& inoutTextureCreateInfos);
-
 		//Validates StateWasPromoted flag in each subresource info
 		void ValidateCommonPromotion();
 
@@ -96,34 +69,41 @@ namespace D3D12
 		//Build resource barriers
 		void BuildBarriers();
 
-		//Functions for creating actual frame graph resources/subresources
-		void SetSwapchainTextures(const std::unordered_map<SubresourceName, BackbufferCreateInfo>& backbufferResourceCreateInfos, const std::vector<ID3D12Resource2*>& swapchainTextures);
-		void CreateTextures(ID3D12Device8* device, const std::unordered_map<SubresourceName, TextureCreateInfo>& imageCreateInfos, const MemoryManager* memoryAllocator);
-
 		//Create descriptors and descriptor heaps
 		void CreateDescriptors(ID3D12Device8* device, const std::unordered_map<SubresourceName, TextureCreateInfo>& imageCreateInfos);
-
-		//Converts per-pass resource usage to the view type
-		SubresourceViewType ViewTypeFromResourceState(D3D12_RESOURCE_STATES resourceState);
 
 		//Set object name for debug messages
 		void SetDebugObjectName(ID3D12Resource2* texture, const SubresourceName& name) const;
 
 	private:
-		FrameGraph* mGraphToBuild;
+		//Creates a new subresource info record
+		uint32_t AddSubresourceMetadata() override;
 
-		std::vector<RenderPassName>                                 mRenderPassNames;
-		std::unordered_map<RenderPassName, RenderPassCreateFunc>    mRenderPassCreateFunctions;
-		std::unordered_map<RenderPassName, RenderPassType>          mRenderPassTypes;
-		std::unordered_map<RenderPassName, uint32_t>                mRenderPassDependencyLevels;
-		std::unordered_map<RenderPassName, D3D12_COMMAND_LIST_TYPE> mRenderPassCommandListTypes;
+		//Finds all indices in subresourceInfoIndices that refer to non-unique entries in mSubresourceInfos
+		//Returns a list of indices pointing to unique entries. Also builds a map to match the old list to the new list
+		void BuildUniqueSubresourceList(const std::vector<uint32_t>& subresourceInfoIndices, std::vector<uint32_t>& outUniqueSubresourceInfoIndices, std::vector<uint32_t>& outNewIndexMap) override;
 
-		std::unordered_map<RenderPassName, std::unordered_set<SubresourceId>> mRenderPassesReadSubresourceIds;
-		std::unordered_map<RenderPassName, std::unordered_set<SubresourceId>> mRenderPassesWriteSubresourceIds;
+		//Propagates info (format, access flags, etc.) from one SubresourceInfo to another. Returns true if propagation succeeded or wasn't needed
+		bool PropagateSubresourceParameters(uint32_t indexFrom, uint32_t indexTo) override;
 
-		uint64_t mSubresourceMetadataCounter;
+		//Creates image objects
+		void CreateTextures(const std::vector<TextureResourceCreateInfo>& textureCreateInfos) const override;
 
-		SubresourceName mBackbufferName;
+		//Allocates the storage for image views
+		void AllocateTextureViews(size_t textureViewCount);
+
+		//Creates image view objects
+		void CreateTextureViews(const std::vector<TextureResourceCreateInfo>& textureCreateInfos, const std::vector<uint32_t>& subresourceInfoIndices) const override;
+
+		//Initializes backbuffer-related 
+		uint32_t AllocateBackbufferResources() const override;
+
+	private:
+		FrameGraph* mD3d12GraphToBuild;
+
+		std::unordered_map<RenderPassName, RenderPassCreateFunc> mRenderPassCreateFunctions;
+
+		std::vector<SubresourceInfo> mSubresourceInfos;
 
 		UINT mSrvUavCbvDescriptorSize;
 		UINT mRtvDescriptorSize;

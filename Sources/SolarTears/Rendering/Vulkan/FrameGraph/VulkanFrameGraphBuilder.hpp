@@ -5,7 +5,6 @@
 #include <unordered_map>
 #include <memory>
 #include <array>
-#include <variant>
 #include "../../Common/FrameGraph/ModernFrameGraphBuilder.hpp"
 
 namespace Vulkan
