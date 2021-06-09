@@ -412,9 +412,9 @@ void ModernFrameGraphBuilder::BuildSubresources()
 	ValidateImageIndices(textureResourceCreateInfos, viewSubresourceInfoIndices);
 
 	CreateTextures(textureResourceCreateInfos);
-	CreateTextureViews(textureResourceCreateInfos, viewSubresourceInfoIndices);
-
 	SetSwapchainImages(backbufferResourceCreateInfos, viewSubresourceInfoIndices);
+
+	CreateTextureViews(textureResourceCreateInfos, viewSubresourceInfoIndices);
 	CreateSwapchainImageViews(backbufferResourceCreateInfos);
 }
 
@@ -530,19 +530,15 @@ void ModernFrameGraphBuilder::ValidateImageIndicesInResource(TextureResourceCrea
 void ModernFrameGraphBuilder::SetSwapchainImages(std::vector<TextureResourceCreateInfo>& backbufferResourceCreateInfos, std::vector<uint32_t>& inoutViewSubresourceInfoIndices)
 {
 	mGraphToBuild->mBackbufferImageIndex = AllocateBackbufferResources();
-	
 	for(TextureResourceCreateInfo& backbufferCreateInfo: backbufferResourceCreateInfos)
 	{
 		ValidateImageIndicesInResource(&backbufferCreateInfo, mGraphToBuild->mBackbufferImageIndex, inoutViewSubresourceInfoIndices);
 	}
 }
 
-void ModernFrameGraphBuilder::CreateSwapchainImageViews(const std::unordered_map<SubresourceName, TextureResourceCreateInfo>& backbufferResourceCreateInfos)
+void ModernFrameGraphBuilder::CreateSwapchainImageViews(std::vector<TextureResourceCreateInfo>& backbufferResourceCreateInfos)
 {
-	mGraphToBuild->mSwapchainImageViews.clear();
-	mGraphToBuild->mSwapchainViewsSwapMap.clear();
-
-	for(const auto& nameWithCreateInfo: backbufferResourceCreateInfos)
+	for(const TextureResourceCreateInfo& backbufferResourceCreateInfo: backbufferResourceCreateInfos)
 	{
 		for(size_t j = 0; j < nameWithCreateInfo.second.ImageViewInfos.size(); j++)
 		{
@@ -550,12 +546,6 @@ void ModernFrameGraphBuilder::CreateSwapchainImageViews(const std::unordered_map
 
 			//Base image view is NULL (it will be assigned from mSwapchainImageViews each frame)
 			mGraphToBuild->mImageViews.push_back(VK_NULL_HANDLE);
-
-			uint32_t imageViewIndex = (uint32_t)(mGraphToBuild->mImageViews.size() - 1);
-			for(size_t k = 0; k < imageViewInfo.ViewAddresses.size(); k++)
-			{
-				mRenderPassesSubresourceMetadatas[imageViewInfo.ViewAddresses[k].PassName][imageViewInfo.ViewAddresses[k].SubresId].ImageViewIndex = imageViewIndex;
-			}
 
 			//Create per-frame views and the entry in mSwapchainViewsSwapMap describing how to swap views each frame
 			mGraphToBuild->mSwapchainViewsSwapMap.push_back(imageViewIndex);

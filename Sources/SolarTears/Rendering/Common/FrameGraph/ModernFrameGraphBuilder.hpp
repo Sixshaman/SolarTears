@@ -100,7 +100,7 @@ private:
 	void SetSwapchainImages(std::vector<TextureResourceCreateInfo>& backbufferResourceCreateInfos, std::vector<uint32_t>& inoutViewSubresourceInfoIndices);
 
 	//Creates swapchain images and views (non-owning, ping-ponging)
-	void CreateSwapchainImageViews(const std::unordered_map<SubresourceName, TextureResourceCreateInfo>& backbufferResourceCreateInfos);
+	void CreateSwapchainImageViews(std::vector<TextureResourceCreateInfo>& backbufferResourceCreateInfos);
 
 	//Recursively sort subtree topologically
 	void TopologicalSortNode(const std::unordered_map<RenderPassName, std::unordered_set<RenderPassName>>& adjacencyList, std::unordered_set<RenderPassName>& visited, std::unordered_set<RenderPassName>& onStack, const RenderPassName& renderPassName, std::vector<RenderPassName>& sortedPassNames);

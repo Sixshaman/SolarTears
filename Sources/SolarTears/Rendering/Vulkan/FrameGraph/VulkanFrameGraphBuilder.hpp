@@ -109,6 +109,9 @@ namespace Vulkan
 		//Creates image objects
 		void CreateTextures(const std::vector<TextureResourceCreateInfo>& textureCreateInfos) const override;
 
+		//Allocates the storage for image views
+		void AllocateTextureViews(size_t textureViewCount);
+
 		//Creates image view objects
 		void CreateTextureViews(const std::vector<TextureResourceCreateInfo>& textureCreateInfos, const std::vector<uint32_t>& subresourceInfoIndices) const override;
 

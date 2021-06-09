@@ -646,6 +646,11 @@ void Vulkan::FrameGraphBuilder::CreateTextures(const std::vector<TextureResource
 	ThrowIfFailed(vkBindImageMemory2(mVulkanGraphToBuild->mDeviceRef, (uint32_t)(bindImageMemoryInfos.size()), bindImageMemoryInfos.data()));
 }
 
+void Vulkan::FrameGraphBuilder::AllocateTextureViews(size_t textureViewCount)
+{
+	mVulkanGraphToBuild->mImageViews.resize(textureViewCount);
+}
+
 uint32_t Vulkan::FrameGraphBuilder::AddSubresourceMetadata()
 {
 	SubresourceInfo subresourceInfo;
@@ -741,16 +746,16 @@ void Vulkan::FrameGraphBuilder::BuildUniqueSubresourceList(const std::vector<uin
 
 void Vulkan::FrameGraphBuilder::CreateTextureViews(const std::vector<TextureResourceCreateInfo>& textureCreateInfos, const std::vector<uint32_t>& subresourceInfoIndices) const
 {
-	mVulkanGraphToBuild->mImageViews.resize(subresourceInfoIndices.size());
-
 	for(const TextureResourceCreateInfo& textureCreateInfo: textureCreateInfos)
 	{
 		TextureSubresourceInfoSpan subresourceInfoSpan = textureCreateInfo.SubresourceSpan;
 
 		uint32_t imageIndex = textureCreateInfo.MetadataHead->ImageIndex;
 		VkImage  image      = mVulkanGraphToBuild->mImages[imageIndex];
-		for(uint32_t subresourceInfoIndex = subresourceInfoSpan.FirstSubresourceInfoIndex; subresourceInfoIndex < subresourceInfoSpan.LastSubresourceInfoIndex; subresourceInfoIndex++)
+		for(uint32_t subresourceInfoIndexIndex = subresourceInfoSpan.FirstSubresourceInfoIndex; subresourceInfoIndexIndex < subresourceInfoSpan.LastSubresourceInfoIndex; subresourceInfoIndexIndex++)
 		{
+			uint32_t subresourceInfoIndex = subresourceInfoIndices[subresourceInfoIndexIndex];
+
 			//TODO: fragment density map
 			VkImageViewCreateInfo imageViewCreateInfo;
 			imageViewCreateInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -787,6 +792,9 @@ uint32_t Vulkan::FrameGraphBuilder::AllocateBackbufferResources() const
 	{
 		mVulkanGraphToBuild->mSwapchainImageRefs.push_back(mSwapChain->GetSwapchainImage(i));
 	}
+
+	mVulkanGraphToBuild->mSwapchainImageViews.clear();
+	mVulkanGraphToBuild->mSwapchainViewsSwapMap.clear();
 
 	return (uint32_t)(mVulkanGraphToBuild->mImages.size() - 1);
 }
