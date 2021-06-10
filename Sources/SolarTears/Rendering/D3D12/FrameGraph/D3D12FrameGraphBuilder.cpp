@@ -10,9 +10,10 @@
 #include <algorithm>
 #include <numeric>
 
-D3D12::FrameGraphBuilder::FrameGraphBuilder(FrameGraph* graphToBuild, const RenderableScene* scene, const DeviceFeatures* deviceFeatures, 
-	                                       const ShaderManager* shaderManager): ModernFrameGraphBuilder(graphToBuild), mD3d12GraphToBuild(graphToBuild),
-	                                                                            mScene(scene), mDeviceFeatures(deviceFeatures), mShaderManager(shaderManager)
+D3D12::FrameGraphBuilder::FrameGraphBuilder(ID3D12Device8* device, FrameGraph* graphToBuild, const RenderableScene* scene, const DeviceFeatures* deviceFeatures, 
+	                                        const SwapChain* swapChain, const ShaderManager* shaderManager, const MemoryManager* memoryManager): ModernFrameGraphBuilder(graphToBuild), mD3d12GraphToBuild(graphToBuild), mDevice(device),
+	                                                                                                                                             mScene(scene), mSwapChain(swapChain), mDeviceFeatures(deviceFeatures), 
+	                                                                                                                                             mShaderManager(shaderManager), mMemoryAllocator(memoryManager)
 {
 	mSrvUavCbvDescriptorSize = 0;
 	mRtvDescriptorSize       = 0;
@@ -68,9 +69,19 @@ void D3D12::FrameGraphBuilder::EnableSubresourceAutoBarrier(const std::string_vi
 	}
 }
 
+ID3D12Device8* D3D12::FrameGraphBuilder::GetDevice() const
+{
+	return mDevice;
+}
+
 const D3D12::RenderableScene* D3D12::FrameGraphBuilder::GetScene() const
 {
 	return mScene;
+}
+
+const D3D12::SwapChain* D3D12::FrameGraphBuilder::GetSwapChain() const
+{
+	return mSwapChain;
 }
 
 const D3D12::DeviceFeatures* D3D12::FrameGraphBuilder::GetDeviceFeatures() const
@@ -81,6 +92,11 @@ const D3D12::DeviceFeatures* D3D12::FrameGraphBuilder::GetDeviceFeatures() const
 const D3D12::ShaderManager* D3D12::FrameGraphBuilder::GetShaderManager() const
 {
 	return mShaderManager;
+}
+
+const D3D12::MemoryManager* D3D12::FrameGraphBuilder::GetMemoryManager() const
+{
+	return mMemoryAllocator;
 }
 
 ID3D12Resource2* D3D12::FrameGraphBuilder::GetRegisteredResource(const std::string_view passName, const std::string_view subresourceId) const
@@ -807,8 +823,9 @@ void D3D12::FrameGraphBuilder::CreateTextures(const std::vector<TextureResourceC
 	textureHeapOffsets.reserve(textureDescsVec.size());
 	mMemoryAllocator->AllocateTextureMemory(mDevice, textureDescsVec, textureHeapOffsets, D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES, mD3d12GraphToBuild->mTextureHeap.put());
 
-	for(size_t imageIndex = 0; imageIndex < textureDescsVec.size(); imageIndex++)
+	for(const TextureResourceCreateInfo& textureCreateInfo: textureCreateInfos)
 	{
+		uint32_t imageIndex = textureCreateInfo.MetadataHead->ImageIndex;
 		const D3D12_RESOURCE_DESC1& resourceDesc = textureDescsVec[imageIndex];
 
 		D3D12_CLEAR_VALUE  clearValue;
@@ -840,12 +857,17 @@ void D3D12::FrameGraphBuilder::CreateTextures(const std::vector<TextureResourceC
 			clearValuePtr = &clearValue;
 		}
 
+		uint32_t lastSubresourceIndex = textureCreateInfo.MetadataHead->PrevPassNode->SubresourceInfoIndex;
+		D3D12_RESOURCE_STATES lastState = mSubresourceInfos[lastSubresourceIndex].State;
+
 		mD3d12GraphToBuild->mOwnedResources.emplace_back();
-		THROW_IF_FAILED(mDevice->CreatePlacedResource1(mGraphToBuild->mTextureHeap.get(), textureHeapOffsets[textureIndex], &createInfo.ResourceDesc, createInfo.InitialState, resourceClearValuePtr, IID_PPV_ARGS(mD3d12GraphToBuild->mOwnedResources.back().put())));
+		THROW_IF_FAILED(mDevice->CreatePlacedResource1(mD3d12GraphToBuild->mTextureHeap.get(), textureHeapOffsets[imageIndex], &resourceDesc, lastState, clearValuePtr, IID_PPV_ARGS(mD3d12GraphToBuild->mOwnedResources.back().put())));
 		
 		mD3d12GraphToBuild->mTextures[imageIndex] = mD3d12GraphToBuild->mOwnedResources.back().get();
 		
-		SetDebugObjectName(mD3d12GraphToBuild->mTextures.back(), nameWithCreateInfo.first); //Only does something in debug
+#if defined(DEBUG) || defined(_DEBUG)
+		D3D12Utils::SetDebugObjectName(mD3d12GraphToBuild->mTextures[imageIndex], textureCreateInfo.Name);
+#endif
 	}
 }
 
@@ -1147,14 +1169,4 @@ uint32_t D3D12::FrameGraphBuilder::AllocateBackbufferResources() const
 	mVulkanGraphToBuild->mSwapchainViewsSwapMap.clear();
 
 	return (uint32_t)(mVulkanGraphToBuild->mImages.size() - 1);
-}
-
-void D3D12::FrameGraphBuilder::SetDebugObjectName(ID3D12Resource2* texture, const SubresourceName& name) const
-{
-#if defined(DEBUG) || defined(_DEBUG)
-	THROW_IF_FAILED(texture->SetName(Utils::ConvertUTF8ToWstring(name).c_str()));
-#else
-	UNREFERENCED_PARAMETER(image);
-	UNREFERENCED_PARAMETER(name);
-#endif
 }

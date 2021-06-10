@@ -1,6 +1,7 @@
 #include "VulkanUtils.hpp"
 #include "..\..\Core\Util.hpp"
 #include "..\..\Logging\LoggerQueue.hpp"
+#include "VulkanFunctions.hpp"
 #include <string>
 #include <fstream>
 #include <cinttypes>
@@ -37,6 +38,24 @@ void Vulkan::VulkanUtils::LoadShaderModuleFromFile(const std::wstring& filename,
 
     dataBlob.resize((size_t)ceilf((float)fileLength / (float)sizeof(uint32_t)));
     memcpy(dataBlob.data(), fileContents.data(), fileLength);
+}
+
+void Vulkan::VulkanUtils::SetDebugObjectName(const VkDevice device, VkImage image, const std::string_view name)
+{
+#ifdef VK_EXT_debug_utils
+    VkDebugUtilsObjectNameInfoEXT imageNameInfo;
+	imageNameInfo.sType        = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+	imageNameInfo.pNext        = nullptr;
+	imageNameInfo.objectType   = VK_OBJECT_TYPE_IMAGE;
+	imageNameInfo.objectHandle = reinterpret_cast<uint64_t>(image);
+	imageNameInfo.pObjectName  = name.data();
+
+	ThrowIfFailed(vkSetDebugUtilsObjectNameEXT(device, &imageNameInfo));
+
+#else
+    UNREFERENCED_PARAMETER(image);
+    UNREFERENCED_PARAMETER(name);
+#endif
 }
 
 VkBool32 Vulkan::VulkanUtils::DebugReportCCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType, uint64_t object, size_t location, int32_t messageCode, const char* pLayerPrefix, const char* pMessage, void* pUserData)

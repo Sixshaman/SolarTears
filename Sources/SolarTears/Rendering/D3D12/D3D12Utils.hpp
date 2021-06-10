@@ -45,6 +45,8 @@ namespace D3D12
 
 		bool IsTypelessFormat(DXGI_FORMAT format);
 
+		void SetDebugObjectName(ID3D12Resource* resource, const std::string_view name);
+
 		class StateSubobjectHelper
 		{
 		public:

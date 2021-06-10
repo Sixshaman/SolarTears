@@ -31,7 +31,7 @@ namespace D3D12
 		};
 
 	public:
-		FrameGraphBuilder(FrameGraph* graphToBuild, const RenderableScene* scene, const DeviceFeatures* deviceFeatures, const ShaderManager* shaderManager);
+		FrameGraphBuilder(ID3D12Device8* device, FrameGraph* graphToBuild, const RenderableScene* scene, const DeviceFeatures* deviceFeatures, const SwapChain* swapChain, const ShaderManager* shaderManager, const MemoryManager* memoryManager);
 		~FrameGraphBuilder();
 
 		void RegisterRenderPass(const std::string_view passName, RenderPassCreateFunc createFunc, RenderPassType passType);
@@ -41,9 +41,12 @@ namespace D3D12
 
 		void EnableSubresourceAutoBarrier(const std::string_view passName, const std::string_view subresourceId, bool autoBarrier = true);
 
+		ID3D12Device8*          GetDevice()         const;
 		const RenderableScene*  GetScene()          const;
+		const SwapChain*        GetSwapChain()      const;
 		const DeviceFeatures*   GetDeviceFeatures() const;
 		const ShaderManager*    GetShaderManager()  const;
+		const MemoryManager*    GetMemoryManager()  const;
 
 		ID3D12Resource2*            GetRegisteredResource(const std::string_view passName,          const std::string_view subresourceId) const;
 		D3D12_CPU_DESCRIPTOR_HANDLE GetRegisteredSubresourceSrvUav(const std::string_view passName, const std::string_view subresourceId) const;
@@ -71,9 +74,6 @@ namespace D3D12
 
 		//Create descriptors and descriptor heaps
 		void CreateDescriptors(ID3D12Device8* device, const std::unordered_map<SubresourceName, TextureCreateInfo>& imageCreateInfos);
-
-		//Set object name for debug messages
-		void SetDebugObjectName(ID3D12Resource2* texture, const SubresourceName& name) const;
 
 	private:
 		//Creates a new subresource info record
@@ -110,8 +110,11 @@ namespace D3D12
 		UINT mDsvDescriptorSize;
 
 		//Several things that might be needed to create some of the passes
+		ID3D12Device8*         mDevice;
 		const RenderableScene* mScene;
 		const DeviceFeatures*  mDeviceFeatures;
+		const MemoryManager*   mMemoryAllocator;
+		const SwapChain*       mSwapChain;
 		const ShaderManager*   mShaderManager;
 	};
 }

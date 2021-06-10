@@ -88,9 +88,6 @@ namespace Vulkan
 		//Transit images from UNDEFINED to usable state
 		void BarrierImages(const DeviceQueues* deviceQueues, const WorkerCommandBuffers* workerCommandBuffers, uint32_t defaultQueueIndex);
 
-		//Set object name for debug messages
-		void SetDebugObjectName(VkImage image, const std::string_view name) const;
-
 		//Converts pass type to a queue family index
 		uint32_t PassTypeToQueueIndex(RenderPassType passType) const;
 

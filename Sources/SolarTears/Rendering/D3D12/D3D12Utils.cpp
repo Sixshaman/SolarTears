@@ -6,6 +6,7 @@
 #include <fstream>
 #include <cinttypes>
 #include <malloc.h>
+#include <wil/com.h>
 
 bool D3D12::D3D12Utils::IsStateWriteable(D3D12_RESOURCE_STATES state)
 {
@@ -239,6 +240,11 @@ bool D3D12::D3D12Utils::IsTypelessFormat(DXGI_FORMAT format)
     default:
         return false;
     }
+}
+
+void D3D12::D3D12Utils::SetDebugObjectName(ID3D12Resource* resource, const std::string_view name)
+{
+    THROW_IF_FAILED(resource->SetName(Utils::ConvertUTF8ToWstring(name).c_str()));
 }
 
 D3D12::D3D12Utils::StateSubobjectHelper::StateSubobjectHelper(): mSubobjectStreamBlob(nullptr), mStreamBlobSize(0), mStreamBlobCapacity(0)

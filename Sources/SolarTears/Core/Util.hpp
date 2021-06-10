@@ -19,8 +19,8 @@ namespace Utils
 	std::string  StringFormat(const char*    format, ...);
 	std::wstring StringFormat(const wchar_t* format, ...);
 
-	std::string  ConvertWstringToUTF8(const std::wstring& str);
-	std::wstring ConvertUTF8ToWstring(const std::string&  str);
+	std::string  ConvertWstringToUTF8(const std::wstring_view str);
+	std::wstring ConvertUTF8ToWstring(const std::string_view  str);
 	
 	void SystemDebugMessage(const std::string&  str);
 	void SystemDebugMessage(const std::wstring& str);

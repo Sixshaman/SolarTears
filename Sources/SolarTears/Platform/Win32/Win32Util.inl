@@ -1,21 +1,21 @@
-std::string ConvertWstringToUTF8(const std::wstring& str)
+std::string ConvertWstringToUTF8(const std::wstring_view str)
 {
 	std::string result;
-	int charCount = WideCharToMultiByte(CP_UTF8, WC_COMPOSITECHECK, str.c_str(), -1, nullptr, 0, nullptr, nullptr);
+	int charCount = WideCharToMultiByte(CP_UTF8, WC_COMPOSITECHECK, str.data(), str.size(), nullptr, 0, nullptr, nullptr);
 
-	result.resize(charCount - 1);
-	WideCharToMultiByte(CP_UTF8, WC_COMPOSITECHECK, str.c_str(), -1, result.data(), (int)result.size(), nullptr, nullptr);
+	result.resize(charCount);
+	WideCharToMultiByte(CP_UTF8, WC_COMPOSITECHECK, str.data(), str.size(), result.data(), (int)result.size(), nullptr, nullptr);
 
 	return result;
 }
 
-std::wstring ConvertUTF8ToWstring(const std::string& str)
+std::wstring ConvertUTF8ToWstring(const std::string_view str)
 {
 	std::wstring result;
-	int charCount = MultiByteToWideChar(CP_UTF8, MB_COMPOSITE, str.c_str(), -1, nullptr, 0);
+	int charCount = MultiByteToWideChar(CP_UTF8, MB_COMPOSITE, str.data(), str.size(), nullptr, 0);
 
-	result.resize(charCount - 1);
-	MultiByteToWideChar(CP_UTF8, MB_COMPOSITE, str.c_str(), -1, result.data(), (int)result.size());
+	result.resize(charCount);
+	MultiByteToWideChar(CP_UTF8, MB_COMPOSITE, str.data(), str.size(), result.data(), (int)result.size());
 
 	return result;
 }

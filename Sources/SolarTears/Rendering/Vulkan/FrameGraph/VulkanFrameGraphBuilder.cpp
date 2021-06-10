@@ -622,7 +622,12 @@ void Vulkan::FrameGraphBuilder::CreateTextures(const std::vector<TextureResource
 		VkImage image = VK_NULL_HANDLE;
 		ThrowIfFailed(vkCreateImage(mVulkanGraphToBuild->mDeviceRef, &imageCreateInfo, nullptr, &image));
 
-		SetDebugObjectName(image, textureCreateInfo.Name); //Only does something in debug
+#if defined(DEBUG) || defined(_DEBUG)
+		if(mInstanceParameters->IsDebugUtilsExtensionEnabled())
+		{
+			VulkanUtils::SetDebugObjectName(image, textureCreateInfo.Name);
+		}
+#endif
 
 		mVulkanGraphToBuild->mImages[headNode->ImageIndex] = image;
 	}
@@ -797,27 +802,6 @@ uint32_t Vulkan::FrameGraphBuilder::AllocateBackbufferResources() const
 	mVulkanGraphToBuild->mSwapchainViewsSwapMap.clear();
 
 	return (uint32_t)(mVulkanGraphToBuild->mImages.size() - 1);
-}
-
-void Vulkan::FrameGraphBuilder::SetDebugObjectName(VkImage image, const std::string_view name) const
-{
-#if defined(VK_EXT_debug_utils) && (defined(DEBUG) || defined(_DEBUG))
-	
-	if(mInstanceParameters->IsDebugUtilsExtensionEnabled())
-	{
-		VkDebugUtilsObjectNameInfoEXT imageNameInfo;
-		imageNameInfo.sType        = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
-		imageNameInfo.pNext        = nullptr;
-		imageNameInfo.objectType   = VK_OBJECT_TYPE_IMAGE;
-		imageNameInfo.objectHandle = reinterpret_cast<uint64_t>(image);
-		imageNameInfo.pObjectName  = name.data();
-
-		ThrowIfFailed(vkSetDebugUtilsObjectNameEXT(mVulkanGraphToBuild->mDeviceRef, &imageNameInfo));
-	}
-#else
-	UNREFERENCED_PARAMETER(image);
-	UNREFERENCED_PARAMETER(name);
-#endif
 }
 
 uint32_t Vulkan::FrameGraphBuilder::PassTypeToQueueIndex(RenderPassType passType) const
