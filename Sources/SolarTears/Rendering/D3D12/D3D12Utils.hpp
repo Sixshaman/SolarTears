@@ -41,7 +41,9 @@ namespace D3D12
 		bool IsStatePromoteableTo(D3D12_RESOURCE_STATES state);
 
 		DXGI_FORMAT ConvertToTypeless(DXGI_FORMAT format);
+		DXGI_FORMAT ConvertToDepthStencil(DXGI_FORMAT format);
 
+		bool IsTypelessFormat(DXGI_FORMAT format);
 
 		class StateSubobjectHelper
 		{

@@ -721,25 +721,29 @@ void D3D12::FrameGraphBuilder::SetSwapchainTextures(const std::unordered_map<Sub
 
 void D3D12::FrameGraphBuilder::CreateTextures(const std::vector<TextureResourceCreateInfo>& textureCreateInfos)
 {
-	mD3d12GraphToBuild->mTextures.clear();
+	mD3d12GraphToBuild->mTextures.resize(textureCreateInfos.size());
 	mD3d12GraphToBuild->mTextureHeap.reset();
 
 	std::vector<D3D12_RESOURCE_DESC1> textureDescsVec;
-	textureDescsVec.reserve(textureCreateInfos.size());
-	
+	textureDescsVec.resize(textureCreateInfos.size());
+
+	//For TYPELESS formats, we lose the information for clear values. Fortunately, this is not a very common case
+	//It's only needed for RTV formats, since depth-stencil format can actually be recovered from a typeless one
+	std::unordered_map<uint32_t, DXGI_FORMAT> optimizedClearFormats;
+
 	for(const TextureResourceCreateInfo& textureCreateInfo: textureCreateInfos)
 	{
 		SubresourceMetadataNode* headNode    = textureCreateInfo.MetadataHead;
 		SubresourceMetadataNode* currentNode = headNode;
 
-		DXGI_FORMAT headFormat = mSubresourceInfos[headNode->SubresourceInfoIndex].Format;
-		DXGI_FORMAT format     = headFormat;
+		DXGI_FORMAT headFormat     = mSubresourceInfos[headNode->SubresourceInfoIndex].Format;
+		DXGI_FORMAT format         = headFormat;
+		DXGI_FORMAT formatForClear = DXGI_FORMAT_UNKNOWN;
 
 		D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
 		do
 		{
 			const SubresourceInfo& subresourceInfo = mSubresourceInfos[currentNode->SubresourceInfoIndex];
-
 			if(subresourceInfo.Format != headFormat)
 			{
 				format = D3D12Utils::ConvertToTypeless(headFormat);
@@ -748,11 +752,13 @@ void D3D12::FrameGraphBuilder::CreateTextures(const std::vector<TextureResourceC
 			if(subresourceInfo.State & (D3D12_RESOURCE_STATE_DEPTH_WRITE | D3D12_RESOURCE_STATE_DEPTH_READ))
 			{
 				resourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+				formatForClear = subresourceInfo.Format;
 			}
 
 			if(subresourceInfo.State & (D3D12_RESOURCE_STATE_RENDER_TARGET))
 			{
 				resourceFlags |= D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+				formatForClear = subresourceInfo.Format;
 			}
 
 			if(subresourceInfo.State & (D3D12_RESOURCE_STATE_UNORDERED_ACCESS))
@@ -773,6 +779,11 @@ void D3D12::FrameGraphBuilder::CreateTextures(const std::vector<TextureResourceC
 			resourceFlags &= ~D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
 		}
 
+		if(D3D12Utils::IsTypelessFormat(format) && !(resourceFlags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL) && (resourceFlags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET))
+		{
+			optimizedClearFormats[headNode->ImageIndex] = formatForClear;
+		}
+
 		D3D12_RESOURCE_DESC1 resourceDesc;
 		resourceDesc.Dimension                       = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
 		resourceDesc.Alignment                       = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
@@ -789,40 +800,52 @@ void D3D12::FrameGraphBuilder::CreateTextures(const std::vector<TextureResourceC
 		resourceDesc.SamplerFeedbackMipRegion.Height = 0;
 		resourceDesc.SamplerFeedbackMipRegion.Depth  = 0;
 
-		textureDescsVec.push_back(resourceDesc);
+		textureDescsVec[headNode->ImageIndex] = resourceDesc;
 	}
 
 	std::vector<UINT64> textureHeapOffsets;
 	textureHeapOffsets.reserve(textureDescsVec.size());
 	mMemoryAllocator->AllocateTextureMemory(mDevice, textureDescsVec, textureHeapOffsets, D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES, mD3d12GraphToBuild->mTextureHeap.put());
 
-	for(const D3D12_RESOURCE_DESC1& resourceDesc: textureDescsVec)
+	for(size_t imageIndex = 0; imageIndex < textureDescsVec.size(); imageIndex++)
 	{
-		//TODO: FORMAT-SPECIFIC CLEAR VALUE
-		D3D12_CLEAR_VALUE clearValue;
+		const D3D12_RESOURCE_DESC1& resourceDesc = textureDescsVec[imageIndex];
 
-		const D3D12_CLEAR_VALUE* resourceClearValuePtr = nullptr;
-		if(metadata.ResourceState & D3D12_RESOURCE_STATE_RENDER_TARGET)
+		D3D12_CLEAR_VALUE  clearValue;
+		D3D12_CLEAR_VALUE* clearValuePtr = nullptr;
+		if(resourceDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)
 		{
-			clearValue.Format   = resourceDesc.Format;
+			if(D3D12Utils::IsTypelessFormat(resourceDesc.Format))
+			{
+				clearValue.Format = optimizedClearFormats[imageIndex];
+			}
+			else
+			{
+				clearValue.Format = resourceDesc.Format;
+			}
+
 			clearValue.Color[0] = 0.0f;
 			clearValue.Color[1] = 0.0f;
 			clearValue.Color[2] = 0.0f;
-			clearValue.Color[3] = 0.0f;
+			clearValue.Color[3] = 1.0f;
+
+			clearValuePtr = &clearValue;
 		}
-		else if(metadata.ResourceState & D3D12_RESOURCE_STATE_DEPTH_WRITE)
+		else if(resourceDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL)
 		{
-			clearValue.Format               = resourceDesc.Format;
+			clearValue.Format               = D3D12Utils::ConvertToDepthStencil(resourceDesc.Format);
 			clearValue.DepthStencil.Depth   = 1.0f;
 			clearValue.DepthStencil.Stencil = 0;
+
+			clearValuePtr = &clearValue;
 		}
 
 		mD3d12GraphToBuild->mOwnedResources.emplace_back();
-		THROW_IF_FAILED(device->CreatePlacedResource1(mGraphToBuild->mTextureHeap.get(), textureHeapOffsets[textureIndex], &createInfo.ResourceDesc, createInfo.InitialState, resourceClearValuePtr, IID_PPV_ARGS(mGraphToBuild->mOwnedResources.back().put())));
+		THROW_IF_FAILED(mDevice->CreatePlacedResource1(mGraphToBuild->mTextureHeap.get(), textureHeapOffsets[textureIndex], &createInfo.ResourceDesc, createInfo.InitialState, resourceClearValuePtr, IID_PPV_ARGS(mD3d12GraphToBuild->mOwnedResources.back().put())));
 		
-		mGraphToBuild->mTextures.push_back(mGraphToBuild->mOwnedResources.back().get());
+		mD3d12GraphToBuild->mTextures[imageIndex] = mD3d12GraphToBuild->mOwnedResources.back().get();
 		
-		SetDebugObjectName(mGraphToBuild->mTextures.back(), nameWithCreateInfo.first); //Only does something in debug
+		SetDebugObjectName(mD3d12GraphToBuild->mTextures.back(), nameWithCreateInfo.first); //Only does something in debug
 	}
 }
 
