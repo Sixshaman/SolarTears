@@ -697,45 +697,7 @@ void D3D12::FrameGraphBuilder::InitResourceInitialStatesAndClearValues(std::unor
 	}
 }
 
-void D3D12::FrameGraphBuilder::CleanDenyShaderResourceFlags(std::unordered_map<SubresourceName, TextureCreateInfo>& inoutTextureCreateInfos)
-{
-	for(auto& nameWithCreateInfo: inoutTextureCreateInfos)
-	{
-		D3D12_RESOURCE_DESC1& resourceDesc = nameWithCreateInfo.second.ResourceDesc;
-		if ((resourceDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL) == 0)
-		{
-			resourceDesc.Flags &= ~D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
-		}
-	}
-}
-
-void D3D12::FrameGraphBuilder::SetSwapchainTextures(const std::unordered_map<SubresourceName, BackbufferCreateInfo>& backbufferResourceCreateInfos, const std::vector<ID3D12Resource2*>& swapchainTextures)
-{
-	mGraphToBuild->mSwapchainImageRefs.clear();
-
-	mGraphToBuild->mTextures.push_back(nullptr);
-	mGraphToBuild->mBackbufferRefIndex = (uint32_t)(mGraphToBuild->mTextures.size() - 1);
-
-	for(size_t i = 0; i < swapchainTextures.size(); i++)
-	{
-		mGraphToBuild->mSwapchainImageRefs.push_back(swapchainTextures[i]);
-		SetDebugObjectName(mGraphToBuild->mSwapchainImageRefs.back(), mBackbufferName);
-	}
-	
-	for(const auto& nameWithCreateInfo: backbufferResourceCreateInfos)
-	{
-		//IMAGE VIEWS
-		for(const auto& imageViewInfo: nameWithCreateInfo.second.ViewInfos)
-		{
-			for(const auto& viewAddress: imageViewInfo.ViewAddresses)
-			{
-				mRenderPassesSubresourceMetadatas[viewAddress.PassName][viewAddress.SubresId].ImageIndex = mGraphToBuild->mBackbufferRefIndex;
-			}
-		}
-	}
-}
-
-void D3D12::FrameGraphBuilder::CreateTextures(const std::vector<TextureResourceCreateInfo>& textureCreateInfos)
+void D3D12::FrameGraphBuilder::CreateTextures(const std::vector<TextureResourceCreateInfo>& textureCreateInfos) const
 {
 	mD3d12GraphToBuild->mTextures.resize(textureCreateInfos.size());
 	mD3d12GraphToBuild->mTextureHeap.reset();
@@ -871,170 +833,9 @@ void D3D12::FrameGraphBuilder::CreateTextures(const std::vector<TextureResourceC
 	}
 }
 
-void D3D12::FrameGraphBuilder::CreateDescriptors(ID3D12Device8* device, const std::unordered_map<SubresourceName, TextureCreateInfo>& textureCreateInfos)
-{
-	mGraphToBuild->mSrvUavDescriptorHeap.reset();
-	mGraphToBuild->mRtvDescriptorHeap.reset();
-	mGraphToBuild->mDsvDescriptorHeap.reset();
-
-	UINT srvUavDescriptorCount = 0;
-	UINT rtvDescriptorCount    = 0;
-	UINT dsvDescriptorCount    = 0;
-	for(auto nameWithCreateInfo: textureCreateInfos)
-	{
-		const auto& viewInfos = nameWithCreateInfo.second.ViewInfos;
-		for(size_t i = 0; i < viewInfos.size(); i++)
-		{
-			switch (viewInfos[i].ViewType)
-			{
-			case ShaderResource:
-			case UnorderedAccess:
-				srvUavDescriptorCount++;
-				break;
-			case RenderTarget:
-				rtvDescriptorCount++;
-				break;
-			case DepthStencil:
-				dsvDescriptorCount++;
-				break;
-			default:
-				break;
-			}
-		}
-	}
-
-
-	//TODO: mGPU?
-	D3D12_DESCRIPTOR_HEAP_DESC srvUavDescriptorHeapDesc;
-	srvUavDescriptorHeapDesc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-	srvUavDescriptorHeapDesc.NumDescriptors = srvUavDescriptorCount;
-	srvUavDescriptorHeapDesc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-	srvUavDescriptorHeapDesc.NodeMask       = 0;
-
-	THROW_IF_FAILED(device->CreateDescriptorHeap(&srvUavDescriptorHeapDesc, IID_PPV_ARGS(mGraphToBuild->mSrvUavDescriptorHeap.put())));
-
-	D3D12_DESCRIPTOR_HEAP_DESC rtvDescriptorHeapDesc;
-	rtvDescriptorHeapDesc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
-	rtvDescriptorHeapDesc.NumDescriptors = rtvDescriptorCount;
-	rtvDescriptorHeapDesc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-	rtvDescriptorHeapDesc.NodeMask       = 0;
-
-	THROW_IF_FAILED(device->CreateDescriptorHeap(&rtvDescriptorHeapDesc, IID_PPV_ARGS(mGraphToBuild->mRtvDescriptorHeap.put())));
-	
-	D3D12_DESCRIPTOR_HEAP_DESC dsvDescriptorHeapDesc;
-	dsvDescriptorHeapDesc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
-	dsvDescriptorHeapDesc.NumDescriptors = dsvDescriptorCount;
-	dsvDescriptorHeapDesc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-	dsvDescriptorHeapDesc.NodeMask       = 0;
-
-	THROW_IF_FAILED(device->CreateDescriptorHeap(&dsvDescriptorHeapDesc, IID_PPV_ARGS(mGraphToBuild->mDsvDescriptorHeap.put())));
-
-	UINT srvUavCounter = 0;
-	UINT rtvCounter    = 0;
-	UINT dsvCounter    = 0;
-	for(auto nameWithCreateInfo: textureCreateInfos)
-	{
-		const auto& viewInfos = nameWithCreateInfo.second.ViewInfos;
-		for(size_t i = 0; i < viewInfos.size(); i++)
-		{
-			const SubresourceAddress& firstAddress    = viewInfos[i].ViewAddresses[0];
-			TextureSubresourceMetadata& firstMetadata = mRenderPassesSubresourceMetadatas.at(firstAddress.PassName).at(firstAddress.SubresId);
-
-			ID3D12Resource* descriptorResource = mGraphToBuild->mTextures[firstMetadata.ImageIndex];
-			switch (viewInfos[i].ViewType)
-			{
-			case ShaderResource:
-			{
-				D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc;
-				srvDesc.ViewDimension                 = D3D12_SRV_DIMENSION_TEXTURE2D;
-				srvDesc.Format                        = viewInfos[i].Format;
-				srvDesc.Shader4ComponentMapping       = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-				srvDesc.Texture2D.MipLevels           = 1;
-				srvDesc.Texture2D.MostDetailedMip     = 0;
-				srvDesc.Texture2D.PlaneSlice          = 0;
-				srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
-
-				D3D12_CPU_DESCRIPTOR_HANDLE srvHandle = mGraphToBuild->mSrvUavDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
-				srvHandle.ptr                        += srvUavCounter * mSrvUavCbvDescriptorSize;
-				
-				device->CreateShaderResourceView(descriptorResource, &srvDesc, srvHandle);
-				for(size_t subresourceAddressIndex = 0; subresourceAddressIndex < viewInfos[i].ViewAddresses.size(); subresourceAddressIndex++)
-				{
-					mRenderPassesSubresourceMetadatas.at(firstAddress.PassName).at(firstAddress.SubresId).SrvUavIndex = srvUavCounter;
-				}
-
-				srvUavCounter++;
-				break;
-			}
-			case UnorderedAccess:
-			{
-				D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc;
-				uavDesc.ViewDimension        = D3D12_UAV_DIMENSION_TEXTURE2D;
-				uavDesc.Format               = viewInfos[i].Format;
-				uavDesc.Texture2D.MipSlice   = 0;
-				uavDesc.Texture2D.PlaneSlice = 0;
-
-				D3D12_CPU_DESCRIPTOR_HANDLE uavHandle = mGraphToBuild->mSrvUavDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
-				uavHandle.ptr                        += srvUavCounter * mSrvUavCbvDescriptorSize;
-				
-				device->CreateUnorderedAccessView(descriptorResource, nullptr, &uavDesc, uavHandle);
-				for(size_t subresourceAddressIndex = 0; subresourceAddressIndex < viewInfos[i].ViewAddresses.size(); subresourceAddressIndex++)
-				{
-					mRenderPassesSubresourceMetadatas.at(firstAddress.PassName).at(firstAddress.SubresId).SrvUavIndex = srvUavCounter;
-				}
-
-				srvUavCounter++;
-				break;
-			}
-			case RenderTarget:
-			{
-				D3D12_RENDER_TARGET_VIEW_DESC rtvDesc;
-				rtvDesc.ViewDimension        = D3D12_RTV_DIMENSION_TEXTURE2D;
-				rtvDesc.Format               = viewInfos[i].Format;
-				rtvDesc.Texture2D.MipSlice   = 0;
-				rtvDesc.Texture2D.PlaneSlice = 0;
-
-				D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = mGraphToBuild->mRtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
-				rtvHandle.ptr                        += rtvCounter * mRtvDescriptorSize;
-				
-				device->CreateRenderTargetView(descriptorResource, &rtvDesc, rtvHandle);
-				for(size_t subresourceAddressIndex = 0; subresourceAddressIndex < viewInfos[i].ViewAddresses.size(); subresourceAddressIndex++)
-				{
-					mRenderPassesSubresourceMetadatas.at(firstAddress.PassName).at(firstAddress.SubresId).RtvIndex = rtvCounter;
-				}
-
-				rtvCounter++;
-				break;
-			}
-			case DepthStencil:
-			{
-				D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc;
-				dsvDesc.ViewDimension      = D3D12_DSV_DIMENSION_TEXTURE2D;
-				dsvDesc.Format             = viewInfos[i].Format;
-				dsvDesc.Texture2D.MipSlice = 0;
-
-				D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = mGraphToBuild->mDsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
-				dsvHandle.ptr                        += dsvCounter * mDsvDescriptorSize;
-				
-				device->CreateDepthStencilView(descriptorResource, &dsvDesc, dsvHandle);
-				for(size_t subresourceAddressIndex = 0; subresourceAddressIndex < viewInfos[i].ViewAddresses.size(); subresourceAddressIndex++)
-				{
-					mRenderPassesSubresourceMetadatas.at(firstAddress.PassName).at(firstAddress.SubresId).DsvIndex = dsvCounter;
-				}
-
-				dsvCounter++;
-				break;
-			}
-			default:
-				break;
-			}
-		}
-	}
-}
-
 void D3D12::FrameGraphBuilder::AllocateTextureViews(size_t textureViewCount)
 {
-	mD3d12GraphToBuild->mImageViews.resize(textureViewCount);
+	UNREFERENCED_PARAMETER(textureViewCount);
 }
 
 uint32_t D3D12::FrameGraphBuilder::AddSubresourceMetadata()
@@ -1118,55 +919,147 @@ void D3D12::FrameGraphBuilder::BuildUniqueSubresourceList(const std::vector<uint
 
 void D3D12::FrameGraphBuilder::CreateTextureViews(const std::vector<TextureResourceCreateInfo>& textureCreateInfos, const std::vector<uint32_t>& subresourceInfoIndices) const
 {
+	mD3d12GraphToBuild->mSrvUavDescriptorHeap.reset();
+	mD3d12GraphToBuild->mRtvDescriptorHeap.reset();
+	mD3d12GraphToBuild->mDsvDescriptorHeap.reset();
+
+	UINT srvUavDescriptorCount = 0;
+	UINT rtvDescriptorCount    = 0;
+	UINT dsvDescriptorCount    = 0;
 	for(const TextureResourceCreateInfo& textureCreateInfo: textureCreateInfos)
 	{
-		TextureSubresourceInfoSpan subresourceInfoSpan = textureCreateInfo.SubresourceSpan;
-
-		uint32_t imageIndex = textureCreateInfo.MetadataHead->ImageIndex;
-		VkImage  image      = mVulkanGraphToBuild->mImages[imageIndex];
-		for(uint32_t subresourceInfoIndexIndex = subresourceInfoSpan.FirstSubresourceInfoIndex; subresourceInfoIndexIndex < subresourceInfoSpan.LastSubresourceInfoIndex; subresourceInfoIndexIndex++)
+		for(uint32_t subresourceIndexIndex = textureCreateInfo.SubresourceSpan.FirstSubresourceInfoIndex; subresourceIndexIndex < textureCreateInfo.SubresourceSpan.LastSubresourceInfoIndex; subresourceIndexIndex++)
 		{
-			uint32_t subresourceInfoIndex = subresourceInfoIndices[subresourceInfoIndexIndex];
+			uint32_t subresourceIndex = subresourceInfoIndices[subresourceIndexIndex];
+			const SubresourceInfo& subresourceInfo = mSubresourceInfos[subresourceIndex];
 
-			//TODO: fragment density map
-			VkImageViewCreateInfo imageViewCreateInfo;
-			imageViewCreateInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-			imageViewCreateInfo.pNext                           = nullptr;
-			imageViewCreateInfo.flags                           = 0;
-			imageViewCreateInfo.image                           = image;
-			imageViewCreateInfo.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
-			imageViewCreateInfo.format                          = mSubresourceInfos[subresourceInfoIndex].Format;
-			imageViewCreateInfo.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-			imageViewCreateInfo.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-			imageViewCreateInfo.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-			imageViewCreateInfo.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-			imageViewCreateInfo.subresourceRange.aspectMask     = mSubresourceInfos[subresourceInfoIndex].Aspect;
+			if(subresourceInfo.State & (D3D12_RESOURCE_STATE_UNORDERED_ACCESS | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE))
+			{
+				srvUavDescriptorCount++;
+			}
+			else if(subresourceInfo.State & (D3D12_RESOURCE_STATE_RENDER_TARGET))
+			{
+				rtvDescriptorCount++;
+			}
+			else if(subresourceInfo.State & (D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_DEPTH_WRITE))
+			{
+				dsvDescriptorCount++;
+			}
+		}
+	}
 
-			imageViewCreateInfo.subresourceRange.baseMipLevel   = 0;
-			imageViewCreateInfo.subresourceRange.levelCount     = 1;
-			imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
-			imageViewCreateInfo.subresourceRange.layerCount     = 1;
+	//TODO: mGPU?
+	D3D12_DESCRIPTOR_HEAP_DESC srvUavDescriptorHeapDesc;
+	srvUavDescriptorHeapDesc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+	srvUavDescriptorHeapDesc.NumDescriptors = srvUavDescriptorCount;
+	srvUavDescriptorHeapDesc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+	srvUavDescriptorHeapDesc.NodeMask       = 0;
 
-			VkImageView imageView = VK_NULL_HANDLE;
-			ThrowIfFailed(vkCreateImageView(mVulkanGraphToBuild->mDeviceRef, &imageViewCreateInfo, nullptr, &imageView));
+	THROW_IF_FAILED(mDevice->CreateDescriptorHeap(&srvUavDescriptorHeapDesc, IID_PPV_ARGS(mD3d12GraphToBuild->mSrvUavDescriptorHeap.put())));
 
-			mVulkanGraphToBuild->mImageViews[subresourceInfoIndex] = imageView;
+	D3D12_DESCRIPTOR_HEAP_DESC rtvDescriptorHeapDesc;
+	rtvDescriptorHeapDesc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+	rtvDescriptorHeapDesc.NumDescriptors = rtvDescriptorCount;
+	rtvDescriptorHeapDesc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+	rtvDescriptorHeapDesc.NodeMask       = 0;
+
+	THROW_IF_FAILED(mDevice->CreateDescriptorHeap(&rtvDescriptorHeapDesc, IID_PPV_ARGS(mD3d12GraphToBuild->mRtvDescriptorHeap.put())));
+	
+	D3D12_DESCRIPTOR_HEAP_DESC dsvDescriptorHeapDesc;
+	dsvDescriptorHeapDesc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+	dsvDescriptorHeapDesc.NumDescriptors = dsvDescriptorCount;
+	dsvDescriptorHeapDesc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+	dsvDescriptorHeapDesc.NodeMask       = 0;
+
+	THROW_IF_FAILED(mDevice->CreateDescriptorHeap(&dsvDescriptorHeapDesc, IID_PPV_ARGS(mD3d12GraphToBuild->mDsvDescriptorHeap.put())));
+
+	UINT srvUavCounter = 0;
+	UINT rtvCounter    = 0;
+	UINT dsvCounter    = 0;
+	for(const TextureResourceCreateInfo& textureCreateInfo: textureCreateInfos)
+	{
+		for(uint32_t subresourceIndexIndex = textureCreateInfo.SubresourceSpan.FirstSubresourceInfoIndex; subresourceIndexIndex < textureCreateInfo.SubresourceSpan.LastSubresourceInfoIndex; subresourceIndexIndex++)
+		{
+			uint32_t subresourceIndex = subresourceInfoIndices[subresourceIndexIndex];
+			const SubresourceInfo& subresourceInfo = mSubresourceInfos[subresourceIndex];
+
+			ID3D12Resource* descriptorResource = mD3d12GraphToBuild->mTextures[textureCreateInfo.MetadataHead->ImageIndex];
+
+			if(subresourceInfo.State & (D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE))
+			{
+				D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc;
+				srvDesc.ViewDimension                 = D3D12_SRV_DIMENSION_TEXTURE2D;
+				srvDesc.Format                        = subresourceInfo.Format;
+				srvDesc.Shader4ComponentMapping       = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+				srvDesc.Texture2D.MipLevels           = 1;
+				srvDesc.Texture2D.MostDetailedMip     = 0;
+				srvDesc.Texture2D.PlaneSlice          = 0;
+				srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
+
+				D3D12_CPU_DESCRIPTOR_HANDLE srvHandle = mD3d12GraphToBuild->mSrvUavDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+				srvHandle.ptr                        += srvUavCounter * mSrvUavCbvDescriptorSize;
+				
+				mDevice->CreateShaderResourceView(descriptorResource, &srvDesc, srvHandle);
+				srvUavCounter++;
+			}
+			else if(subresourceInfo.State & (D3D12_RESOURCE_STATE_UNORDERED_ACCESS))
+			{
+				D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc;
+				uavDesc.ViewDimension        = D3D12_UAV_DIMENSION_TEXTURE2D;
+				uavDesc.Format               = subresourceInfo.Format;
+				uavDesc.Texture2D.MipSlice   = 0;
+				uavDesc.Texture2D.PlaneSlice = 0;
+
+				D3D12_CPU_DESCRIPTOR_HANDLE uavHandle = mD3d12GraphToBuild->mSrvUavDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+				uavHandle.ptr                        += srvUavCounter * mSrvUavCbvDescriptorSize;
+				
+				mDevice->CreateUnorderedAccessView(descriptorResource, nullptr, &uavDesc, uavHandle);
+				srvUavCounter++;
+			}
+			else if(subresourceInfo.State & (D3D12_RESOURCE_STATE_RENDER_TARGET))
+			{
+				D3D12_RENDER_TARGET_VIEW_DESC rtvDesc;
+				rtvDesc.ViewDimension        = D3D12_RTV_DIMENSION_TEXTURE2D;
+				rtvDesc.Format               = subresourceInfo.Format;
+				rtvDesc.Texture2D.MipSlice   = 0;
+				rtvDesc.Texture2D.PlaneSlice = 0;
+
+				D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = mD3d12GraphToBuild->mRtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+				rtvHandle.ptr                        += rtvCounter * mRtvDescriptorSize;
+				
+				mDevice->CreateRenderTargetView(descriptorResource, &rtvDesc, rtvHandle);
+				rtvCounter++;
+			}
+			else if(subresourceInfo.State & (D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_DEPTH_WRITE))
+			{
+				D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc;
+				dsvDesc.ViewDimension      = D3D12_DSV_DIMENSION_TEXTURE2D;
+				dsvDesc.Format             = subresourceInfo.Format;
+				dsvDesc.Texture2D.MipSlice = 0;
+
+				D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = mD3d12GraphToBuild->mDsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+				dsvHandle.ptr                        += dsvCounter * mDsvDescriptorSize;
+				
+				mDevice->CreateDepthStencilView(descriptorResource, &dsvDesc, dsvHandle);
+				dsvCounter++;
+			}
 		}
 	}
 }
 
 uint32_t D3D12::FrameGraphBuilder::AllocateBackbufferResources() const
 {
-	mVulkanGraphToBuild->mImages.push_back(VK_NULL_HANDLE);
+	mD3d12GraphToBuild->mSwapchainImageRefs.clear();
 
-	mVulkanGraphToBuild->mSwapchainImageRefs.clear();
+	mD3d12GraphToBuild->mTextures.push_back(nullptr);
 	for(size_t i = 0; i < SwapChain::SwapchainImageCount; i++)
 	{
-		mVulkanGraphToBuild->mSwapchainImageRefs.push_back(mSwapChain->GetSwapchainImage(i));
+		mD3d12GraphToBuild->mSwapchainImageRefs.push_back(mSwapChain->GetSwapchainImage(i));
+
+#if defined(DEBUG) || defined(_DEBUG)
+		D3D12Utils::SetDebugObjectName(mD3d12GraphToBuild->mSwapchainImageRefs.back(), mBackbufferName);
+#endif
 	}
 
-	mVulkanGraphToBuild->mSwapchainImageViews.clear();
-	mVulkanGraphToBuild->mSwapchainViewsSwapMap.clear();
-
-	return (uint32_t)(mVulkanGraphToBuild->mImages.size() - 1);
+	return (uint32_t)(mD3d12GraphToBuild->mTextures.size() - 1);
 }
