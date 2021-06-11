@@ -501,79 +501,10 @@ void Vulkan::FrameGraphBuilder::BuildBarriers()
 	}
 }
 
-void Vulkan::FrameGraphBuilder::BarrierImages(const DeviceQueues* deviceQueues, const WorkerCommandBuffers* workerCommandBuffers, uint32_t defaultQueueIndex)
-{
-	//Transit to the last pass as if rendering just ended. That ensures correct barriers at the start of the frame
-	std::vector<VkImageMemoryBarrier> imageMemoryBarriers;
-
-	std::unordered_map<SubresourceName, ImageSubresourceMetadata> imageLastMetadatas;
-	for(size_t i = mRenderPassNames.size() - 1; i < mRenderPassNames.size(); i--) //The loop wraps around 0
-	{
-		const RenderPassName renderPassName = mRenderPassNames[i];
-
-		const auto& nameIdMap = mRenderPassesSubresourceNameIds[renderPassName];
-		for(const auto& nameId: nameIdMap)
-		{
-			if(!imageLastMetadatas.contains(nameId.first) && nameId.first != mBackbufferName)
-			{
-				ImageSubresourceMetadata metadata = mRenderPassesSubresourceMetadatas[renderPassName][nameId.second];
-				imageLastMetadatas[nameId.first] = metadata;
-			}
-		}
-	}
-
-	std::vector<VkImageMemoryBarrier> imageBarriers;
-	for(const auto& nameMetadata: imageLastMetadatas)
-	{
-		VkImageMemoryBarrier imageBarrier;
-		imageBarrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		imageBarrier.pNext                           = nullptr;
-		imageBarrier.srcAccessMask                   = 0;
-		imageBarrier.dstAccessMask                   = nameMetadata.second.AccessFlags;
-		imageBarrier.oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;
-		imageBarrier.newLayout                       = nameMetadata.second.Layout;
-		imageBarrier.srcQueueFamilyIndex             = defaultQueueIndex; //Resources were created with that queue ownership
-		imageBarrier.dstQueueFamilyIndex             = nameMetadata.second.QueueFamilyOwnership;
-		imageBarrier.image                           = mGraphToBuild->mImages[nameMetadata.second.ImageIndex];
-		imageBarrier.subresourceRange.aspectMask     = nameMetadata.second.AspectFlags;
-		imageBarrier.subresourceRange.baseMipLevel   = 0;
-		imageBarrier.subresourceRange.levelCount     = VK_REMAINING_MIP_LEVELS;
-		imageBarrier.subresourceRange.baseArrayLayer = 0;
-		imageBarrier.subresourceRange.layerCount     = VK_REMAINING_ARRAY_LAYERS;
-
-		imageBarriers.push_back(imageBarrier);
-	}
-
-	VkCommandPool   graphicsCommandPool   = workerCommandBuffers->GetMainThreadGraphicsCommandPool(0);
-	VkCommandBuffer graphicsCommandBuffer = workerCommandBuffers->GetMainThreadGraphicsCommandBuffer(0);
-
-	ThrowIfFailed(vkResetCommandPool(mGraphToBuild->mDeviceRef, graphicsCommandPool, 0));
-
-	//TODO: mGPU?
-	VkCommandBufferBeginInfo graphicsCmdBufferBeginInfo;
-	graphicsCmdBufferBeginInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	graphicsCmdBufferBeginInfo.pNext            = nullptr;
-	graphicsCmdBufferBeginInfo.flags            = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-	graphicsCmdBufferBeginInfo.pInheritanceInfo = nullptr;
-
-	ThrowIfFailed(vkBeginCommandBuffer(graphicsCommandBuffer, &graphicsCmdBufferBeginInfo));
-
-	std::array<VkMemoryBarrier,       0> memoryBarriers;
-	std::array<VkBufferMemoryBarrier, 0> bufferBarriers;
-	vkCmdPipelineBarrier(graphicsCommandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0,
-		                 (uint32_t)memoryBarriers.size(), memoryBarriers.data(),
-		                 (uint32_t)bufferBarriers.size(), bufferBarriers.data(),
-		                 (uint32_t)imageBarriers.size(),  imageBarriers.data());
-
-	ThrowIfFailed(vkEndCommandBuffer(graphicsCommandBuffer));
-
-	deviceQueues->GraphicsQueueSubmit(graphicsCommandBuffer);
-	deviceQueues->GraphicsQueueWait();
-}
-
 void Vulkan::FrameGraphBuilder::CreateTextures(const std::vector<TextureResourceCreateInfo>& textureCreateInfos) const
 {
 	mVulkanGraphToBuild->mImages.resize(textureCreateInfos.size());
+	std::vector<VkImageMemoryBarrier> imageInitialStateBarriers(textureCreateInfos.size()); //Barriers to initialize images
 
 	for(const TextureResourceCreateInfo& textureCreateInfo: textureCreateInfos)
 	{
@@ -600,6 +531,13 @@ void Vulkan::FrameGraphBuilder::CreateTextures(const std::vector<TextureResource
 
 		} while(currentNode != headNode);
 
+		uint32_t lastSubresourceInfo   = headNode->PrevPassNode->SubresourceInfoIndex;
+		RenderPassType lastPassType    = headNode->PrevPassNode->PassType;
+		VkImageLayout  lastLayout      = mSubresourceInfos[lastSubresourceInfo].Layout;
+		VkAccessFlags  lastAccessFlags = mSubresourceInfos[lastSubresourceInfo].Access;
+		VkAccessFlags  lastAspectMask  = mSubresourceInfos[lastSubresourceInfo].Aspect;
+
+
 		VkImageCreateInfo imageCreateInfo;
 		imageCreateInfo.sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 		imageCreateInfo.pNext                 = nullptr;
@@ -625,11 +563,30 @@ void Vulkan::FrameGraphBuilder::CreateTextures(const std::vector<TextureResource
 #if defined(DEBUG) || defined(_DEBUG)
 		if(mInstanceParameters->IsDebugUtilsExtensionEnabled())
 		{
-			VulkanUtils::SetDebugObjectName(image, textureCreateInfo.Name);
+			VulkanUtils::SetDebugObjectName(mVulkanGraphToBuild->mDeviceRef, image, textureCreateInfo.Name);
 		}
 #endif
 
 		mVulkanGraphToBuild->mImages[headNode->ImageIndex] = image;
+
+
+		VkImageMemoryBarrier imageBarrier;
+		imageBarrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		imageBarrier.pNext                           = nullptr;
+		imageBarrier.srcAccessMask                   = 0;
+		imageBarrier.dstAccessMask                   = lastAccessFlags;
+		imageBarrier.oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;
+		imageBarrier.newLayout                       = lastLayout;
+		imageBarrier.srcQueueFamilyIndex             = queueIndices[0]; //Resources were created with that queue ownership
+		imageBarrier.dstQueueFamilyIndex             = mDeviceQueues->GetGraphicsQueueFamilyIndex();
+		imageBarrier.image                           = image;
+		imageBarrier.subresourceRange.aspectMask     = lastAspectMask;
+		imageBarrier.subresourceRange.baseMipLevel   = 0;
+		imageBarrier.subresourceRange.levelCount     = VK_REMAINING_MIP_LEVELS;
+		imageBarrier.subresourceRange.baseArrayLayer = 0;
+		imageBarrier.subresourceRange.layerCount     = VK_REMAINING_ARRAY_LAYERS;
+
+		imageInitialStateBarriers[headNode->ImageIndex] = imageBarrier;
 	}
 
 	SafeDestroyObject(vkFreeMemory, mVulkanGraphToBuild->mDeviceRef, mVulkanGraphToBuild->mImageMemory);
@@ -649,6 +606,33 @@ void Vulkan::FrameGraphBuilder::CreateTextures(const std::vector<TextureResource
 	}
 
 	ThrowIfFailed(vkBindImageMemory2(mVulkanGraphToBuild->mDeviceRef, (uint32_t)(bindImageMemoryInfos.size()), bindImageMemoryInfos.data()));
+
+
+	VkCommandPool   graphicsCommandPool   = mWorkerCommandBuffers->GetMainThreadGraphicsCommandPool(0);
+	VkCommandBuffer graphicsCommandBuffer = mWorkerCommandBuffers->GetMainThreadGraphicsCommandBuffer(0);
+
+	ThrowIfFailed(vkResetCommandPool(mVulkanGraphToBuild->mDeviceRef, graphicsCommandPool, 0));
+
+	//TODO: mGPU?
+	VkCommandBufferBeginInfo graphicsCmdBufferBeginInfo;
+	graphicsCmdBufferBeginInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	graphicsCmdBufferBeginInfo.pNext            = nullptr;
+	graphicsCmdBufferBeginInfo.flags            = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+	graphicsCmdBufferBeginInfo.pInheritanceInfo = nullptr;
+
+	ThrowIfFailed(vkBeginCommandBuffer(graphicsCommandBuffer, &graphicsCmdBufferBeginInfo));
+
+	std::array<VkMemoryBarrier,       0> memoryBarriers;
+	std::array<VkBufferMemoryBarrier, 0> bufferBarriers;
+	vkCmdPipelineBarrier(graphicsCommandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0,
+		                 (uint32_t)memoryBarriers.size(),            memoryBarriers.data(),
+		                 (uint32_t)bufferBarriers.size(),            bufferBarriers.data(),
+		                 (uint32_t)imageInitialStateBarriers.size(), imageInitialStateBarriers.data());
+
+	ThrowIfFailed(vkEndCommandBuffer(graphicsCommandBuffer));
+
+	mDeviceQueues->GraphicsQueueSubmit(graphicsCommandBuffer);
+	mDeviceQueues->GraphicsQueueWait(); //TODO: may wait after build finished
 }
 
 void Vulkan::FrameGraphBuilder::AllocateTextureViews(size_t textureViewCount)

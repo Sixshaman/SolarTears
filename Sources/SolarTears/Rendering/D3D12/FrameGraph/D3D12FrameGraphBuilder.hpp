@@ -63,9 +63,6 @@ namespace D3D12
 		D3D12_CPU_DESCRIPTOR_HANDLE GetFrameGraphDsvHeapStart() const;
 
 	private:
-		//Validates StateWasPromoted flag in each subresource info
-		void ValidateCommonPromotion();
-
 		//Functions for creating frame graph passes and resources
 		void BuildPassObjects(ID3D12Device8* device, const std::unordered_set<RenderPassName>& swapchainPassNames);
 

@@ -137,15 +137,6 @@ void ModernFrameGraphBuilder::Build()
 
 	BuildSubresources();
 	BuildPassObjects(backbufferPassNames);
-
-
-
-	//VULKAN
-	BuildBarriers();
-	BarrierImages(deviceQueues, workerCommandBuffers, defaultQueueIndex);
-
-	//D3D12
-	ValidateCommonPromotion();
 	BuildBarriers();
 }
 

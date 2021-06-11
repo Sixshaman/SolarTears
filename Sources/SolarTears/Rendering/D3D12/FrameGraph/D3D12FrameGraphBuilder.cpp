@@ -217,43 +217,6 @@ D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetFrameGraphDsvHeapStart(
 	return mD3d12GraphToBuild->mDsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
 }
 
-void D3D12::FrameGraphBuilder::ValidateCommonPromotion()
-{
-	//Subresource links should be validated
-	for(size_t i = 0; i < mRenderPassNames.size(); i++)
-	{
-		RenderPassName renderPassName = mRenderPassNames[i];
-		for(auto& subresourceNameId: mRenderPassesSubresourceNameIds[renderPassName])
-		{
-			TextureSubresourceMetadata& subresourceMetadata     = mRenderPassesSubresourceMetadatas.at(renderPassName).at(subresourceNameId.second);
-			TextureSubresourceMetadata& prevSubresourceMetadata = *subresourceMetadata.PrevPassMetadata;
-
-			if(prevSubresourceMetadata.ResourceState == D3D12_RESOURCE_STATE_COMMON && D3D12Utils::IsStatePromoteableTo(subresourceMetadata.ResourceState)) //Promotion from common
-			{
-				subresourceMetadata.MetadataFlags |= TextureFlagStateAutoPromoted;
-			}
-			else if(prevSubresourceMetadata.QueueOwnership == subresourceMetadata.QueueOwnership) //Queue hasn't changed => ExecuteCommandLists wasn't called => No decay happened
-			{
-				if(prevSubresourceMetadata.ResourceState == subresourceMetadata.ResourceState) //Propagation of state promotion
-				{
-					subresourceMetadata.MetadataFlags |= TextureFlagStateAutoPromoted;
-				}
-			}
-			else
-			{
-				bool prevWasPromoted = (prevSubresourceMetadata.MetadataFlags & TextureFlagStateAutoPromoted);
-				if(prevWasPromoted && !D3D12Utils::IsStateWriteable(prevSubresourceMetadata.ResourceState)) //Read-only promoted state decays to COMMON after ECL call
-				{
-					if(D3D12Utils::IsStatePromoteableTo(subresourceMetadata.ResourceState)) //State promotes again
-					{
-						subresourceMetadata.MetadataFlags |= TextureFlagStateAutoPromoted;
-					}
-				}
-			}
-		}
-	}
-}
-
 void D3D12::FrameGraphBuilder::BuildPassObjects(ID3D12Device8* device, const std::unordered_set<std::string>& swapchainPassNames)
 {
 	mGraphToBuild->mRenderPasses.clear();
@@ -319,6 +282,32 @@ void D3D12::FrameGraphBuilder::BuildBarriers() //When present from compute is ou
 		std::vector<size_t>                 afterSwapchainBarrierIndices;
 		for(auto& subresourceNameId: nameIdMap)
 		{
+			TextureSubresourceMetadata& subresourceMetadata     = mRenderPassesSubresourceMetadatas.at(renderPassName).at(subresourceNameId.second);
+			TextureSubresourceMetadata& prevSubresourceMetadata = *subresourceMetadata.PrevPassMetadata;
+
+			if(prevSubresourceMetadata.ResourceState == D3D12_RESOURCE_STATE_COMMON && D3D12Utils::IsStatePromoteableTo(subresourceMetadata.ResourceState)) //Promotion from common
+			{
+				subresourceMetadata.MetadataFlags |= TextureFlagStateAutoPromoted;
+			}
+			else if(prevSubresourceMetadata.QueueOwnership == subresourceMetadata.QueueOwnership) //Queue hasn't changed => ExecuteCommandLists wasn't called => No decay happened
+			{
+				if(prevSubresourceMetadata.ResourceState == subresourceMetadata.ResourceState) //Propagation of state promotion
+				{
+					subresourceMetadata.MetadataFlags |= TextureFlagStateAutoPromoted;
+				}
+			}
+			else
+			{
+				bool prevWasPromoted = (prevSubresourceMetadata.MetadataFlags & TextureFlagStateAutoPromoted);
+				if(prevWasPromoted && !D3D12Utils::IsStateWriteable(prevSubresourceMetadata.ResourceState)) //Read-only promoted state decays to COMMON after ECL call
+				{
+					if(D3D12Utils::IsStatePromoteableTo(subresourceMetadata.ResourceState)) //State promotes again
+					{
+						subresourceMetadata.MetadataFlags |= TextureFlagStateAutoPromoted;
+					}
+				}
+			}
+
 			SubresourceName subresourceName = subresourceNameId.first;
 			SubresourceId   subresourceId   = subresourceNameId.second;
 
@@ -571,132 +560,6 @@ void D3D12::FrameGraphBuilder::BuildBarriers() //When present from compute is ou
 	}
 }
  
-void D3D12::FrameGraphBuilder::BuildResourceCreateInfos(std::unordered_map<SubresourceName, TextureCreateInfo>& outImageCreateInfos, std::unordered_map<SubresourceName, BackbufferCreateInfo>& outBackbufferCreateInfos, std::unordered_set<RenderPassName>& swapchainPassNames)
-{
-	for(const auto& renderPassName: mRenderPassNames)
-	{
-		const auto& nameIdMap = mRenderPassesSubresourceNameIds[renderPassName];
-		for(const auto& nameId: nameIdMap)
-		{
-			const SubresourceName subresourceName = nameId.first;
-			const SubresourceId   subresourceId   = nameId.second;
-
-			if(subresourceName == mBackbufferName)
-			{
-				TextureSubresourceMetadata metadata = mRenderPassesSubresourceMetadatas[renderPassName][subresourceId];
-
-				TextureViewInfo viewInfo;
-				viewInfo.Format = metadata.Format;
-				viewInfo.ViewType = ViewTypeFromResourceState(metadata.ResourceState);
-				viewInfo.ViewAddresses.push_back({.PassName = renderPassName, .SubresId = subresourceId});
-
-				BackbufferCreateInfo backbufferCreateInfo;
-				backbufferCreateInfo.ViewInfos.push_back(viewInfo);
-
-				outBackbufferCreateInfos[subresourceName] = backbufferCreateInfo;
-
-				swapchainPassNames.insert(renderPassName);
-			}
-			else
-			{
-				TextureSubresourceMetadata metadata = mRenderPassesSubresourceMetadatas[renderPassName][subresourceId];
-				if(!outImageCreateInfos.contains(subresourceName))
-				{
-					//TODO: Multisampling
-					D3D12_RESOURCE_DESC1 resourceDesc;
-					resourceDesc.Dimension                       = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-					resourceDesc.Alignment                       = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
-					resourceDesc.Width                           = mGraphToBuild->mFrameGraphConfig.GetViewportHeight();
-					resourceDesc.Height                          = mGraphToBuild->mFrameGraphConfig.GetViewportHeight();
-					resourceDesc.DepthOrArraySize                = 1;
-					resourceDesc.MipLevels                       = 1;
-					resourceDesc.Format                          = metadata.Format;
-					resourceDesc.SampleDesc.Count                = 1;
-					resourceDesc.SampleDesc.Quality              = 0;
-					resourceDesc.Layout                          = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-					resourceDesc.Flags                           = D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
-					resourceDesc.SamplerFeedbackMipRegion.Width  = 0;
-					resourceDesc.SamplerFeedbackMipRegion.Height = 0;
-					resourceDesc.SamplerFeedbackMipRegion.Depth  = 0;
-
-					outImageCreateInfos[subresourceName] = TextureCreateInfo();
-					outImageCreateInfos[subresourceName].ResourceDesc = resourceDesc;
-
-					//Mark the optimized clear value with UNKNOWN format, this means that the optimized clear value is undefined for the resource
-					outImageCreateInfos[subresourceName].OptimizedClearValue.Format = DXGI_FORMAT_UNKNOWN;
-				}
-				else
-				{
-					auto& imageResourceCreateInfo = outImageCreateInfos[subresourceName];
-					if(metadata.Format != DXGI_FORMAT_UNKNOWN)
-					{
-						if(imageResourceCreateInfo.ResourceDesc.Format == DXGI_FORMAT_UNKNOWN)
-						{
-							//Not all passes specify the format
-							imageResourceCreateInfo.ResourceDesc.Format = metadata.Format;
-						}
-						else if(metadata.Format != imageResourceCreateInfo.ResourceDesc.Format)
-						{
-							imageResourceCreateInfo.ResourceDesc.Format = D3D12Utils::ConvertToTypeless(metadata.Format);
-						}
-					}
-				}
-
-				//It's fine if format is UNDEFINED. It means it can be arbitrary and we'll fix it later based on other image view infos for this resource
-				TextureViewInfo viewInfo;
-				viewInfo.Format   = metadata.Format;
-				viewInfo.ViewType = viewType;
-				viewInfo.ViewAddresses.push_back({.PassName = renderPassName, .SubresId = subresourceId});
-
-				outImageCreateInfos[subresourceName].ViewInfos.push_back(viewInfo);
-			}
-		}
-	}
-
-	MergeImageViewInfos(outImageCreateInfos);
-	InitResourceInitialStatesAndClearValues(outImageCreateInfos); //TODO: embed it in this exact function (I don't have the time right now)
-	CleanDenyShaderResourceFlags(outImageCreateInfos);
-}
-
-void D3D12::FrameGraphBuilder::InitResourceInitialStatesAndClearValues(std::unordered_map<SubresourceName, TextureCreateInfo>& inoutTextureCreateInfos)
-{
-	for(const auto& renderPassName: mRenderPassNames)
-	{
-		const auto& nameIdMap = mRenderPassesSubresourceNameIds[renderPassName];
-		for(const auto& nameId : nameIdMap)
-		{
-			const SubresourceName subresourceName = nameId.first;
-			const SubresourceId   subresourceId   = nameId.second;
-
-			if(subresourceName != mBackbufferName)
-			{
-				const TextureSubresourceMetadata& metadata = mRenderPassesSubresourceMetadatas[renderPassName][subresourceId];
-				TextureCreateInfo& textureCreateInfo       = inoutTextureCreateInfos[subresourceName];
-
-				textureCreateInfo.InitialState = metadata.ResourceState; //Replace until the final state
-
-				//If the resource already has optimized clear value, can't add a new one
-				assert((textureCreateInfo.OptimizedClearValue.Format == DXGI_FORMAT_UNKNOWN) || ((metadata.ResourceState & (D3D12_RESOURCE_STATE_RENDER_TARGET | D3D12_RESOURCE_STATE_DEPTH_WRITE)) == 0));
-
-				if(metadata.ResourceState & D3D12_RESOURCE_STATE_RENDER_TARGET)
-				{
-					textureCreateInfo.OptimizedClearValue.Format   = metadata.Format;
-					textureCreateInfo.OptimizedClearValue.Color[0] = 0.0f;
-					textureCreateInfo.OptimizedClearValue.Color[1] = 0.0f;
-					textureCreateInfo.OptimizedClearValue.Color[2] = 0.0f;
-					textureCreateInfo.OptimizedClearValue.Color[3] = 0.0f;
-				}
-				else if(metadata.ResourceState & D3D12_RESOURCE_STATE_DEPTH_WRITE)
-				{
-					textureCreateInfo.OptimizedClearValue.Format               = metadata.Format;
-					textureCreateInfo.OptimizedClearValue.DepthStencil.Depth   = 1.0f;
-					textureCreateInfo.OptimizedClearValue.DepthStencil.Stencil = 0;
-				}
-			}
-		}
-	}
-}
-
 void D3D12::FrameGraphBuilder::CreateTextures(const std::vector<TextureResourceCreateInfo>& textureCreateInfos) const
 {
 	mD3d12GraphToBuild->mTextures.resize(textureCreateInfos.size());
@@ -1054,7 +917,12 @@ uint32_t D3D12::FrameGraphBuilder::AllocateBackbufferResources() const
 	mD3d12GraphToBuild->mTextures.push_back(nullptr);
 	for(size_t i = 0; i < SwapChain::SwapchainImageCount; i++)
 	{
-		mD3d12GraphToBuild->mSwapchainImageRefs.push_back(mSwapChain->GetSwapchainImage(i));
+		ID3D12Resource* swapchainImage = mSwapChain->GetSwapchainImage(i);
+
+		wil::com_ptr_nothrow<ID3D12Resource2> swapchainImage2;
+		THROW_IF_FAILED(swapchainImage->QueryInterface(IID_PPV_ARGS(swapchainImage2.put())));
+
+		mD3d12GraphToBuild->mSwapchainImageRefs.push_back(swapchainImage2.get());
 
 #if defined(DEBUG) || defined(_DEBUG)
 		D3D12Utils::SetDebugObjectName(mD3d12GraphToBuild->mSwapchainImageRefs.back(), mBackbufferName);
