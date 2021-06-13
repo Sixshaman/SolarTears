@@ -36,7 +36,7 @@ namespace Vulkan
 		};
 
 	public:
-		FrameGraphBuilder(FrameGraph* graphToBuild, const DescriptorManager* descriptorManager, const InstanceParameters* instanceParameters, const DeviceParameters* deviceParameters, const ShaderManager* shaderManager, const MemoryManager* memoryManager, const DeviceQueues* deviceQueues, const SwapChain* swapchain);
+		FrameGraphBuilder(FrameGraph* graphToBuild, const DescriptorManager* descriptorManager, const InstanceParameters* instanceParameters, const DeviceParameters* deviceParameters, const ShaderManager* shaderManager, const MemoryManager* memoryManager, const DeviceQueues* deviceQueues, const SwapChain* swapchain, const WorkerCommandBuffers* workerCommandBuffers);
 		~FrameGraphBuilder();
 
 		void RegisterRenderPass(const std::string_view passName, RenderPassCreateFunc createFunc, RenderPassType passType);
@@ -95,21 +95,14 @@ namespace Vulkan
 		//Creates a new subresource info record
 		uint32_t AddSubresourceMetadata() override;
 
-		//Finds all indices in subresourceInfoIndices that refer to non-unique entries in mSubresourceInfos
-		//Returns a list of indices pointing to unique entries. Also builds a map to match the old list to the new list
-		void BuildUniqueSubresourceList(const std::vector<uint32_t>& subresourceInfoIndices, std::vector<uint32_t>& outUniqueSubresourceInfoIndices, std::vector<uint32_t>& outNewIndexMap) override;
-
-		//Propagates info (format, access flags, etc.) from one SubresourceInfo to another. Returns true if propagation succeeded or wasn't needed
-		bool PropagateSubresourceParameters(uint32_t indexFrom, uint32_t indexTo) override;
+		//Propagates subresource info (format, access flags, etc.) to a node from the previous one. Also initializes view key. Returns true if propagation succeeded or wasn't needed
+		bool ValidateSubresourceViewParameters(SubresourceMetadataNode* node) override;
 
 		//Creates image objects
 		void CreateTextures(const std::vector<TextureResourceCreateInfo>& textureCreateInfos) const override;
 
-		//Allocates the storage for image views
-		void AllocateTextureViews(size_t textureViewCount);
-
 		//Creates image view objects
-		void CreateTextureViews(const std::vector<TextureResourceCreateInfo>& textureCreateInfos, const std::vector<uint32_t>& subresourceInfoIndices) const override;
+		void CreateTextureViews(const std::vector<TextureSubresourceCreateInfo>& textureViewCreateInfos) const override;
 
 		//Initializes backbuffer-related 
 		uint32_t AllocateBackbufferResources() const override;
@@ -122,12 +115,13 @@ namespace Vulkan
 		std::vector<SubresourceInfo> mSubresourceInfos;
 
 		//Several things that might be needed during build
-		const DeviceQueues*       mDeviceQueues;
-		const SwapChain*          mSwapChain;
-		const DescriptorManager*  mDescriptorManager;
-		const InstanceParameters* mInstanceParameters;
-		const DeviceParameters*   mDeviceParameters;
-		const ShaderManager*      mShaderManager;
-		const MemoryManager*      mMemoryManager;
+		const DeviceQueues*         mDeviceQueues;
+		const SwapChain*            mSwapChain;
+		const WorkerCommandBuffers* mWorkerCommandBuffers;
+		const DescriptorManager*    mDescriptorManager;
+		const InstanceParameters*   mInstanceParameters;
+		const DeviceParameters*     mDeviceParameters;
+		const ShaderManager*        mShaderManager;
+		const MemoryManager*        mMemoryManager;
 	};
 }

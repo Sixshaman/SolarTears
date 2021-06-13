@@ -696,11 +696,6 @@ void D3D12::FrameGraphBuilder::CreateTextures(const std::vector<TextureResourceC
 	}
 }
 
-void D3D12::FrameGraphBuilder::AllocateTextureViews(size_t textureViewCount)
-{
-	UNREFERENCED_PARAMETER(textureViewCount);
-}
-
 uint32_t D3D12::FrameGraphBuilder::AddSubresourceMetadata()
 {
 	SubresourceInfo subresourceInfo;
@@ -713,74 +708,29 @@ uint32_t D3D12::FrameGraphBuilder::AddSubresourceMetadata()
 	return (uint32_t)(mSubresourceInfos.size() - 1);
 }
 
-bool D3D12::FrameGraphBuilder::PropagateSubresourceParameters(uint32_t indexFrom, uint32_t indexTo)
+bool D3D12::FrameGraphBuilder::ValidateSubresourceViewParameters(SubresourceMetadataNode* node)
 {
-	SubresourceInfo& currentPassSubresourceInfo = mSubresourceInfos[indexFrom];
-	SubresourceInfo& nextPassSubresourceInfo    = mSubresourceInfos[indexTo];
+	SubresourceInfo& prevPassSubresourceInfo = mSubresourceInfos[node->PrevPassNode->SubresourceInfoIndex];
+	SubresourceInfo& thisPassSubresourceInfo = mSubresourceInfos[node->SubresourceInfoIndex];
 
-	if(nextPassSubresourceInfo.Format == DXGI_FORMAT_UNKNOWN && currentPassSubresourceInfo.Format != DXGI_FORMAT_UNKNOWN)
+	if(thisPassSubresourceInfo.Format == DXGI_FORMAT_UNKNOWN && prevPassSubresourceInfo.Format != DXGI_FORMAT_UNKNOWN)
 	{
-		nextPassSubresourceInfo.Format = currentPassSubresourceInfo.Format;
+		thisPassSubresourceInfo.Format = prevPassSubresourceInfo.Format;
 	}
 
-	//Other parameters are always fully known
+	const uint32_t srvStateMask = (uint32_t)(D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	const uint32_t uavStateMask = (uint32_t)(D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	const uint32_t rtvStateMask = (uint32_t)(D3D12_RESOURCE_STATE_RENDER_TARGET);
+	const uint32_t dsvStateMask = (uint32_t)(D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
-	if(currentPassSubresourceInfo.Format == DXGI_FORMAT_UNKNOWN)
-	{
-		return false;
-	}
+	const uint32_t stateKey  = (uint32_t)thisPassSubresourceInfo.State & (srvStateMask | uavStateMask | rtvStateMask | dsvStateMask); //Other states are not needed for separate views (i.e. descriptors)
+	const uint32_t formatKey = (uint32_t)thisPassSubresourceInfo.Format * (stateKey != 0); //Creating the view is only needed if the state is descriptorable
 
-	return true;
+	node->ViewSortKey = (stateKey << 32) | formatKey;
+	return thisPassSubresourceInfo.Format != 0; //Only the format should be propagated
 }
 
-void D3D12::FrameGraphBuilder::BuildUniqueSubresourceList(const std::vector<uint32_t>& subresourceInfoIndices, std::vector<uint32_t>& outUniqueSubresourceInfoIndices, std::vector<uint32_t>& outNewIndexMap)
-{
-	if(subresourceInfoIndices.size() == 0)
-	{
-		return;
-	}
-
-	std::vector<uint32_t> reorderMap(subresourceInfoIndices.size());
-	std::iota(reorderMap.begin(), reorderMap.end(), 0);
-
-	std::sort(reorderMap.begin(), reorderMap.end(), [this, &subresourceInfoIndices](uint32_t left, uint32_t right)
-	{
-		const uint32_t leftIndex  = subresourceInfoIndices[left];
-		const uint32_t rightIndex = subresourceInfoIndices[right];
-
-		const SubresourceInfo& leftSubresource  = mSubresourceInfos[leftIndex];
-		const SubresourceInfo& rightSubresource = mSubresourceInfos[rightIndex];
-
-		return (uint32_t)leftSubresource.Format < (uint32_t)rightSubresource.Format;
-	});
-
-	outUniqueSubresourceInfoIndices.clear();
-	outUniqueSubresourceInfoIndices.push_back(subresourceInfoIndices[reorderMap[0]]);
-
-	outNewIndexMap.resize(subresourceInfoIndices.size());
-	outNewIndexMap[reorderMap[0]] = 0;
-
-	for(size_t i = 1; i < reorderMap.size(); i++)
-	{
-		uint32_t leftIndicesIndex  = reorderMap[i - 1];
-		uint32_t rightIndicesIndex = reorderMap[i];
-
-		uint32_t leftIndex  = subresourceInfoIndices[leftIndicesIndex];
-		uint32_t rightIndex = subresourceInfoIndices[rightIndicesIndex];
-
-		const SubresourceInfo& leftSubresource  = mSubresourceInfos[leftIndex];
-		const SubresourceInfo& rightSubresource = mSubresourceInfos[rightIndex];
-
-		if(leftSubresource.Format != rightSubresource.Format)
-		{
-			outUniqueSubresourceInfoIndices.push_back(subresourceInfoIndices[rightIndicesIndex]);
-		}
-
-		outNewIndexMap[reorderMap[i]] = outUniqueSubresourceInfoIndices.size() - 1;
-	}
-}
-
-void D3D12::FrameGraphBuilder::CreateTextureViews(const std::vector<TextureResourceCreateInfo>& textureCreateInfos, const std::vector<uint32_t>& subresourceInfoIndices) const
+void D3D12::FrameGraphBuilder::CreateTextureViews(const std::vector<TextureSubresourceCreateInfo>& textureViewCreateInfos) const
 {
 	mD3d12GraphToBuild->mSrvUavDescriptorHeap.reset();
 	mD3d12GraphToBuild->mRtvDescriptorHeap.reset();
@@ -789,25 +739,20 @@ void D3D12::FrameGraphBuilder::CreateTextureViews(const std::vector<TextureResou
 	UINT srvUavDescriptorCount = 0;
 	UINT rtvDescriptorCount    = 0;
 	UINT dsvDescriptorCount    = 0;
-	for(const TextureResourceCreateInfo& textureCreateInfo: textureCreateInfos)
+	for(const TextureSubresourceCreateInfo& textureViewCreateInfo: textureViewCreateInfos)
 	{
-		for(uint32_t subresourceIndexIndex = textureCreateInfo.SubresourceSpan.FirstSubresourceInfoIndex; subresourceIndexIndex < textureCreateInfo.SubresourceSpan.LastSubresourceInfoIndex; subresourceIndexIndex++)
+		const SubresourceInfo& subresourceInfo = mSubresourceInfos[textureViewCreateInfo.SubresourceInfoIndex];
+		if(subresourceInfo.State & (D3D12_RESOURCE_STATE_UNORDERED_ACCESS | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE))
 		{
-			uint32_t subresourceIndex = subresourceInfoIndices[subresourceIndexIndex];
-			const SubresourceInfo& subresourceInfo = mSubresourceInfos[subresourceIndex];
-
-			if(subresourceInfo.State & (D3D12_RESOURCE_STATE_UNORDERED_ACCESS | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE))
-			{
-				srvUavDescriptorCount++;
-			}
-			else if(subresourceInfo.State & (D3D12_RESOURCE_STATE_RENDER_TARGET))
-			{
-				rtvDescriptorCount++;
-			}
-			else if(subresourceInfo.State & (D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_DEPTH_WRITE))
-			{
-				dsvDescriptorCount++;
-			}
+			srvUavDescriptorCount++;
+		}
+		else if(subresourceInfo.State & (D3D12_RESOURCE_STATE_RENDER_TARGET))
+		{
+			rtvDescriptorCount++;
+		}
+		else if(subresourceInfo.State & (D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_DEPTH_WRITE))
+		{
+			dsvDescriptorCount++;
 		}
 	}
 
@@ -839,73 +784,68 @@ void D3D12::FrameGraphBuilder::CreateTextureViews(const std::vector<TextureResou
 	UINT srvUavCounter = 0;
 	UINT rtvCounter    = 0;
 	UINT dsvCounter    = 0;
-	for(const TextureResourceCreateInfo& textureCreateInfo: textureCreateInfos)
+	for(const TextureSubresourceCreateInfo& textureViewCreateInfo: textureViewCreateInfos)
 	{
-		for(uint32_t subresourceIndexIndex = textureCreateInfo.SubresourceSpan.FirstSubresourceInfoIndex; subresourceIndexIndex < textureCreateInfo.SubresourceSpan.LastSubresourceInfoIndex; subresourceIndexIndex++)
+		const SubresourceInfo& subresourceInfo = mSubresourceInfos[textureViewCreateInfo.ImageViewIndex];
+		ID3D12Resource* descriptorResource = mD3d12GraphToBuild->mTextures[textureViewCreateInfo.ImageIndex];
+
+		if(subresourceInfo.State & (D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE))
 		{
-			uint32_t subresourceIndex = subresourceInfoIndices[subresourceIndexIndex];
-			const SubresourceInfo& subresourceInfo = mSubresourceInfos[subresourceIndex];
+			D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc;
+			srvDesc.ViewDimension                 = D3D12_SRV_DIMENSION_TEXTURE2D;
+			srvDesc.Format                        = subresourceInfo.Format;
+			srvDesc.Shader4ComponentMapping       = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+			srvDesc.Texture2D.MipLevels           = 1;
+			srvDesc.Texture2D.MostDetailedMip     = 0;
+			srvDesc.Texture2D.PlaneSlice          = 0;
+			srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
 
-			ID3D12Resource* descriptorResource = mD3d12GraphToBuild->mTextures[textureCreateInfo.MetadataHead->ImageIndex];
-
-			if(subresourceInfo.State & (D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE))
-			{
-				D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc;
-				srvDesc.ViewDimension                 = D3D12_SRV_DIMENSION_TEXTURE2D;
-				srvDesc.Format                        = subresourceInfo.Format;
-				srvDesc.Shader4ComponentMapping       = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-				srvDesc.Texture2D.MipLevels           = 1;
-				srvDesc.Texture2D.MostDetailedMip     = 0;
-				srvDesc.Texture2D.PlaneSlice          = 0;
-				srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
-
-				D3D12_CPU_DESCRIPTOR_HANDLE srvHandle = mD3d12GraphToBuild->mSrvUavDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
-				srvHandle.ptr                        += srvUavCounter * mSrvUavCbvDescriptorSize;
+			D3D12_CPU_DESCRIPTOR_HANDLE srvHandle = mD3d12GraphToBuild->mSrvUavDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+			srvHandle.ptr                        += srvUavCounter * mSrvUavCbvDescriptorSize;
 				
-				mDevice->CreateShaderResourceView(descriptorResource, &srvDesc, srvHandle);
-				srvUavCounter++;
-			}
-			else if(subresourceInfo.State & (D3D12_RESOURCE_STATE_UNORDERED_ACCESS))
-			{
-				D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc;
-				uavDesc.ViewDimension        = D3D12_UAV_DIMENSION_TEXTURE2D;
-				uavDesc.Format               = subresourceInfo.Format;
-				uavDesc.Texture2D.MipSlice   = 0;
-				uavDesc.Texture2D.PlaneSlice = 0;
+			mDevice->CreateShaderResourceView(descriptorResource, &srvDesc, srvHandle);
+			srvUavCounter++;
+		}
+		else if(subresourceInfo.State & (D3D12_RESOURCE_STATE_UNORDERED_ACCESS))
+		{
+			D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc;
+			uavDesc.ViewDimension        = D3D12_UAV_DIMENSION_TEXTURE2D;
+			uavDesc.Format               = subresourceInfo.Format;
+			uavDesc.Texture2D.MipSlice   = 0;
+			uavDesc.Texture2D.PlaneSlice = 0;
 
-				D3D12_CPU_DESCRIPTOR_HANDLE uavHandle = mD3d12GraphToBuild->mSrvUavDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
-				uavHandle.ptr                        += srvUavCounter * mSrvUavCbvDescriptorSize;
+			D3D12_CPU_DESCRIPTOR_HANDLE uavHandle = mD3d12GraphToBuild->mSrvUavDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+			uavHandle.ptr                        += srvUavCounter * mSrvUavCbvDescriptorSize;
 				
-				mDevice->CreateUnorderedAccessView(descriptorResource, nullptr, &uavDesc, uavHandle);
-				srvUavCounter++;
-			}
-			else if(subresourceInfo.State & (D3D12_RESOURCE_STATE_RENDER_TARGET))
-			{
-				D3D12_RENDER_TARGET_VIEW_DESC rtvDesc;
-				rtvDesc.ViewDimension        = D3D12_RTV_DIMENSION_TEXTURE2D;
-				rtvDesc.Format               = subresourceInfo.Format;
-				rtvDesc.Texture2D.MipSlice   = 0;
-				rtvDesc.Texture2D.PlaneSlice = 0;
+			mDevice->CreateUnorderedAccessView(descriptorResource, nullptr, &uavDesc, uavHandle);
+			srvUavCounter++;
+		}
+		else if(subresourceInfo.State & (D3D12_RESOURCE_STATE_RENDER_TARGET))
+		{
+			D3D12_RENDER_TARGET_VIEW_DESC rtvDesc;
+			rtvDesc.ViewDimension        = D3D12_RTV_DIMENSION_TEXTURE2D;
+			rtvDesc.Format               = subresourceInfo.Format;
+			rtvDesc.Texture2D.MipSlice   = 0;
+			rtvDesc.Texture2D.PlaneSlice = 0;
 
-				D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = mD3d12GraphToBuild->mRtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
-				rtvHandle.ptr                        += rtvCounter * mRtvDescriptorSize;
+			D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = mD3d12GraphToBuild->mRtvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+			rtvHandle.ptr                        += rtvCounter * mRtvDescriptorSize;
 				
-				mDevice->CreateRenderTargetView(descriptorResource, &rtvDesc, rtvHandle);
-				rtvCounter++;
-			}
-			else if(subresourceInfo.State & (D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_DEPTH_WRITE))
-			{
-				D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc;
-				dsvDesc.ViewDimension      = D3D12_DSV_DIMENSION_TEXTURE2D;
-				dsvDesc.Format             = subresourceInfo.Format;
-				dsvDesc.Texture2D.MipSlice = 0;
+			mDevice->CreateRenderTargetView(descriptorResource, &rtvDesc, rtvHandle);
+			rtvCounter++;
+		}
+		else if(subresourceInfo.State & (D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_DEPTH_WRITE))
+		{
+			D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc;
+			dsvDesc.ViewDimension      = D3D12_DSV_DIMENSION_TEXTURE2D;
+			dsvDesc.Format             = subresourceInfo.Format;
+			dsvDesc.Texture2D.MipSlice = 0;
 
-				D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = mD3d12GraphToBuild->mDsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
-				dsvHandle.ptr                        += dsvCounter * mDsvDescriptorSize;
+			D3D12_CPU_DESCRIPTOR_HANDLE dsvHandle = mD3d12GraphToBuild->mDsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+			dsvHandle.ptr                        += dsvCounter * mDsvDescriptorSize;
 				
-				mDevice->CreateDepthStencilView(descriptorResource, &dsvDesc, dsvHandle);
-				dsvCounter++;
-			}
+			mDevice->CreateDepthStencilView(descriptorResource, &dsvDesc, dsvHandle);
+			dsvCounter++;
 		}
 	}
 }

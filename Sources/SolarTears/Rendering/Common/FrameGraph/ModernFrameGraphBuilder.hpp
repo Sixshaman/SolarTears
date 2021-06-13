@@ -27,19 +27,21 @@ protected:
 		uint32_t       ImageIndex;
 		uint32_t       ImageViewIndex;
 		RenderPassType PassType;
-	};
 
-	struct TextureSubresourceInfoSpan
-	{
-		uint32_t FirstSubresourceInfoIndex;
-		uint32_t LastSubresourceInfoIndex;
+		uint64_t ViewSortKey; //The key to determine unique image views for subresource. Value of 0 indicates this node does not create any subresources
 	};
 
 	struct TextureResourceCreateInfo
 	{
-		std::string_view           Name;
-		SubresourceMetadataNode*   MetadataHead;
-		TextureSubresourceInfoSpan SubresourceSpan;
+		std::string_view          Name;
+		SubresourceMetadataNode*  MetadataHead;
+	};
+
+	struct TextureSubresourceCreateInfo
+	{
+		uint32_t SubresourceInfoIndex;
+		uint32_t ImageIndex;
+		uint32_t ImageViewIndex;
 	};
 
 public:
@@ -82,7 +84,10 @@ private:
 	void BuildSubresources();
 
 	//Creates descriptions for resource creation
-	void BuildResourceCreateInfos(std::vector<TextureResourceCreateInfo>& outTextureCreateInfos, std::vector<TextureResourceCreateInfo>& outBackbufferCreateInfos, std::vector<uint32_t>& outViewSubresourceInfoIndices);
+	void BuildResourceCreateInfos(std::vector<TextureResourceCreateInfo>& outTextureCreateInfos, std::vector<TextureResourceCreateInfo>& outBackbufferCreateInfos);
+
+	//Creates descriptions for subresource creation
+	void BuildSubresourceCreateInfos(const std::vector<TextureResourceCreateInfo>& textureCreateInfos, std::vector<TextureSubresourceCreateInfo>& outTextureViewCreateInfos);
 
 	//Validates all uninitialized parameters in subresource infos, propagating them from passes before
 	void PropagateMetadatas(const std::vector<TextureResourceCreateInfo>& textureCreateInfos, const std::vector<TextureResourceCreateInfo>& backbufferCreateInfos);
@@ -90,14 +95,14 @@ private:
 	//Propagates uninitialized parameters in a single resource
 	void PropagateMetadatasInResource(const TextureResourceCreateInfo& createInfo);
 
-	//Initializes SubresourceInfoSpan field of TextureResourceCreateInfo and ImageIndex and ImageViewIndex fields of nodes. The span points to a newly created range in viewSubresourceInfoIndices
-	void ValidateImageIndices(std::vector<TextureResourceCreateInfo>& textureResourceCreateInfos, std::vector<uint32_t>& inoutViewSubresourceInfoIndices);
+	//Initializes ImageIndex and ImageViewIndex fields of nodes. Returns image view count written
+	void ValidateImageAndViewIndices(std::vector<TextureResourceCreateInfo>& textureResourceCreateInfos, uint32_t* inoutImageCounter, uint32_t* inoutImageViewCounter);
 
-	//Initializes SubresourceInfoSpan field of TextureResourceCreateInfo and ImageIndex and ImageViewIndex fields of nodes in a single resource. The span points to a newly created range in viewSubresourceInfoIndices
-	void ValidateImageIndicesInResource(TextureResourceCreateInfo* createInfo, uint32_t imageIndex, std::vector<uint32_t>& inoutViewSubresourceInfoIndices);
+	//Initializes ImageIndex and ImageViewIndex fields of nodes in a single resource. Returns image view count written
+	void ValidateImageAndViewIndicesInResource(TextureResourceCreateInfo* createInfo, uint32_t imageIndex, uint32_t* inoutImageViewCounter);
 
 	//Functions for creating actual frame graph resources/subresources
-	void SetSwapchainImages(std::vector<TextureResourceCreateInfo>& backbufferResourceCreateInfos, std::vector<uint32_t>& inoutViewSubresourceInfoIndices);
+	void SetSwapchainImages(std::vector<TextureResourceCreateInfo>& backbufferResourceCreateInfos, uint32_t* inoutImageViewCounter);
 
 	//Creates swapchain images and views (non-owning, ping-ponging)
 	void CreateSwapchainImageViews(std::vector<TextureResourceCreateInfo>& backbufferResourceCreateInfos);
@@ -112,17 +117,14 @@ protected:
 	//Creates a new subresource info record
 	virtual uint32_t AddSubresourceMetadata() = 0;
 
-	//Finds all indices in subresourceIndices that correspond to non-unique image views, and creates a list that only points to unique entries
-	virtual void BuildUniqueSubresourceList(const std::vector<uint32_t>& subresourceInfoIndices, std::vector<uint32_t>& outUniqueSubresourceInfoIndices, std::vector<uint32_t>& outNewIndexMap) = 0;
-
 	//Propagates info (format, access flags, etc.) from one SubresourceInfo to another. Returns true if propagation succeeded or wasn't needed
-	virtual bool PropagateSubresourceParameters(uint32_t indexFrom, uint32_t indexTo) = 0;
+	virtual bool ValidateSubresourceViewParameters(SubresourceMetadataNode* node) = 0;
 
 	//Creates image objects
 	virtual void CreateTextures(const std::vector<TextureResourceCreateInfo>& textureCreateInfos) const = 0;
 
 	//Creates image view objects
-	virtual void CreateTextureViews(const std::vector<TextureResourceCreateInfo>& textureCreateInfos, const std::vector<uint32_t>& subresourceInfoIndices) const = 0;
+	virtual void CreateTextureViews(const std::vector<TextureSubresourceCreateInfo>& textureViewCreateInfos) const = 0;
 
 	//Creates swapchain images
 	virtual uint32_t AllocateBackbufferResources() const = 0;
