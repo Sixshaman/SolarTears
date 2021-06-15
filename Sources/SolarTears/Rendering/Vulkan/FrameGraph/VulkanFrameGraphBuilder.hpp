@@ -57,8 +57,9 @@ namespace Vulkan
 		const DeviceQueues*      GetDeviceQueues()      const;
 		const SwapChain*         GetSwapChain()         const;
 
-		VkImage              GetRegisteredResource(const std::string_view passName,               const std::string_view subresourceId) const;
-		VkImageView          GetRegisteredSubresource(const std::string_view passName,            const std::string_view subresourceId) const;
+		VkImage              GetRegisteredResource(const std::string_view passName,    const std::string_view subresourceId, uint32_t frame) const;
+		VkImageView          GetRegisteredSubresource(const std::string_view passName, const std::string_view subresourceId, uint32_t frame) const;
+
 		VkFormat             GetRegisteredSubresourceFormat(const std::string_view passName,      const std::string_view subresourceId) const;
 		VkImageLayout        GetRegisteredSubresourceLayout(const std::string_view passName,      const std::string_view subresourceId) const;
 		VkImageUsageFlags    GetRegisteredSubresourceUsage(const std::string_view passName,       const std::string_view subresourceId) const;
@@ -79,12 +80,6 @@ namespace Vulkan
 		VkAccessFlags        GetNextPassSubresourceAccessFlags(const std::string_view passName, const std::string_view subresourceId) const;
 
 	private:
-		//Builds barriers
-		void BuildBarriers();
-
-		//Transit images from UNDEFINED to usable state
-		void BarrierImages(const DeviceQueues* deviceQueues, const WorkerCommandBuffers* workerCommandBuffers, uint32_t defaultQueueIndex);
-
 		//Converts pass type to a queue family index
 		uint32_t PassTypeToQueueIndex(RenderPassType passType) const;
 
@@ -99,13 +94,13 @@ namespace Vulkan
 		bool ValidateSubresourceViewParameters(SubresourceMetadataNode* node) override;
 
 		//Creates image objects
-		void CreateTextures(const std::vector<TextureResourceCreateInfo>& textureCreateInfos) const override;
+		void CreateTextures(const std::vector<TextureResourceCreateInfo>& textureCreateInfos, const std::vector<TextureResourceCreateInfo>& backbufferCreateInfos, uint32_t totalTextureCount) const override;
 
 		//Creates image view objects
 		void CreateTextureViews(const std::vector<TextureSubresourceCreateInfo>& textureViewCreateInfos) const override;
 
-		//Initializes backbuffer-related 
-		Span<uint32_t> AllocateBackbufferResources() const override;
+		//Get the number of swapchain images
+		uint32_t GetSwapchainImageCount() const override;
 
 	private:
 		FrameGraph* mVulkanGraphToBuild;

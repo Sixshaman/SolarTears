@@ -48,12 +48,13 @@ namespace D3D12
 		const ShaderManager*    GetShaderManager()  const;
 		const MemoryManager*    GetMemoryManager()  const;
 
-		ID3D12Resource2*            GetRegisteredResource(const std::string_view passName,          const std::string_view subresourceId) const;
-		D3D12_CPU_DESCRIPTOR_HANDLE GetRegisteredSubresourceSrvUav(const std::string_view passName, const std::string_view subresourceId) const;
-		D3D12_CPU_DESCRIPTOR_HANDLE GetRegisteredSubresourceRtv(const std::string_view passName,    const std::string_view subresourceId) const;
-		D3D12_CPU_DESCRIPTOR_HANDLE GetRegisteredSubresourceDsv(const std::string_view passName,    const std::string_view subresourceId) const;
-		DXGI_FORMAT                 GetRegisteredSubresourceFormat(const std::string_view passName, const std::string_view subresourceId) const;
-		D3D12_RESOURCE_STATES       GetRegisteredSubresourceState(const std::string_view passName,  const std::string_view subresourceId) const;
+		ID3D12Resource2*            GetRegisteredResource(const std::string_view passName,          const std::string_view subresourceId, uint32_t frame) const;
+		D3D12_CPU_DESCRIPTOR_HANDLE GetRegisteredSubresourceSrvUav(const std::string_view passName, const std::string_view subresourceId, uint32_t frame) const;
+		D3D12_CPU_DESCRIPTOR_HANDLE GetRegisteredSubresourceRtv(const std::string_view passName,    const std::string_view subresourceId, uint32_t frame) const;
+		D3D12_CPU_DESCRIPTOR_HANDLE GetRegisteredSubresourceDsv(const std::string_view passName,    const std::string_view subresourceId, uint32_t frame) const;
+
+		DXGI_FORMAT           GetRegisteredSubresourceFormat(const std::string_view passName, const std::string_view subresourceId) const;
+		D3D12_RESOURCE_STATES GetRegisteredSubresourceState(const std::string_view passName,  const std::string_view subresourceId) const;
 
 		D3D12_RESOURCE_STATES GetPreviousPassSubresourceState(const std::string_view passName, const std::string_view subresourceId) const;
 		D3D12_RESOURCE_STATES GetNextPassSubresourceState(const std::string_view passName,     const std::string_view subresourceId) const;
@@ -63,27 +64,20 @@ namespace D3D12
 		D3D12_CPU_DESCRIPTOR_HANDLE GetFrameGraphDsvHeapStart() const;
 
 	private:
-		//Build resource barriers
-		void BuildBarriers();
-
-	private:
 		//Creates a new subresource info record
 		uint32_t AddSubresourceMetadata() override;
 
-		//Propagates info (format, access flags, etc.) from one SubresourceInfo to another. Returns true if propagation succeeded or wasn't needed
+		//Propagates subresource info (format, access flags, etc.) to a node from the previous one. Also initializes view key. Returns true if propagation succeeded or wasn't needed
 		bool ValidateSubresourceViewParameters(SubresourceMetadataNode* node) override;
 
 		//Creates image objects
-		void CreateTextures(const std::vector<TextureResourceCreateInfo>& textureCreateInfos) const override;
+		void CreateTextures(const std::vector<TextureResourceCreateInfo>& textureCreateInfos, const std::vector<TextureResourceCreateInfo>& backbufferCreateInfos, uint32_t totalTextureCount) const override;
 
 		//Creates image view objects
 		void CreateTextureViews(const std::vector<TextureSubresourceCreateInfo>& textureViewCreateInfos) const override;
 
-		//Creates swapchain images and views (non-owning, ping-ponging)
-		void CreateSwapchainTextureViews(const std::vector<TextureSubresourceCreateInfo>& backbufferResourceCreateInfos) const override;
-
-		//Initializes backbuffer-related 
-		Span<uint32_t> AllocateBackbufferResources() const override;
+		//Get the number of swapchain images
+		uint32_t GetSwapchainImageCount() const override;
 
 	private:
 		FrameGraph* mD3d12GraphToBuild;

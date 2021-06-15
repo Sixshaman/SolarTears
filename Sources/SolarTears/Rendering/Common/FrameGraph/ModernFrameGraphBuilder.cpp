@@ -2,6 +2,7 @@
 #include "ModernFrameGraph.hpp"
 #include <algorithm>
 #include <cassert>
+#include <array>
 
 ModernFrameGraphBuilder::ModernFrameGraphBuilder(ModernFrameGraph* graphToBuild): mGraphToBuild(graphToBuild)
 {
@@ -43,6 +44,7 @@ void ModernFrameGraphBuilder::RegisterReadSubresource(const std::string_view pas
 	metadataNode.SubresourceInfoIndex = AddSubresourceMetadata();
 	metadataNode.ImageSpanStart       = (uint32_t)(-1);
 	metadataNode.ImageViewSpanStart   = (uint32_t)(-1);
+	metadataNode.FrameCount           = 1;
 	metadataNode.PassType             = RenderPassType::Graphics;
 
 	mRenderPassesSubresourceMetadatas[renderPassName][subresId] = metadataNode;
@@ -73,6 +75,7 @@ void ModernFrameGraphBuilder::RegisterWriteSubresource(const std::string_view pa
 	metadataNode.SubresourceInfoIndex = AddSubresourceMetadata();
 	metadataNode.ImageSpanStart       = (uint32_t)(-1);
 	metadataNode.ImageViewSpanStart   = (uint32_t)(-1);
+	metadataNode.FrameCount           = 1;
 	metadataNode.PassType             = RenderPassType::Graphics;
 
 	mRenderPassesSubresourceMetadatas[renderPassName][subresId] = metadataNode;
@@ -111,6 +114,7 @@ void ModernFrameGraphBuilder::AssignBackbufferName(const std::string_view backbu
 		presentAcquireMetadataNode.SubresourceInfoIndex = AddSubresourceMetadata();
 		presentAcquireMetadataNode.ImageSpanStart       = (uint32_t)(-1);
 		presentAcquireMetadataNode.ImageViewSpanStart   = (uint32_t)(-1);
+		presentAcquireMetadataNode.FrameCount           = GetSwapchainImageCount();
 		presentAcquireMetadataNode.PassType             = RenderPassType::Graphics;
 
 		presentPassMetadataMap[backbufferIdString] = presentAcquireMetadataNode;
@@ -432,21 +436,461 @@ void ModernFrameGraphBuilder::BuildPassObjects()
 	}
 }
 
+void ModernFrameGraphBuilder::BuildBarriers()
+{
+	//VULKAN
+
+	mGraphToBuild->mImageRenderPassBarriers.resize(mRenderPassNames.size());
+	mGraphToBuild->mSwapchainBarrierIndices.clear();
+
+	std::unordered_set<uint64_t> processedMetadataIds; //This is here so no barrier gets added twice
+	for(size_t i = 0; i < mRenderPassNames.size(); i++)
+	{
+		RenderPassName renderPassName = mRenderPassNames[i];
+
+		const auto& nameIdMap     = mRenderPassesSubresourceNameIds.at(renderPassName);
+		const auto& idMetadataMap = mRenderPassesSubresourceMetadatas.at(renderPassName);
+
+		std::vector<VkImageMemoryBarrier> beforeBarriers;
+		std::vector<VkImageMemoryBarrier> afterBarriers;
+		std::vector<size_t>               beforeSwapchainBarriers;
+		std::vector<size_t>               afterSwapchainBarriers;
+		for(auto& subresourceNameId: nameIdMap)
+		{
+			SubresourceName subresourceName = subresourceNameId.first;
+			SubresourceId   subresourceId   = subresourceNameId.second;
+
+			ImageSubresourceMetadata subresourceMetadata = idMetadataMap.at(subresourceId);
+			if(!(subresourceMetadata.MetadataFlags & ImageFlagAutoBarrier))
+			{
+				if(subresourceMetadata.PrevPassMetadata != nullptr)
+				{
+					if(processedMetadataIds.contains(subresourceMetadata.PrevPassMetadata->MetadataId)) //Was already processed as "after pass"
+					{
+						continue;
+					}
+
+					const bool accessFlagsDiffer   = (subresourceMetadata.AccessFlags          != subresourceMetadata.PrevPassMetadata->AccessFlags);
+					const bool layoutsDiffer       = (subresourceMetadata.Layout               != subresourceMetadata.PrevPassMetadata->Layout);
+					const bool queueFamiliesDiffer = (subresourceMetadata.QueueFamilyOwnership != subresourceMetadata.PrevPassMetadata->QueueFamilyOwnership);
+					if(accessFlagsDiffer || layoutsDiffer || queueFamiliesDiffer)
+					{
+						//Swapchain image barriers are changed every frame
+						VkImage barrieredImage = nullptr;
+						if(subresourceMetadata.ImageIndex != mGraphToBuild->mBackbufferRefIndex)
+						{
+							barrieredImage = mGraphToBuild->mImages[subresourceMetadata.ImageIndex];
+						}
+
+						VkImageMemoryBarrier imageMemoryBarrier;
+						imageMemoryBarrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+						imageMemoryBarrier.pNext                           = nullptr;
+						imageMemoryBarrier.srcAccessMask                   = subresourceMetadata.PrevPassMetadata->AccessFlags;
+						imageMemoryBarrier.dstAccessMask                   = subresourceMetadata.AccessFlags;
+						imageMemoryBarrier.oldLayout                       = subresourceMetadata.PrevPassMetadata->Layout;
+						imageMemoryBarrier.newLayout                       = subresourceMetadata.Layout;
+						imageMemoryBarrier.srcQueueFamilyIndex             = subresourceMetadata.PrevPassMetadata->QueueFamilyOwnership;
+						imageMemoryBarrier.dstQueueFamilyIndex             = subresourceMetadata.QueueFamilyOwnership;
+						imageMemoryBarrier.image                           = barrieredImage;
+						imageMemoryBarrier.subresourceRange.aspectMask     = subresourceMetadata.AspectFlags;
+						imageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
+						imageMemoryBarrier.subresourceRange.layerCount     = 1;
+						imageMemoryBarrier.subresourceRange.baseMipLevel   = 0;
+						imageMemoryBarrier.subresourceRange.levelCount     = 1;
+
+						beforeBarriers.push_back(imageMemoryBarrier);
+
+						//Mark the swapchain barriers
+						if(barrieredImage == nullptr)
+						{
+							beforeSwapchainBarriers.push_back(beforeBarriers.size() - 1);
+						}
+					}
+				}
+
+				if(subresourceMetadata.NextPassMetadata != nullptr)
+				{
+					const bool accessFlagsDiffer   = (subresourceMetadata.AccessFlags          != subresourceMetadata.NextPassMetadata->AccessFlags);
+					const bool layoutsDiffer       = (subresourceMetadata.Layout               != subresourceMetadata.NextPassMetadata->Layout);
+					const bool queueFamiliesDiffer = (subresourceMetadata.QueueFamilyOwnership != subresourceMetadata.NextPassMetadata->QueueFamilyOwnership);
+					if(accessFlagsDiffer || layoutsDiffer || queueFamiliesDiffer)
+					{
+						//Swapchain image barriers are changed every frame
+						VkImage barrieredImage = nullptr;
+						if(subresourceMetadata.ImageIndex != mGraphToBuild->mBackbufferRefIndex)
+						{
+							barrieredImage = mGraphToBuild->mImages[subresourceMetadata.ImageIndex];
+						}
+
+						VkImageMemoryBarrier imageMemoryBarrier;
+						imageMemoryBarrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+						imageMemoryBarrier.pNext                           = nullptr;
+						imageMemoryBarrier.srcAccessMask                   = subresourceMetadata.AccessFlags;
+						imageMemoryBarrier.dstAccessMask                   = subresourceMetadata.NextPassMetadata->AccessFlags;
+						imageMemoryBarrier.oldLayout                       = subresourceMetadata.Layout;
+						imageMemoryBarrier.newLayout                       = subresourceMetadata.NextPassMetadata->Layout;
+						imageMemoryBarrier.srcQueueFamilyIndex             = subresourceMetadata.QueueFamilyOwnership;
+						imageMemoryBarrier.dstQueueFamilyIndex             = subresourceMetadata.NextPassMetadata->QueueFamilyOwnership;
+						imageMemoryBarrier.image                           = mGraphToBuild->mImages[subresourceMetadata.ImageIndex];
+						imageMemoryBarrier.subresourceRange.aspectMask     = subresourceMetadata.NextPassMetadata->AspectFlags;
+						imageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
+						imageMemoryBarrier.subresourceRange.layerCount     = 1;
+						imageMemoryBarrier.subresourceRange.baseMipLevel   = 0;
+						imageMemoryBarrier.subresourceRange.levelCount     = 1;
+
+						afterBarriers.push_back(imageMemoryBarrier);
+
+						//Mark the swapchain barriers
+						if(barrieredImage == nullptr)
+						{
+							afterSwapchainBarriers.push_back(afterBarriers.size() - 1);
+						}
+					}
+				}
+			}
+
+			processedMetadataIds.insert(subresourceMetadata.MetadataId);
+		}
+
+		uint32_t beforeBarrierBegin = (uint32_t)(mGraphToBuild->mImageBarriers.size());
+		mGraphToBuild->mImageBarriers.insert(mGraphToBuild->mImageBarriers.end(), beforeBarriers.begin(), beforeBarriers.end());
+
+		uint32_t afterBarrierBegin = (uint32_t)(mGraphToBuild->mImageBarriers.size());
+		mGraphToBuild->mImageBarriers.insert(mGraphToBuild->mImageBarriers.end(), afterBarriers.begin(), afterBarriers.end());
+
+		FrameGraph::BarrierSpan barrierSpan;
+		barrierSpan.BeforePassBegin = beforeBarrierBegin;
+		barrierSpan.BeforePassEnd   = beforeBarrierBegin + (uint32_t)(beforeBarriers.size());
+		barrierSpan.AfterPassBegin  = afterBarrierBegin;
+		barrierSpan.AfterPassEnd    = afterBarrierBegin + (uint32_t)(afterBarriers.size());
+
+		//That's for now
+		barrierSpan.beforeFlagsBegin = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+		barrierSpan.beforeFlagsEnd   = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		barrierSpan.afterFlagsBegin  = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+		barrierSpan.afterFlagsEnd    = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+
+		mGraphToBuild->mImageRenderPassBarriers[i] = barrierSpan;
+
+		for(size_t beforeSwapchainBarrierIndex: beforeSwapchainBarriers)
+		{
+			mGraphToBuild->mSwapchainBarrierIndices.push_back(beforeBarrierBegin + (uint32_t)beforeSwapchainBarrierIndex);
+		}
+
+		for(size_t afterSwapchainBarrierIndex: afterSwapchainBarriers)
+		{
+			mGraphToBuild->mSwapchainBarrierIndices.push_back(afterBarrierBegin + (uint32_t)afterSwapchainBarrierIndex);
+		}
+	}
+
+	
+
+
+	//D3D12
+	mGraphToBuild->mRenderPassBarriers.resize(mRenderPassNames.size());
+	mGraphToBuild->mSwapchainBarrierIndices.clear();
+
+	std::unordered_set<uint64_t> processedMetadataIds; //This is here so no barrier gets added twice
+	for(size_t i = 0; i < mRenderPassNames.size(); i++)
+	{
+		RenderPassName renderPassName = mRenderPassNames[i];
+
+		const auto& nameIdMap     = mRenderPassesSubresourceNameIds.at(renderPassName);
+		const auto& idMetadataMap = mRenderPassesSubresourceMetadatas.at(renderPassName);
+
+		std::vector<D3D12_RESOURCE_BARRIER> beforeBarriers;
+		std::vector<D3D12_RESOURCE_BARRIER> afterBarriers;
+		std::vector<size_t>                 beforeSwapchainBarrierIndices;
+		std::vector<size_t>                 afterSwapchainBarrierIndices;
+		for(auto& subresourceNameId: nameIdMap)
+		{
+			TextureSubresourceMetadata& subresourceMetadata     = mRenderPassesSubresourceMetadatas.at(renderPassName).at(subresourceNameId.second);
+			TextureSubresourceMetadata& prevSubresourceMetadata = *subresourceMetadata.PrevPassMetadata;
+
+			if(prevSubresourceMetadata.ResourceState == D3D12_RESOURCE_STATE_COMMON && D3D12Utils::IsStatePromoteableTo(subresourceMetadata.ResourceState)) //Promotion from common
+			{
+				subresourceMetadata.MetadataFlags |= TextureFlagStateAutoPromoted;
+			}
+			else if(prevSubresourceMetadata.QueueOwnership == subresourceMetadata.QueueOwnership) //Queue hasn't changed => ExecuteCommandLists wasn't called => No decay happened
+			{
+				if(prevSubresourceMetadata.ResourceState == subresourceMetadata.ResourceState) //Propagation of state promotion
+				{
+					subresourceMetadata.MetadataFlags |= TextureFlagStateAutoPromoted;
+				}
+			}
+			else
+			{
+				bool prevWasPromoted = (prevSubresourceMetadata.MetadataFlags & TextureFlagStateAutoPromoted);
+				if(prevWasPromoted && !D3D12Utils::IsStateWriteable(prevSubresourceMetadata.ResourceState)) //Read-only promoted state decays to COMMON after ECL call
+				{
+					if(D3D12Utils::IsStatePromoteableTo(subresourceMetadata.ResourceState)) //State promotes again
+					{
+						subresourceMetadata.MetadataFlags |= TextureFlagStateAutoPromoted;
+					}
+				}
+			}
+
+			SubresourceName subresourceName = subresourceNameId.first;
+			SubresourceId   subresourceId   = subresourceNameId.second;
+
+			TextureSubresourceMetadata subresourceMetadata = idMetadataMap.at(subresourceId);
+			if(!(subresourceMetadata.MetadataFlags & TextureFlagAutoBarrier))
+			{
+				
+				{
+					/*
+					*    Before barrier:
+					*
+					*    1.  Same queue, state unchanged:                                  No barrier needed
+					*    2.  Same queue, state changed, PRESENT -> automatically promoted: No barrier needed
+					*    3.  Same queue, state changed other cases:                        Need a barrier Old state -> New state
+					*
+					*    4.  Graphics -> Compute,  state automatically promoted:               No barrier needed
+					*    5.  Graphics -> Compute,  state non-promoted, was promoted read-only: Need a barrier COMMON -> New state
+					*    6.  Graphics -> Compute,  state unchanged:                            No barrier needed
+					*    7.  Graphics -> Compute,  state changed other cases:                  No barrier needed, handled by the previous state's barrier
+					* 
+					*    8.  Compute  -> Graphics, state automatically promoted:                       No barrier needed, state will be promoted again
+					* 	 9.  Compute  -> Graphics, state non-promoted, was promoted read-only:         Need a barrier COMMON -> New state   
+					*    10. Compute  -> Graphics, state changed Compute/graphics -> Compute/Graphics: No barrier needed, handled by the previous state's barrier
+					*    11. Compute  -> Graphics, state changed Compute/Graphics -> Graphics:         Need a barrier Old state -> New state
+					*    12. Compute  -> Graphics, state unchanged:                                    No barrier needed
+					*
+					*    13. Graphics/Compute -> Copy, was promoted read-only: No barrier needed, state decays
+					*    14. Graphics/Compute -> Copy, other cases:            No barrier needed, handled by previous state's barrier
+					* 
+					*    15. Copy -> Graphics/Compute, state automatically promoted: No barrier needed
+					*    16. Copy -> Graphics/Compute, state non-promoted:           Need a barrier COMMON -> New state
+					*/
+
+					bool needBarrier = false;
+					D3D12_RESOURCE_STATES prevPassState = subresourceMetadata.PrevPassMetadata->ResourceState;
+					D3D12_RESOURCE_STATES nextPassState = subresourceMetadata.ResourceState;
+
+					const D3D12_COMMAND_LIST_TYPE prevStateQueue = subresourceMetadata.PrevPassMetadata->QueueOwnership;
+					const D3D12_COMMAND_LIST_TYPE nextStateQueue = subresourceMetadata.QueueOwnership;
+
+					const bool prevWasPromoted = (subresourceMetadata.PrevPassMetadata->MetadataFlags & TextureFlagStateAutoPromoted);
+					const bool nextIsPromoted  = (subresourceMetadata.MetadataFlags & TextureFlagStateAutoPromoted);
+
+					if(prevStateQueue == nextStateQueue) //Rules 1, 2, 3
+					{
+						if(prevPassState == D3D12_RESOURCE_STATE_PRESENT) //Rule 2 or 3
+						{
+							needBarrier = !nextIsPromoted;
+						}
+						else //Rule 1 or 3
+						{
+							needBarrier = (prevPassState != nextPassState);
+						}
+					}
+					else if(prevStateQueue == D3D12_COMMAND_LIST_TYPE_DIRECT && nextStateQueue == D3D12_COMMAND_LIST_TYPE_COMPUTE) //Rules 4, 5, 6, 7
+					{
+						if(prevWasPromoted && !D3D12Utils::IsStateWriteable(prevPassState)) //Rule 5
+						{
+							prevPassState = D3D12_RESOURCE_STATE_COMMON; //Common state decay from promoted read-only
+							needBarrier   = !nextIsPromoted;
+						}
+						else //Rules 4, 6, 7
+						{
+							needBarrier = false;
+						}
+					}
+					else if(prevStateQueue == D3D12_COMMAND_LIST_TYPE_COMPUTE && nextStateQueue == D3D12_COMMAND_LIST_TYPE_DIRECT) //Rules 8, 9, 10, 11, 12
+					{
+						if(prevWasPromoted && !D3D12Utils::IsStateWriteable(prevPassState)) //Rule 9
+						{
+							prevPassState = D3D12_RESOURCE_STATE_COMMON; //Common state decay from promoted read-only
+							needBarrier   = !nextIsPromoted;
+						}
+						else //Rules 8, 10, 11, 12
+						{
+							needBarrier = !nextIsPromoted && (prevPassState != nextPassState) && !D3D12Utils::IsStateComputeFriendly(nextPassState);
+						}
+					}
+					else if(nextStateQueue == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 13, 14
+					{
+						needBarrier = false;
+					}
+					else if(prevStateQueue == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 15, 16
+					{
+						needBarrier = !nextIsPromoted;
+					}
+
+					if(needBarrier)
+					{
+						//Swapchain image barriers are changed every frame
+						ID3D12Resource2* barrieredTexture = nullptr;
+						if(subresourceMetadata.ImageIndex != mGraphToBuild->mBackbufferRefIndex)
+						{
+							barrieredTexture = mGraphToBuild->mTextures[subresourceMetadata.ImageIndex];
+						}
+
+						D3D12_RESOURCE_BARRIER textureTransitionBarrier;
+						textureTransitionBarrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+						textureTransitionBarrier.Transition.pResource   = barrieredTexture;
+						textureTransitionBarrier.Transition.Subresource = 0;
+						textureTransitionBarrier.Transition.StateBefore = prevPassState;
+						textureTransitionBarrier.Transition.StateAfter  = nextPassState;
+						textureTransitionBarrier.Flags                  = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+
+						beforeBarriers.push_back(textureTransitionBarrier);
+
+						//Mark the swapchain barriers
+						if(barrieredTexture == nullptr)
+						{
+							beforeSwapchainBarrierIndices.push_back(beforeBarriers.size() - 1);
+						}
+					}
+				}
+
+				
+				{
+					/*
+					*    After barrier:
+					*
+					*    1.  Same queue, state unchanged:                                           No barrier needed
+					*    2.  Same queue, state changed, Promoted read-only -> PRESENT:              No barrier needed, state decays
+					*    3.  Same queue, state changed, Promoted writeable/Non-promoted -> PRESENT: Need a barrier Old State -> PRESENT
+					*    4.  Same queue, state changed, other cases:                                No barrier needed, will be handled by the next state's barrier
+					*
+					*    5.  Graphics -> Compute,  state will be automatically promoted:               No barrier needed
+					*    6.  Graphics -> Compute,  state will not be promoted, was promoted read-only: No barrier needed, will be handled by the next state's barrier
+					*    7.  Graphics -> Compute,  state unchanged:                                    No barrier needed
+					*    8.  Graphics -> Compute,  state changed other cases:                          Need a barrier Old state -> New state
+					* 
+					*    9.  Compute  -> Graphics, state will be automatically promoted:                 No barrier needed
+					* 	 10. Compute  -> Graphics, state will not be promoted, was promoted read-only:   No barrier needed, will be handled by the next state's barrier     
+					*    11. Compute  -> Graphics, state changed Promoted read-only -> PRESENT:          No barrier needed, state will decay
+					*    12. Compute  -> Graphics, state changed Compute/graphics   -> Compute/Graphics: Need a barrier Old state -> New state
+					*    13. Compute  -> Graphics, state changed Compute/Graphics   -> Graphics:         No barrier needed, will be handled by the next state's barrier
+					*    14. Compute  -> Graphics, state unchanged:                                      No barrier needed
+					*   
+					*    15. Graphics/Compute -> Copy, from Promoted read-only: No barrier needed
+					*    16. Graphics/Compute -> Copy, other cases:             Need a barrier Old state -> COMMON
+					* 
+					*    17. Copy -> Graphics/Compute, state will be automatically promoted: No barrier needed
+					*    18. Copy -> Graphics/Compute, state will not be promoted:           No barrier needed, will be handled by the next state's barrier
+					*/
+
+					bool needBarrier = false;
+					D3D12_RESOURCE_STATES prevPassState = subresourceMetadata.ResourceState;
+					D3D12_RESOURCE_STATES nextPassState = subresourceMetadata.NextPassMetadata->ResourceState;
+
+					const D3D12_COMMAND_LIST_TYPE prevStateQueue = subresourceMetadata.QueueOwnership;
+					const D3D12_COMMAND_LIST_TYPE nextStateQueue = subresourceMetadata.NextPassMetadata->QueueOwnership;
+
+					const bool prevWasPromoted = (subresourceMetadata.MetadataFlags & TextureFlagStateAutoPromoted);
+					const bool nextIsPromoted  = (subresourceMetadata.NextPassMetadata->MetadataFlags & TextureFlagStateAutoPromoted);
+
+					if(prevStateQueue == nextStateQueue) //Rules 1, 2, 3, 4
+					{
+						if(nextPassState == D3D12_RESOURCE_STATE_PRESENT) //Rules 2, 3
+						{
+							needBarrier = (!prevWasPromoted || D3D12Utils::IsStateWriteable(prevPassState));
+						}
+						else //Rules 1, 4
+						{
+							needBarrier = false;
+						}
+					}
+					else if(prevStateQueue == D3D12_COMMAND_LIST_TYPE_DIRECT && nextStateQueue == D3D12_COMMAND_LIST_TYPE_COMPUTE) //Rules 5, 6, 7, 8
+					{
+						if(prevWasPromoted && !D3D12Utils::IsStateWriteable(prevPassState)) //Rule 6
+						{
+							needBarrier = false;
+						}
+						else //Rules 5, 7, 8
+						{
+							needBarrier = !nextIsPromoted && (prevPassState != nextPassState);
+						}
+					}
+					else if(prevStateQueue == D3D12_COMMAND_LIST_TYPE_COMPUTE && nextStateQueue == D3D12_COMMAND_LIST_TYPE_DIRECT) //Rules 9, 10, 11, 12, 13, 14
+					{
+						if(prevWasPromoted && !D3D12Utils::IsStateWriteable(prevPassState)) //Rule 10, 11
+						{
+							needBarrier = false;
+						}
+						else //Rules 9, 12, 13, 14
+						{
+							needBarrier = !nextIsPromoted && (prevPassState != nextPassState) && D3D12Utils::IsStateComputeFriendly(nextPassState);
+						}
+					}
+					else if(nextStateQueue == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 15, 16
+					{
+						needBarrier = !prevWasPromoted || D3D12Utils::IsStateWriteable(prevPassState);
+					}
+					else if(prevStateQueue == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 17, 18
+					{
+						needBarrier = false;
+					}
+
+					if(needBarrier)
+					{
+						//Swapchain image barriers are changed every frame
+						ID3D12Resource2* barrieredTexture = nullptr;
+						if(subresourceMetadata.ImageIndex != mGraphToBuild->mBackbufferRefIndex)
+						{
+							barrieredTexture = mGraphToBuild->mTextures[subresourceMetadata.ImageIndex];
+						}
+
+						D3D12_RESOURCE_BARRIER textureTransitionBarrier;
+						textureTransitionBarrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+						textureTransitionBarrier.Transition.pResource   = barrieredTexture;
+						textureTransitionBarrier.Transition.Subresource = 0;
+						textureTransitionBarrier.Transition.StateBefore = prevPassState;
+						textureTransitionBarrier.Transition.StateAfter  = nextPassState;
+						textureTransitionBarrier.Flags                  = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+
+						afterBarriers.push_back(textureTransitionBarrier);
+
+						//Mark the swapchain barriers
+						if(barrieredTexture == nullptr)
+						{
+							afterSwapchainBarrierIndices.push_back(afterBarriers.size() - 1);
+						}
+					}
+				}
+			}
+
+			processedMetadataIds.insert(subresourceMetadata.MetadataId);
+		}
+
+		uint32_t beforeBarrierBegin = (uint32_t)(mGraphToBuild->mResourceBarriers.size());
+		mGraphToBuild->mResourceBarriers.insert(mGraphToBuild->mResourceBarriers.end(), beforeBarriers.begin(), beforeBarriers.end());
+
+		uint32_t afterBarrierBegin = (uint32_t)(mGraphToBuild->mResourceBarriers.size());
+		mGraphToBuild->mResourceBarriers.insert(mGraphToBuild->mResourceBarriers.end(), afterBarriers.begin(), afterBarriers.end());
+
+		FrameGraph::BarrierSpan barrierSpan;
+		barrierSpan.BeforePassBegin = beforeBarrierBegin;
+		barrierSpan.BeforePassEnd   = beforeBarrierBegin + (uint32_t)(beforeBarriers.size());
+		barrierSpan.AfterPassBegin  = afterBarrierBegin;
+		barrierSpan.AfterPassEnd    = afterBarrierBegin + (uint32_t)(afterBarriers.size());
+
+		mGraphToBuild->mRenderPassBarriers[i] = barrierSpan;
+
+		for(size_t beforeSwapchainBarrierIndex: beforeSwapchainBarrierIndices)
+		{
+			mGraphToBuild->mSwapchainBarrierIndices.push_back(beforeBarrierBegin + (uint32_t)beforeSwapchainBarrierIndex);
+		}
+
+		for(size_t afterSwapchainBarrierIndex: afterSwapchainBarrierIndices)
+		{
+			mGraphToBuild->mSwapchainBarrierIndices.push_back(afterBarrierBegin + (uint32_t)afterSwapchainBarrierIndex);
+		}
+	}
+}
+
 void ModernFrameGraphBuilder::BuildSubresources()
 {
 	std::vector<TextureResourceCreateInfo> textureResourceCreateInfos;
 	std::vector<TextureResourceCreateInfo> backbufferResourceCreateInfos;
 	BuildResourceCreateInfos(textureResourceCreateInfos, backbufferResourceCreateInfos);
 	PropagateMetadatas(textureResourceCreateInfos, backbufferResourceCreateInfos);
-
-	mGraphToBuild->mBackbufferImageSpan.Begin = (uint32_t)textureResourceCreateInfos.size();
-	mGraphToBuild->mBackbufferImageSpan.End   = mGraphToBuild->mBackbufferImageSpan.Begin + GetSwapchainImageCount();
-
-	uint32_t textureImageViewCount    = ValidateImageAndViewIndices(textureResourceCreateInfos, 0, 0);
-	uint32_t backbufferImageViewCount = ValidateImageAndViewIndices(backbufferResourceCreateInfos, (uint32_t)textureResourceCreateInfos.size(), textureImageViewCount);
-
-	CreateTextures(textureResourceCreateInfos);
-	InitializeSwapchainImages();
+	
+	uint32_t imageCount = PrepareResourceLocations(textureResourceCreateInfos, backbufferResourceCreateInfos);;
+	CreateTextures(textureResourceCreateInfos, backbufferResourceCreateInfos, imageCount);
 
 	std::vector<TextureSubresourceCreateInfo> subresourceCreateInfos;
 	BuildSubresourceCreateInfos(textureResourceCreateInfos, subresourceCreateInfos);
@@ -489,7 +933,6 @@ void ModernFrameGraphBuilder::BuildResourceCreateInfos(std::vector<TextureResour
 
 void ModernFrameGraphBuilder::BuildSubresourceCreateInfos(const std::vector<TextureResourceCreateInfo>& textureCreateInfos, std::vector<TextureSubresourceCreateInfo>& outTextureViewCreateInfos)
 {
-	outTextureViewCreateInfos.clear();
 	for(const TextureResourceCreateInfo& textureCreateInfo: textureCreateInfos)
 	{
 		const SubresourceMetadataNode* headNode    = textureCreateInfo.MetadataHead;
@@ -500,12 +943,12 @@ void ModernFrameGraphBuilder::BuildSubresourceCreateInfos(const std::vector<Text
 		{
 			if(currentNode->ImageViewSpanStart != (uint32_t)(-1) && !uniqueImageViews.contains(currentNode->ImageViewSpanStart))
 			{
-				//for()
+				for(uint32_t frame = 0; frame < currentNode->FrameCount; frame++)
 				{
 					TextureSubresourceCreateInfo subresourceCreateInfo;
 					subresourceCreateInfo.SubresourceInfoIndex = currentNode->SubresourceInfoIndex;
-					subresourceCreateInfo.ImageIndex           = currentNode->ImageSpanStart; // + ???;
-					subresourceCreateInfo.ImageViewIndex       = currentNode->ImageViewSpanStart; //+ ???;
+					subresourceCreateInfo.ImageIndex           = currentNode->ImageSpanStart + frame;
+					subresourceCreateInfo.ImageViewIndex       = currentNode->ImageViewSpanStart + frame;
 
 					outTextureViewCreateInfos.push_back(subresourceCreateInfo);
 				}
@@ -550,18 +993,56 @@ void ModernFrameGraphBuilder::PropagateMetadatasInResource(const TextureResource
 	} while(currentNode != headNode);
 }
 
-uint32_t ModernFrameGraphBuilder::ValidateImageAndViewIndices(std::vector<TextureResourceCreateInfo>& textureResourceCreateInfos, uint32_t imageIndexOffset, uint32_t imageViewIndexOffset)
+uint32_t ModernFrameGraphBuilder::PrepareResourceLocations(std::vector<TextureResourceCreateInfo>& textureCreateInfos, std::vector<TextureResourceCreateInfo>& backbufferCreateInfos)
 {
+	uint32_t imageCount     = 0;
 	uint32_t imageViewCount = 0;
-	for(uint32_t imageIndex = 0; imageIndex < (uint32_t)textureResourceCreateInfos.size(); imageIndex++)
+
+	std::array<std::vector<TextureResourceCreateInfo>&, 2> createInfoArrays = {textureCreateInfos, backbufferCreateInfos};
+	std::array<uint32_t, createInfoArrays.size()>          backbufferSpan;
+	for(size_t i = 0; i < createInfoArrays.size(); i++)
 	{
-		imageViewCount += ValidateImageAndViewIndicesInResource(&textureResourceCreateInfos[imageIndex], imageIndexOffset + imageIndex, imageViewIndexOffset + imageViewCount);
+		uint32_t resourceCount     = 0;
+		uint32_t resourceViewCount = 0;
+		ValidateImageAndViewIndices(textureCreateInfos, imageCount, imageViewCount, &resourceCount, &resourceViewCount);
+
+		imageCount     += resourceCount;
+		imageViewCount += resourceViewCount;
+
+		backbufferSpan[i] = imageCount;
 	}
 
-	return imageViewCount;
+	mGraphToBuild->mBackbufferImageSpan.Begin = backbufferSpan[0];
+	mGraphToBuild->mBackbufferImageSpan.End   = backbufferSpan[1];
+
+	return imageCount;
 }
 
-uint32_t ModernFrameGraphBuilder::ValidateImageAndViewIndicesInResource(TextureResourceCreateInfo* createInfo, uint32_t imageIndex, uint32_t imageViewIndexOffset)
+void ModernFrameGraphBuilder::ValidateImageAndViewIndices(std::vector<TextureResourceCreateInfo>& textureResourceCreateInfos, uint32_t imageIndexOffset, uint32_t imageViewIndexOffset, uint32_t* outImageCount, uint32_t* outImageViewCount)
+{
+	uint32_t imageCount     = 0;
+	uint32_t imageViewCount = 0;
+	for(TextureResourceCreateInfo& textureCreateInfo: textureResourceCreateInfos)
+	{
+		uint32_t resourceImageViewCount = 0;
+		ValidateImageAndViewIndicesInResource(&textureCreateInfo, imageIndexOffset + imageCount, imageViewIndexOffset + imageViewCount, &resourceImageViewCount);
+
+		imageCount     += textureCreateInfo.MetadataHead->FrameCount;
+		imageViewCount += textureCreateInfo.MetadataHead->FrameCount * resourceImageViewCount;
+	}
+
+	if(outImageCount)
+	{
+		*outImageCount = imageCount;
+	}
+
+	if(outImageViewCount)
+	{
+		*outImageViewCount = imageViewCount;
+	}
+}
+
+void ModernFrameGraphBuilder::ValidateImageAndViewIndicesInResource(TextureResourceCreateInfo* createInfo, uint32_t imageIndex, uint32_t imageViewIndexOffset, uint32_t* outSingleFrameViewCount)
 {
 	std::vector<SubresourceMetadataNode*> resourceMetadataNodes;
 
@@ -592,21 +1073,24 @@ uint32_t ModernFrameGraphBuilder::ValidateImageAndViewIndicesInResource(TextureR
 
 	//Only assign different image view indices if their ViewSortKey differ
 	uint64_t prevSortKey = 0;
-	uint32_t imageViewIndexCounter = (uint32_t)(-1);
+	uint32_t imageViewIndex = (uint32_t)(-1);
 	for(size_t nodeIndex = firstValidImageView; nodeIndex < resourceMetadataNodes.size(); nodeIndex++)
 	{
 		uint64_t currSortKey = resourceMetadataNodes[nodeIndex]->ViewSortKey;
 		if(currSortKey != prevSortKey)
 		{
-			imageViewIndexCounter++;
+			imageViewIndex++;
 			prevSortKey = currSortKey;
 		}
 
 		resourceMetadataNodes[nodeIndex]->ImageSpanStart     = imageIndex;
-		resourceMetadataNodes[nodeIndex]->ImageViewSpanStart = imageViewIndexOffset + imageViewIndexCounter;
+		resourceMetadataNodes[nodeIndex]->ImageViewSpanStart = imageViewIndexOffset + imageViewIndex;
 	}
 
-	return (imageViewIndexCounter + 1);
+	if(outSingleFrameViewCount)
+	{
+		*outSingleFrameViewCount = imageViewIndex + 1;
+	}
 }
 
 void ModernFrameGraphBuilder::TopologicalSortNode(const std::unordered_map<RenderPassName, std::unordered_set<RenderPassName>>& adjacencyList, std::unordered_set<RenderPassName>& visited, std::unordered_set<RenderPassName>& onStack, const RenderPassName& renderPassName, std::vector<RenderPassName>& sortedPassNames)

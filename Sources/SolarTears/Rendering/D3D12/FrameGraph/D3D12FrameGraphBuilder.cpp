@@ -99,23 +99,23 @@ const D3D12::MemoryManager* D3D12::FrameGraphBuilder::GetMemoryManager() const
 	return mMemoryAllocator;
 }
 
-ID3D12Resource2* D3D12::FrameGraphBuilder::GetRegisteredResource(const std::string_view passName, const std::string_view subresourceId) const
+ID3D12Resource2* D3D12::FrameGraphBuilder::GetRegisteredResource(const std::string_view passName, const std::string_view subresourceId, uint32_t frame) const
 {
 	const RenderPassName passNameStr(passName);
 	const SubresourceId  subresourceIdStr(subresourceId);
 
 	const SubresourceMetadataNode& metadataNode = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr);
-	if(metadataNode.ImageIndex == (uint32_t)(-1))
+	if(metadataNode.ImageSpanStart == (uint32_t)(-1))
 	{
 		return nullptr;
 	}
 	else
 	{
-		return mD3d12GraphToBuild->mTextures[metadataNode.ImageIndex];
+		return mD3d12GraphToBuild->mTextures[metadataNode.ImageSpanStart + frame];
 	}
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceSrvUav(const std::string_view passName, const std::string_view subresourceId) const
+D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceSrvUav(const std::string_view passName, const std::string_view subresourceId, uint32_t frame) const
 {
 	const RenderPassName passNameStr(passName);
 	const SubresourceId  subresourceIdStr(subresourceId);
@@ -127,12 +127,12 @@ D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceSr
 	assert((subresourceInfo.State & resourceState) && (subresourceInfo.DescriptorHeapIndex != (uint32_t)(-1)));
 
 	D3D12_CPU_DESCRIPTOR_HANDLE descriptorHandle = GetFrameGraphSrvHeapStart();
-	descriptorHandle.ptr                        += subresourceInfo.DescriptorHeapIndex * mSrvUavCbvDescriptorSize;
+	descriptorHandle.ptr                        += (subresourceInfo.DescriptorHeapIndex + frame) * mSrvUavCbvDescriptorSize;
 
 	return descriptorHandle;
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceRtv(const std::string_view passName, const std::string_view subresourceId) const
+D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceRtv(const std::string_view passName, const std::string_view subresourceId, uint32_t frame) const
 {
 	const RenderPassName passNameStr(passName);
 	const SubresourceId  subresourceIdStr(subresourceId);
@@ -144,12 +144,12 @@ D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceRt
 	assert((subresourceInfo.State & resourceState) && (subresourceInfo.DescriptorHeapIndex != (uint32_t)(-1)));
 
 	D3D12_CPU_DESCRIPTOR_HANDLE descriptorHandle = GetFrameGraphRtvHeapStart();
-	descriptorHandle.ptr                        += subresourceInfo.DescriptorHeapIndex * mRtvDescriptorSize;
+	descriptorHandle.ptr                        += (subresourceInfo.DescriptorHeapIndex + frame) * mRtvDescriptorSize;
 
 	return descriptorHandle;
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceDsv(const std::string_view passName, const std::string_view subresourceId) const
+D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceDsv(const std::string_view passName, const std::string_view subresourceId, uint32_t frame) const
 {
 	const RenderPassName passNameStr(passName);
 	const SubresourceId  subresourceIdStr(subresourceId);
@@ -161,7 +161,7 @@ D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceDs
 	assert((subresourceInfo.State & resourceState) && (subresourceInfo.DescriptorHeapIndex != (uint32_t)(-1)));
 
 	D3D12_CPU_DESCRIPTOR_HANDLE descriptorHandle = GetFrameGraphDsvHeapStart();
-	descriptorHandle.ptr                        += subresourceInfo.DescriptorHeapIndex * mDsvDescriptorSize;
+	descriptorHandle.ptr                        += (subresourceInfo.DescriptorHeapIndex + frame) * mDsvDescriptorSize;
 
 	return descriptorHandle;
 }
@@ -216,311 +216,14 @@ D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetFrameGraphDsvHeapStart(
 {
 	return mD3d12GraphToBuild->mDsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
 }
-
-void D3D12::FrameGraphBuilder::BuildBarriers() //When present from compute is out, you're gonna have a fun time writing all the new rules lol
-{
-	mGraphToBuild->mRenderPassBarriers.resize(mRenderPassNames.size());
-	mGraphToBuild->mSwapchainBarrierIndices.clear();
-
-	std::unordered_set<uint64_t> processedMetadataIds; //This is here so no barrier gets added twice
-	for(size_t i = 0; i < mRenderPassNames.size(); i++)
-	{
-		RenderPassName renderPassName = mRenderPassNames[i];
-
-		const auto& nameIdMap     = mRenderPassesSubresourceNameIds.at(renderPassName);
-		const auto& idMetadataMap = mRenderPassesSubresourceMetadatas.at(renderPassName);
-
-		std::vector<D3D12_RESOURCE_BARRIER> beforeBarriers;
-		std::vector<D3D12_RESOURCE_BARRIER> afterBarriers;
-		std::vector<size_t>                 beforeSwapchainBarrierIndices;
-		std::vector<size_t>                 afterSwapchainBarrierIndices;
-		for(auto& subresourceNameId: nameIdMap)
-		{
-			TextureSubresourceMetadata& subresourceMetadata     = mRenderPassesSubresourceMetadatas.at(renderPassName).at(subresourceNameId.second);
-			TextureSubresourceMetadata& prevSubresourceMetadata = *subresourceMetadata.PrevPassMetadata;
-
-			if(prevSubresourceMetadata.ResourceState == D3D12_RESOURCE_STATE_COMMON && D3D12Utils::IsStatePromoteableTo(subresourceMetadata.ResourceState)) //Promotion from common
-			{
-				subresourceMetadata.MetadataFlags |= TextureFlagStateAutoPromoted;
-			}
-			else if(prevSubresourceMetadata.QueueOwnership == subresourceMetadata.QueueOwnership) //Queue hasn't changed => ExecuteCommandLists wasn't called => No decay happened
-			{
-				if(prevSubresourceMetadata.ResourceState == subresourceMetadata.ResourceState) //Propagation of state promotion
-				{
-					subresourceMetadata.MetadataFlags |= TextureFlagStateAutoPromoted;
-				}
-			}
-			else
-			{
-				bool prevWasPromoted = (prevSubresourceMetadata.MetadataFlags & TextureFlagStateAutoPromoted);
-				if(prevWasPromoted && !D3D12Utils::IsStateWriteable(prevSubresourceMetadata.ResourceState)) //Read-only promoted state decays to COMMON after ECL call
-				{
-					if(D3D12Utils::IsStatePromoteableTo(subresourceMetadata.ResourceState)) //State promotes again
-					{
-						subresourceMetadata.MetadataFlags |= TextureFlagStateAutoPromoted;
-					}
-				}
-			}
-
-			SubresourceName subresourceName = subresourceNameId.first;
-			SubresourceId   subresourceId   = subresourceNameId.second;
-
-			TextureSubresourceMetadata subresourceMetadata = idMetadataMap.at(subresourceId);
-			if(!(subresourceMetadata.MetadataFlags & TextureFlagAutoBarrier))
-			{
-				
-				{
-					/*
-					*    Before barrier:
-					*
-					*    1.  Same queue, state unchanged:                                  No barrier needed
-					*    2.  Same queue, state changed, PRESENT -> automatically promoted: No barrier needed
-					*    3.  Same queue, state changed other cases:                        Need a barrier Old state -> New state
-					*
-					*    4.  Graphics -> Compute,  state automatically promoted:               No barrier needed
-					*    5.  Graphics -> Compute,  state non-promoted, was promoted read-only: Need a barrier COMMON -> New state
-					*    6.  Graphics -> Compute,  state unchanged:                            No barrier needed
-					*    7.  Graphics -> Compute,  state changed other cases:                  No barrier needed, handled by the previous state's barrier
-					* 
-					*    8.  Compute  -> Graphics, state automatically promoted:                       No barrier needed, state will be promoted again
-					* 	 9.  Compute  -> Graphics, state non-promoted, was promoted read-only:         Need a barrier COMMON -> New state   
-					*    10. Compute  -> Graphics, state changed Compute/graphics -> Compute/Graphics: No barrier needed, handled by the previous state's barrier
-					*    11. Compute  -> Graphics, state changed Compute/Graphics -> Graphics:         Need a barrier Old state -> New state
-					*    12. Compute  -> Graphics, state unchanged:                                    No barrier needed
-					*
-					*    13. Graphics/Compute -> Copy, was promoted read-only: No barrier needed, state decays
-					*    14. Graphics/Compute -> Copy, other cases:            No barrier needed, handled by previous state's barrier
-					* 
-					*    15. Copy -> Graphics/Compute, state automatically promoted: No barrier needed
-					*    16. Copy -> Graphics/Compute, state non-promoted:           Need a barrier COMMON -> New state
-					*/
-
-					bool needBarrier = false;
-					D3D12_RESOURCE_STATES prevPassState = subresourceMetadata.PrevPassMetadata->ResourceState;
-					D3D12_RESOURCE_STATES nextPassState = subresourceMetadata.ResourceState;
-
-					const D3D12_COMMAND_LIST_TYPE prevStateQueue = subresourceMetadata.PrevPassMetadata->QueueOwnership;
-					const D3D12_COMMAND_LIST_TYPE nextStateQueue = subresourceMetadata.QueueOwnership;
-
-					const bool prevWasPromoted = (subresourceMetadata.PrevPassMetadata->MetadataFlags & TextureFlagStateAutoPromoted);
-					const bool nextIsPromoted  = (subresourceMetadata.MetadataFlags & TextureFlagStateAutoPromoted);
-
-					if(prevStateQueue == nextStateQueue) //Rules 1, 2, 3
-					{
-						if(prevPassState == D3D12_RESOURCE_STATE_PRESENT) //Rule 2 or 3
-						{
-							needBarrier = !nextIsPromoted;
-						}
-						else //Rule 1 or 3
-						{
-							needBarrier = (prevPassState != nextPassState);
-						}
-					}
-					else if(prevStateQueue == D3D12_COMMAND_LIST_TYPE_DIRECT && nextStateQueue == D3D12_COMMAND_LIST_TYPE_COMPUTE) //Rules 4, 5, 6, 7
-					{
-						if(prevWasPromoted && !D3D12Utils::IsStateWriteable(prevPassState)) //Rule 5
-						{
-							prevPassState = D3D12_RESOURCE_STATE_COMMON; //Common state decay from promoted read-only
-							needBarrier   = !nextIsPromoted;
-						}
-						else //Rules 4, 6, 7
-						{
-							needBarrier = false;
-						}
-					}
-					else if(prevStateQueue == D3D12_COMMAND_LIST_TYPE_COMPUTE && nextStateQueue == D3D12_COMMAND_LIST_TYPE_DIRECT) //Rules 8, 9, 10, 11, 12
-					{
-						if(prevWasPromoted && !D3D12Utils::IsStateWriteable(prevPassState)) //Rule 9
-						{
-							prevPassState = D3D12_RESOURCE_STATE_COMMON; //Common state decay from promoted read-only
-							needBarrier   = !nextIsPromoted;
-						}
-						else //Rules 8, 10, 11, 12
-						{
-							needBarrier = !nextIsPromoted && (prevPassState != nextPassState) && !D3D12Utils::IsStateComputeFriendly(nextPassState);
-						}
-					}
-					else if(nextStateQueue == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 13, 14
-					{
-						needBarrier = false;
-					}
-					else if(prevStateQueue == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 15, 16
-					{
-						needBarrier = !nextIsPromoted;
-					}
-
-					if(needBarrier)
-					{
-						//Swapchain image barriers are changed every frame
-						ID3D12Resource2* barrieredTexture = nullptr;
-						if(subresourceMetadata.ImageIndex != mGraphToBuild->mBackbufferRefIndex)
-						{
-							barrieredTexture = mGraphToBuild->mTextures[subresourceMetadata.ImageIndex];
-						}
-
-						D3D12_RESOURCE_BARRIER textureTransitionBarrier;
-						textureTransitionBarrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-						textureTransitionBarrier.Transition.pResource   = barrieredTexture;
-						textureTransitionBarrier.Transition.Subresource = 0;
-						textureTransitionBarrier.Transition.StateBefore = prevPassState;
-						textureTransitionBarrier.Transition.StateAfter  = nextPassState;
-						textureTransitionBarrier.Flags                  = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-
-						beforeBarriers.push_back(textureTransitionBarrier);
-
-						//Mark the swapchain barriers
-						if(barrieredTexture == nullptr)
-						{
-							beforeSwapchainBarrierIndices.push_back(beforeBarriers.size() - 1);
-						}
-					}
-				}
-
-				
-				{
-					/*
-					*    After barrier:
-					*
-					*    1.  Same queue, state unchanged:                                           No barrier needed
-					*    2.  Same queue, state changed, Promoted read-only -> PRESENT:              No barrier needed, state decays
-					*    3.  Same queue, state changed, Promoted writeable/Non-promoted -> PRESENT: Need a barrier Old State -> PRESENT
-					*    4.  Same queue, state changed, other cases:                                No barrier needed, will be handled by the next state's barrier
-					*
-					*    5.  Graphics -> Compute,  state will be automatically promoted:               No barrier needed
-					*    6.  Graphics -> Compute,  state will not be promoted, was promoted read-only: No barrier needed, will be handled by the next state's barrier
-					*    7.  Graphics -> Compute,  state unchanged:                                    No barrier needed
-					*    8.  Graphics -> Compute,  state changed other cases:                          Need a barrier Old state -> New state
-					* 
-					*    9.  Compute  -> Graphics, state will be automatically promoted:                 No barrier needed
-					* 	 10. Compute  -> Graphics, state will not be promoted, was promoted read-only:   No barrier needed, will be handled by the next state's barrier     
-					*    11. Compute  -> Graphics, state changed Promoted read-only -> PRESENT:          No barrier needed, state will decay
-					*    12. Compute  -> Graphics, state changed Compute/graphics   -> Compute/Graphics: Need a barrier Old state -> New state
-					*    13. Compute  -> Graphics, state changed Compute/Graphics   -> Graphics:         No barrier needed, will be handled by the next state's barrier
-					*    14. Compute  -> Graphics, state unchanged:                                      No barrier needed
-					*   
-					*    15. Graphics/Compute -> Copy, from Promoted read-only: No barrier needed
-					*    16. Graphics/Compute -> Copy, other cases:             Need a barrier Old state -> COMMON
-					* 
-					*    17. Copy -> Graphics/Compute, state will be automatically promoted: No barrier needed
-					*    18. Copy -> Graphics/Compute, state will not be promoted:           No barrier needed, will be handled by the next state's barrier
-					*/
-
-					bool needBarrier = false;
-					D3D12_RESOURCE_STATES prevPassState = subresourceMetadata.ResourceState;
-					D3D12_RESOURCE_STATES nextPassState = subresourceMetadata.NextPassMetadata->ResourceState;
-
-					const D3D12_COMMAND_LIST_TYPE prevStateQueue = subresourceMetadata.QueueOwnership;
-					const D3D12_COMMAND_LIST_TYPE nextStateQueue = subresourceMetadata.NextPassMetadata->QueueOwnership;
-
-					const bool prevWasPromoted = (subresourceMetadata.MetadataFlags & TextureFlagStateAutoPromoted);
-					const bool nextIsPromoted  = (subresourceMetadata.NextPassMetadata->MetadataFlags & TextureFlagStateAutoPromoted);
-
-					if(prevStateQueue == nextStateQueue) //Rules 1, 2, 3, 4
-					{
-						if(nextPassState == D3D12_RESOURCE_STATE_PRESENT) //Rules 2, 3
-						{
-							needBarrier = (!prevWasPromoted || D3D12Utils::IsStateWriteable(prevPassState));
-						}
-						else //Rules 1, 4
-						{
-							needBarrier = false;
-						}
-					}
-					else if(prevStateQueue == D3D12_COMMAND_LIST_TYPE_DIRECT && nextStateQueue == D3D12_COMMAND_LIST_TYPE_COMPUTE) //Rules 5, 6, 7, 8
-					{
-						if(prevWasPromoted && !D3D12Utils::IsStateWriteable(prevPassState)) //Rule 6
-						{
-							needBarrier = false;
-						}
-						else //Rules 5, 7, 8
-						{
-							needBarrier = !nextIsPromoted && (prevPassState != nextPassState);
-						}
-					}
-					else if(prevStateQueue == D3D12_COMMAND_LIST_TYPE_COMPUTE && nextStateQueue == D3D12_COMMAND_LIST_TYPE_DIRECT) //Rules 9, 10, 11, 12, 13, 14
-					{
-						if(prevWasPromoted && !D3D12Utils::IsStateWriteable(prevPassState)) //Rule 10, 11
-						{
-							needBarrier = false;
-						}
-						else //Rules 9, 12, 13, 14
-						{
-							needBarrier = !nextIsPromoted && (prevPassState != nextPassState) && D3D12Utils::IsStateComputeFriendly(nextPassState);
-						}
-					}
-					else if(nextStateQueue == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 15, 16
-					{
-						needBarrier = !prevWasPromoted || D3D12Utils::IsStateWriteable(prevPassState);
-					}
-					else if(prevStateQueue == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 17, 18
-					{
-						needBarrier = false;
-					}
-
-					if(needBarrier)
-					{
-						//Swapchain image barriers are changed every frame
-						ID3D12Resource2* barrieredTexture = nullptr;
-						if(subresourceMetadata.ImageIndex != mGraphToBuild->mBackbufferRefIndex)
-						{
-							barrieredTexture = mGraphToBuild->mTextures[subresourceMetadata.ImageIndex];
-						}
-
-						D3D12_RESOURCE_BARRIER textureTransitionBarrier;
-						textureTransitionBarrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-						textureTransitionBarrier.Transition.pResource   = barrieredTexture;
-						textureTransitionBarrier.Transition.Subresource = 0;
-						textureTransitionBarrier.Transition.StateBefore = prevPassState;
-						textureTransitionBarrier.Transition.StateAfter  = nextPassState;
-						textureTransitionBarrier.Flags                  = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-
-						afterBarriers.push_back(textureTransitionBarrier);
-
-						//Mark the swapchain barriers
-						if(barrieredTexture == nullptr)
-						{
-							afterSwapchainBarrierIndices.push_back(afterBarriers.size() - 1);
-						}
-					}
-				}
-			}
-
-			processedMetadataIds.insert(subresourceMetadata.MetadataId);
-		}
-
-		uint32_t beforeBarrierBegin = (uint32_t)(mGraphToBuild->mResourceBarriers.size());
-		mGraphToBuild->mResourceBarriers.insert(mGraphToBuild->mResourceBarriers.end(), beforeBarriers.begin(), beforeBarriers.end());
-
-		uint32_t afterBarrierBegin = (uint32_t)(mGraphToBuild->mResourceBarriers.size());
-		mGraphToBuild->mResourceBarriers.insert(mGraphToBuild->mResourceBarriers.end(), afterBarriers.begin(), afterBarriers.end());
-
-		FrameGraph::BarrierSpan barrierSpan;
-		barrierSpan.BeforePassBegin = beforeBarrierBegin;
-		barrierSpan.BeforePassEnd   = beforeBarrierBegin + (uint32_t)(beforeBarriers.size());
-		barrierSpan.AfterPassBegin  = afterBarrierBegin;
-		barrierSpan.AfterPassEnd    = afterBarrierBegin + (uint32_t)(afterBarriers.size());
-
-		mGraphToBuild->mRenderPassBarriers[i] = barrierSpan;
-
-		for(size_t beforeSwapchainBarrierIndex: beforeSwapchainBarrierIndices)
-		{
-			mGraphToBuild->mSwapchainBarrierIndices.push_back(beforeBarrierBegin + (uint32_t)beforeSwapchainBarrierIndex);
-		}
-
-		for(size_t afterSwapchainBarrierIndex: afterSwapchainBarrierIndices)
-		{
-			mGraphToBuild->mSwapchainBarrierIndices.push_back(afterBarrierBegin + (uint32_t)afterSwapchainBarrierIndex);
-		}
-	}
-}
  
-void D3D12::FrameGraphBuilder::CreateTextures(const std::vector<TextureResourceCreateInfo>& textureCreateInfos) const
+void D3D12::FrameGraphBuilder::CreateTextures(const std::vector<TextureResourceCreateInfo>& textureCreateInfos, const std::vector<TextureResourceCreateInfo>& backbufferCreateInfos, uint32_t totalTextureCount) const
 {
-	mD3d12GraphToBuild->mTextures.resize(textureCreateInfos.size());
+	mD3d12GraphToBuild->mTextures.resize(totalTextureCount);
 	mD3d12GraphToBuild->mTextureHeap.reset();
 
-	std::vector<D3D12_RESOURCE_DESC1> textureDescsVec;
-	textureDescsVec.resize(textureCreateInfos.size());
+	std::vector<D3D12_RESOURCE_DESC1> textureDescs;
+	textureDescs.resize(totalTextureCount);
 
 	//For TYPELESS formats, we lose the information for clear values. Fortunately, this is not a very common case
 	//It's only needed for RTV formats, since depth-stencil format can actually be recovered from a typeless one
@@ -595,29 +298,32 @@ void D3D12::FrameGraphBuilder::CreateTextures(const std::vector<TextureResourceC
 		resourceDesc.SamplerFeedbackMipRegion.Height = 0;
 		resourceDesc.SamplerFeedbackMipRegion.Depth  = 0;
 
-		textureDescsVec[headNode->ImageSpanStart] = resourceDesc;
+		for(uint32_t frame = 0; frame < textureCreateInfo.MetadataHead->FrameCount; frame++)
+		{
+			textureDescs[textureCreateInfo.MetadataHead->ImageSpanStart + frame] = resourceDesc;
+		}
 	}
 
 	std::vector<UINT64> textureHeapOffsets;
-	textureHeapOffsets.reserve(textureDescsVec.size());
-	mMemoryAllocator->AllocateTextureMemory(mDevice, textureDescsVec, textureHeapOffsets, D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES, mD3d12GraphToBuild->mTextureHeap.put());
+	textureHeapOffsets.reserve(textureDescs.size());
+	mMemoryAllocator->AllocateTextureMemory(mDevice, textureDescs, textureHeapOffsets, D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES, mD3d12GraphToBuild->mTextureHeap.put());
 
-	for(const TextureResourceCreateInfo& textureCreateInfo: textureCreateInfos)
+	for(size_t createInfoIndex = 0; createInfoIndex < textureCreateInfos.size(); createInfoIndex++)
 	{
-		uint32_t imageIndex = textureCreateInfo.MetadataHead->ImageSpanStart;
-		const D3D12_RESOURCE_DESC1& resourceDesc = textureDescsVec[imageIndex];
+		const TextureResourceCreateInfo& textureCreateInfo = textureCreateInfos[createInfoIndex];
+		const D3D12_RESOURCE_DESC1&      baseResourceDesc  = textureDescs[textureCreateInfo.MetadataHead->ImageSpanStart];
 
 		D3D12_CLEAR_VALUE  clearValue;
 		D3D12_CLEAR_VALUE* clearValuePtr = nullptr;
-		if(resourceDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)
+		if(baseResourceDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)
 		{
-			if(D3D12Utils::IsTypelessFormat(resourceDesc.Format))
+			if(D3D12Utils::IsTypelessFormat(baseResourceDesc.Format))
 			{
-				clearValue.Format = optimizedClearFormats[imageIndex];
+				clearValue.Format = optimizedClearFormats[textureCreateInfo.MetadataHead->ImageSpanStart];
 			}
 			else
 			{
-				clearValue.Format = resourceDesc.Format;
+				clearValue.Format = baseResourceDesc.Format;
 			}
 
 			clearValue.Color[0] = 0.0f;
@@ -627,9 +333,9 @@ void D3D12::FrameGraphBuilder::CreateTextures(const std::vector<TextureResourceC
 
 			clearValuePtr = &clearValue;
 		}
-		else if(resourceDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL)
+		else if(baseResourceDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL)
 		{
-			clearValue.Format               = D3D12Utils::ConvertToDepthStencil(resourceDesc.Format);
+			clearValue.Format               = D3D12Utils::ConvertToDepthStencil(baseResourceDesc.Format);
 			clearValue.DepthStencil.Depth   = 1.0f;
 			clearValue.DepthStencil.Stencil = 0;
 
@@ -639,24 +345,48 @@ void D3D12::FrameGraphBuilder::CreateTextures(const std::vector<TextureResourceC
 		uint32_t lastSubresourceIndex = textureCreateInfo.MetadataHead->PrevPassNode->SubresourceInfoIndex;
 		D3D12_RESOURCE_STATES lastState = mSubresourceInfos[lastSubresourceIndex].State;
 
-		mD3d12GraphToBuild->mOwnedResources.emplace_back();
-		THROW_IF_FAILED(mDevice->CreatePlacedResource1(mD3d12GraphToBuild->mTextureHeap.get(), textureHeapOffsets[imageIndex], &resourceDesc, lastState, clearValuePtr, IID_PPV_ARGS(mD3d12GraphToBuild->mOwnedResources.back().put())));
-		
-		mD3d12GraphToBuild->mTextures[imageIndex] = mD3d12GraphToBuild->mOwnedResources.back().get();
-		
+		for(uint32_t frame = 0; frame < textureCreateInfo.MetadataHead->FrameCount; frame++)
+		{
+			uint32_t imageIndex = textureCreateInfo.MetadataHead->ImageSpanStart + frame;
+			const D3D12_RESOURCE_DESC1& resourceDesc = textureDescs[imageIndex];
+
+			mD3d12GraphToBuild->mOwnedResources.emplace_back();
+			THROW_IF_FAILED(mDevice->CreatePlacedResource1(mD3d12GraphToBuild->mTextureHeap.get(), textureHeapOffsets[imageIndex], &resourceDesc, lastState, clearValuePtr, IID_PPV_ARGS(mD3d12GraphToBuild->mOwnedResources.back().put())));
+
+			mD3d12GraphToBuild->mTextures[imageIndex] = mD3d12GraphToBuild->mOwnedResources.back().get();
+
 #if defined(DEBUG) || defined(_DEBUG)
-		D3D12Utils::SetDebugObjectName(mD3d12GraphToBuild->mTextures[imageIndex], textureCreateInfo.Name);
+			D3D12Utils::SetDebugObjectName(mD3d12GraphToBuild->mTextures[imageIndex], textureCreateInfo.Name);
 #endif
+		}
+	}
+
+	for(const TextureResourceCreateInfo& backbufferCreateInfo: backbufferCreateInfos)
+	{
+		for(uint32_t frame = 0; frame < backbufferCreateInfo.MetadataHead->FrameCount; frame++)
+		{
+			uint32_t imageIndex = backbufferCreateInfo.MetadataHead->ImageSpanStart + frame;
+
+			ID3D12Resource* swapchainImage = mSwapChain->GetSwapchainImage(frame);
+
+			wil::com_ptr_nothrow<ID3D12Resource2> swapchainImage2;
+			THROW_IF_FAILED(swapchainImage->QueryInterface(IID_PPV_ARGS(swapchainImage2.put())));
+
+			mD3d12GraphToBuild->mTextures[imageIndex] = swapchainImage2.get();
+
+#if defined(DEBUG) || defined(_DEBUG)
+			D3D12Utils::SetDebugObjectName(mD3d12GraphToBuild->mTextures[imageIndex], mBackbufferName);
+#endif
+		}
 	}
 }
 
 uint32_t D3D12::FrameGraphBuilder::AddSubresourceMetadata()
 {
 	SubresourceInfo subresourceInfo;
-	subresourceInfo.Format              = DXGI_FORMAT_UNKNOWN;
-	subresourceInfo.State               = D3D12_RESOURCE_STATE_COMMON;
-	subresourceInfo.DescriptorHeapIndex = (uint32_t)(-1);
-	subresourceInfo.Flags               = 0;
+	subresourceInfo.Format = DXGI_FORMAT_UNKNOWN;
+	subresourceInfo.State  = D3D12_RESOURCE_STATE_COMMON;
+	subresourceInfo.Flags  = 0;
 
 	mSubresourceInfos.push_back(subresourceInfo);
 	return (uint32_t)(mSubresourceInfos.size() - 1);
@@ -681,6 +411,7 @@ bool D3D12::FrameGraphBuilder::ValidateSubresourceViewParameters(SubresourceMeta
 	const uint32_t formatKey = (uint32_t)thisPassSubresourceInfo.Format * (stateKey != 0); //Creating the view is only needed if the state is descriptorable
 
 	node->ViewSortKey = (stateKey << 32) | formatKey;
+
 	return thisPassSubresourceInfo.Format != 0; //Only the format should be propagated
 }
 
@@ -740,7 +471,7 @@ void D3D12::FrameGraphBuilder::CreateTextureViews(const std::vector<TextureSubre
 	UINT dsvCounter    = 0;
 	for(const TextureSubresourceCreateInfo& textureViewCreateInfo: textureViewCreateInfos)
 	{
-		const SubresourceInfo& subresourceInfo = mSubresourceInfos[textureViewCreateInfo.ImageViewIndex];
+		const SubresourceInfo& subresourceInfo = mSubresourceInfos[textureViewCreateInfo.SubresourceInfoIndex];
 		ID3D12Resource* descriptorResource = mD3d12GraphToBuild->mTextures[textureViewCreateInfo.ImageIndex];
 
 		if(subresourceInfo.State & (D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE))
@@ -804,19 +535,7 @@ void D3D12::FrameGraphBuilder::CreateTextureViews(const std::vector<TextureSubre
 	}
 }
 
-Span<uint32_t> D3D12::FrameGraphBuilder::AllocateBackbufferResources() const
+uint32_t D3D12::FrameGraphBuilder::GetSwapchainImageCount() const
 {
-	for(size_t i = 0; i < SwapChain::SwapchainImageCount; i++)
-	{
-		ID3D12Resource* swapchainImage = mSwapChain->GetSwapchainImage(i);
-
-		wil::com_ptr_nothrow<ID3D12Resource2> swapchainImage2;
-		THROW_IF_FAILED(swapchainImage->QueryInterface(IID_PPV_ARGS(swapchainImage2.put())));
-
-		mD3d12GraphToBuild->mTextures.push_back(swapchainImage2.get());
-
-#if defined(DEBUG) || defined(_DEBUG)
-		D3D12Utils::SetDebugObjectName(mD3d12GraphToBuild->mTextures.back(), mBackbufferName);
-#endif
-	}
+	return mSwapChain->SwapchainImageCount;
 }
