@@ -63,9 +63,6 @@ namespace D3D12
 		D3D12_CPU_DESCRIPTOR_HANDLE GetFrameGraphDsvHeapStart() const;
 
 	private:
-		//Functions for creating frame graph passes and resources
-		void BuildPassObjects(ID3D12Device8* device, const std::unordered_set<RenderPassName>& swapchainPassNames);
-
 		//Build resource barriers
 		void BuildBarriers();
 
@@ -82,8 +79,11 @@ namespace D3D12
 		//Creates image view objects
 		void CreateTextureViews(const std::vector<TextureSubresourceCreateInfo>& textureViewCreateInfos) const override;
 
+		//Creates swapchain images and views (non-owning, ping-ponging)
+		void CreateSwapchainTextureViews(const std::vector<TextureSubresourceCreateInfo>& backbufferResourceCreateInfos) const override;
+
 		//Initializes backbuffer-related 
-		uint32_t AllocateBackbufferResources() const override;
+		Span<uint32_t> AllocateBackbufferResources() const override;
 
 	private:
 		FrameGraph* mD3d12GraphToBuild;

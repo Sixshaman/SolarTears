@@ -9,13 +9,9 @@
 #include <array>
 #include <latch>
 
-Vulkan::FrameGraph::FrameGraph(VkDevice device, const FrameGraphConfig& frameGraphConfig): mDeviceRef(device)
+Vulkan::FrameGraph::FrameGraph(VkDevice device, const FrameGraphConfig& frameGraphConfig): ModernFrameGraph(frameGraphConfig), mDeviceRef(device)
 {
 	mImageMemory = VK_NULL_HANDLE;
-
-	mLastSwapchainImageIndex = 0;
-
-	mFrameGraphConfig = frameGraphConfig;
 
 	CreateSemaphores();
 }
@@ -157,56 +153,10 @@ void Vulkan::FrameGraph::SwitchSwapchainPasses(uint32_t swapchainImageIndex)
 
 void Vulkan::FrameGraph::SwitchSwapchainImages(uint32_t swapchainImageIndex)
 {
-	//Swap images
-	std::swap(mImages[mBackbufferRefIndex], mSwapchainImageRefs[mLastSwapchainImageIndex]);
-	std::swap(mImages[mBackbufferRefIndex], mSwapchainImageRefs[swapchainImageIndex]);
-
-
 	//Update barriers
 	for(size_t i = 0; i < mSwapchainBarrierIndices.size(); i++)
 	{
 		mImageBarriers[i].image = mImages[mBackbufferRefIndex];
-	}
-
-
-	//Swap image views
-	uint32_t swapchainImageViewCount = (uint32_t)mSwapchainImageViews.size();
-	for(uint32_t i = 0; i < (uint32_t)mSwapchainViewsSwapMap.size(); i += (swapchainImageViewCount + 1u))
-	{
-		uint32_t viewIndexToSwitch = mSwapchainViewsSwapMap[i];
-		
-		std::swap(mImageViews[viewIndexToSwitch], mSwapchainImageViews[mSwapchainViewsSwapMap[i + mLastSwapchainImageIndex + 1]]);
-		std::swap(mImageViews[viewIndexToSwitch], mSwapchainImageViews[mSwapchainViewsSwapMap[i + swapchainImageIndex + 1]]);
-	}
-}
-
-void Vulkan::FrameGraph::UnsetSwapchainPasses()
-{
-	uint32_t swapchainImageCount = (uint32_t)mSwapchainImageRefs.size();
-	for(uint32_t i = 0; i < (uint32_t)mSwapchainPassesSwapMap.size(); i += (swapchainImageCount + 1u))
-	{
-		uint32_t passIndexToSwitch = mSwapchainPassesSwapMap[i];
-		mRenderPasses[passIndexToSwitch].swap(mSwapchainRenderPasses[mSwapchainPassesSwapMap[i + mLastSwapchainImageIndex + 1]]);
-	}
-}
-
-void Vulkan::FrameGraph::UnsetSwapchainImages()
-{
-	//Swap images
-	std::swap(mImages[mBackbufferRefIndex], mSwapchainImageRefs[mLastSwapchainImageIndex]);
-
-	//Update barriers
-	for(size_t i = 0; i < mSwapchainBarrierIndices.size(); i++)
-	{
-		mImageBarriers[mSwapchainBarrierIndices[i]].image = mImages[mBackbufferRefIndex];
-	}
-
-	//Swap image views
-	uint32_t swapchainImageViewCount = (uint32_t)mSwapchainImageViews.size();
-	for(uint32_t i = 0; i < (uint32_t)mSwapchainViewsSwapMap.size(); i += (swapchainImageViewCount + 1u))
-	{
-		uint32_t viewIndexToSwitch = mSwapchainViewsSwapMap[i];
-		std::swap(mImageViews[viewIndexToSwitch], mSwapchainImageViews[mSwapchainViewsSwapMap[i + mLastSwapchainImageIndex + 1]]);
 	}
 }
 

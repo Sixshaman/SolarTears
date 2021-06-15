@@ -7,6 +7,7 @@
 #include <unordered_map>
 
 class ModernFrameGraph;
+class FrameGraphConfig;
 
 class ModernFrameGraphBuilder
 {
@@ -23,18 +24,19 @@ protected:
 		SubresourceMetadataNode* PrevPassNode;
 		SubresourceMetadataNode* NextPassNode;
 
-		uint32_t       SubresourceInfoIndex;
-		uint32_t       ImageIndex;
-		uint32_t       ImageViewIndex;
-		RenderPassType PassType;
+		//In case of ping-pong or swapchain images the images are stored in a range. ImageIndex and ImageViewIndex point to the first image/view in the range
+		uint32_t       ImageSpanStart;       //The index of the first frame in the list of frame graph textures
+		uint32_t       ImageViewSpanStart;   //The index of the first frame in the list of frame graph texture views
+		uint32_t       SubresourceInfoIndex; //The id of the API-specific subresource data
+		RenderPassType PassType;             //The pass type (Graphics/Compute/Copy) that uses the node
 
 		uint64_t ViewSortKey; //The key to determine unique image views for subresource. Value of 0 indicates this node does not create any subresources
 	};
 
 	struct TextureResourceCreateInfo
 	{
-		std::string_view          Name;
-		SubresourceMetadataNode*  MetadataHead;
+		std::string_view         Name;
+		SubresourceMetadataNode* MetadataHead;
 	};
 
 	struct TextureSubresourceCreateInfo
@@ -80,6 +82,9 @@ private:
 	//Finds all passes that use swapchain images. Such passes need to be swapped every frame
 	void FindBackbufferPasses(std::unordered_set<RenderPassName>& swapchainPassNames);
 
+	//Build the render pass objects
+	void BuildPassObjects();
+
 	//Create subresources
 	void BuildSubresources();
 
@@ -96,16 +101,13 @@ private:
 	void PropagateMetadatasInResource(const TextureResourceCreateInfo& createInfo);
 
 	//Initializes ImageIndex and ImageViewIndex fields of nodes. Returns image view count written
-	void ValidateImageAndViewIndices(std::vector<TextureResourceCreateInfo>& textureResourceCreateInfos, uint32_t* inoutImageCounter, uint32_t* inoutImageViewCounter);
+	uint32_t ValidateImageAndViewIndices(std::vector<TextureResourceCreateInfo>& textureResourceCreateInfos, uint32_t imageIndexOffset, uint32_t imageViewIndexOffset);
 
 	//Initializes ImageIndex and ImageViewIndex fields of nodes in a single resource. Returns image view count written
-	void ValidateImageAndViewIndicesInResource(TextureResourceCreateInfo* createInfo, uint32_t imageIndex, uint32_t* inoutImageViewCounter);
+	uint32_t ValidateImageAndViewIndicesInResource(TextureResourceCreateInfo* createInfo, uint32_t imageIndex, uint32_t imageViewIndexOffset);
 
-	//Functions for creating actual frame graph resources/subresources
-	void SetSwapchainImages(std::vector<TextureResourceCreateInfo>& backbufferResourceCreateInfos, uint32_t* inoutImageViewCounter);
-
-	//Creates swapchain images and views (non-owning, ping-ponging)
-	void CreateSwapchainImageViews(std::vector<TextureResourceCreateInfo>& backbufferResourceCreateInfos);
+	//Initializes swapchain image data
+	void InitializeSwapchainImages();
 
 	//Recursively sort subtree topologically
 	void TopologicalSortNode(const std::unordered_map<RenderPassName, std::unordered_set<RenderPassName>>& adjacencyList, std::unordered_set<RenderPassName>& visited, std::unordered_set<RenderPassName>& onStack, const RenderPassName& renderPassName, std::vector<RenderPassName>& sortedPassNames);
@@ -127,7 +129,10 @@ protected:
 	virtual void CreateTextureViews(const std::vector<TextureSubresourceCreateInfo>& textureViewCreateInfos) const = 0;
 
 	//Creates swapchain images
-	virtual uint32_t AllocateBackbufferResources() const = 0;
+	virtual void InitializeSwapchainImages() const = 0;
+
+	//Get the number of swapchain images
+	virtual uint32_t GetSwapchainImageCount() const = 0;
 
 protected:
 	ModernFrameGraph* mGraphToBuild;

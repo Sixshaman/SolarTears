@@ -9,8 +9,9 @@
 #include <array>
 #include <wil/com.h>
 
-D3D12::FrameGraph::FrameGraph(const FrameGraphConfig& frameGraphConfig): mFrameGraphConfig(frameGraphConfig), mSrvUavDescriptorCount(0)
+D3D12::FrameGraph::FrameGraph(const FrameGraphConfig& frameGraphConfig): ModernFrameGraph(frameGraphConfig)
 {
+	mSrvUavDescriptorCount = 0;
 }
 
 D3D12::FrameGraph::~FrameGraph()
@@ -160,9 +161,6 @@ void D3D12::FrameGraph::SwitchSwapchainPasses(uint32_t swapchainImageIndex)
 
 void D3D12::FrameGraph::SwitchSwapchainImages(uint32_t swapchainImageIndex)
 {
-	//Set images (no swapping unlike Vulkan)
-	mTextures[mBackbufferRefIndex] = mSwapchainImageRefs[swapchainImageIndex];
-
 	//Update barriers
 	for(size_t i = 0; i < mSwapchainBarrierIndices.size(); i++)
 	{

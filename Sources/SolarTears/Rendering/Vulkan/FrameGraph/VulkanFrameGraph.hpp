@@ -63,21 +63,11 @@ namespace Vulkan
 	private:
 		const VkDevice mDeviceRef;
 
-		FrameGraphConfig mFrameGraphConfig;
-
 		std::vector<std::unique_ptr<RenderPass>> mRenderPasses;           //All currently used render passes (sorted by dependency level)
 		std::vector<std::unique_ptr<RenderPass>> mSwapchainRenderPasses;  //All render passes that use swapchain images (replaced every frame)
 
-		std::vector<DependencyLevelSpan> mGraphicsPassSpans;
-
 		std::vector<VkImage>     mImages;
 		std::vector<VkImageView> mImageViews;
-
-		//Swapchain images and related data
-		uint32_t                 mBackbufferRefIndex;
-		uint32_t                 mLastSwapchainImageIndex;
-		std::vector<VkImage>     mSwapchainImageRefs;
-		std::vector<VkImageView> mSwapchainImageViews;
 
 		//Barriers and barrier metadata
 		std::vector<VkImageMemoryBarrier> mImageBarriers;
@@ -89,7 +79,6 @@ namespace Vulkan
 		//View to replace is taken from   mSwapchainImageViews[i * (SwapchainFrameCount + 1) + currentSwapchainImageIndex + 1]
 		//The reason to use it is to make mRenderPasses always relate to passes actually used
 		std::vector<uint32_t> mSwapchainPassesSwapMap;
-		std::vector<uint32_t> mSwapchainViewsSwapMap;
 
 		VkDeviceMemory mImageMemory;
 

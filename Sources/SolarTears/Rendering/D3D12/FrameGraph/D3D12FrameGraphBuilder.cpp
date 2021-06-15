@@ -217,52 +217,6 @@ D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetFrameGraphDsvHeapStart(
 	return mD3d12GraphToBuild->mDsvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
 }
 
-void D3D12::FrameGraphBuilder::BuildPassObjects(ID3D12Device8* device, const std::unordered_set<std::string>& swapchainPassNames)
-{
-	mGraphToBuild->mRenderPasses.clear();
-	mGraphToBuild->mSwapchainRenderPasses.clear();
-	mGraphToBuild->mSwapchainPassesSwapMap.clear();
-
-	for(const std::string& passName: mRenderPassNames)
-	{
-		if(swapchainPassNames.contains(passName))
-		{
-			//This pass uses swapchain images - create a copy of render pass for each swapchain image
-			mGraphToBuild->mRenderPasses.emplace_back(nullptr);
-
-			//Fill in primary swap link (what to swap)
-			mGraphToBuild->mSwapchainPassesSwapMap.push_back((uint32_t)(mGraphToBuild->mRenderPasses.size() - 1));
-
-			//Correctness is guaranteed as long as mLastSwapchainImageIndex is the last index in mSwapchainImageRefs
-			const uint32_t swapchainImageCount = (uint32_t)mGraphToBuild->mSwapchainImageRefs.size();			
-			for(uint32_t swapchainImageIndex = 0; swapchainImageIndex < mGraphToBuild->mSwapchainImageRefs.size(); swapchainImageIndex++)
-			{
-				//Create a separate render pass for each of swapchain images
-				mGraphToBuild->SwitchSwapchainImages(swapchainImageIndex);
-				mGraphToBuild->mSwapchainRenderPasses.push_back(mRenderPassCreateFunctions.at(passName)(device, this, passName));
-
-				//Fill in secondary swap link (what to swap to)
-				mGraphToBuild->mSwapchainPassesSwapMap.push_back((uint32_t)(mGraphToBuild->mSwapchainRenderPasses.size() - 1));
-
-				mGraphToBuild->mLastSwapchainImageIndex = swapchainImageIndex;
-			}
-		}
-		else
-		{
-			//This pass does not use any swapchain images - can just create a single copy
-			mGraphToBuild->mRenderPasses.push_back(mRenderPassCreateFunctions.at(passName)(device, this, passName));
-		}
-	}
-
-	//Prepare for the first use
-	uint32_t swapchainImageCount = (uint32_t)mGraphToBuild->mSwapchainImageRefs.size();
-	for(uint32_t i = 0; i < (uint32_t)mGraphToBuild->mSwapchainPassesSwapMap.size(); i += (swapchainImageCount + 1u))
-	{
-		uint32_t passIndexToSwitch = mGraphToBuild->mSwapchainPassesSwapMap[i];
-		mGraphToBuild->mRenderPasses[passIndexToSwitch].swap(mGraphToBuild->mSwapchainRenderPasses[mGraphToBuild->mSwapchainPassesSwapMap[i + mGraphToBuild->mLastSwapchainImageIndex + 1]]);
-	}
-}
-
 void D3D12::FrameGraphBuilder::BuildBarriers() //When present from compute is out, you're gonna have a fun time writing all the new rules lol
 {
 	mGraphToBuild->mRenderPassBarriers.resize(mRenderPassNames.size());
@@ -622,7 +576,7 @@ void D3D12::FrameGraphBuilder::CreateTextures(const std::vector<TextureResourceC
 
 		if(D3D12Utils::IsTypelessFormat(format) && !(resourceFlags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL) && (resourceFlags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET))
 		{
-			optimizedClearFormats[headNode->ImageIndex] = formatForClear;
+			optimizedClearFormats[headNode->ImageSpanStart] = formatForClear;
 		}
 
 		D3D12_RESOURCE_DESC1 resourceDesc;
@@ -641,7 +595,7 @@ void D3D12::FrameGraphBuilder::CreateTextures(const std::vector<TextureResourceC
 		resourceDesc.SamplerFeedbackMipRegion.Height = 0;
 		resourceDesc.SamplerFeedbackMipRegion.Depth  = 0;
 
-		textureDescsVec[headNode->ImageIndex] = resourceDesc;
+		textureDescsVec[headNode->ImageSpanStart] = resourceDesc;
 	}
 
 	std::vector<UINT64> textureHeapOffsets;
@@ -650,7 +604,7 @@ void D3D12::FrameGraphBuilder::CreateTextures(const std::vector<TextureResourceC
 
 	for(const TextureResourceCreateInfo& textureCreateInfo: textureCreateInfos)
 	{
-		uint32_t imageIndex = textureCreateInfo.MetadataHead->ImageIndex;
+		uint32_t imageIndex = textureCreateInfo.MetadataHead->ImageSpanStart;
 		const D3D12_RESOURCE_DESC1& resourceDesc = textureDescsVec[imageIndex];
 
 		D3D12_CLEAR_VALUE  clearValue;
@@ -850,11 +804,8 @@ void D3D12::FrameGraphBuilder::CreateTextureViews(const std::vector<TextureSubre
 	}
 }
 
-uint32_t D3D12::FrameGraphBuilder::AllocateBackbufferResources() const
+Span<uint32_t> D3D12::FrameGraphBuilder::AllocateBackbufferResources() const
 {
-	mD3d12GraphToBuild->mSwapchainImageRefs.clear();
-
-	mD3d12GraphToBuild->mTextures.push_back(nullptr);
 	for(size_t i = 0; i < SwapChain::SwapchainImageCount; i++)
 	{
 		ID3D12Resource* swapchainImage = mSwapChain->GetSwapchainImage(i);
@@ -862,12 +813,10 @@ uint32_t D3D12::FrameGraphBuilder::AllocateBackbufferResources() const
 		wil::com_ptr_nothrow<ID3D12Resource2> swapchainImage2;
 		THROW_IF_FAILED(swapchainImage->QueryInterface(IID_PPV_ARGS(swapchainImage2.put())));
 
-		mD3d12GraphToBuild->mSwapchainImageRefs.push_back(swapchainImage2.get());
+		mD3d12GraphToBuild->mTextures.push_back(swapchainImage2.get());
 
 #if defined(DEBUG) || defined(_DEBUG)
-		D3D12Utils::SetDebugObjectName(mD3d12GraphToBuild->mSwapchainImageRefs.back(), mBackbufferName);
+		D3D12Utils::SetDebugObjectName(mD3d12GraphToBuild->mTextures.back(), mBackbufferName);
 #endif
 	}
-
-	return (uint32_t)(mD3d12GraphToBuild->mTextures.size() - 1);
 }

@@ -79,9 +79,6 @@ namespace Vulkan
 		VkAccessFlags        GetNextPassSubresourceAccessFlags(const std::string_view passName, const std::string_view subresourceId) const;
 
 	private:
-		//Functions for creating frame graph passes and resources
-		void BuildPassObjects(const std::unordered_set<RenderPassName>& swapchainPassNames);
-
 		//Builds barriers
 		void BuildBarriers();
 
@@ -90,6 +87,9 @@ namespace Vulkan
 
 		//Converts pass type to a queue family index
 		uint32_t PassTypeToQueueIndex(RenderPassType passType) const;
+
+		//Creates an image view
+		VkImageView CreateImageView(VkImage image, uint32_t subresourceInfoIndex) const;
 
 	private:
 		//Creates a new subresource info record
@@ -105,7 +105,7 @@ namespace Vulkan
 		void CreateTextureViews(const std::vector<TextureSubresourceCreateInfo>& textureViewCreateInfos) const override;
 
 		//Initializes backbuffer-related 
-		uint32_t AllocateBackbufferResources() const override;
+		Span<uint32_t> AllocateBackbufferResources() const override;
 
 	private:
 		FrameGraph* mVulkanGraphToBuild;

@@ -26,6 +26,7 @@
     <ClInclude Include="Core\Allocators\StackAllocator.hpp" />
     <ClInclude Include="Core\Application.hpp" />
     <ClInclude Include="Core\DataStructures\SmallVector.hpp" />
+    <ClInclude Include="Core\DataStructures\Span.hpp" />
     <ClInclude Include="Core\Engine.hpp" />
     <ClInclude Include="Core\FPSCounter.hpp" />
     <ClInclude Include="Core\FrameCounter.hpp" />
@@ -129,6 +130,7 @@
     <ClCompile Include="Platform\Win32\Win32MouseKeyMap.cpp" />
     <ClCompile Include="Platform\Win32\Win32Window.cpp" />
     <ClCompile Include="Rendering\Common\FrameGraph\FrameGraphConfig.cpp" />
+    <ClCompile Include="Rendering\Common\FrameGraph\ModernFrameGraph.cpp" />
     <ClCompile Include="Rendering\Common\FrameGraph\ModernFrameGraphBuilder.cpp" />
     <ClCompile Include="Rendering\Common\Renderer.cpp" />
     <ClCompile Include="Rendering\Common\RenderingUtils.cpp" />

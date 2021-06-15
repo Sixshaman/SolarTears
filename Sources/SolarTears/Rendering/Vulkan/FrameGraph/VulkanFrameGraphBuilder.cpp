@@ -310,52 +310,6 @@ VkAccessFlags Vulkan::FrameGraphBuilder::GetNextPassSubresourceAccessFlags(const
 	return mSubresourceInfos[subresourceInfoIndex].Access;
 }
 
-void Vulkan::FrameGraphBuilder::BuildPassObjects(const std::unordered_set<std::string>& swapchainPassNames)
-{
-	mGraphToBuild->mRenderPasses.clear();
-	mGraphToBuild->mSwapchainRenderPasses.clear();
-	mGraphToBuild->mSwapchainPassesSwapMap.clear();
-
-	for(const std::string& passName: mRenderPassNames)
-	{
-		if(swapchainPassNames.contains(passName))
-		{
-			//This pass uses swapchain images - create a copy of render pass for each swapchain image
-			mGraphToBuild->mRenderPasses.emplace_back(nullptr);
-
-			//Fill in primary swap link (what to swap)
-			mGraphToBuild->mSwapchainPassesSwapMap.push_back((uint32_t)(mGraphToBuild->mRenderPasses.size() - 1));
-
-			//Correctness is guaranteed as long as mLastSwapchainImageIndex is the last index in mSwapchainImageRefs
-			const uint32_t swapchainImageCount = (uint32_t)mGraphToBuild->mSwapchainImageRefs.size();			
-			for(uint32_t swapchainImageIndex = 0; swapchainImageIndex < mGraphToBuild->mSwapchainImageRefs.size(); swapchainImageIndex++)
-			{
-				//Create a separate render pass for each of swapchain images
-				mGraphToBuild->SwitchSwapchainImages(swapchainImageIndex);
-				mGraphToBuild->mSwapchainRenderPasses.push_back(mRenderPassCreateFunctions.at(passName)(mGraphToBuild->mDeviceRef, this, passName));
-
-				//Fill in secondary swap link (what to swap to)
-				mGraphToBuild->mSwapchainPassesSwapMap.push_back((uint32_t)(mGraphToBuild->mSwapchainRenderPasses.size() - 1));
-
-				mGraphToBuild->mLastSwapchainImageIndex = swapchainImageIndex;
-			}
-		}
-		else
-		{
-			//This pass does not use any swapchain images - can just create a single copy
-			mGraphToBuild->mRenderPasses.push_back(mRenderPassCreateFunctions.at(passName)(mGraphToBuild->mDeviceRef, this, passName));
-		}
-	}
-
-	//Prepare for the first use
-	uint32_t swapchainImageCount = (uint32_t)mGraphToBuild->mSwapchainImageRefs.size();
-	for(uint32_t i = 0; i < (uint32_t)mGraphToBuild->mSwapchainPassesSwapMap.size(); i += (swapchainImageCount + 1u))
-	{
-		uint32_t passIndexToSwitch = mGraphToBuild->mSwapchainPassesSwapMap[i];
-		mGraphToBuild->mRenderPasses[passIndexToSwitch].swap(mGraphToBuild->mSwapchainRenderPasses[mGraphToBuild->mSwapchainPassesSwapMap[i + mGraphToBuild->mLastSwapchainImageIndex + 1]]);
-	}
-}
-
 void Vulkan::FrameGraphBuilder::BuildBarriers()
 {
 	mGraphToBuild->mImageRenderPassBarriers.resize(mRenderPassNames.size());
@@ -677,46 +631,45 @@ void Vulkan::FrameGraphBuilder::CreateTextureViews(const std::vector<TextureSubr
 		VkImage image = mVulkanGraphToBuild->mImages[textureViewCreateInfo.ImageIndex];
 		uint32_t subresourceInfoIndex = textureViewCreateInfo.SubresourceInfoIndex;
 
-		//TODO: fragment density map
-		VkImageViewCreateInfo imageViewCreateInfo;
-		imageViewCreateInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-		imageViewCreateInfo.pNext                           = nullptr;
-		imageViewCreateInfo.flags                           = 0;
-		imageViewCreateInfo.image                           = image;
-		imageViewCreateInfo.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
-		imageViewCreateInfo.format                          = mSubresourceInfos[subresourceInfoIndex].Format;
-		imageViewCreateInfo.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-		imageViewCreateInfo.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-		imageViewCreateInfo.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-		imageViewCreateInfo.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY;
-		imageViewCreateInfo.subresourceRange.aspectMask     = mSubresourceInfos[subresourceInfoIndex].Aspect;
-
-		imageViewCreateInfo.subresourceRange.baseMipLevel   = 0;
-		imageViewCreateInfo.subresourceRange.levelCount     = 1;
-		imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
-		imageViewCreateInfo.subresourceRange.layerCount     = 1;
-
-		VkImageView imageView = VK_NULL_HANDLE;
-		ThrowIfFailed(vkCreateImageView(mVulkanGraphToBuild->mDeviceRef, &imageViewCreateInfo, nullptr, &imageView));
-
-		mVulkanGraphToBuild->mImageViews[textureViewCreateInfo.ImageViewIndex] = imageView;
+		mVulkanGraphToBuild->mImageViews[textureViewCreateInfo.ImageViewIndex] = CreateImageView(image, subresourceInfoIndex);
 	}
 }
 
-uint32_t Vulkan::FrameGraphBuilder::AllocateBackbufferResources() const
+void Vulkan::FrameGraphBuilder::CreateSwapchainTextureViews(const std::vector<TextureSubresourceCreateInfo>& backbufferSubresourceCreateInfos) const
 {
-	mVulkanGraphToBuild->mImages.push_back(VK_NULL_HANDLE);
+	size_t newImageViews = backbufferSubresourceCreateInfos.size() * mSwapChain->SwapchainImageCount;
 
-	mVulkanGraphToBuild->mSwapchainImageRefs.clear();
+	mVulkanGraphToBuild->mImageViews.resize(mVulkanGraphToBuild->mImageViews.size() + newImageViews);
+	for(const TextureSubresourceCreateInfo& backbufferSubresourceCreateInfo: backbufferSubresourceCreateInfos)
+	{
+		assert(backbufferSubresourceCreateInfo.ImageViewIndex > (mVulkanGraphToBuild->mImageViews.size() - newImageViews));
+
+		uint32_t subresourceInfoIndex = backbufferSubresourceCreateInfo.SubresourceInfoIndex;
+		for(size_t swapchainImageIndex = 0; swapchainImageIndex < mSwapChain->SwapchainImageCount; swapchainImageIndex++)
+		{
+			VkImage image = mVulkanGraphToBuild->mImages[backbufferSubresourceCreateInfo.ImageIndex + swapchainImageIndex];
+			
+			mVulkanGraphToBuild->mImageViews[backbufferSubresourceCreateInfo.ImageViewIndex + swapchainImageIndex] = CreateImageView(image, subresourceInfoIndex);
+		}
+	}
+}
+
+Span<uint32_t> Vulkan::FrameGraphBuilder::AllocateBackbufferResources() const
+{
+	Span<uint32_t> resultSpan;
+	resultSpan.Begin = (uint32_t)(mVulkanGraphToBuild->mImages.size());
+	resultSpan.End   = resultSpan.Begin + SwapChain::SwapchainImageCount;
+
 	for(size_t i = 0; i < SwapChain::SwapchainImageCount; i++)
 	{
-		mVulkanGraphToBuild->mSwapchainImageRefs.push_back(mSwapChain->GetSwapchainImage(i));
+		mVulkanGraphToBuild->mImages.push_back(mSwapChain->GetSwapchainImage(i));
+
+#if defined(DEBUG) || defined(_DEBUG)
+		VulkanUtils::SetDebugObjectName(mVulkanGraphToBuild->mDeviceRef, mVulkanGraphToBuild->mImages.back(), mBackbufferName);
+#endif
 	}
 
-	mVulkanGraphToBuild->mSwapchainImageViews.clear();
-	mVulkanGraphToBuild->mSwapchainViewsSwapMap.clear();
-
-	return (uint32_t)(mVulkanGraphToBuild->mImages.size() - 1);
+	return resultSpan;
 }
 
 uint32_t Vulkan::FrameGraphBuilder::PassTypeToQueueIndex(RenderPassType passType) const
@@ -738,4 +691,31 @@ uint32_t Vulkan::FrameGraphBuilder::PassTypeToQueueIndex(RenderPassType passType
 	default:
 		return mDeviceQueues->GetGraphicsQueueFamilyIndex();
 	}
+}
+
+VkImageView Vulkan::FrameGraphBuilder::CreateImageView(VkImage image, uint32_t subresourceInfoIndex) const
+{
+	//TODO: fragment density map
+	VkImageViewCreateInfo imageViewCreateInfo;
+	imageViewCreateInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	imageViewCreateInfo.pNext                           = nullptr;
+	imageViewCreateInfo.flags                           = 0;
+	imageViewCreateInfo.image                           = image;
+	imageViewCreateInfo.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
+	imageViewCreateInfo.format                          = mSubresourceInfos[subresourceInfoIndex].Format;
+	imageViewCreateInfo.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+	imageViewCreateInfo.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+	imageViewCreateInfo.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+	imageViewCreateInfo.components.a                    = VK_COMPONENT_SWIZZLE_IDENTITY;
+	imageViewCreateInfo.subresourceRange.aspectMask     = mSubresourceInfos[subresourceInfoIndex].Aspect;
+
+	imageViewCreateInfo.subresourceRange.baseMipLevel   = 0;
+	imageViewCreateInfo.subresourceRange.levelCount     = 1;
+	imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+	imageViewCreateInfo.subresourceRange.layerCount     = 1;
+
+	VkImageView imageView = VK_NULL_HANDLE;
+	ThrowIfFailed(vkCreateImageView(mVulkanGraphToBuild->mDeviceRef, &imageViewCreateInfo, nullptr, &imageView));
+
+	return imageView;
 }
