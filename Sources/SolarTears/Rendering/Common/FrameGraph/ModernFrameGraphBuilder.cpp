@@ -42,8 +42,8 @@ void ModernFrameGraphBuilder::RegisterReadSubresource(const std::string_view pas
 	metadataNode.PrevPassNode         = nullptr;
 	metadataNode.NextPassNode         = nullptr;
 	metadataNode.SubresourceInfoIndex = AddSubresourceMetadata();
-	metadataNode.ImageSpanStart       = (uint32_t)(-1);
-	metadataNode.ImageViewSpanStart   = (uint32_t)(-1);
+	metadataNode.FirstFrameHandle     = (uint32_t)(-1);
+	metadataNode.FirstFrameViewHandle = (uint32_t)(-1);
 	metadataNode.FrameCount           = 1;
 	metadataNode.PassType             = RenderPassType::Graphics;
 
@@ -73,8 +73,8 @@ void ModernFrameGraphBuilder::RegisterWriteSubresource(const std::string_view pa
 	metadataNode.PrevPassNode         = nullptr;
 	metadataNode.NextPassNode         = nullptr;
 	metadataNode.SubresourceInfoIndex = AddSubresourceMetadata();
-	metadataNode.ImageSpanStart       = (uint32_t)(-1);
-	metadataNode.ImageViewSpanStart   = (uint32_t)(-1);
+	metadataNode.FirstFrameHandle     = (uint32_t)(-1);
+	metadataNode.FirstFrameViewHandle = (uint32_t)(-1);
 	metadataNode.FrameCount           = 1;
 	metadataNode.PassType             = RenderPassType::Graphics;
 
@@ -112,8 +112,8 @@ void ModernFrameGraphBuilder::AssignBackbufferName(const std::string_view backbu
 		presentAcquireMetadataNode.PrevPassNode         = nullptr;
 		presentAcquireMetadataNode.NextPassNode         = nullptr;
 		presentAcquireMetadataNode.SubresourceInfoIndex = AddSubresourceMetadata();
-		presentAcquireMetadataNode.ImageSpanStart       = (uint32_t)(-1);
-		presentAcquireMetadataNode.ImageViewSpanStart   = (uint32_t)(-1);
+		presentAcquireMetadataNode.FirstFrameHandle     = (uint32_t)(-1);
+		presentAcquireMetadataNode.FirstFrameViewHandle = (uint32_t)(-1);
 		presentAcquireMetadataNode.FrameCount           = GetSwapchainImageCount();
 		presentAcquireMetadataNode.PassType             = RenderPassType::Graphics;
 
@@ -941,19 +941,19 @@ void ModernFrameGraphBuilder::BuildSubresourceCreateInfos(const std::vector<Text
 		std::unordered_set<uint32_t> uniqueImageViews;
 		do
 		{
-			if(currentNode->ImageViewSpanStart != (uint32_t)(-1) && !uniqueImageViews.contains(currentNode->ImageViewSpanStart))
+			if(currentNode->FirstFrameViewHandle != (uint32_t)(-1) && !uniqueImageViews.contains(currentNode->FirstFrameViewHandle))
 			{
 				for(uint32_t frame = 0; frame < currentNode->FrameCount; frame++)
 				{
 					TextureSubresourceCreateInfo subresourceCreateInfo;
 					subresourceCreateInfo.SubresourceInfoIndex = currentNode->SubresourceInfoIndex;
-					subresourceCreateInfo.ImageIndex           = currentNode->ImageSpanStart + frame;
-					subresourceCreateInfo.ImageViewIndex       = currentNode->ImageViewSpanStart + frame;
+					subresourceCreateInfo.ImageIndex           = currentNode->FirstFrameHandle + frame;
+					subresourceCreateInfo.ImageViewIndex       = currentNode->FirstFrameViewHandle + frame;
 
 					outTextureViewCreateInfos.push_back(subresourceCreateInfo);
 				}
 
-				uniqueImageViews.insert(currentNode->ImageViewSpanStart);
+				uniqueImageViews.insert(currentNode->FirstFrameViewHandle);
 			}
 
 			currentNode = currentNode->NextPassNode;
@@ -1065,11 +1065,12 @@ void ModernFrameGraphBuilder::ValidateImageAndViewIndicesInResource(TextureResou
 	size_t firstValidImageView = 0;
 	while(resourceMetadataNodes[firstValidImageView]->ViewSortKey == 0) 
 	{
-		resourceMetadataNodes[firstValidImageView]->ImageSpanStart     = imageIndex;
-		resourceMetadataNodes[firstValidImageView]->ImageViewSpanStart = -1;
+		resourceMetadataNodes[firstValidImageView]->FirstFrameHandle     = imageIndex;
+		resourceMetadataNodes[firstValidImageView]->FirstFrameViewHandle = -1;
 
 		firstValidImageView++;
 	}
+
 
 	//Only assign different image view indices if their ViewSortKey differ
 	uint64_t prevSortKey = 0;

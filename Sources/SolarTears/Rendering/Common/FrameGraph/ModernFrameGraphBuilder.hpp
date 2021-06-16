@@ -25,11 +25,11 @@ protected:
 		SubresourceMetadataNode* NextPassNode;
 
 		//In case of ping-pong or swapchain images the images are stored in a range. ImageIndex and ImageViewIndex point to the first image/view in the range
-		uint32_t       ImageSpanStart;       //The index of the first frame in the list of frame graph textures. Common for all nodes in the resource
-		uint32_t       ImageViewSpanStart;   //The index of the first frame in the list of frame graph texture views
-		uint32_t       FrameCount;           //The number of different frames in the resource. Common for all nodes in the resource
-		uint32_t       SubresourceInfoIndex; //The id of the API-specific subresource data
-		RenderPassType PassType;             //The pass type (Graphics/Compute/Copy) that uses the node
+		uint32_t       FirstFrameHandle;      //The id of the first frame in the list of frame graph textures. Common for all nodes in the resource
+		uint32_t       FirstFrameViewHandle;  //The id of the first frame in the frame graph texture views
+		uint32_t       FrameCount;            //The number of different frames in the resource. Common for all nodes in the resource
+		uint32_t       SubresourceInfoIndex;  //The id of the API-specific subresource data
+		RenderPassType PassType;              //The pass type (Graphics/Compute/Copy) that uses the node
 
 		uint64_t ViewSortKey; //The key to determine unique image views for subresource. Value of 0 indicates this node does not create any subresources
 	};
