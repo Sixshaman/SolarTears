@@ -8,6 +8,13 @@ class ModernFrameGraph
 {
 	friend class ModernFrameGraphBuilder;
 
+protected:
+	struct RenderPassSpanInfo
+	{
+		uint32_t PassSpanBegin; //The start of per-frame passes in the frame graph pass list. The span describes the range of pass objects using the same pass but different per-frame resources
+		uint32_t OwnFrames;     //The number of per-pass own frames (excluding swapchain-related ones)
+	};
+
 public:
 	ModernFrameGraph(const FrameGraphConfig& frameGraphConfig);
 	~ModernFrameGraph();
@@ -17,11 +24,7 @@ protected:
 
 	std::vector<Span<uint32_t>> mGraphicsPassSpans;
 
-	Span<uint32_t> mBackbufferImageSpan;
+	std::vector<RenderPassSpanInfo> mPassFrameSpans;
 
-	//Each i * (SwapchainFrameCount + 1) + 0 element tells the index in mRenderPasses/mImageViews that should be replaced with swapchain-related element every frame. 
-	//Pass to replace is taken from mSwapchainRenderPasses[i * (SwapchainFrameCount + 1) + currentSwapchainImageIndex + 1]
-	//View to replace is taken from   mSwapchainImageViews[i * (SwapchainFrameCount + 1) + currentSwapchainImageIndex + 1]
-	//The reason to use it is to make mRenderPasses always relate to passes actually used
-	std::vector<uint32_t> mSwapchainPassesSwapMap;
+	Span<uint32_t> mBackbufferImageSpan;
 };

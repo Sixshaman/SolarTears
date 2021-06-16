@@ -18,9 +18,8 @@ D3D12::FrameGraph::~FrameGraph()
 {
 }
 
-void D3D12::FrameGraph::Traverse(ThreadPool* threadPool, const WorkerCommandLists* commandLists, const RenderableScene* scene, const ShaderManager* shaderManager, const SrvDescriptorManager* descriptorManager, DeviceQueues* deviceQueues, uint32_t currentFrameResourceIndex, uint32_t currentSwapchainImageIndex)
+void D3D12::FrameGraph::Traverse(ThreadPool* threadPool, const WorkerCommandLists* commandLists, const RenderableScene* scene, const ShaderManager* shaderManager, const SrvDescriptorManager* descriptorManager, DeviceQueues* deviceQueues, uint32_t frameIndex, uint32_t swapchainImageIndex)
 {
-	SwitchSwapchainPasses(currentSwapchainImageIndex);
 	SwitchSwapchainImages(currentSwapchainImageIndex);
 
 	if(mGraphicsPassSpans.size() > 0)
@@ -103,8 +102,6 @@ void D3D12::FrameGraph::Traverse(ThreadPool* threadPool, const WorkerCommandList
 		ID3D12CommandQueue* graphicsQueue = deviceQueues->GraphicsQueueHandle();
 		graphicsQueue->ExecuteCommandLists((UINT)mGraphicsPassSpans.size(), mFrameRecordedGraphicsCommandLists.data());
 	}
-
-	mLastSwapchainImageIndex = currentSwapchainImageIndex;
 }
 
 void D3D12::FrameGraph::BeginCommandList(ID3D12GraphicsCommandList* commandList, ID3D12CommandAllocator* commandAllocator, uint32_t dependencyLevelSpanIndex) const
@@ -121,12 +118,12 @@ void D3D12::FrameGraph::EndCommandList(ID3D12GraphicsCommandList* commandList) c
 	THROW_IF_FAILED(commandList->Close());
 }
 
-void D3D12::FrameGraph::RecordGraphicsPasses(ID3D12GraphicsCommandList6* commandList, const RenderableScene* scene, const D3D12::ShaderManager* shaderManager, uint32_t dependencyLevelSpanIndex) const
+void D3D12::FrameGraph::RecordGraphicsPasses(ID3D12GraphicsCommandList6* commandList, const RenderableScene* scene, const ShaderManager* shaderManager, uint32_t dependencyLevelSpanIndex, uint32_t frameIndex, uint32_t swapchainImageIndex) const
 {
-	DependencyLevelSpan levelSpan = mGraphicsPassSpans[dependencyLevelSpanIndex];
-	for(uint32_t renderPassIndex = levelSpan.DependencyLevelBegin; renderPassIndex < levelSpan.DependencyLevelEnd; renderPassIndex++)
+	Span<uint32_t> levelSpan = mGraphicsPassSpans[dependencyLevelSpanIndex];
+	for(uint32_t passSpanIndex = levelSpan.Begin; passSpanIndex < levelSpan.End; passSpanIndex++)
 	{
-		BarrierSpan barrierSpan            = mRenderPassBarriers[renderPassIndex];
+		BarrierSpan barrierSpan            = mRenderPassBarriers[passSpanIndex];
 		UINT        beforePassBarrierCount = barrierSpan.BeforePassEnd - barrierSpan.BeforePassBegin;
 		UINT        afterPassBarrierCount  = barrierSpan.AfterPassEnd  - barrierSpan.AfterPassBegin;
 
@@ -136,6 +133,10 @@ void D3D12::FrameGraph::RecordGraphicsPasses(ID3D12GraphicsCommandList6* command
 			commandList->ResourceBarrier(beforePassBarrierCount, barrierPointer);
 		}
 
+		const RenderPassSpanInfo passSpanInfo = mPassFrameSpans[passSpanIndex];
+
+		uint32_t renderPassFrame = passSpanInfo.OwnFrames * swapchainImageIndex + frameIndex % passSpanInfo.OwnFrames;
+		uint32_t renderPassIndex = passSpanInfo.PassSpanBegin + renderPassFrame;
 		mRenderPasses[renderPassIndex]->RecordExecution(commandList, scene, shaderManager, mFrameGraphConfig);
 
 		if(afterPassBarrierCount != 0)
@@ -146,24 +147,11 @@ void D3D12::FrameGraph::RecordGraphicsPasses(ID3D12GraphicsCommandList6* command
 	}
 }
 
-void D3D12::FrameGraph::SwitchSwapchainPasses(uint32_t swapchainImageIndex)
-{
-	uint32_t swapchainImageCount = (uint32_t)mSwapchainImageRefs.size();
-
-	for(uint32_t i = 0; i < (uint32_t)mSwapchainPassesSwapMap.size(); i += (swapchainImageCount + 1u))
-	{
-		uint32_t passIndexToSwitch = mSwapchainPassesSwapMap[i];
-		
-		mRenderPasses[passIndexToSwitch].swap(mSwapchainRenderPasses[mSwapchainPassesSwapMap[i + mLastSwapchainImageIndex + 1]]);
-		mRenderPasses[passIndexToSwitch].swap(mSwapchainRenderPasses[mSwapchainPassesSwapMap[i + swapchainImageIndex      + 1]]);
-	}
-}
-
 void D3D12::FrameGraph::SwitchSwapchainImages(uint32_t swapchainImageIndex)
 {
 	//Update barriers
 	for(size_t i = 0; i < mSwapchainBarrierIndices.size(); i++)
 	{
-		mResourceBarriers[mSwapchainBarrierIndices[i]].Transition.pResource = mTextures[mBackbufferRefIndex];
+		mResourceBarriers[mSwapchainBarrierIndices[i]].Transition.pResource = mTextures[mBackbufferImageSpan.Begin + swapchainImageIndex];
 	}
 }

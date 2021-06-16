@@ -2,8 +2,8 @@
 
 ModernFrameGraph::ModernFrameGraph(const FrameGraphConfig& frameGraphConfig): mFrameGraphConfig(frameGraphConfig)
 {
-	mBackbufferImageSpanBegin = 0;
-	mBackbufferImageSpanEnd   = 0;
+	mBackbufferImageSpan.Begin = 0;
+	mBackbufferImageSpan.End   = 0;
 }
 
 ModernFrameGraph::~ModernFrameGraph()

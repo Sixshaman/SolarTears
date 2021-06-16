@@ -17,6 +17,7 @@ Vulkan::FrameGraphBuilder::FrameGraphBuilder(FrameGraph* graphToBuild, const Des
 	                                                                                                        mShaderManager(shaderManager), mMemoryManager(memoryManager), 
 	                                                                                                        mDeviceQueues(deviceQueues), mSwapChain(swapchain), mWorkerCommandBuffers(workerCommandBuffers)
 {
+	mImageViewCount = 0;
 }
 
 Vulkan::FrameGraphBuilder::~FrameGraphBuilder()
@@ -140,13 +141,13 @@ VkImage Vulkan::FrameGraphBuilder::GetRegisteredResource(const std::string_view 
 	const SubresourceId  subresourceIdStr(subresourceId);
 
 	const SubresourceMetadataNode& metadataNode = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr);
-	if(metadataNode.ImageSpanStart == (uint32_t)(-1))
+	if(metadataNode.FirstFrameHandle == (uint32_t)(-1))
 	{
 		return VK_NULL_HANDLE;
 	}
 	else
 	{
-		return mVulkanGraphToBuild->mImages[metadataNode.ImageSpanStart + frame];
+		return mVulkanGraphToBuild->mImages[metadataNode.FirstFrameHandle + frame];
 	}
 }
 
@@ -156,13 +157,13 @@ VkImageView Vulkan::FrameGraphBuilder::GetRegisteredSubresource(const std::strin
 	const SubresourceId  subresourceIdStr(subresourceId);
 
 	const SubresourceMetadataNode& metadataNode = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr);
-	if(metadataNode.ImageViewSpanStart == (uint32_t)(-1))
+	if(metadataNode.FirstFrameViewHandle == (uint32_t)(-1))
 	{
 		return VK_NULL_HANDLE;
 	}
 	else
 	{
-		return mVulkanGraphToBuild->mImageViews[metadataNode.ImageViewSpanStart + frame];
+		return mVulkanGraphToBuild->mImageViews[metadataNode.FirstFrameViewHandle + frame];
 	}
 }
 
@@ -394,8 +395,8 @@ void Vulkan::FrameGraphBuilder::CreateTextures(const std::vector<TextureResource
 			imageBarrier.subresourceRange.baseArrayLayer = 0;
 			imageBarrier.subresourceRange.layerCount     = VK_REMAINING_ARRAY_LAYERS;
 
-			mVulkanGraphToBuild->mImages[headNode->ImageSpanStart + frame]  = image;
-			imageInitialStateBarriers[headNode->ImageViewSpanStart + frame] = imageBarrier;
+			mVulkanGraphToBuild->mImages[headNode->FirstFrameHandle + frame] = image;
+			imageInitialStateBarriers[headNode->FirstFrameHandle + frame]    = imageBarrier;
 		}
 	}
 
@@ -448,7 +449,7 @@ void Vulkan::FrameGraphBuilder::CreateTextures(const std::vector<TextureResource
 	{
 		for(uint32_t frame = 0; frame < backbufferCreateInfo.MetadataHead->FrameCount; frame++)
 		{
-			mVulkanGraphToBuild->mImages[backbufferCreateInfo.MetadataHead->ImageSpanStart + frame] = mSwapChain->GetSwapchainImage(frame);
+			mVulkanGraphToBuild->mImages[backbufferCreateInfo.MetadataHead->FirstFrameHandle + frame] = mSwapChain->GetSwapchainImage(frame);
 
 #if defined(DEBUG) || defined(_DEBUG)
 			VulkanUtils::SetDebugObjectName(mVulkanGraphToBuild->mDeviceRef, mVulkanGraphToBuild->mImages.back(), mBackbufferName);
@@ -492,9 +493,25 @@ bool Vulkan::FrameGraphBuilder::ValidateSubresourceViewParameters(SubresourceMet
 	return thisPassSubresourceInfo.Format != 0 && thisPassSubresourceInfo.Aspect != 0;
 }
 
+void Vulkan::FrameGraphBuilder::AllocateImageViews(const std::vector<uint64_t>& sortKeys, uint32_t frameCount, std::vector<uint32_t>& outViewIds)
+{
+	outViewIds.reserve(sortKeys.size());
+	for(uint64_t sortKey: sortKeys)
+	{
+		uint32_t imageViewId = (uint32_t)(-1);
+		if(sortKey != 0)
+		{
+			imageViewId = mImageViewCount;
+			mImageViewCount += frameCount;
+		}
+
+		outViewIds.push_back(imageViewId);
+	}
+}
+
 void Vulkan::FrameGraphBuilder::CreateTextureViews(const std::vector<TextureSubresourceCreateInfo>& textureViewCreateInfos) const
 {
-	mVulkanGraphToBuild->mImageViews.resize(textureViewCreateInfos.size());
+	mVulkanGraphToBuild->mImageViews.resize(mImageViewCount);
 	for(const TextureSubresourceCreateInfo& textureViewCreateInfo: textureViewCreateInfos)
 	{
 		VkImage image = mVulkanGraphToBuild->mImages[textureViewCreateInfo.ImageIndex];
@@ -502,6 +519,12 @@ void Vulkan::FrameGraphBuilder::CreateTextureViews(const std::vector<TextureSubr
 
 		mVulkanGraphToBuild->mImageViews[textureViewCreateInfo.ImageViewIndex] = CreateImageView(image, subresourceInfoIndex);
 	}
+}
+
+void Vulkan::FrameGraphBuilder::InitializeTraverseData() const
+{
+	mVulkanGraphToBuild->mFrameRecordedGraphicsCommandBuffers.resize(mVulkanGraphToBuild->mGraphicsPassSpans.size());
+	mVulkanGraphToBuild->mCurrentFramePasses.resize(mRenderPassNames.size());
 }
 
 uint32_t Vulkan::FrameGraphBuilder::GetSwapchainImageCount() const

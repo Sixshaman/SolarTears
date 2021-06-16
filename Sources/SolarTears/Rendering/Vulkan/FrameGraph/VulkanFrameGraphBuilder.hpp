@@ -93,11 +93,17 @@ namespace Vulkan
 		//Propagates subresource info (format, access flags, etc.) to a node from the previous one. Also initializes view key. Returns true if propagation succeeded or wasn't needed
 		bool ValidateSubresourceViewParameters(SubresourceMetadataNode* node) override;
 
+		//Allocates the storage for image views defined by sort keys
+		void AllocateImageViews(const std::vector<uint64_t>& sortKeys, uint32_t frameCount, std::vector<uint32_t>& outViewIds) override;
+
 		//Creates image objects
 		void CreateTextures(const std::vector<TextureResourceCreateInfo>& textureCreateInfos, const std::vector<TextureResourceCreateInfo>& backbufferCreateInfos, uint32_t totalTextureCount) const override;
 
 		//Creates image view objects
 		void CreateTextureViews(const std::vector<TextureSubresourceCreateInfo>& textureViewCreateInfos) const override;
+
+		//Initializes per-traverse command buffer info
+		void InitializeTraverseData() const override;
 
 		//Get the number of swapchain images
 		uint32_t GetSwapchainImageCount() const override;
@@ -108,6 +114,8 @@ namespace Vulkan
 		std::unordered_map<RenderPassName, RenderPassCreateFunc> mRenderPassCreateFunctions;
 
 		std::vector<SubresourceInfo> mSubresourceInfos;
+
+		uint32_t mImageViewCount;
 
 		//Several things that might be needed during build
 		const DeviceQueues*         mDeviceQueues;

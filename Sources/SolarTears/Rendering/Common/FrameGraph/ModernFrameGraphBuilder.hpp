@@ -31,7 +31,7 @@ protected:
 		uint32_t       SubresourceInfoIndex;  //The id of the API-specific subresource data
 		RenderPassType PassType;              //The pass type (Graphics/Compute/Copy) that uses the node
 
-		uint64_t ViewSortKey; //The key to determine unique image views for subresource. Value of 0 indicates this node does not create any subresources
+		uint64_t ViewSortKey; //The key to determine unique image views for subresource
 	};
 
 	struct TextureResourceCreateInfo
@@ -108,10 +108,10 @@ private:
 	uint32_t PrepareResourceLocations(std::vector<TextureResourceCreateInfo>& textureCreateInfos, std::vector<TextureResourceCreateInfo>& backbufferCreateInfos);
 
 	//Initializes ImageIndex and ImageViewIndex fields of nodes. Returns image view count written
-	void ValidateImageAndViewIndices(std::vector<TextureResourceCreateInfo>& textureResourceCreateInfos, uint32_t imageIndexOffset, uint32_t imageViewIndexOffset, uint32_t* outImageCount, uint32_t* outImageViewCount);
+	uint32_t ValidateImageAndViewIndices(std::vector<TextureResourceCreateInfo>& textureResourceCreateInfos, uint32_t imageIndexOffset);
 
 	//Initializes ImageIndex and ImageViewIndex fields of nodes in a single resource. Returns image view count per resource in a single frame
-	void ValidateImageAndViewIndicesInResource(TextureResourceCreateInfo* createInfo, uint32_t imageIndex, uint32_t imageViewIndexOffset, uint32_t* outSingleFrameViewCount);
+	void ValidateImageAndViewIndicesInResource(TextureResourceCreateInfo* createInfo, uint32_t imageIndex);
 
 	//Recursively sort subtree topologically
 	void TopologicalSortNode(const std::unordered_map<RenderPassName, std::unordered_set<RenderPassName>>& adjacencyList, std::unordered_set<RenderPassName>& visited, std::unordered_set<RenderPassName>& onStack, const RenderPassName& renderPassName, std::vector<RenderPassName>& sortedPassNames);
@@ -126,11 +126,17 @@ protected:
 	//Propagates info (format, access flags, etc.) from one SubresourceInfo to another. Returns true if propagation succeeded or wasn't needed
 	virtual bool ValidateSubresourceViewParameters(SubresourceMetadataNode* node) = 0;
 		
+	//Allocates the storage for image views defined by sort keys
+	virtual void AllocateImageViews(const std::vector<uint64_t>& sortKeys, uint32_t frameCount, std::vector<uint32_t>& outViewIds) = 0;
+
 	//Creates image objects
 	virtual void CreateTextures(const std::vector<TextureResourceCreateInfo>& textureCreateInfos, const std::vector<TextureResourceCreateInfo>& backbufferCreateInfos, uint32_t totalTextureCount) const = 0;
 
 	//Creates image view objects
 	virtual void CreateTextureViews(const std::vector<TextureSubresourceCreateInfo>& textureViewCreateInfos) const = 0;
+
+	//Initializes command buffer, job info, etc. for the frame graph
+	virtual void InitializeTraverseData() const = 0;
 
 	//Get the number of swapchain images
 	virtual uint32_t GetSwapchainImageCount() const = 0;

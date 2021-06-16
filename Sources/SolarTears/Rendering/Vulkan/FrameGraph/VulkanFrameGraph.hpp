@@ -34,37 +34,26 @@ namespace Vulkan
 			VkPipelineStageFlags afterFlagsEnd;
 		};
 
-		struct DependencyLevelSpan
-		{
-			uint32_t DependencyLevelBegin;
-			uint32_t DependencyLevelEnd;
-		};
-
 	public:
 		FrameGraph(VkDevice device, const FrameGraphConfig& frameGraphConfig);
 		~FrameGraph();
 
-		void Traverse(ThreadPool* threadPool, WorkerCommandBuffers* commandBuffers, RenderableScene* scene, DeviceQueues* deviceQueues, VkFence traverseFence, uint32_t currentFrameResourceIndex, uint32_t currentSwapchainImageIndex, VkSemaphore preTraverseSemaphore, VkSemaphore* outPostTraverseSemaphore);
+		void Traverse(ThreadPool* threadPool, WorkerCommandBuffers* commandBuffers, RenderableScene* scene, DeviceQueues* deviceQueues, VkFence traverseFence, uint32_t frameIndex, uint32_t swapchainImageIndex, VkSemaphore preTraverseSemaphore, VkSemaphore* outPostTraverseSemaphore);
 
 	private:
 		void CreateSemaphores();
-		
-		void SwitchSwapchainPasses(uint32_t swapchainImageIndex);
-		void SwitchSwapchainImages(uint32_t swapchainImageIndex);
 
-		void UnsetSwapchainPasses();
-		void UnsetSwapchainImages();
+		void SwitchSwapchainImages(uint32_t swapchainImageIndex);
 
 		void BeginCommandBuffer(VkCommandBuffer cmdBuffer, VkCommandPool cmdPool) const;
 		void EndCommandBuffer(VkCommandBuffer cmdBuffer)                          const;
 
-		void RecordGraphicsPasses(VkCommandBuffer graphicsCommandBuffer, const RenderableScene* scene, uint32_t dependencyLevelSpanIndex) const;
+		void RecordGraphicsPasses(VkCommandBuffer graphicsCommandBuffer, const RenderableScene* scene, uint32_t dependencyLevelSpanIndex, uint32_t frameIndex, uint32_t swapchainImageIndex) const;
 
 	private:
 		const VkDevice mDeviceRef;
 
-		std::vector<std::unique_ptr<RenderPass>> mRenderPasses;           //All currently used render passes (sorted by dependency level)
-		std::vector<std::unique_ptr<RenderPass>> mSwapchainRenderPasses;  //All render passes that use swapchain images (replaced every frame)
+		std::vector<std::unique_ptr<RenderPass>> mRenderPasses; //All render passes
 
 		std::vector<VkImage>     mImages;
 		std::vector<VkImageView> mImageViews;
@@ -73,12 +62,6 @@ namespace Vulkan
 		std::vector<VkImageMemoryBarrier> mImageBarriers;
 		std::vector<uint32_t>             mSwapchainBarrierIndices;
 		std::vector<BarrierSpan>          mImageRenderPassBarriers; //Required barriers before ith pass are mImageBarriers[Span.Begin...Span.End], where Span is mImageRenderPassBarriers[i]. Last span is for after-graph barriers
-
-		//Each i * (SwapchainFrameCount + 1) + 0 element tells the index in mRenderPasses/mImageViews that should be replaced with swapchain-related element every frame. 
-		//Pass to replace is taken from mSwapchainRenderPasses[i * (SwapchainFrameCount + 1) + currentSwapchainImageIndex + 1]
-		//View to replace is taken from   mSwapchainImageViews[i * (SwapchainFrameCount + 1) + currentSwapchainImageIndex + 1]
-		//The reason to use it is to make mRenderPasses always relate to passes actually used
-		std::vector<uint32_t> mSwapchainPassesSwapMap;
 
 		VkDeviceMemory mImageMemory;
 
