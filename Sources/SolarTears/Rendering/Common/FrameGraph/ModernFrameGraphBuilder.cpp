@@ -46,6 +46,7 @@ void ModernFrameGraphBuilder::RegisterReadSubresource(const std::string_view pas
 	metadataNode.FirstFrameHandle     = (uint32_t)(-1);
 	metadataNode.FirstFrameViewHandle = (uint32_t)(-1);
 	metadataNode.FrameCount           = 1;
+	metadataNode.Flags                = 0;
 	metadataNode.PassType             = RenderPassType::Graphics;
 
 	mRenderPassesSubresourceMetadatas[renderPassName][subresId] = metadataNode;
@@ -77,6 +78,7 @@ void ModernFrameGraphBuilder::RegisterWriteSubresource(const std::string_view pa
 	metadataNode.FirstFrameHandle     = (uint32_t)(-1);
 	metadataNode.FirstFrameViewHandle = (uint32_t)(-1);
 	metadataNode.FrameCount           = 1;
+	metadataNode.Flags                = 0;
 	metadataNode.PassType             = RenderPassType::Graphics;
 
 	mRenderPassesSubresourceMetadatas[renderPassName][subresId] = metadataNode;
@@ -116,9 +118,42 @@ void ModernFrameGraphBuilder::AssignBackbufferName(const std::string_view backbu
 		presentAcquireMetadataNode.FirstFrameHandle     = (uint32_t)(-1);
 		presentAcquireMetadataNode.FirstFrameViewHandle = (uint32_t)(-1);
 		presentAcquireMetadataNode.FrameCount           = GetSwapchainImageCount();
+		presentAcquireMetadataNode.Flags                = 0;
 		presentAcquireMetadataNode.PassType             = RenderPassType::Graphics;
 
 		presentPassMetadataMap[backbufferIdString] = presentAcquireMetadataNode;
+	}
+}
+
+void ModernFrameGraphBuilder::EnableSubresourceAutoBeforeBarrier(const std::string_view passName, const std::string_view subresourceId, bool autoBarrier)
+{
+	RenderPassName passNameStr(passName);
+	SubresourceId  subresourceIdStr(subresourceId);
+
+	SubresourceMetadataNode& metadataNode = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr);
+	if(autoBarrier)
+	{
+		metadataNode.Flags |= TextureFlagAutoBeforeBarrier;
+	}
+	else
+	{
+		metadataNode.Flags &= ~TextureFlagAutoBeforeBarrier;
+	}
+}
+
+void ModernFrameGraphBuilder::EnableSubresourceAutoAfterBarrier(const std::string_view passName, const std::string_view subresourceId, bool autoBarrier)
+{
+	RenderPassName passNameStr(passName);
+	SubresourceId  subresourceIdStr(subresourceId);
+
+	SubresourceMetadataNode& metadataNode = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr);
+	if(autoBarrier)
+	{
+		metadataNode.Flags |= TextureFlagAutoAfterBarrier;
+	}
+	else
+	{
+		metadataNode.Flags &= ~TextureFlagAutoAfterBarrier;
 	}
 }
 
@@ -451,11 +486,55 @@ void ModernFrameGraphBuilder::BuildPassObjects()
 
 void ModernFrameGraphBuilder::BuildBarriers()
 {
+	//COMMON
+	mGraphToBuild->mRenderPassBarriers.resize(mRenderPassNames.size());
+	mGraphToBuild->mMultiframeBarrierInfos.clear();
+
+	for(size_t i = 0; i < mRenderPassNames.size(); i++)
+	{
+		RenderPassName renderPassName = mRenderPassNames[i];
+
+		const auto& nameIdMap     = mRenderPassesSubresourceNameIds.at(renderPassName);
+		const auto& idMetadataMap = mRenderPassesSubresourceMetadatas.at(renderPassName);
+
+		std::vector<SubresourceMetadataNode> passMetadatas;
+		passMetadatas.reserve(nameIdMap.size());
+
+		for(auto& subresourceNameId: nameIdMap)
+		{
+		}
+
+		for(auto& subresourceNameId: nameIdMap)
+		{
+			SubresourceMetadataNode& subresourceMetadata     = mRenderPassesSubresourceMetadatas.at(renderPassName).at(subresourceNameId.second);
+			SubresourceMetadataNode& prevSubresourceMetadata = *subresourceMetadata.PrevPassNode;
+
+			if(!(subresourceMetadata.Flags & TextureFlagAutoBeforeBarrier))
+			{
+				if(AddBeforePassBarrier(subresourceMetadata.FirstFrameHandle, prevSubresourceMetadata.PassType, prevSubresourceMetadata.SubresourceInfoIndex, subresourceMetadata.PassType, subresourceMetadata.SubresourceInfoIndex))
+				{
+
+				}
+			}
+		}
+
+		for(auto& subresourceNameId: nameIdMap)
+		{
+			SubresourceMetadataNode& subresourceMetadata     = mRenderPassesSubresourceMetadatas.at(renderPassName).at(subresourceNameId.second);
+			SubresourceMetadataNode& nextSubresourceMetadata = *subresourceMetadata.NextPassNode;
+
+			if(!(subresourceMetadata.Flags & TextureFlagAutoAfterBarrier))
+			{
+				if(AddAfterPassBarrier(subresourceMetadata.FirstFrameHandle, subresourceMetadata.PassType, subresourceMetadata.SubresourceInfoIndex, nextSubresourceMetadata.PassType, nextSubresourceMetadata.SubresourceInfoIndex))
+				{
+
+				}
+			}
+		}
+	}
+
+	/*
 	//VULKAN
-
-	mGraphToBuild->mImageRenderPassBarriers.resize(mRenderPassNames.size());
-	mGraphToBuild->mSwapchainBarrierIndices.clear();
-
 	std::unordered_set<uint64_t> processedMetadataIds; //This is here so no barrier gets added twice
 	for(size_t i = 0; i < mRenderPassNames.size(); i++)
 	{
@@ -596,14 +675,7 @@ void ModernFrameGraphBuilder::BuildBarriers()
 		}
 	}
 
-	
-
-
 	//D3D12
-	mGraphToBuild->mRenderPassBarriers.resize(mRenderPassNames.size());
-	mGraphToBuild->mSwapchainBarrierIndices.clear();
-
-	std::unordered_set<uint64_t> processedMetadataIds; //This is here so no barrier gets added twice
 	for(size_t i = 0; i < mRenderPassNames.size(); i++)
 	{
 		RenderPassName renderPassName = mRenderPassNames[i];
@@ -651,31 +723,6 @@ void ModernFrameGraphBuilder::BuildBarriers()
 			{
 				
 				{
-					/*
-					*    Before barrier:
-					*
-					*    1.  Same queue, state unchanged:                                  No barrier needed
-					*    2.  Same queue, state changed, PRESENT -> automatically promoted: No barrier needed
-					*    3.  Same queue, state changed other cases:                        Need a barrier Old state -> New state
-					*
-					*    4.  Graphics -> Compute,  state automatically promoted:               No barrier needed
-					*    5.  Graphics -> Compute,  state non-promoted, was promoted read-only: Need a barrier COMMON -> New state
-					*    6.  Graphics -> Compute,  state unchanged:                            No barrier needed
-					*    7.  Graphics -> Compute,  state changed other cases:                  No barrier needed, handled by the previous state's barrier
-					* 
-					*    8.  Compute  -> Graphics, state automatically promoted:                       No barrier needed, state will be promoted again
-					* 	 9.  Compute  -> Graphics, state non-promoted, was promoted read-only:         Need a barrier COMMON -> New state   
-					*    10. Compute  -> Graphics, state changed Compute/graphics -> Compute/Graphics: No barrier needed, handled by the previous state's barrier
-					*    11. Compute  -> Graphics, state changed Compute/Graphics -> Graphics:         Need a barrier Old state -> New state
-					*    12. Compute  -> Graphics, state unchanged:                                    No barrier needed
-					*
-					*    13. Graphics/Compute -> Copy, was promoted read-only: No barrier needed, state decays
-					*    14. Graphics/Compute -> Copy, other cases:            No barrier needed, handled by previous state's barrier
-					* 
-					*    15. Copy -> Graphics/Compute, state automatically promoted: No barrier needed
-					*    16. Copy -> Graphics/Compute, state non-promoted:           Need a barrier COMMON -> New state
-					*/
-
 					bool needBarrier = false;
 					D3D12_RESOURCE_STATES prevPassState = subresourceMetadata.PrevPassMetadata->ResourceState;
 					D3D12_RESOURCE_STATES nextPassState = subresourceMetadata.ResourceState;
@@ -759,33 +806,6 @@ void ModernFrameGraphBuilder::BuildBarriers()
 
 				
 				{
-					/*
-					*    After barrier:
-					*
-					*    1.  Same queue, state unchanged:                                           No barrier needed
-					*    2.  Same queue, state changed, Promoted read-only -> PRESENT:              No barrier needed, state decays
-					*    3.  Same queue, state changed, Promoted writeable/Non-promoted -> PRESENT: Need a barrier Old State -> PRESENT
-					*    4.  Same queue, state changed, other cases:                                No barrier needed, will be handled by the next state's barrier
-					*
-					*    5.  Graphics -> Compute,  state will be automatically promoted:               No barrier needed
-					*    6.  Graphics -> Compute,  state will not be promoted, was promoted read-only: No barrier needed, will be handled by the next state's barrier
-					*    7.  Graphics -> Compute,  state unchanged:                                    No barrier needed
-					*    8.  Graphics -> Compute,  state changed other cases:                          Need a barrier Old state -> New state
-					* 
-					*    9.  Compute  -> Graphics, state will be automatically promoted:                 No barrier needed
-					* 	 10. Compute  -> Graphics, state will not be promoted, was promoted read-only:   No barrier needed, will be handled by the next state's barrier     
-					*    11. Compute  -> Graphics, state changed Promoted read-only -> PRESENT:          No barrier needed, state will decay
-					*    12. Compute  -> Graphics, state changed Compute/graphics   -> Compute/Graphics: Need a barrier Old state -> New state
-					*    13. Compute  -> Graphics, state changed Compute/Graphics   -> Graphics:         No barrier needed, will be handled by the next state's barrier
-					*    14. Compute  -> Graphics, state unchanged:                                      No barrier needed
-					*   
-					*    15. Graphics/Compute -> Copy, from Promoted read-only: No barrier needed
-					*    16. Graphics/Compute -> Copy, other cases:             Need a barrier Old state -> COMMON
-					* 
-					*    17. Copy -> Graphics/Compute, state will be automatically promoted: No barrier needed
-					*    18. Copy -> Graphics/Compute, state will not be promoted:           No barrier needed, will be handled by the next state's barrier
-					*/
-
 					bool needBarrier = false;
 					D3D12_RESOURCE_STATES prevPassState = subresourceMetadata.ResourceState;
 					D3D12_RESOURCE_STATES nextPassState = subresourceMetadata.NextPassMetadata->ResourceState;
@@ -865,8 +885,6 @@ void ModernFrameGraphBuilder::BuildBarriers()
 					}
 				}
 			}
-
-			processedMetadataIds.insert(subresourceMetadata.MetadataId);
 		}
 
 		uint32_t beforeBarrierBegin = (uint32_t)(mGraphToBuild->mResourceBarriers.size());
@@ -893,6 +911,7 @@ void ModernFrameGraphBuilder::BuildBarriers()
 			mGraphToBuild->mSwapchainBarrierIndices.push_back(afterBarrierBegin + (uint32_t)afterSwapchainBarrierIndex);
 		}
 	}
+	*/
 }
 
 void ModernFrameGraphBuilder::BuildSubresources()

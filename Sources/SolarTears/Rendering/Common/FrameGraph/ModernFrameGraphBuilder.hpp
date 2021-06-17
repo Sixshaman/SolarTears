@@ -12,6 +12,9 @@ class FrameGraphConfig;
 class ModernFrameGraphBuilder
 {
 protected:
+	constexpr static uint32_t TextureFlagAutoBeforeBarrier = 0x01; //A before-barrier is handled by render pass itself
+	constexpr static uint32_t TextureFlagAutoAfterBarrier  = 0x02; //An after-barrier is handled by render pass itself
+
 	using RenderPassName  = std::string;
 	using SubresourceId   = std::string;
 	using SubresourceName = std::string;
@@ -29,6 +32,7 @@ protected:
 		uint32_t       FirstFrameViewHandle;  //The id of the first frame in the frame graph texture views
 		uint32_t       FrameCount;            //The number of different frames in the resource. Common for all nodes in the resource
 		uint32_t       SubresourceInfoIndex;  //The id of the API-specific subresource data
+		uint32_t       Flags;                 //Per-subresource flags
 		RenderPassType PassType;              //The pass type (Graphics/Compute/Copy) that uses the node
 
 		uint64_t ViewSortKey; //The key to determine unique image views for subresource
@@ -57,7 +61,12 @@ public:
 	void AssignSubresourceName(const std::string_view passName, const std::string_view subresourceId, const std::string_view subresourceName);
 	void AssignBackbufferName(const std::string_view backbufferName);
 
+	void EnableSubresourceAutoBeforeBarrier(const std::string_view passName, const std::string_view subresourceId, bool autoBarrier = true);
+	void EnableSubresourceAutoAfterBarrier(const std::string_view passName, const std::string_view subresourceId,  bool autoBarrier = true);
+
 	void Build();
+
+	const FrameGraphConfig* GetConfig() const;
 
 private:
 	//Builds frame graph adjacency list
@@ -121,8 +130,6 @@ private:
 	bool PassesIntersect(const RenderPassName& writingPass, const RenderPassName& readingPass);
 
 protected:
-	const FrameGraphConfig* GetConfig() const;
-
 	const Span<uint32_t> GetBackbufferImageSpan() const;
 
 protected:
@@ -146,6 +153,12 @@ protected:
 
 	//Creates image view objects
 	virtual void CreateTextureViews(const std::vector<TextureSubresourceCreateInfo>& textureViewCreateInfos) const = 0;
+
+	//Add a barrier to execute before a pass
+	virtual bool AddBeforePassBarrier(uint32_t imageIndex, RenderPassType prevPassType, uint32_t prevPassSubresourceInfoIndex, RenderPassType currPassType, uint32_t currPassSubresourceInfoIndex) = 0;
+
+	//Add a barrier to execute before a pass
+	virtual bool AddAfterPassBarrier(uint32_t imageIndex, RenderPassType currPassType, uint32_t currPassSubresourceInfoIndex, RenderPassType nextPassType, uint32_t nextPassSubresourceInfoIndex) = 0;
 
 	//Initializes command buffer, job info, etc. for the frame graph
 	virtual void InitializeTraverseData() const = 0;

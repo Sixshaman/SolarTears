@@ -45,7 +45,8 @@ void Vulkan::GBufferPass::Register(FrameGraphBuilder* frameGraphBuilder, const s
 	frameGraphBuilder->RegisterRenderPass(passName, PassCreateFunc, RenderPassType::Graphics);
 
 	frameGraphBuilder->RegisterWriteSubresource(passName, ColorBufferImageId);
-	frameGraphBuilder->EnableSubresourceAutoBarrier(passName, ColorBufferImageId, true);
+	frameGraphBuilder->EnableSubresourceAutoBeforeBarrier(passName, ColorBufferImageId, true);
+	frameGraphBuilder->EnableSubresourceAutoAfterBarrier(passName, ColorBufferImageId, true);
 	frameGraphBuilder->SetPassSubresourceFormat(passName, ColorBufferImageId, VK_FORMAT_B8G8R8A8_UNORM); //TODO: maybe passing the format????
 	frameGraphBuilder->SetPassSubresourceAspectFlags(passName, ColorBufferImageId, VK_IMAGE_ASPECT_COLOR_BIT);
 	frameGraphBuilder->SetPassSubresourceStageFlags(passName, ColorBufferImageId, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);

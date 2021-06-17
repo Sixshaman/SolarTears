@@ -19,14 +19,11 @@ namespace D3D12
 
 	class FrameGraphBuilder: public ModernFrameGraphBuilder
 	{
-		constexpr static uint32_t TextureFlagAutoBarrier       = 0x01; //Barrier is handled by render pass itself
-		constexpr static uint32_t TextureFlagStateAutoPromoted = 0x02; //The current resource state was promoted automatically from COMMON
-
 		struct SubresourceInfo
 		{
 			DXGI_FORMAT           Format;
 			D3D12_RESOURCE_STATES State;
-			uint32_t              Flags;
+			bool                  BarrierPromotedFromCommon;
 		};
 
 	public:
@@ -37,8 +34,6 @@ namespace D3D12
 
 		void SetPassSubresourceFormat(const std::string_view passName, const std::string_view subresourceId, DXGI_FORMAT format);
 		void SetPassSubresourceState(const std::string_view passName,  const std::string_view subresourceId, D3D12_RESOURCE_STATES state);
-
-		void EnableSubresourceAutoBarrier(const std::string_view passName, const std::string_view subresourceId, bool autoBarrier = true);
 
 		ID3D12Device8*          GetDevice()         const;
 		const RenderableScene*  GetScene()          const;
@@ -83,6 +78,12 @@ namespace D3D12
 
 		//Creates image view objects
 		void CreateTextureViews(const std::vector<TextureSubresourceCreateInfo>& textureViewCreateInfos) const override;
+
+		//Add a barrier to execute before a pass
+		bool AddBeforePassBarrier(uint32_t imageIndex, RenderPassType prevPassType, uint32_t prevPassSubresourceInfoIndex, RenderPassType currPassType, uint32_t currPassSubresourceInfoIndex) override;
+
+		//Add a barrier to execute before a pass
+		bool AddAfterPassBarrier(uint32_t imageIndex, RenderPassType currPassType, uint32_t currPassSubresourceInfoIndex, RenderPassType nextPassType, uint32_t nextPassSubresourceInfoIndex) override;
 
 		//Initializes per-traverse command buffer info
 		void InitializeTraverseData() const override;

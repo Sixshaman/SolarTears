@@ -89,22 +89,6 @@ void Vulkan::FrameGraphBuilder::SetPassSubresourceAccessFlags(const std::string_
 	mSubresourceInfos[subresourceInfoIndex].Access = accessFlags;
 }
 
-void Vulkan::FrameGraphBuilder::EnableSubresourceAutoBarrier(const std::string_view passName, const std::string_view subresourceId, bool autoBaarrier)
-{
-	RenderPassName passNameStr(passName);
-	SubresourceId  subresourceIdStr(subresourceId);
-
-	uint32_t subresourceInfoIndex = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr).SubresourceInfoIndex;
-	if(autoBaarrier)
-	{
-		mSubresourceInfos[subresourceInfoIndex].Flags |= ImageFlagAutoBarrier;
-	}
-	else
-	{
-		mSubresourceInfos[subresourceInfoIndex].Flags &= ~ImageFlagAutoBarrier;
-	}
-}
-
 const Vulkan::DescriptorManager* Vulkan::FrameGraphBuilder::GetDescriptorManager() const
 {
 	return mDescriptorManager;

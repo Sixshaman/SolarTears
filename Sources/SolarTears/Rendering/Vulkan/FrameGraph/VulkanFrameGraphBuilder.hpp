@@ -22,8 +22,6 @@ namespace Vulkan
 
 	class FrameGraphBuilder: public ModernFrameGraphBuilder
 	{
-		constexpr static uint32_t ImageFlagAutoBarrier = 0x01;
-
 		struct SubresourceInfo
 		{
 			VkFormat             Format;
@@ -32,7 +30,6 @@ namespace Vulkan
 			VkImageAspectFlags   Aspect;
 			VkPipelineStageFlags Stage;
 			VkAccessFlags        Access;
-			uint32_t             Flags;
 		};
 
 	public:
@@ -47,8 +44,6 @@ namespace Vulkan
 		void SetPassSubresourceAspectFlags(const std::string_view passName, const std::string_view subresourceId, VkImageAspectFlags aspect);
 		void SetPassSubresourceStageFlags(const std::string_view passName,  const std::string_view subresourceId, VkPipelineStageFlags stage);
 		void SetPassSubresourceAccessFlags(const std::string_view passName, const std::string_view subresourceId, VkAccessFlags accessFlags);
-
-		void EnableSubresourceAutoBarrier(const std::string_view passName, const std::string_view subresourceId, bool autoBaarrier = true);
 
 		const DeviceParameters*  GetDeviceParameters()  const;
 		const MemoryManager*     GetMemoryManager()     const;
