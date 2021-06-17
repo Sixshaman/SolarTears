@@ -535,6 +535,34 @@ void Vulkan::FrameGraphBuilder::CreateTextureViews(const std::vector<TextureSubr
 
 uint32_t Vulkan::FrameGraphBuilder::AddBeforePassBarrier(uint32_t imageIndex, RenderPassType prevPassType, uint32_t prevPassSubresourceInfoIndex, RenderPassType currPassType, uint32_t currPassSubresourceInfoIndex)
 {
+	/*
+	*    Same queue, state unchanged: No barrier needed
+	*    Same queue, state changed:   Need a barrier Old state -> New state
+	*
+	*    Graphics -> Compute, state unchanged: Need 
+	* 
+	*    Graphics -> Compute, state automatically promoted:               No barrier needed
+	*    Graphics -> Compute, state non-promoted, was promoted read-only: Need a barrier COMMON -> New state
+	*    Graphics -> Compute, state unchanged:                            No barrier needed
+	*    Graphics -> Compute, state changed other cases:                  No barrier needed, handled by the previous state's barrier
+	* 
+	*    Compute -> Graphics, state automatically promoted:                       No barrier needed, state will be promoted again
+	* 	 Compute -> Graphics, state non-promoted, was promoted read-only:         Need a barrier COMMON -> New state   
+	*    Compute -> Graphics, state changed Compute/graphics -> Compute/Graphics: No barrier needed, handled by the previous state's barrier
+	*    Compute -> Graphics, state changed Compute/Graphics -> Graphics:         Need a barrier Old state -> New state
+	*    Compute -> Graphics, state unchanged:                                    No barrier needed
+	*
+	*    Graphics/Compute -> Copy, was promoted read-only: No barrier needed, state decays
+	*    Graphics/Compute -> Copy, other cases:            No barrier needed, handled by previous state's barrier
+	* 
+	*    Copy -> Graphics/Compute, state automatically promoted: No barrier needed
+	*    Copy -> Graphics/Compute, state non-promoted:           Need a barrier COMMON -> New state
+	* 
+	*    Present from separate queue
+	*/
+
+	
+
 	const bool accessFlagsDiffer   = (subresourceMetadata.AccessFlags          != subresourceMetadata.PrevPassMetadata->AccessFlags);
 	const bool layoutsDiffer       = (subresourceMetadata.Layout               != subresourceMetadata.PrevPassMetadata->Layout);
 	const bool queueFamiliesDiffer = (subresourceMetadata.QueueFamilyOwnership != subresourceMetadata.PrevPassMetadata->QueueFamilyOwnership);
@@ -575,6 +603,34 @@ uint32_t Vulkan::FrameGraphBuilder::AddBeforePassBarrier(uint32_t imageIndex, Re
 
 uint32_t Vulkan::FrameGraphBuilder::AddAfterPassBarrier(uint32_t imageIndex, RenderPassType currPassType, uint32_t currPassSubresourceInfoIndex, RenderPassType nextPassType, uint32_t nextPassSubresourceInfoIndex)
 {
+	/*
+	*    Same queue, metadata unchanged: No barrier needed
+	*    Same queue, metadata changed:   No barrier needed, 
+	* 
+	*    
+	*    Same queue, metadata changed, Promoted read-only -> PRESENT:              No barrier needed, state decays
+	*    Same queue, state changed, Promoted writeable/Non-promoted -> PRESENT: Need a barrier Old State -> PRESENT
+	*    Same queue, state changed, other cases:                                No barrier needed, will be handled by the next state's barrier
+	*
+	*    Graphics -> Compute, state will be automatically promoted:               No barrier needed
+	*    Graphics -> Compute, state will not be promoted, was promoted read-only: No barrier needed, will be handled by the next state's barrier
+	*    Graphics -> Compute, state unchanged:                                    No barrier needed
+	*    Graphics -> Compute, state changed other cases:                          Need a barrier Old state -> New state
+	* 
+	*    Compute -> Graphics, state will be automatically promoted:                 No barrier needed
+	* 	 Compute -> Graphics, state will not be promoted, was promoted read-only:   No barrier needed, will be handled by the next state's barrier     
+	*    Compute -> Graphics, state changed Promoted read-only -> PRESENT:          No barrier needed, state will decay
+	*    Compute -> Graphics, state changed Compute/graphics   -> Compute/Graphics: Need a barrier Old state -> New state
+	*    Compute -> Graphics, state changed Compute/Graphics   -> Graphics:         No barrier needed, will be handled by the next state's barrier
+	*    Compute -> Graphics, state unchanged:                                      No barrier needed
+	*   
+	*    Graphics/Compute -> Copy, from Promoted read-only: No barrier needed
+	*    Graphics/Compute -> Copy, other cases:             Need a barrier Old state -> COMMON
+	* 
+	*    Copy -> Graphics/Compute, state will be automatically promoted: No barrier needed
+	*    Copy -> Graphics/Compute, state will not be promoted:           No barrier needed, will be handled by the next state's barrier
+	*/
+
 	const bool accessFlagsDiffer   = (subresourceMetadata.AccessFlags          != subresourceMetadata.NextPassMetadata->AccessFlags);
 	const bool layoutsDiffer       = (subresourceMetadata.Layout               != subresourceMetadata.NextPassMetadata->Layout);
 	const bool queueFamiliesDiffer = (subresourceMetadata.QueueFamilyOwnership != subresourceMetadata.NextPassMetadata->QueueFamilyOwnership);

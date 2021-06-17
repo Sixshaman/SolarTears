@@ -739,7 +739,7 @@ void ModernFrameGraphBuilder::ValidateImageAndViewIndicesInResource(TextureResou
 		if(currSortKey != differentSortKeys.back())
 		{
 			differentImageViewSpans.back().End = nodeIndex;
-			differentImageViewSpans.push_back({.Begin = nodeIndex, .End = nodeIndex});
+			differentImageViewSpans.push_back(Span<uint32_t>{.Begin = (uint32_t)nodeIndex, .End = (uint32_t)nodeIndex});
 
 			differentSortKeys.push_back(currSortKey);
 		}
