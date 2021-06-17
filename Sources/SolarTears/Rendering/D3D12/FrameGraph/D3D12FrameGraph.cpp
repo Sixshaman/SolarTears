@@ -20,7 +20,7 @@ D3D12::FrameGraph::~FrameGraph()
 
 void D3D12::FrameGraph::Traverse(ThreadPool* threadPool, const WorkerCommandLists* commandLists, const RenderableScene* scene, const ShaderManager* shaderManager, const SrvDescriptorManager* descriptorManager, DeviceQueues* deviceQueues, uint32_t frameIndex, uint32_t swapchainImageIndex)
 {
-	SwitchSwapchainImages(currentSwapchainImageIndex);
+	SwitchSwapchainImages(swapchainImageIndex);
 
 	if(mGraphicsPassSpans.size() > 0)
 	{
@@ -123,20 +123,33 @@ void D3D12::FrameGraph::RecordGraphicsPasses(ID3D12GraphicsCommandList6* command
 	Span<uint32_t> levelSpan = mGraphicsPassSpans[dependencyLevelSpanIndex];
 	for(uint32_t passSpanIndex = levelSpan.Begin; passSpanIndex < levelSpan.End; passSpanIndex++)
 	{
+		const RenderPassSpanInfo passSpanInfo = mPassFrameSpans[passSpanIndex];
+
+		uint32_t renderPassFrame = passSpanInfo.OwnFrames * swapchainImageIndex + frameIndex % passSpanInfo.OwnFrames;
+		uint32_t renderPassIndex = passSpanInfo.PassSpanBegin + renderPassFrame;
+
 		BarrierSpan barrierSpan            = mRenderPassBarriers[passSpanIndex];
 		UINT        beforePassBarrierCount = barrierSpan.BeforePassEnd - barrierSpan.BeforePassBegin;
 		UINT        afterPassBarrierCount  = barrierSpan.AfterPassEnd  - barrierSpan.AfterPassBegin;
 
 		if(beforePassBarrierCount != 0)
 		{
+			//for(uint32_t barrierIndex = barrierSpan.BeforePassBegin; barrierIndex < barrierSpan.BeforePassEnd; barrierIndex++)
+			//{
+			//	uint32_t baseResourceIndex = mImageSwapMap[barrierIndex].baseResourceIndex;
+			//	uint32_t baseResourceIndex = mImageSwapMap[barrierIndex].baseResourceIndex;
+
+			//	//Where to store baseResourceIndex?
+			//	//Where to store resource period?
+			//	bool isResourceSwapchain = baseResourceIndex >= mBackbufferImageSpan.Begin && baseResourceIndex < mBackbufferImageSpan.End;
+			//	uint32_t resourceFrame = swapchainImageIndex * isResourceSwapchain + (frameIndex % resourcePeriod) * !isResourceSwapchain;
+			//	mResourceBarriers[barrierIndex].Transition.pResource = mTextures[baseResourceIndex + resourceFrame];
+			//}
+
 			const D3D12_RESOURCE_BARRIER* barrierPointer = mResourceBarriers.data() + barrierSpan.BeforePassBegin;
 			commandList->ResourceBarrier(beforePassBarrierCount, barrierPointer);
 		}
 
-		const RenderPassSpanInfo passSpanInfo = mPassFrameSpans[passSpanIndex];
-
-		uint32_t renderPassFrame = passSpanInfo.OwnFrames * swapchainImageIndex + frameIndex % passSpanInfo.OwnFrames;
-		uint32_t renderPassIndex = passSpanInfo.PassSpanBegin + renderPassFrame;
 		mRenderPasses[renderPassIndex]->RecordExecution(commandList, scene, shaderManager, mFrameGraphConfig);
 
 		if(afterPassBarrierCount != 0)
@@ -150,6 +163,7 @@ void D3D12::FrameGraph::RecordGraphicsPasses(ID3D12GraphicsCommandList6* command
 void D3D12::FrameGraph::SwitchSwapchainImages(uint32_t swapchainImageIndex)
 {
 	//Update barriers
+	//Per-multiframe pass: need to have some kind of data structure to help build the resources
 	for(size_t i = 0; i < mSwapchainBarrierIndices.size(); i++)
 	{
 		mResourceBarriers[mSwapchainBarrierIndices[i]].Transition.pResource = mTextures[mBackbufferImageSpan.Begin + swapchainImageIndex];

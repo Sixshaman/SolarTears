@@ -27,6 +27,8 @@ namespace D3D12
 			uint32_t BeforePassEnd;
 			uint32_t AfterPassBegin;
 			uint32_t AfterPassEnd;
+
+
 		};
 
 	public:
@@ -52,7 +54,6 @@ namespace D3D12
 		wil::com_ptr_nothrow<ID3D12Heap>                   mTextureHeap;
 
 		std::vector<D3D12_RESOURCE_BARRIER> mResourceBarriers;
-		std::vector<uint32_t>               mSwapchainBarrierIndices;
 		std::vector<BarrierSpan>            mRenderPassBarriers; //Required barriers before ith pass are mResourceBarriers[Span.Begin...Span.End], where Span is mRenderPassBarriers[i]. Last span is for after-graph barriers
 
 		wil::com_ptr_nothrow<ID3D12DescriptorHeap> mSrvUavDescriptorHeap; //NOT shader-visible
