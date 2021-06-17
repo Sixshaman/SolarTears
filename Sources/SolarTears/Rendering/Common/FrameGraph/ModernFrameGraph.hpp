@@ -41,7 +41,7 @@ protected:
 
 	std::vector<RenderPassSpanInfo> mPassFrameSpans;
 
-	std::vector<BarrierSpan>           mRenderPassBarriers; //Required barriers before ith pass are mResourceBarriers[Span.Begin...Span.End], where Span is mRenderPassBarriers[i]. Last span is for after-graph barriers
+	std::vector<BarrierSpan>           mRenderPassBarriers; //Required barriers before ith pass are mResourceBarriers[Span.Begin...Span.End], where Span is mRenderPassBarriers[i]
 	std::vector<MultiframeBarrierInfo> mMultiframeBarrierInfos;
 
 	Span<uint32_t> mBackbufferImageSpan;

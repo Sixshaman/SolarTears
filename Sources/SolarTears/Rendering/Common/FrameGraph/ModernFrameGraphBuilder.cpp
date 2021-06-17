@@ -490,6 +490,7 @@ void ModernFrameGraphBuilder::BuildBarriers()
 	mGraphToBuild->mRenderPassBarriers.resize(mRenderPassNames.size());
 	mGraphToBuild->mMultiframeBarrierInfos.clear();
 
+	uint32_t currentBarrierCount = 0;
 	for(size_t i = 0; i < mRenderPassNames.size(); i++)
 	{
 		RenderPassName renderPassName = mRenderPassNames[i];
@@ -497,421 +498,73 @@ void ModernFrameGraphBuilder::BuildBarriers()
 		const auto& nameIdMap     = mRenderPassesSubresourceNameIds.at(renderPassName);
 		const auto& idMetadataMap = mRenderPassesSubresourceMetadatas.at(renderPassName);
 
-		std::vector<SubresourceMetadataNode> passMetadatas;
-		passMetadatas.reserve(nameIdMap.size());
-
+		std::vector<SubresourceMetadataNode*> passMetadatasForBeforeBarriers;
+		std::vector<SubresourceMetadataNode*> passMetadatasForAfterBarriers;
 		for(auto& subresourceNameId: nameIdMap)
 		{
-		}
-
-		for(auto& subresourceNameId: nameIdMap)
-		{
-			SubresourceMetadataNode& subresourceMetadata     = mRenderPassesSubresourceMetadatas.at(renderPassName).at(subresourceNameId.second);
-			SubresourceMetadataNode& prevSubresourceMetadata = *subresourceMetadata.PrevPassNode;
-
+			SubresourceMetadataNode& subresourceMetadata = mRenderPassesSubresourceMetadatas.at(renderPassName).at(subresourceNameId.second);
+			
 			if(!(subresourceMetadata.Flags & TextureFlagAutoBeforeBarrier))
 			{
-				if(AddBeforePassBarrier(subresourceMetadata.FirstFrameHandle, prevSubresourceMetadata.PassType, prevSubresourceMetadata.SubresourceInfoIndex, subresourceMetadata.PassType, subresourceMetadata.SubresourceInfoIndex))
-				{
-
-				}
+				passMetadatasForBeforeBarriers.push_back(&subresourceMetadata);
 			}
-		}
-
-		for(auto& subresourceNameId: nameIdMap)
-		{
-			SubresourceMetadataNode& subresourceMetadata     = mRenderPassesSubresourceMetadatas.at(renderPassName).at(subresourceNameId.second);
-			SubresourceMetadataNode& nextSubresourceMetadata = *subresourceMetadata.NextPassNode;
 
 			if(!(subresourceMetadata.Flags & TextureFlagAutoAfterBarrier))
 			{
-				if(AddAfterPassBarrier(subresourceMetadata.FirstFrameHandle, subresourceMetadata.PassType, subresourceMetadata.SubresourceInfoIndex, nextSubresourceMetadata.PassType, nextSubresourceMetadata.SubresourceInfoIndex))
-				{
-
-				}
+				passMetadatasForAfterBarriers.push_back(&subresourceMetadata);
 			}
 		}
-	}
 
-	/*
-	//VULKAN
-	std::unordered_set<uint64_t> processedMetadataIds; //This is here so no barrier gets added twice
-	for(size_t i = 0; i < mRenderPassNames.size(); i++)
-	{
-		RenderPassName renderPassName = mRenderPassNames[i];
+		ModernFrameGraph::BarrierSpan barrierSpan;
+		barrierSpan.BeforePassBegin = currentBarrierCount;
 
-		const auto& nameIdMap     = mRenderPassesSubresourceNameIds.at(renderPassName);
-		const auto& idMetadataMap = mRenderPassesSubresourceMetadatas.at(renderPassName);
-
-		std::vector<VkImageMemoryBarrier> beforeBarriers;
-		std::vector<VkImageMemoryBarrier> afterBarriers;
-		std::vector<size_t>               beforeSwapchainBarriers;
-		std::vector<size_t>               afterSwapchainBarriers;
-		for(auto& subresourceNameId: nameIdMap)
+		for(SubresourceMetadataNode* subresourceMetadata: passMetadatasForBeforeBarriers)
 		{
-			SubresourceName subresourceName = subresourceNameId.first;
-			SubresourceId   subresourceId   = subresourceNameId.second;
-
-			ImageSubresourceMetadata subresourceMetadata = idMetadataMap.at(subresourceId);
-			if(!(subresourceMetadata.MetadataFlags & ImageFlagAutoBarrier))
+			SubresourceMetadataNode* prevSubresourceMetadata = subresourceMetadata->PrevPassNode;
+			
+			uint32_t barrierId = AddBeforePassBarrier(subresourceMetadata->FirstFrameHandle, prevSubresourceMetadata->PassType, prevSubresourceMetadata->SubresourceInfoIndex, subresourceMetadata->PassType, subresourceMetadata->SubresourceInfoIndex);
+			if(barrierId != (uint32_t)(-1))
 			{
-				if(subresourceMetadata.PrevPassMetadata != nullptr)
+				currentBarrierCount++;
+
+				if(subresourceMetadata->FrameCount > 1)
 				{
-					if(processedMetadataIds.contains(subresourceMetadata.PrevPassMetadata->MetadataId)) //Was already processed as "after pass"
-					{
-						continue;
-					}
+					ModernFrameGraph::MultiframeBarrierInfo multiframeBarrierInfo;
+					multiframeBarrierInfo.BarrierIndex  = barrierId;
+					multiframeBarrierInfo.BaseTexIndex  = subresourceMetadata->FirstFrameHandle;
+					multiframeBarrierInfo.TexturePeriod = subresourceMetadata->FrameCount;
 
-					const bool accessFlagsDiffer   = (subresourceMetadata.AccessFlags          != subresourceMetadata.PrevPassMetadata->AccessFlags);
-					const bool layoutsDiffer       = (subresourceMetadata.Layout               != subresourceMetadata.PrevPassMetadata->Layout);
-					const bool queueFamiliesDiffer = (subresourceMetadata.QueueFamilyOwnership != subresourceMetadata.PrevPassMetadata->QueueFamilyOwnership);
-					if(accessFlagsDiffer || layoutsDiffer || queueFamiliesDiffer)
-					{
-						//Swapchain image barriers are changed every frame
-						VkImage barrieredImage = nullptr;
-						if(subresourceMetadata.ImageIndex != mGraphToBuild->mBackbufferRefIndex)
-						{
-							barrieredImage = mGraphToBuild->mImages[subresourceMetadata.ImageIndex];
-						}
-
-						VkImageMemoryBarrier imageMemoryBarrier;
-						imageMemoryBarrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-						imageMemoryBarrier.pNext                           = nullptr;
-						imageMemoryBarrier.srcAccessMask                   = subresourceMetadata.PrevPassMetadata->AccessFlags;
-						imageMemoryBarrier.dstAccessMask                   = subresourceMetadata.AccessFlags;
-						imageMemoryBarrier.oldLayout                       = subresourceMetadata.PrevPassMetadata->Layout;
-						imageMemoryBarrier.newLayout                       = subresourceMetadata.Layout;
-						imageMemoryBarrier.srcQueueFamilyIndex             = subresourceMetadata.PrevPassMetadata->QueueFamilyOwnership;
-						imageMemoryBarrier.dstQueueFamilyIndex             = subresourceMetadata.QueueFamilyOwnership;
-						imageMemoryBarrier.image                           = barrieredImage;
-						imageMemoryBarrier.subresourceRange.aspectMask     = subresourceMetadata.AspectFlags;
-						imageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
-						imageMemoryBarrier.subresourceRange.layerCount     = 1;
-						imageMemoryBarrier.subresourceRange.baseMipLevel   = 0;
-						imageMemoryBarrier.subresourceRange.levelCount     = 1;
-
-						beforeBarriers.push_back(imageMemoryBarrier);
-
-						//Mark the swapchain barriers
-						if(barrieredImage == nullptr)
-						{
-							beforeSwapchainBarriers.push_back(beforeBarriers.size() - 1);
-						}
-					}
-				}
-
-				if(subresourceMetadata.NextPassMetadata != nullptr)
-				{
-					const bool accessFlagsDiffer   = (subresourceMetadata.AccessFlags          != subresourceMetadata.NextPassMetadata->AccessFlags);
-					const bool layoutsDiffer       = (subresourceMetadata.Layout               != subresourceMetadata.NextPassMetadata->Layout);
-					const bool queueFamiliesDiffer = (subresourceMetadata.QueueFamilyOwnership != subresourceMetadata.NextPassMetadata->QueueFamilyOwnership);
-					if(accessFlagsDiffer || layoutsDiffer || queueFamiliesDiffer)
-					{
-						//Swapchain image barriers are changed every frame
-						VkImage barrieredImage = nullptr;
-						if(subresourceMetadata.ImageIndex != mGraphToBuild->mBackbufferRefIndex)
-						{
-							barrieredImage = mGraphToBuild->mImages[subresourceMetadata.ImageIndex];
-						}
-
-						VkImageMemoryBarrier imageMemoryBarrier;
-						imageMemoryBarrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-						imageMemoryBarrier.pNext                           = nullptr;
-						imageMemoryBarrier.srcAccessMask                   = subresourceMetadata.AccessFlags;
-						imageMemoryBarrier.dstAccessMask                   = subresourceMetadata.NextPassMetadata->AccessFlags;
-						imageMemoryBarrier.oldLayout                       = subresourceMetadata.Layout;
-						imageMemoryBarrier.newLayout                       = subresourceMetadata.NextPassMetadata->Layout;
-						imageMemoryBarrier.srcQueueFamilyIndex             = subresourceMetadata.QueueFamilyOwnership;
-						imageMemoryBarrier.dstQueueFamilyIndex             = subresourceMetadata.NextPassMetadata->QueueFamilyOwnership;
-						imageMemoryBarrier.image                           = mGraphToBuild->mImages[subresourceMetadata.ImageIndex];
-						imageMemoryBarrier.subresourceRange.aspectMask     = subresourceMetadata.NextPassMetadata->AspectFlags;
-						imageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
-						imageMemoryBarrier.subresourceRange.layerCount     = 1;
-						imageMemoryBarrier.subresourceRange.baseMipLevel   = 0;
-						imageMemoryBarrier.subresourceRange.levelCount     = 1;
-
-						afterBarriers.push_back(imageMemoryBarrier);
-
-						//Mark the swapchain barriers
-						if(barrieredImage == nullptr)
-						{
-							afterSwapchainBarriers.push_back(afterBarriers.size() - 1);
-						}
-					}
+					mGraphToBuild->mMultiframeBarrierInfos.push_back(multiframeBarrierInfo);
 				}
 			}
-
-			processedMetadataIds.insert(subresourceMetadata.MetadataId);
 		}
 
-		uint32_t beforeBarrierBegin = (uint32_t)(mGraphToBuild->mImageBarriers.size());
-		mGraphToBuild->mImageBarriers.insert(mGraphToBuild->mImageBarriers.end(), beforeBarriers.begin(), beforeBarriers.end());
+		barrierSpan.BeforePassEnd  = currentBarrierCount;
+		barrierSpan.AfterPassBegin = currentBarrierCount;
 
-		uint32_t afterBarrierBegin = (uint32_t)(mGraphToBuild->mImageBarriers.size());
-		mGraphToBuild->mImageBarriers.insert(mGraphToBuild->mImageBarriers.end(), afterBarriers.begin(), afterBarriers.end());
-
-		FrameGraph::BarrierSpan barrierSpan;
-		barrierSpan.BeforePassBegin = beforeBarrierBegin;
-		barrierSpan.BeforePassEnd   = beforeBarrierBegin + (uint32_t)(beforeBarriers.size());
-		barrierSpan.AfterPassBegin  = afterBarrierBegin;
-		barrierSpan.AfterPassEnd    = afterBarrierBegin + (uint32_t)(afterBarriers.size());
-
-		//That's for now
-		barrierSpan.beforeFlagsBegin = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-		barrierSpan.beforeFlagsEnd   = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-		barrierSpan.afterFlagsBegin  = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-		barrierSpan.afterFlagsEnd    = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-
-		mGraphToBuild->mImageRenderPassBarriers[i] = barrierSpan;
-
-		for(size_t beforeSwapchainBarrierIndex: beforeSwapchainBarriers)
+		for(SubresourceMetadataNode* subresourceMetadata: passMetadatasForBeforeBarriers)
 		{
-			mGraphToBuild->mSwapchainBarrierIndices.push_back(beforeBarrierBegin + (uint32_t)beforeSwapchainBarrierIndex);
-		}
-
-		for(size_t afterSwapchainBarrierIndex: afterSwapchainBarriers)
-		{
-			mGraphToBuild->mSwapchainBarrierIndices.push_back(afterBarrierBegin + (uint32_t)afterSwapchainBarrierIndex);
-		}
-	}
-
-	//D3D12
-	for(size_t i = 0; i < mRenderPassNames.size(); i++)
-	{
-		RenderPassName renderPassName = mRenderPassNames[i];
-
-		const auto& nameIdMap     = mRenderPassesSubresourceNameIds.at(renderPassName);
-		const auto& idMetadataMap = mRenderPassesSubresourceMetadatas.at(renderPassName);
-
-		std::vector<D3D12_RESOURCE_BARRIER> beforeBarriers;
-		std::vector<D3D12_RESOURCE_BARRIER> afterBarriers;
-		std::vector<size_t>                 beforeSwapchainBarrierIndices;
-		std::vector<size_t>                 afterSwapchainBarrierIndices;
-		for(auto& subresourceNameId: nameIdMap)
-		{
-			TextureSubresourceMetadata& subresourceMetadata     = mRenderPassesSubresourceMetadatas.at(renderPassName).at(subresourceNameId.second);
-			TextureSubresourceMetadata& prevSubresourceMetadata = *subresourceMetadata.PrevPassMetadata;
-
-			if(prevSubresourceMetadata.ResourceState == D3D12_RESOURCE_STATE_COMMON && D3D12Utils::IsStatePromoteableTo(subresourceMetadata.ResourceState)) //Promotion from common
+			SubresourceMetadataNode* nextSubresourceMetadata = subresourceMetadata->NextPassNode;
+			
+			uint32_t barrierId = AddAfterPassBarrier(subresourceMetadata->FirstFrameHandle, subresourceMetadata->PassType, subresourceMetadata->SubresourceInfoIndex, nextSubresourceMetadata->PassType, nextSubresourceMetadata->SubresourceInfoIndex);
+			if(barrierId != (uint32_t)(-1))
 			{
-				subresourceMetadata.MetadataFlags |= TextureFlagStateAutoPromoted;
-			}
-			else if(prevSubresourceMetadata.QueueOwnership == subresourceMetadata.QueueOwnership) //Queue hasn't changed => ExecuteCommandLists wasn't called => No decay happened
-			{
-				if(prevSubresourceMetadata.ResourceState == subresourceMetadata.ResourceState) //Propagation of state promotion
+				currentBarrierCount++;
+
+				if(subresourceMetadata->FrameCount > 1)
 				{
-					subresourceMetadata.MetadataFlags |= TextureFlagStateAutoPromoted;
-				}
-			}
-			else
-			{
-				bool prevWasPromoted = (prevSubresourceMetadata.MetadataFlags & TextureFlagStateAutoPromoted);
-				if(prevWasPromoted && !D3D12Utils::IsStateWriteable(prevSubresourceMetadata.ResourceState)) //Read-only promoted state decays to COMMON after ECL call
-				{
-					if(D3D12Utils::IsStatePromoteableTo(subresourceMetadata.ResourceState)) //State promotes again
-					{
-						subresourceMetadata.MetadataFlags |= TextureFlagStateAutoPromoted;
-					}
-				}
-			}
+					ModernFrameGraph::MultiframeBarrierInfo multiframeBarrierInfo;
+					multiframeBarrierInfo.BarrierIndex  = barrierId;
+					multiframeBarrierInfo.BaseTexIndex  = subresourceMetadata->FirstFrameHandle;
+					multiframeBarrierInfo.TexturePeriod = subresourceMetadata->FrameCount;
 
-			SubresourceName subresourceName = subresourceNameId.first;
-			SubresourceId   subresourceId   = subresourceNameId.second;
-
-			TextureSubresourceMetadata subresourceMetadata = idMetadataMap.at(subresourceId);
-			if(!(subresourceMetadata.MetadataFlags & TextureFlagAutoBarrier))
-			{
-				
-				{
-					bool needBarrier = false;
-					D3D12_RESOURCE_STATES prevPassState = subresourceMetadata.PrevPassMetadata->ResourceState;
-					D3D12_RESOURCE_STATES nextPassState = subresourceMetadata.ResourceState;
-
-					const D3D12_COMMAND_LIST_TYPE prevStateQueue = subresourceMetadata.PrevPassMetadata->QueueOwnership;
-					const D3D12_COMMAND_LIST_TYPE nextStateQueue = subresourceMetadata.QueueOwnership;
-
-					const bool prevWasPromoted = (subresourceMetadata.PrevPassMetadata->MetadataFlags & TextureFlagStateAutoPromoted);
-					const bool nextIsPromoted  = (subresourceMetadata.MetadataFlags & TextureFlagStateAutoPromoted);
-
-					if(prevStateQueue == nextStateQueue) //Rules 1, 2, 3
-					{
-						if(prevPassState == D3D12_RESOURCE_STATE_PRESENT) //Rule 2 or 3
-						{
-							needBarrier = !nextIsPromoted;
-						}
-						else //Rule 1 or 3
-						{
-							needBarrier = (prevPassState != nextPassState);
-						}
-					}
-					else if(prevStateQueue == D3D12_COMMAND_LIST_TYPE_DIRECT && nextStateQueue == D3D12_COMMAND_LIST_TYPE_COMPUTE) //Rules 4, 5, 6, 7
-					{
-						if(prevWasPromoted && !D3D12Utils::IsStateWriteable(prevPassState)) //Rule 5
-						{
-							prevPassState = D3D12_RESOURCE_STATE_COMMON; //Common state decay from promoted read-only
-							needBarrier   = !nextIsPromoted;
-						}
-						else //Rules 4, 6, 7
-						{
-							needBarrier = false;
-						}
-					}
-					else if(prevStateQueue == D3D12_COMMAND_LIST_TYPE_COMPUTE && nextStateQueue == D3D12_COMMAND_LIST_TYPE_DIRECT) //Rules 8, 9, 10, 11, 12
-					{
-						if(prevWasPromoted && !D3D12Utils::IsStateWriteable(prevPassState)) //Rule 9
-						{
-							prevPassState = D3D12_RESOURCE_STATE_COMMON; //Common state decay from promoted read-only
-							needBarrier   = !nextIsPromoted;
-						}
-						else //Rules 8, 10, 11, 12
-						{
-							needBarrier = !nextIsPromoted && (prevPassState != nextPassState) && !D3D12Utils::IsStateComputeFriendly(nextPassState);
-						}
-					}
-					else if(nextStateQueue == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 13, 14
-					{
-						needBarrier = false;
-					}
-					else if(prevStateQueue == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 15, 16
-					{
-						needBarrier = !nextIsPromoted;
-					}
-
-					if(needBarrier)
-					{
-						//Swapchain image barriers are changed every frame
-						ID3D12Resource2* barrieredTexture = nullptr;
-						if(subresourceMetadata.ImageIndex != mGraphToBuild->mBackbufferRefIndex)
-						{
-							barrieredTexture = mGraphToBuild->mTextures[subresourceMetadata.ImageIndex];
-						}
-
-						D3D12_RESOURCE_BARRIER textureTransitionBarrier;
-						textureTransitionBarrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-						textureTransitionBarrier.Transition.pResource   = barrieredTexture;
-						textureTransitionBarrier.Transition.Subresource = 0;
-						textureTransitionBarrier.Transition.StateBefore = prevPassState;
-						textureTransitionBarrier.Transition.StateAfter  = nextPassState;
-						textureTransitionBarrier.Flags                  = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-
-						beforeBarriers.push_back(textureTransitionBarrier);
-
-						//Mark the swapchain barriers
-						if(barrieredTexture == nullptr)
-						{
-							beforeSwapchainBarrierIndices.push_back(beforeBarriers.size() - 1);
-						}
-					}
-				}
-
-				
-				{
-					bool needBarrier = false;
-					D3D12_RESOURCE_STATES prevPassState = subresourceMetadata.ResourceState;
-					D3D12_RESOURCE_STATES nextPassState = subresourceMetadata.NextPassMetadata->ResourceState;
-
-					const D3D12_COMMAND_LIST_TYPE prevStateQueue = subresourceMetadata.QueueOwnership;
-					const D3D12_COMMAND_LIST_TYPE nextStateQueue = subresourceMetadata.NextPassMetadata->QueueOwnership;
-
-					const bool prevWasPromoted = (subresourceMetadata.MetadataFlags & TextureFlagStateAutoPromoted);
-					const bool nextIsPromoted  = (subresourceMetadata.NextPassMetadata->MetadataFlags & TextureFlagStateAutoPromoted);
-
-					if(prevStateQueue == nextStateQueue) //Rules 1, 2, 3, 4
-					{
-						if(nextPassState == D3D12_RESOURCE_STATE_PRESENT) //Rules 2, 3
-						{
-							needBarrier = (!prevWasPromoted || D3D12Utils::IsStateWriteable(prevPassState));
-						}
-						else //Rules 1, 4
-						{
-							needBarrier = false;
-						}
-					}
-					else if(prevStateQueue == D3D12_COMMAND_LIST_TYPE_DIRECT && nextStateQueue == D3D12_COMMAND_LIST_TYPE_COMPUTE) //Rules 5, 6, 7, 8
-					{
-						if(prevWasPromoted && !D3D12Utils::IsStateWriteable(prevPassState)) //Rule 6
-						{
-							needBarrier = false;
-						}
-						else //Rules 5, 7, 8
-						{
-							needBarrier = !nextIsPromoted && (prevPassState != nextPassState);
-						}
-					}
-					else if(prevStateQueue == D3D12_COMMAND_LIST_TYPE_COMPUTE && nextStateQueue == D3D12_COMMAND_LIST_TYPE_DIRECT) //Rules 9, 10, 11, 12, 13, 14
-					{
-						if(prevWasPromoted && !D3D12Utils::IsStateWriteable(prevPassState)) //Rule 10, 11
-						{
-							needBarrier = false;
-						}
-						else //Rules 9, 12, 13, 14
-						{
-							needBarrier = !nextIsPromoted && (prevPassState != nextPassState) && D3D12Utils::IsStateComputeFriendly(nextPassState);
-						}
-					}
-					else if(nextStateQueue == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 15, 16
-					{
-						needBarrier = !prevWasPromoted || D3D12Utils::IsStateWriteable(prevPassState);
-					}
-					else if(prevStateQueue == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 17, 18
-					{
-						needBarrier = false;
-					}
-
-					if(needBarrier)
-					{
-						//Swapchain image barriers are changed every frame
-						ID3D12Resource2* barrieredTexture = nullptr;
-						if(subresourceMetadata.ImageIndex != mGraphToBuild->mBackbufferRefIndex)
-						{
-							barrieredTexture = mGraphToBuild->mTextures[subresourceMetadata.ImageIndex];
-						}
-
-						D3D12_RESOURCE_BARRIER textureTransitionBarrier;
-						textureTransitionBarrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-						textureTransitionBarrier.Transition.pResource   = barrieredTexture;
-						textureTransitionBarrier.Transition.Subresource = 0;
-						textureTransitionBarrier.Transition.StateBefore = prevPassState;
-						textureTransitionBarrier.Transition.StateAfter  = nextPassState;
-						textureTransitionBarrier.Flags                  = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-
-						afterBarriers.push_back(textureTransitionBarrier);
-
-						//Mark the swapchain barriers
-						if(barrieredTexture == nullptr)
-						{
-							afterSwapchainBarrierIndices.push_back(afterBarriers.size() - 1);
-						}
-					}
+					mGraphToBuild->mMultiframeBarrierInfos.push_back(multiframeBarrierInfo);
 				}
 			}
 		}
-
-		uint32_t beforeBarrierBegin = (uint32_t)(mGraphToBuild->mResourceBarriers.size());
-		mGraphToBuild->mResourceBarriers.insert(mGraphToBuild->mResourceBarriers.end(), beforeBarriers.begin(), beforeBarriers.end());
-
-		uint32_t afterBarrierBegin = (uint32_t)(mGraphToBuild->mResourceBarriers.size());
-		mGraphToBuild->mResourceBarriers.insert(mGraphToBuild->mResourceBarriers.end(), afterBarriers.begin(), afterBarriers.end());
-
-		FrameGraph::BarrierSpan barrierSpan;
-		barrierSpan.BeforePassBegin = beforeBarrierBegin;
-		barrierSpan.BeforePassEnd   = beforeBarrierBegin + (uint32_t)(beforeBarriers.size());
-		barrierSpan.AfterPassBegin  = afterBarrierBegin;
-		barrierSpan.AfterPassEnd    = afterBarrierBegin + (uint32_t)(afterBarriers.size());
 
 		mGraphToBuild->mRenderPassBarriers[i] = barrierSpan;
-
-		for(size_t beforeSwapchainBarrierIndex: beforeSwapchainBarrierIndices)
-		{
-			mGraphToBuild->mSwapchainBarrierIndices.push_back(beforeBarrierBegin + (uint32_t)beforeSwapchainBarrierIndex);
-		}
-
-		for(size_t afterSwapchainBarrierIndex: afterSwapchainBarrierIndices)
-		{
-			mGraphToBuild->mSwapchainBarrierIndices.push_back(afterBarrierBegin + (uint32_t)afterSwapchainBarrierIndex);
-		}
 	}
-	*/
 }
 
 void ModernFrameGraphBuilder::BuildSubresources()

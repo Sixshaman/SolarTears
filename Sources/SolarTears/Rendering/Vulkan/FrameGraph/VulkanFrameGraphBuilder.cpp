@@ -533,6 +533,86 @@ void Vulkan::FrameGraphBuilder::CreateTextureViews(const std::vector<TextureSubr
 	}
 }
 
+uint32_t Vulkan::FrameGraphBuilder::AddBeforePassBarrier(uint32_t imageIndex, RenderPassType prevPassType, uint32_t prevPassSubresourceInfoIndex, RenderPassType currPassType, uint32_t currPassSubresourceInfoIndex)
+{
+	const bool accessFlagsDiffer   = (subresourceMetadata.AccessFlags          != subresourceMetadata.PrevPassMetadata->AccessFlags);
+	const bool layoutsDiffer       = (subresourceMetadata.Layout               != subresourceMetadata.PrevPassMetadata->Layout);
+	const bool queueFamiliesDiffer = (subresourceMetadata.QueueFamilyOwnership != subresourceMetadata.PrevPassMetadata->QueueFamilyOwnership);
+	if(accessFlagsDiffer || layoutsDiffer || queueFamiliesDiffer)
+	{
+		//Swapchain image barriers are changed every frame
+		VkImage barrieredImage = nullptr;
+		if(subresourceMetadata.ImageIndex != mGraphToBuild->mBackbufferRefIndex)
+		{
+			barrieredImage = mGraphToBuild->mImages[subresourceMetadata.ImageIndex];
+		}
+
+		VkImageMemoryBarrier imageMemoryBarrier;
+		imageMemoryBarrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		imageMemoryBarrier.pNext                           = nullptr;
+		imageMemoryBarrier.srcAccessMask                   = subresourceMetadata.PrevPassMetadata->AccessFlags;
+		imageMemoryBarrier.dstAccessMask                   = subresourceMetadata.AccessFlags;
+		imageMemoryBarrier.oldLayout                       = subresourceMetadata.PrevPassMetadata->Layout;
+		imageMemoryBarrier.newLayout                       = subresourceMetadata.Layout;
+		imageMemoryBarrier.srcQueueFamilyIndex             = subresourceMetadata.PrevPassMetadata->QueueFamilyOwnership;
+		imageMemoryBarrier.dstQueueFamilyIndex             = subresourceMetadata.QueueFamilyOwnership;
+		imageMemoryBarrier.image                           = barrieredImage;
+		imageMemoryBarrier.subresourceRange.aspectMask     = subresourceMetadata.AspectFlags;
+		imageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
+		imageMemoryBarrier.subresourceRange.layerCount     = 1;
+		imageMemoryBarrier.subresourceRange.baseMipLevel   = 0;
+		imageMemoryBarrier.subresourceRange.levelCount     = 1;
+
+		beforeBarriers.push_back(imageMemoryBarrier);
+
+		//Mark the swapchain barriers
+		if(barrieredImage == nullptr)
+		{
+			beforeSwapchainBarriers.push_back(beforeBarriers.size() - 1);
+		}
+	}
+}
+
+uint32_t Vulkan::FrameGraphBuilder::AddAfterPassBarrier(uint32_t imageIndex, RenderPassType currPassType, uint32_t currPassSubresourceInfoIndex, RenderPassType nextPassType, uint32_t nextPassSubresourceInfoIndex)
+{
+	const bool accessFlagsDiffer   = (subresourceMetadata.AccessFlags          != subresourceMetadata.NextPassMetadata->AccessFlags);
+	const bool layoutsDiffer       = (subresourceMetadata.Layout               != subresourceMetadata.NextPassMetadata->Layout);
+	const bool queueFamiliesDiffer = (subresourceMetadata.QueueFamilyOwnership != subresourceMetadata.NextPassMetadata->QueueFamilyOwnership);
+	if(accessFlagsDiffer || layoutsDiffer || queueFamiliesDiffer)
+	{
+		//Swapchain image barriers are changed every frame
+		VkImage barrieredImage = nullptr;
+		if(subresourceMetadata.ImageIndex != mGraphToBuild->mBackbufferRefIndex)
+		{
+			barrieredImage = mGraphToBuild->mImages[subresourceMetadata.ImageIndex];
+		}
+
+		VkImageMemoryBarrier imageMemoryBarrier;
+		imageMemoryBarrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		imageMemoryBarrier.pNext                           = nullptr;
+		imageMemoryBarrier.srcAccessMask                   = subresourceMetadata.AccessFlags;
+		imageMemoryBarrier.dstAccessMask                   = subresourceMetadata.NextPassMetadata->AccessFlags;
+		imageMemoryBarrier.oldLayout                       = subresourceMetadata.Layout;
+		imageMemoryBarrier.newLayout                       = subresourceMetadata.NextPassMetadata->Layout;
+		imageMemoryBarrier.srcQueueFamilyIndex             = subresourceMetadata.QueueFamilyOwnership;
+		imageMemoryBarrier.dstQueueFamilyIndex             = subresourceMetadata.NextPassMetadata->QueueFamilyOwnership;
+		imageMemoryBarrier.image                           = mGraphToBuild->mImages[subresourceMetadata.ImageIndex];
+		imageMemoryBarrier.subresourceRange.aspectMask     = subresourceMetadata.NextPassMetadata->AspectFlags;
+		imageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
+		imageMemoryBarrier.subresourceRange.layerCount     = 1;
+		imageMemoryBarrier.subresourceRange.baseMipLevel   = 0;
+		imageMemoryBarrier.subresourceRange.levelCount     = 1;
+
+		afterBarriers.push_back(imageMemoryBarrier);
+
+		//Mark the swapchain barriers
+		if(barrieredImage == nullptr)
+		{
+			afterSwapchainBarriers.push_back(afterBarriers.size() - 1);
+		}
+	}
+}
+
 void Vulkan::FrameGraphBuilder::InitializeTraverseData() const
 {
 	mVulkanGraphToBuild->mFrameRecordedGraphicsCommandBuffers.resize(mVulkanGraphToBuild->mGraphicsPassSpans.size());

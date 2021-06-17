@@ -601,7 +601,7 @@ void D3D12::FrameGraphBuilder::CreateTextureViews(const std::vector<TextureSubre
 	}
 }
 
-bool D3D12::FrameGraphBuilder::AddBeforePassBarrier(uint32_t imageIndex, RenderPassType prevPassType, uint32_t prevPassSubresourceInfoIndex, RenderPassType currPassType, uint32_t currPassSubresourceInfoIndex)
+uint32_t D3D12::FrameGraphBuilder::AddBeforePassBarrier(uint32_t imageIndex, RenderPassType prevPassType, uint32_t prevPassSubresourceInfoIndex, RenderPassType currPassType, uint32_t currPassSubresourceInfoIndex)
 {
 	/*
 	*    1.  Same queue, state unchanged:                                  No barrier needed
@@ -688,12 +688,14 @@ bool D3D12::FrameGraphBuilder::AddBeforePassBarrier(uint32_t imageIndex, RenderP
 		textureTransitionBarrier.Flags                  = D3D12_RESOURCE_BARRIER_FLAG_NONE;
 
 		mD3d12GraphToBuild->mResourceBarriers.push_back(textureTransitionBarrier);
+
+		return (uint32_t)(mD3d12GraphToBuild->mResourceBarriers.size() - 1);
 	}
 
-	return barrierNeeded;
+	return (uint32_t)(-1);
 }
 
-bool D3D12::FrameGraphBuilder::AddAfterPassBarrier(uint32_t imageIndex, RenderPassType currPassType, uint32_t currPassSubresourceInfoIndex, RenderPassType nextPassType, uint32_t nextPassSubresourceInfoIndex)
+uint32_t D3D12::FrameGraphBuilder::AddAfterPassBarrier(uint32_t imageIndex, RenderPassType currPassType, uint32_t currPassSubresourceInfoIndex, RenderPassType nextPassType, uint32_t nextPassSubresourceInfoIndex)
 {
 	/*
 	*    1.  Same queue, state unchanged:                                           No barrier needed
@@ -780,9 +782,11 @@ bool D3D12::FrameGraphBuilder::AddAfterPassBarrier(uint32_t imageIndex, RenderPa
 		textureTransitionBarrier.Flags                  = D3D12_RESOURCE_BARRIER_FLAG_NONE;
 
 		mD3d12GraphToBuild->mResourceBarriers.push_back(textureTransitionBarrier);
+
+		return (uint32_t)(mD3d12GraphToBuild->mResourceBarriers.size() - 1);
 	}
 
-	return barrierNeeded;
+	return (uint32_t)(-1);
 }
 
 void D3D12::FrameGraphBuilder::InitializeTraverseData() const
