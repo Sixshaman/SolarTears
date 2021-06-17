@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cassert>
 #include <array>
+#include <numeric>
 
 ModernFrameGraphBuilder::ModernFrameGraphBuilder(ModernFrameGraph* graphToBuild): mGraphToBuild(graphToBuild)
 {
@@ -132,6 +133,7 @@ void ModernFrameGraphBuilder::Build()
 	mRenderPassNames = std::move(sortedPassNames);
 
 	BuildDependencyLevels();
+	CalculatePassPeriods();
 
 	ValidateSubresourceLinks();
 	ValidateSubresourcePassTypes();
@@ -146,6 +148,11 @@ void ModernFrameGraphBuilder::Build()
 const FrameGraphConfig* ModernFrameGraphBuilder::GetConfig() const
 {
 	return &mGraphToBuild->mFrameGraphConfig;
+}
+
+const Span<uint32_t> ModernFrameGraphBuilder::GetBackbufferImageSpan() const
+{
+	return mGraphToBuild->mBackbufferImageSpan;
 }
 
 void ModernFrameGraphBuilder::BuildAdjacencyList(std::unordered_map<RenderPassName, std::unordered_set<RenderPassName>>& adjacencyList)
@@ -393,37 +400,51 @@ void ModernFrameGraphBuilder::FindBackbufferPasses(std::unordered_set<RenderPass
 	}
 }
 
-void ModernFrameGraphBuilder::BuildPassObjects()
+void ModernFrameGraphBuilder::CalculatePassPeriods()
 {
-	mGraphToBuild->mRenderPasses.clear();
-	mGraphToBuild->mSwapchainPassesSwapMap.clear();
-
-	for(const std::string& passName: mRenderPassNames)
+	for(const RenderPassName& passName: mRenderPassNames)
 	{
-		if(mRenderPassesSubresourceNameIds[passName].contains(mBackbufferName))
+		uint32_t passPeriod = 1;
+
+		const auto& nameIdMap   = mRenderPassesSubresourceNameIds.at(passName);
+		const auto& metadataMap = mRenderPassesSubresourceMetadatas.at(passName);
+		for(const auto& subresourceNameId: nameIdMap)
 		{
-			//This pass uses swapchain images - create a copy of render pass for each swapchain image
-			mGraphToBuild->mRenderPasses.emplace_back(nullptr);
-
-			//Fill in primary swap link (what to swap)
-			mGraphToBuild->mSwapchainPassesSwapMap.push_back((uint32_t)(mGraphToBuild->mRenderPasses.size() - 1));
-
-			//Correctness is guaranteed as long as mLastSwapchainImageIndex is the last index in mSwapchainImageRefs
-			const uint32_t swapchainImageCount = (uint32_t)mGraphToBuild->mSwapchainImageRefs.size();			
-			for(uint32_t swapchainImageIndex = 0; swapchainImageIndex < mGraphToBuild->mSwapchainImageRefs.size(); swapchainImageIndex++)
+			if(subresourceNameId.first != mBackbufferName) //Swapchain images don't count as render pass own period
 			{
-				//Create a separate render pass for each of swapchain images
-				mGraphToBuild->SwitchSwapchainImages(swapchainImageIndex);
-				mGraphToBuild->mSwapchainRenderPasses.push_back(mRenderPassCreateFunctions.at(passName)(mGraphToBuild->mDeviceRef, this, passName));
-
-				//Fill in secondary swap link (what to swap to)
-				mGraphToBuild->mSwapchainPassesSwapMap.push_back((uint32_t)(mGraphToBuild->mSwapchainRenderPasses.size() - 1));
+				const SubresourceMetadataNode& metadataNode = metadataMap.at(subresourceNameId.second);
+				passPeriod = std::lcm(metadataNode.FrameCount, passPeriod);
 			}
 		}
-		else
+
+		mRenderPassOwnPeriods[passName] = passPeriod;
+	}
+}
+
+void ModernFrameGraphBuilder::BuildPassObjects()
+{
+	for(const std::string& passName: mRenderPassNames)
+	{
+		uint32_t passSwapchainImageCount = 1;
+		if(mRenderPassesSubresourceNameIds[passName].contains(mBackbufferName))
 		{
-			//This pass does not use any swapchain images - can just create a single copy
-			mGraphToBuild->mRenderPasses.push_back(mRenderPassCreateFunctions.at(passName)(mGraphToBuild->mDeviceRef, this, passName));
+			passSwapchainImageCount = GetSwapchainImageCount();
+		}
+
+		uint32_t passPeriod = mRenderPassOwnPeriods.at(passName);
+
+		ModernFrameGraph::RenderPassSpanInfo passSpanInfo;
+		passSpanInfo.PassSpanBegin = NextPassSpanId();
+		passSpanInfo.OwnFrames     = passPeriod;
+
+		mGraphToBuild->mPassFrameSpans.push_back(passSpanInfo);
+		for(uint32_t swapchainImageIndex = 0; swapchainImageIndex < passSwapchainImageCount; swapchainImageIndex++)
+		{
+			for(uint32_t passFrame = 0; passFrame < passPeriod; passFrame++)
+			{
+				uint32_t frame = passPeriod * swapchainImageIndex + passFrame;
+				AddRenderPass(passName, frame);
+			}
 		}
 	}
 }

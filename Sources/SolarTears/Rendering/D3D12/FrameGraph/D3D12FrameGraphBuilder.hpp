@@ -15,7 +15,7 @@ namespace D3D12
 	class DeviceQueues;
 	class DeviceFeatures;
 
-	using RenderPassCreateFunc = std::unique_ptr<RenderPass>(*)(ID3D12Device8*, const FrameGraphBuilder*, const std::string&);
+	using RenderPassCreateFunc = std::unique_ptr<RenderPass>(*)(ID3D12Device8*, const FrameGraphBuilder*, const std::string&, uint32_t);
 
 	class FrameGraphBuilder: public ModernFrameGraphBuilder
 	{
@@ -65,6 +65,12 @@ namespace D3D12
 	private:
 		//Creates a new subresource info record
 		uint32_t AddSubresourceMetadata() override;
+
+		//Creates a new render pass
+		void AddRenderPass(const RenderPassName& passName, uint32_t frame) override;
+
+		//Gives a free render pass span id
+		uint32_t NextPassSpanId() override;
 
 		//Propagates subresource info (format, access flags, etc.) to a node from the previous one. Also initializes view key. Returns true if propagation succeeded or wasn't needed
 		bool ValidateSubresourceViewParameters(SubresourceMetadataNode* node) override;

@@ -23,11 +23,11 @@ namespace Vulkan
 		static void Register(FrameGraphBuilder* frameGraphBuilder, const std::string& passName);
 
 	private:
-		GBufferPass(VkDevice device, const FrameGraphBuilder* frameGraphBuilder, const std::string& passName);
+		GBufferPass(VkDevice device, const FrameGraphBuilder* frameGraphBuilder, const std::string& passName, uint32_t frame);
 
 	private:
 		void CreateRenderPass(const FrameGraphBuilder* frameGraphBuilder, const DeviceParameters* deviceParameters, const std::string& currentPassName);
-		void CreateFramebuffer(const FrameGraphBuilder* frameGraphBuilder, const FrameGraphConfig* frameGraphConfig, const std::string& currentPassName);
+		void CreateFramebuffer(const FrameGraphBuilder* frameGraphBuilder, const FrameGraphConfig* frameGraphConfig, const std::string& currentPassName, uint32_t frame);
 		void CreatePipelineLayout(const DescriptorManager* descriptorManager);
 		void CreatePipeline(const ShaderManager* shaderManager, const FrameGraphConfig* frameGraphConfig);
 

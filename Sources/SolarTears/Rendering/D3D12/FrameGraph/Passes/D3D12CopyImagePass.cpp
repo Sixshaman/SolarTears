@@ -3,23 +3,23 @@
 #include "../D3D12FrameGraphBuilder.hpp"
 #include <array>
 
-D3D12::CopyImagePass::CopyImagePass(ID3D12Device8* device, const FrameGraphBuilder* frameGraphBuilder, const std::string& currentPassName)
+D3D12::CopyImagePass::CopyImagePass(ID3D12Device8* device, const FrameGraphBuilder* frameGraphBuilder, const std::string& currentPassName, uint32_t frame)
 {
 	UNREFERENCED_PARAMETER(device);
 
-	mSrcImageRef = frameGraphBuilder->GetRegisteredResource(currentPassName, SrcImageId);
-	mDstImageRef = frameGraphBuilder->GetRegisteredResource(currentPassName, DstImageId);
+	mSrcImageRef = frameGraphBuilder->GetRegisteredResource(currentPassName, SrcImageId, frame);
+	mDstImageRef = frameGraphBuilder->GetRegisteredResource(currentPassName, DstImageId, frame);
 }
 
 void D3D12::CopyImagePass::Register(FrameGraphBuilder* frameGraphBuilder, const std::string& passName)
 {
-	auto PassCreateFunc = [](ID3D12Device8* device, const FrameGraphBuilder* builder, const std::string& name) -> std::unique_ptr<RenderPass>
+	auto PassCreateFunc = [](ID3D12Device8* device, const FrameGraphBuilder* builder, const std::string& name, uint32_t frame) -> std::unique_ptr<RenderPass>
 	{
 		//Using new because make_unique can't access private constructor
-		return std::unique_ptr<CopyImagePass>(new CopyImagePass(device, builder, name));
+		return std::unique_ptr<CopyImagePass>(new CopyImagePass(device, builder, name, frame));
 	};
 
-	frameGraphBuilder->RegisterRenderPass(passName, PassCreateFunc, RenderPassType::COPY);
+	frameGraphBuilder->RegisterRenderPass(passName, PassCreateFunc, RenderPassType::Transfer);
 
 	frameGraphBuilder->RegisterReadSubresource(passName,  SrcImageId);
 	frameGraphBuilder->RegisterWriteSubresource(passName, DstImageId);

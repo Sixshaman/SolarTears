@@ -19,20 +19,6 @@ namespace Vulkan
 	class FrameGraph: public ModernFrameGraph
 	{
 		friend class FrameGraphBuilder;
-		
-		struct BarrierSpan
-		{
-			uint32_t BeforePassBegin;
-			uint32_t BeforePassEnd;
-			uint32_t AfterPassBegin;
-			uint32_t AfterPassEnd;
-
-			VkPipelineStageFlags beforeFlagsBegin;
-			VkPipelineStageFlags beforeFlagsEnd;
-
-			VkPipelineStageFlags afterFlagsBegin;
-			VkPipelineStageFlags afterFlagsEnd;
-		};
 
 	public:
 		FrameGraph(VkDevice device, const FrameGraphConfig& frameGraphConfig);
@@ -43,7 +29,7 @@ namespace Vulkan
 	private:
 		void CreateSemaphores();
 
-		void SwitchSwapchainImages(uint32_t swapchainImageIndex);
+		void SwitchBarrierImages(uint32_t swapchainImageIndex, uint32_t frameIndex);
 
 		void BeginCommandBuffer(VkCommandBuffer cmdBuffer, VkCommandPool cmdPool) const;
 		void EndCommandBuffer(VkCommandBuffer cmdBuffer)                          const;
@@ -58,10 +44,7 @@ namespace Vulkan
 		std::vector<VkImage>     mImages;
 		std::vector<VkImageView> mImageViews;
 
-		//Barriers and barrier metadata
 		std::vector<VkImageMemoryBarrier> mImageBarriers;
-		std::vector<uint32_t>             mSwapchainBarrierIndices;
-		std::vector<BarrierSpan>          mImageRenderPassBarriers; //Required barriers before ith pass are mImageBarriers[Span.Begin...Span.End], where Span is mImageRenderPassBarriers[i]. Last span is for after-graph barriers
 
 		VkDeviceMemory mImageMemory;
 

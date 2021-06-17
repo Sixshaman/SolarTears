@@ -147,7 +147,16 @@ VkImage Vulkan::FrameGraphBuilder::GetRegisteredResource(const std::string_view 
 	}
 	else
 	{
-		return mVulkanGraphToBuild->mImages[metadataNode.FirstFrameHandle + frame];
+		if(metadataNode.FirstFrameHandle == GetBackbufferImageSpan().Begin)
+		{
+			uint32_t passPeriod = mRenderPassOwnPeriods.at(std::string(passName));
+			return mVulkanGraphToBuild->mImages[metadataNode.FirstFrameHandle + frame / passPeriod];
+		}
+		else
+		{
+			
+			return mVulkanGraphToBuild->mImages[metadataNode.FirstFrameHandle + frame % metadataNode.FrameCount];
+		}
 	}
 }
 
@@ -163,7 +172,16 @@ VkImageView Vulkan::FrameGraphBuilder::GetRegisteredSubresource(const std::strin
 	}
 	else
 	{
-		return mVulkanGraphToBuild->mImageViews[metadataNode.FirstFrameViewHandle + frame];
+		if(metadataNode.FirstFrameHandle == GetBackbufferImageSpan().Begin)
+		{
+			uint32_t passPeriod = mRenderPassOwnPeriods.at(std::string(passName));
+			return mVulkanGraphToBuild->mImageViews[metadataNode.FirstFrameHandle + frame / passPeriod];
+		}
+		else
+		{
+			
+			return mVulkanGraphToBuild->mImageViews[metadataNode.FirstFrameHandle + frame % metadataNode.FrameCount];
+		}
 	}
 }
 
@@ -474,6 +492,16 @@ uint32_t Vulkan::FrameGraphBuilder::AddSubresourceMetadata()
 	return (uint32_t)(mSubresourceInfos.size() - 1);
 }
 
+void Vulkan::FrameGraphBuilder::AddRenderPass(const RenderPassName& passName, uint32_t frame)
+{
+	mVulkanGraphToBuild->mRenderPasses.push_back(mRenderPassCreateFunctions.at(passName)(mVulkanGraphToBuild->mDeviceRef, this, passName, frame));
+}
+
+uint32_t Vulkan::FrameGraphBuilder::NextPassSpanId()
+{
+	return (uint32_t)mVulkanGraphToBuild->mRenderPasses.size();
+}
+
 bool Vulkan::FrameGraphBuilder::ValidateSubresourceViewParameters(SubresourceMetadataNode* node)
 {
 	SubresourceInfo& prevPassSubresourceInfo = mSubresourceInfos[node->PrevPassNode->SubresourceInfoIndex];
@@ -524,7 +552,6 @@ void Vulkan::FrameGraphBuilder::CreateTextureViews(const std::vector<TextureSubr
 void Vulkan::FrameGraphBuilder::InitializeTraverseData() const
 {
 	mVulkanGraphToBuild->mFrameRecordedGraphicsCommandBuffers.resize(mVulkanGraphToBuild->mGraphicsPassSpans.size());
-	mVulkanGraphToBuild->mCurrentFramePasses.resize(mRenderPassNames.size());
 }
 
 uint32_t Vulkan::FrameGraphBuilder::GetSwapchainImageCount() const

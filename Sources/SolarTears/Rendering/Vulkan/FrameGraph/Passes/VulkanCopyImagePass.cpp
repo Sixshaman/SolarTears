@@ -4,10 +4,10 @@
 #include "../VulkanFrameGraphBuilder.hpp"
 #include <array>
 
-Vulkan::CopyImagePass::CopyImagePass(VkDevice device, const FrameGraphBuilder* frameGraphBuilder, const std::string& currentPassName): RenderPass(device)
+Vulkan::CopyImagePass::CopyImagePass(VkDevice device, const FrameGraphBuilder* frameGraphBuilder, const std::string& currentPassName, uint32_t frame): RenderPass(device)
 {
-	mSrcImageRef = frameGraphBuilder->GetRegisteredResource(currentPassName, SrcImageId);
-	mDstImageRef = frameGraphBuilder->GetRegisteredResource(currentPassName, DstImageId);
+	mSrcImageRef = frameGraphBuilder->GetRegisteredResource(currentPassName, SrcImageId, frame);
+	mDstImageRef = frameGraphBuilder->GetRegisteredResource(currentPassName, DstImageId, frame);
 
 	mSrcImageAspectFlags = frameGraphBuilder->GetRegisteredSubresourceAspectFlags(currentPassName, SrcImageId);
 	mDstImageAspectFlags = frameGraphBuilder->GetRegisteredSubresourceAspectFlags(currentPassName, DstImageId);
@@ -15,13 +15,13 @@ Vulkan::CopyImagePass::CopyImagePass(VkDevice device, const FrameGraphBuilder* f
 
 void Vulkan::CopyImagePass::Register(FrameGraphBuilder* frameGraphBuilder, const std::string& passName)
 {
-	auto PassCreateFunc = [](VkDevice device, const FrameGraphBuilder* builder, const std::string& name) -> std::unique_ptr<RenderPass>
+	auto PassCreateFunc = [](VkDevice device, const FrameGraphBuilder* builder, const std::string& name, uint32_t frame) -> std::unique_ptr<RenderPass>
 	{
 		//Using new because make_unique can't access private constructor
-		return std::unique_ptr<CopyImagePass>(new CopyImagePass(device, builder, name));
+		return std::unique_ptr<CopyImagePass>(new CopyImagePass(device, builder, name, frame));
 	};
 
-	frameGraphBuilder->RegisterRenderPass(passName, PassCreateFunc, RenderPassType::TRANSFER);
+	frameGraphBuilder->RegisterRenderPass(passName, PassCreateFunc, RenderPassType::Transfer);
 
 	frameGraphBuilder->RegisterReadSubresource(passName, SrcImageId);
 	frameGraphBuilder->SetPassSubresourceAspectFlags(passName, SrcImageId, 0);

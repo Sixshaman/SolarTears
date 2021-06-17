@@ -115,7 +115,16 @@ ID3D12Resource2* D3D12::FrameGraphBuilder::GetRegisteredResource(const std::stri
 	}
 	else
 	{
-		return mD3d12GraphToBuild->mTextures[metadataNode.FirstFrameHandle + frame];
+		if(metadataNode.FirstFrameHandle == GetBackbufferImageSpan().Begin)
+		{
+			uint32_t passPeriod = mRenderPassOwnPeriods.at(std::string(passName));
+			return mD3d12GraphToBuild->mTextures[metadataNode.FirstFrameHandle + frame / passPeriod];
+		}
+		else
+		{
+			
+			return mD3d12GraphToBuild->mTextures[metadataNode.FirstFrameHandle + frame % metadataNode.FrameCount];
+		}
 	}
 }
 
@@ -131,7 +140,15 @@ D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceSr
 	assert((subresourceInfo.State & resourceState) && (metadataNode.FirstFrameViewHandle != (uint32_t)(-1)));
 
 	D3D12_CPU_DESCRIPTOR_HANDLE descriptorHandle = GetFrameGraphSrvHeapStart();
-	descriptorHandle.ptr                        += (metadataNode.FirstFrameViewHandle + frame) * mSrvUavCbvDescriptorSize;
+	if(metadataNode.FirstFrameHandle == GetBackbufferImageSpan().Begin)
+	{
+		uint32_t passPeriod = mRenderPassOwnPeriods.at(std::string(passName));
+		descriptorHandle.ptr += (metadataNode.FirstFrameViewHandle + frame / passPeriod) * mSrvUavCbvDescriptorSize;
+	}
+	else
+	{
+		descriptorHandle.ptr += (metadataNode.FirstFrameViewHandle + frame % metadataNode.FrameCount) * mSrvUavCbvDescriptorSize;
+	}
 
 	return descriptorHandle;
 }
@@ -148,7 +165,15 @@ D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceRt
 	assert((subresourceInfo.State & resourceState) && (metadataNode.FirstFrameViewHandle != (uint32_t)(-1)));
 
 	D3D12_CPU_DESCRIPTOR_HANDLE descriptorHandle = GetFrameGraphRtvHeapStart();
-	descriptorHandle.ptr                        += (metadataNode.FirstFrameViewHandle + frame) * mRtvDescriptorSize;
+	if(metadataNode.FirstFrameHandle == GetBackbufferImageSpan().Begin)
+	{
+		uint32_t passPeriod = mRenderPassOwnPeriods.at(std::string(passName));
+		descriptorHandle.ptr += (metadataNode.FirstFrameViewHandle + frame / passPeriod) * mRtvDescriptorSize;
+	}
+	else
+	{
+		descriptorHandle.ptr += (metadataNode.FirstFrameViewHandle + frame % metadataNode.FrameCount) * mRtvDescriptorSize;
+	}
 
 	return descriptorHandle;
 }
@@ -165,7 +190,15 @@ D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceDs
 	assert((subresourceInfo.State & resourceState) && (metadataNode.FirstFrameViewHandle != (uint32_t)(-1)));
 
 	D3D12_CPU_DESCRIPTOR_HANDLE descriptorHandle = GetFrameGraphDsvHeapStart();
-	descriptorHandle.ptr                        += (metadataNode.FirstFrameViewHandle + frame) * mDsvDescriptorSize;
+	if(metadataNode.FirstFrameHandle == GetBackbufferImageSpan().Begin)
+	{
+		uint32_t passPeriod = mRenderPassOwnPeriods.at(std::string(passName));
+		descriptorHandle.ptr += (metadataNode.FirstFrameViewHandle + frame / passPeriod) * mDsvDescriptorSize;
+	}
+	else
+	{
+		descriptorHandle.ptr += (metadataNode.FirstFrameViewHandle + frame % metadataNode.FrameCount) * mDsvDescriptorSize;
+	}
 
 	return descriptorHandle;
 }
@@ -396,6 +429,16 @@ uint32_t D3D12::FrameGraphBuilder::AddSubresourceMetadata()
 	return (uint32_t)(mSubresourceInfos.size() - 1);
 }
 
+void D3D12::FrameGraphBuilder::AddRenderPass(const RenderPassName& passName, uint32_t frame)
+{
+	mD3d12GraphToBuild->mRenderPasses.push_back(mRenderPassCreateFunctions.at(passName)(mDevice, this, passName, frame));
+}
+
+uint32_t D3D12::FrameGraphBuilder::NextPassSpanId()
+{
+	return (uint32_t)mD3d12GraphToBuild->mRenderPasses.size();
+}
+
 bool D3D12::FrameGraphBuilder::ValidateSubresourceViewParameters(SubresourceMetadataNode* node)
 {
 	SubresourceInfo& prevPassSubresourceInfo = mSubresourceInfos[node->PrevPassNode->SubresourceInfoIndex];
@@ -549,7 +592,6 @@ void D3D12::FrameGraphBuilder::CreateTextureViews(const std::vector<TextureSubre
 void D3D12::FrameGraphBuilder::InitializeTraverseData() const
 {
 	mD3d12GraphToBuild->mFrameRecordedGraphicsCommandLists.resize(mD3d12GraphToBuild->mGraphicsPassSpans.size());
-	mD3d12GraphToBuild->mCurrentFramePasses.resize(mRenderPassNames.size());
 }
 
 uint32_t D3D12::FrameGraphBuilder::GetSwapchainImageCount() const

@@ -10,7 +10,7 @@
 #include <array>
 #include <VulkanGenericStructures.h>
 
-Vulkan::GBufferPass::GBufferPass(VkDevice device, const FrameGraphBuilder* frameGraphBuilder, const std::string& passName): RenderPass(device)
+Vulkan::GBufferPass::GBufferPass(VkDevice device, const FrameGraphBuilder* frameGraphBuilder, const std::string& passName, uint32_t frame): RenderPass(device)
 {
 	mRenderPass  = VK_NULL_HANDLE;
 	mFramebuffer = VK_NULL_HANDLE;
@@ -20,7 +20,7 @@ Vulkan::GBufferPass::GBufferPass(VkDevice device, const FrameGraphBuilder* frame
 
 	//TODO: subpasses (AND SECONDARY COMMAND BUFFERS)
 	CreateRenderPass(frameGraphBuilder, frameGraphBuilder->GetDeviceParameters(), passName);
-	CreateFramebuffer(frameGraphBuilder, frameGraphBuilder->GetConfig(), passName);
+	CreateFramebuffer(frameGraphBuilder, frameGraphBuilder->GetConfig(), passName, frame);
 	CreatePipelineLayout(frameGraphBuilder->GetDescriptorManager());
 	CreatePipeline(frameGraphBuilder->GetShaderManager(), frameGraphBuilder->GetConfig());
 }
@@ -36,13 +36,13 @@ Vulkan::GBufferPass::~GBufferPass()
 
 void Vulkan::GBufferPass::Register(FrameGraphBuilder* frameGraphBuilder, const std::string& passName)
 {
-	auto PassCreateFunc = [](VkDevice device, const FrameGraphBuilder* builder, const std::string& name) -> std::unique_ptr<RenderPass>
+	auto PassCreateFunc = [](VkDevice device, const FrameGraphBuilder* builder, const std::string& name, uint32_t frame) -> std::unique_ptr<RenderPass>
 	{
 		//Using new because make_unique can't access private constructor
-		return std::unique_ptr<GBufferPass>(new GBufferPass(device, builder, name));
+		return std::unique_ptr<GBufferPass>(new GBufferPass(device, builder, name, frame));
 	};
 
-	frameGraphBuilder->RegisterRenderPass(passName, PassCreateFunc, RenderPassType::GRAPHICS);
+	frameGraphBuilder->RegisterRenderPass(passName, PassCreateFunc, RenderPassType::Graphics);
 
 	frameGraphBuilder->RegisterWriteSubresource(passName, ColorBufferImageId);
 	frameGraphBuilder->EnableSubresourceAutoBarrier(passName, ColorBufferImageId, true);
@@ -161,7 +161,7 @@ void Vulkan::GBufferPass::CreateRenderPass(const FrameGraphBuilder* frameGraphBu
 	ThrowIfFailed(vkCreateRenderPass(mDeviceRef, &renderPassCreateInfo, nullptr, &mRenderPass));
 }
 
-void Vulkan::GBufferPass::CreateFramebuffer(const FrameGraphBuilder* frameGraphBuilder, const FrameGraphConfig* frameGraphConfig, const std::string& currentPassName)
+void Vulkan::GBufferPass::CreateFramebuffer(const FrameGraphBuilder* frameGraphBuilder, const FrameGraphConfig* frameGraphConfig, const std::string& currentPassName, uint32_t frame)
 {
 	vgs::GenericStructureChain<VkFramebufferCreateInfo> framebufferCreateInfoChain;
 
@@ -170,7 +170,7 @@ void Vulkan::GBufferPass::CreateFramebuffer(const FrameGraphBuilder* frameGraphB
 	std::array<VkImageView, attachmentIds.size()> attachments;
 	for(size_t i = 0; i < attachments.size(); i++)
 	{
-		attachments[i] = frameGraphBuilder->GetRegisteredSubresource(currentPassName, attachmentIds[i]);
+		attachments[i] = frameGraphBuilder->GetRegisteredSubresource(currentPassName, attachmentIds[i], frame);
 	}
 
 	//TODO: imageless framebuffer (only if needed, set via config)

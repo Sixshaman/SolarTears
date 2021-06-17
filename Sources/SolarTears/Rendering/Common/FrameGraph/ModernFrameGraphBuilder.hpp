@@ -59,8 +59,6 @@ public:
 
 	void Build();
 
-	const FrameGraphConfig* GetConfig() const;
-
 private:
 	//Builds frame graph adjacency list
 	void BuildAdjacencyList(std::unordered_map<RenderPassName, std::unordered_set<RenderPassName>>& adjacencyList);
@@ -82,6 +80,9 @@ private:
 
 	//Finds all passes that use swapchain images. Such passes need to be swapped every frame
 	void FindBackbufferPasses(std::unordered_set<RenderPassName>& swapchainPassNames);
+
+	//Finds own render pass periods, i.e. the minimum number of pass objects required for all possible non-swapchain frame combinations
+	void CalculatePassPeriods();
 
 	//Build the render pass objects
 	void BuildPassObjects();
@@ -120,8 +121,19 @@ private:
 	bool PassesIntersect(const RenderPassName& writingPass, const RenderPassName& readingPass);
 
 protected:
+	const FrameGraphConfig* GetConfig() const;
+
+	const Span<uint32_t> GetBackbufferImageSpan() const;
+
+protected:
 	//Creates a new subresource info record
 	virtual uint32_t AddSubresourceMetadata() = 0;
+
+	//Creates a new render pass
+	virtual void AddRenderPass(const RenderPassName& passName, uint32_t frame) = 0;
+
+	//Gives a free render pass span id
+	virtual uint32_t NextPassSpanId() = 0;
 
 	//Propagates info (format, access flags, etc.) from one SubresourceInfo to another. Returns true if propagation succeeded or wasn't needed
 	virtual bool ValidateSubresourceViewParameters(SubresourceMetadataNode* node) = 0;
@@ -148,6 +160,7 @@ protected:
 
 	std::unordered_map<RenderPassName, RenderPassType> mRenderPassTypes;
 	std::unordered_map<RenderPassName, uint32_t>       mRenderPassDependencyLevels;
+	std::unordered_map<RenderPassName, uint32_t>       mRenderPassOwnPeriods;
 
 	std::unordered_map<RenderPassName, std::unordered_set<SubresourceId>> mRenderPassesReadSubresourceIds;
 	std::unordered_map<RenderPassName, std::unordered_set<SubresourceId>> mRenderPassesWriteSubresourceIds;

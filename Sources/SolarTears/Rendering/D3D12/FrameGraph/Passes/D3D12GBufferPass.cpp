@@ -7,12 +7,12 @@
 #include "../../../Common/FrameGraph/FrameGraphConfig.hpp"
 #include <array>
 
-D3D12::GBufferPass::GBufferPass(ID3D12Device8* device, const FrameGraphBuilder* frameGraphBuilder, const std::string& passName)
+D3D12::GBufferPass::GBufferPass(ID3D12Device8* device, const FrameGraphBuilder* frameGraphBuilder, const std::string& passName, uint32_t frame)
 {
 	//TODO: bundles
 	CreatePipelineState(device, frameGraphBuilder->GetShaderManager());
 
-	mColorsRenderTarget = frameGraphBuilder->GetRegisteredSubresourceRtv(passName, ColorBufferImageId);
+	mColorsRenderTarget = frameGraphBuilder->GetRegisteredSubresourceRtv(passName, ColorBufferImageId, frame);
 
 	const FrameGraphConfig* frameGraphConfig = frameGraphBuilder->GetConfig();
 
@@ -35,13 +35,13 @@ D3D12::GBufferPass::~GBufferPass()
 
 void D3D12::GBufferPass::Register(FrameGraphBuilder* frameGraphBuilder, const std::string& passName)
 {
-	auto PassCreateFunc = [](ID3D12Device8* device, const FrameGraphBuilder* builder, const std::string& name) -> std::unique_ptr<RenderPass>
+	auto PassCreateFunc = [](ID3D12Device8* device, const FrameGraphBuilder* builder, const std::string& name, uint32_t frame) -> std::unique_ptr<RenderPass>
 	{
 		//Using new because make_unique can't access private constructor
-		return std::unique_ptr<GBufferPass>(new GBufferPass(device, builder, name));
+		return std::unique_ptr<GBufferPass>(new GBufferPass(device, builder, name, frame));
 	};
 
-	frameGraphBuilder->RegisterRenderPass(passName, PassCreateFunc, RenderPassType::GRAPHICS);
+	frameGraphBuilder->RegisterRenderPass(passName, PassCreateFunc, RenderPassType::Graphics);
 
 	frameGraphBuilder->RegisterWriteSubresource(passName, ColorBufferImageId);
 	frameGraphBuilder->EnableSubresourceAutoBarrier(passName, ColorBufferImageId, false);

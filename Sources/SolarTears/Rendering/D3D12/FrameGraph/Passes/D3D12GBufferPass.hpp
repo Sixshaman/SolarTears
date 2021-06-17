@@ -26,7 +26,7 @@ namespace D3D12
 		static void Register(FrameGraphBuilder* frameGraphBuilder, const std::string& passName);
 
 	private:
-		GBufferPass(ID3D12Device8* device, const FrameGraphBuilder* frameGraphBuilder, const std::string& passName);
+		GBufferPass(ID3D12Device8* device, const FrameGraphBuilder* frameGraphBuilder, const std::string& passName, uint32_t frame);
 
 	private:
 		void CreatePipelineState(ID3D12Device8* device, const ShaderManager* shaderManager);
