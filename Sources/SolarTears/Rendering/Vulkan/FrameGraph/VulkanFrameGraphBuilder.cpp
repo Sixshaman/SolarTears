@@ -476,6 +476,20 @@ uint32_t Vulkan::FrameGraphBuilder::AddSubresourceMetadata()
 	return (uint32_t)(mSubresourceInfos.size() - 1);
 }
 
+uint32_t Vulkan::FrameGraphBuilder::AddPresentSubresourceMetadata()
+{
+	SubresourceInfo subresourceInfo;
+	subresourceInfo.Format = mSwapChain->GetBackbufferFormat();
+	subresourceInfo.Layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	subresourceInfo.Usage  = 0;
+	subresourceInfo.Aspect = 0;
+	subresourceInfo.Stage  = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+	subresourceInfo.Access = 0;
+
+	mSubresourceInfos.push_back(subresourceInfo);
+	return (uint32_t)(mSubresourceInfos.size() - 1);
+}
+
 void Vulkan::FrameGraphBuilder::AddRenderPass(const RenderPassName& passName, uint32_t frame)
 {
 	mVulkanGraphToBuild->mRenderPasses.push_back(mRenderPassCreateFunctions.at(passName)(mVulkanGraphToBuild->mDeviceRef, this, passName, frame));
@@ -501,8 +515,17 @@ bool Vulkan::FrameGraphBuilder::ValidateSubresourceViewParameters(SubresourceMet
 		thisPassSubresourceInfo.Aspect = prevPassSubresourceInfo.Aspect;
 	}
 
+	bool accessFlagsPropagated = false;
+	if(node->PassType == node->PrevPassNode->PassType && thisPassSubresourceInfo.Layout == prevPassSubresourceInfo.Layout && thisPassSubresourceInfo.Access != prevPassSubresourceInfo.Access)
+	{
+		thisPassSubresourceInfo.Access |= prevPassSubresourceInfo.Access;
+		prevPassSubresourceInfo.Access |= thisPassSubresourceInfo.Access;
+
+		accessFlagsPropagated = true;
+	}
+
 	node->ViewSortKey = ((uint32_t)thisPassSubresourceInfo.Aspect << 32) | (uint32_t)thisPassSubresourceInfo.Format;
-	return thisPassSubresourceInfo.Format != 0 && thisPassSubresourceInfo.Aspect != 0;
+	return thisPassSubresourceInfo.Format != 0 && thisPassSubresourceInfo.Aspect != 0 && !accessFlagsPropagated;
 }
 
 void Vulkan::FrameGraphBuilder::AllocateImageViews(const std::vector<uint64_t>& sortKeys, uint32_t frameCount, std::vector<uint32_t>& outViewIds)
@@ -536,137 +559,179 @@ void Vulkan::FrameGraphBuilder::CreateTextureViews(const std::vector<TextureSubr
 uint32_t Vulkan::FrameGraphBuilder::AddBeforePassBarrier(uint32_t imageIndex, RenderPassType prevPassType, uint32_t prevPassSubresourceInfoIndex, RenderPassType currPassType, uint32_t currPassSubresourceInfoIndex)
 {
 	/*
-	*    Same queue, state unchanged: No barrier needed
-	*    Same queue, state changed:   Need a barrier Old state -> New state
+	*    1. Same queue family, layout unchanged: No barrier needed
+	*    2. Same queue family, layout changed:   Need a barrier Old layout -> New layout
 	*
-	*    Graphics -> Compute, state unchanged: Need 
-	* 
-	*    Graphics -> Compute, state automatically promoted:               No barrier needed
-	*    Graphics -> Compute, state non-promoted, was promoted read-only: Need a barrier COMMON -> New state
-	*    Graphics -> Compute, state unchanged:                            No barrier needed
-	*    Graphics -> Compute, state changed other cases:                  No barrier needed, handled by the previous state's barrier
-	* 
-	*    Compute -> Graphics, state automatically promoted:                       No barrier needed, state will be promoted again
-	* 	 Compute -> Graphics, state non-promoted, was promoted read-only:         Need a barrier COMMON -> New state   
-	*    Compute -> Graphics, state changed Compute/graphics -> Compute/Graphics: No barrier needed, handled by the previous state's barrier
-	*    Compute -> Graphics, state changed Compute/Graphics -> Graphics:         Need a barrier Old state -> New state
-	*    Compute -> Graphics, state unchanged:                                    No barrier needed
-	*
-	*    Graphics/Compute -> Copy, was promoted read-only: No barrier needed, state decays
-	*    Graphics/Compute -> Copy, other cases:            No barrier needed, handled by previous state's barrier
-	* 
-	*    Copy -> Graphics/Compute, state automatically promoted: No barrier needed
-	*    Copy -> Graphics/Compute, state non-promoted:           Need a barrier COMMON -> New state
-	* 
-	*    Present from separate queue
+	*    3. Queue family changed, layout unchanged: Need an acquire barrier with new access mask
+	*    4. Queue family changed, layout changed:   Need an acquire + layout change barrier
+	*    5. Queue family changed, from present:     Need an acquire barrier with new access mask
 	*/
 
-	
+	const SubresourceInfo& prevPassInfo = mSubresourceInfos[prevPassSubresourceInfoIndex];
+	const SubresourceInfo& currPassInfo = mSubresourceInfos[currPassSubresourceInfoIndex];
 
-	const bool accessFlagsDiffer   = (subresourceMetadata.AccessFlags          != subresourceMetadata.PrevPassMetadata->AccessFlags);
-	const bool layoutsDiffer       = (subresourceMetadata.Layout               != subresourceMetadata.PrevPassMetadata->Layout);
-	const bool queueFamiliesDiffer = (subresourceMetadata.QueueFamilyOwnership != subresourceMetadata.PrevPassMetadata->QueueFamilyOwnership);
-	if(accessFlagsDiffer || layoutsDiffer || queueFamiliesDiffer)
+	bool barrierNeeded = false;
+	VkAccessFlags prevAccessMask = prevPassInfo.Access;
+	VkAccessFlags currAccessMask = currPassInfo.Access;
+
+	if(prevPassType == currPassType) //Rules 1, 2
 	{
-		//Swapchain image barriers are changed every frame
-		VkImage barrieredImage = nullptr;
-		if(subresourceMetadata.ImageIndex != mGraphToBuild->mBackbufferRefIndex)
-		{
-			barrieredImage = mGraphToBuild->mImages[subresourceMetadata.ImageIndex];
-		}
+		barrierNeeded = (prevPassInfo.Layout != currPassInfo.Layout);
+	}
+	else //Rules 3, 4, 5
+	{
+		prevAccessMask = 0; //Access mask should be set to 0 in an acquire barrier change
 
+		barrierNeeded = true;
+	}
+
+	if(barrierNeeded)
+	{
 		VkImageMemoryBarrier imageMemoryBarrier;
 		imageMemoryBarrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 		imageMemoryBarrier.pNext                           = nullptr;
-		imageMemoryBarrier.srcAccessMask                   = subresourceMetadata.PrevPassMetadata->AccessFlags;
-		imageMemoryBarrier.dstAccessMask                   = subresourceMetadata.AccessFlags;
-		imageMemoryBarrier.oldLayout                       = subresourceMetadata.PrevPassMetadata->Layout;
-		imageMemoryBarrier.newLayout                       = subresourceMetadata.Layout;
-		imageMemoryBarrier.srcQueueFamilyIndex             = subresourceMetadata.PrevPassMetadata->QueueFamilyOwnership;
-		imageMemoryBarrier.dstQueueFamilyIndex             = subresourceMetadata.QueueFamilyOwnership;
-		imageMemoryBarrier.image                           = barrieredImage;
-		imageMemoryBarrier.subresourceRange.aspectMask     = subresourceMetadata.AspectFlags;
+		imageMemoryBarrier.srcAccessMask                   = prevAccessMask;
+		imageMemoryBarrier.dstAccessMask                   = currAccessMask;
+		imageMemoryBarrier.oldLayout                       = prevPassInfo.Layout;
+		imageMemoryBarrier.newLayout                       = currPassInfo.Layout;
+		imageMemoryBarrier.srcQueueFamilyIndex             = PassTypeToQueueIndex(prevPassType);
+		imageMemoryBarrier.dstQueueFamilyIndex             = PassTypeToQueueIndex(currPassType);
+		imageMemoryBarrier.image                           = mVulkanGraphToBuild->mImages[imageIndex];
+		imageMemoryBarrier.subresourceRange.aspectMask     = prevPassInfo.Aspect | currPassInfo.Aspect;
 		imageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
 		imageMemoryBarrier.subresourceRange.layerCount     = 1;
 		imageMemoryBarrier.subresourceRange.baseMipLevel   = 0;
 		imageMemoryBarrier.subresourceRange.levelCount     = 1;
 
-		beforeBarriers.push_back(imageMemoryBarrier);
+		mVulkanGraphToBuild->mImageBarriers.push_back(imageMemoryBarrier);
 
-		//Mark the swapchain barriers
-		if(barrieredImage == nullptr)
-		{
-			beforeSwapchainBarriers.push_back(beforeBarriers.size() - 1);
-		}
+		return (uint32_t)(mVulkanGraphToBuild->mImageBarriers.size() - 1);
 	}
+
+	return (uint32_t)(-1);
 }
 
 uint32_t Vulkan::FrameGraphBuilder::AddAfterPassBarrier(uint32_t imageIndex, RenderPassType currPassType, uint32_t currPassSubresourceInfoIndex, RenderPassType nextPassType, uint32_t nextPassSubresourceInfoIndex)
 {
 	/*
-	*    Same queue, metadata unchanged: No barrier needed
-	*    Same queue, metadata changed:   No barrier needed, 
-	* 
-	*    
-	*    Same queue, metadata changed, Promoted read-only -> PRESENT:              No barrier needed, state decays
-	*    Same queue, state changed, Promoted writeable/Non-promoted -> PRESENT: Need a barrier Old State -> PRESENT
-	*    Same queue, state changed, other cases:                                No barrier needed, will be handled by the next state's barrier
+	*    1. Same queue family, layout unchanged:           No barrier needed
+	*    2. Same queue family, layout changed to PRESENT:  Need a barrier Old layout -> New Layout
+	*    3. Same queue family, layout changed other cases: No barrier needed, will be handled by the next state's barrier
 	*
-	*    Graphics -> Compute, state will be automatically promoted:               No barrier needed
-	*    Graphics -> Compute, state will not be promoted, was promoted read-only: No barrier needed, will be handled by the next state's barrier
-	*    Graphics -> Compute, state unchanged:                                    No barrier needed
-	*    Graphics -> Compute, state changed other cases:                          Need a barrier Old state -> New state
-	* 
-	*    Compute -> Graphics, state will be automatically promoted:                 No barrier needed
-	* 	 Compute -> Graphics, state will not be promoted, was promoted read-only:   No barrier needed, will be handled by the next state's barrier     
-	*    Compute -> Graphics, state changed Promoted read-only -> PRESENT:          No barrier needed, state will decay
-	*    Compute -> Graphics, state changed Compute/graphics   -> Compute/Graphics: Need a barrier Old state -> New state
-	*    Compute -> Graphics, state changed Compute/Graphics   -> Graphics:         No barrier needed, will be handled by the next state's barrier
-	*    Compute -> Graphics, state unchanged:                                      No barrier needed
-	*   
-	*    Graphics/Compute -> Copy, from Promoted read-only: No barrier needed
-	*    Graphics/Compute -> Copy, other cases:             Need a barrier Old state -> COMMON
-	* 
-	*    Copy -> Graphics/Compute, state will be automatically promoted: No barrier needed
-	*    Copy -> Graphics/Compute, state will not be promoted:           No barrier needed, will be handled by the next state's barrier
+	*    4. Queue family changed, layout unchanged: Need a release barrier with old access mask
+	*    5. Queue family changed, layout changed:   Need a release + layout change barrier
+	*    6. Queue family changed, to present:       Need a release barrier with old access mask
 	*/
 
-	const bool accessFlagsDiffer   = (subresourceMetadata.AccessFlags          != subresourceMetadata.NextPassMetadata->AccessFlags);
-	const bool layoutsDiffer       = (subresourceMetadata.Layout               != subresourceMetadata.NextPassMetadata->Layout);
-	const bool queueFamiliesDiffer = (subresourceMetadata.QueueFamilyOwnership != subresourceMetadata.NextPassMetadata->QueueFamilyOwnership);
-	if(accessFlagsDiffer || layoutsDiffer || queueFamiliesDiffer)
-	{
-		//Swapchain image barriers are changed every frame
-		VkImage barrieredImage = nullptr;
-		if(subresourceMetadata.ImageIndex != mGraphToBuild->mBackbufferRefIndex)
-		{
-			barrieredImage = mGraphToBuild->mImages[subresourceMetadata.ImageIndex];
-		}
+	const SubresourceInfo& currPassInfo = mSubresourceInfos[currPassSubresourceInfoIndex];
+	const SubresourceInfo& nextPassInfo = mSubresourceInfos[nextPassSubresourceInfoIndex];
 
+	bool barrierNeeded = false;
+	VkAccessFlags currAccessMask = currPassInfo.Access;
+	VkAccessFlags nextAccessMask = nextPassInfo.Access;
+	if(currPassType == nextPassType) //Rules 1, 2, 3
+	{
+		barrierNeeded = (nextPassInfo.Layout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+	}
+	else //Rules 4, 5, 6
+	{
+		nextAccessMask = 0; //Access mask should be set to 0 in a release barrier change
+
+		barrierNeeded = true;
+	}
+ 
+	if(barrierNeeded)
+	{
 		VkImageMemoryBarrier imageMemoryBarrier;
 		imageMemoryBarrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 		imageMemoryBarrier.pNext                           = nullptr;
-		imageMemoryBarrier.srcAccessMask                   = subresourceMetadata.AccessFlags;
-		imageMemoryBarrier.dstAccessMask                   = subresourceMetadata.NextPassMetadata->AccessFlags;
-		imageMemoryBarrier.oldLayout                       = subresourceMetadata.Layout;
-		imageMemoryBarrier.newLayout                       = subresourceMetadata.NextPassMetadata->Layout;
-		imageMemoryBarrier.srcQueueFamilyIndex             = subresourceMetadata.QueueFamilyOwnership;
-		imageMemoryBarrier.dstQueueFamilyIndex             = subresourceMetadata.NextPassMetadata->QueueFamilyOwnership;
-		imageMemoryBarrier.image                           = mGraphToBuild->mImages[subresourceMetadata.ImageIndex];
-		imageMemoryBarrier.subresourceRange.aspectMask     = subresourceMetadata.NextPassMetadata->AspectFlags;
+		imageMemoryBarrier.srcAccessMask                   = currAccessMask;
+		imageMemoryBarrier.dstAccessMask                   = nextAccessMask;
+		imageMemoryBarrier.oldLayout                       = currPassInfo.Layout;
+		imageMemoryBarrier.newLayout                       = nextPassInfo.Layout;
+		imageMemoryBarrier.srcQueueFamilyIndex             = PassTypeToQueueIndex(currPassType);
+		imageMemoryBarrier.dstQueueFamilyIndex             = PassTypeToQueueIndex(nextPassType);
+		imageMemoryBarrier.image                           = mVulkanGraphToBuild->mImages[imageIndex];
+		imageMemoryBarrier.subresourceRange.aspectMask     = currPassInfo.Aspect | nextPassInfo.Aspect;
 		imageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
 		imageMemoryBarrier.subresourceRange.layerCount     = 1;
 		imageMemoryBarrier.subresourceRange.baseMipLevel   = 0;
 		imageMemoryBarrier.subresourceRange.levelCount     = 1;
 
-		afterBarriers.push_back(imageMemoryBarrier);
+		mVulkanGraphToBuild->mImageBarriers.push_back(imageMemoryBarrier);
 
-		//Mark the swapchain barriers
-		if(barrieredImage == nullptr)
-		{
-			afterSwapchainBarriers.push_back(afterBarriers.size() - 1);
-		}
+		return (uint32_t)(mVulkanGraphToBuild->mImageBarriers.size() - 1);
 	}
+
+	return (uint32_t)(-1);
+}
+
+uint32_t Vulkan::FrameGraphBuilder::AddAcquirePassBarrier(uint32_t imageIndex, RenderPassType nextPassType, uint32_t nextPassSubresourceInfoIndex)
+{
+	/*
+	*    1. Same queue family:    No barrier needed
+	*    2. Queue family changed: Need a release barrier
+	*/
+
+	const SubresourceInfo& nextPassInfo = mSubresourceInfos[nextPassSubresourceInfoIndex];
+	if(mSwapChain->GetPresentQueueFamilyIndex() != PassTypeToQueueIndex(nextPassType))
+	{
+		VkImageMemoryBarrier imageMemoryBarrier;
+		imageMemoryBarrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		imageMemoryBarrier.pNext                           = nullptr;
+		imageMemoryBarrier.srcAccessMask                   = 0;
+		imageMemoryBarrier.dstAccessMask                   = 0;
+		imageMemoryBarrier.oldLayout                       = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		imageMemoryBarrier.newLayout                       = nextPassInfo.Layout;
+		imageMemoryBarrier.srcQueueFamilyIndex             = mSwapChain->GetPresentQueueFamilyIndex();
+		imageMemoryBarrier.dstQueueFamilyIndex             = PassTypeToQueueIndex(nextPassType);
+		imageMemoryBarrier.image                           = mVulkanGraphToBuild->mImages[imageIndex];
+		imageMemoryBarrier.subresourceRange.aspectMask     = nextPassInfo.Aspect;
+		imageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
+		imageMemoryBarrier.subresourceRange.layerCount     = 1;
+		imageMemoryBarrier.subresourceRange.baseMipLevel   = 0;
+		imageMemoryBarrier.subresourceRange.levelCount     = 1;
+
+		mVulkanGraphToBuild->mImageBarriers.push_back(imageMemoryBarrier);
+
+		return (uint32_t)(mVulkanGraphToBuild->mImageBarriers.size() - 1);
+	}
+
+	return (uint32_t)(-1);
+}
+
+uint32_t Vulkan::FrameGraphBuilder::AddPresentPassBarrier(uint32_t imageIndex, RenderPassType prevPassType, uint32_t prevPassSubresourceInfoIndex)
+{
+	/*
+	*    1. Same queue family:    No barrier needed
+	*    2. Queue family changed: Need an acquire barrier
+	*/
+
+	const SubresourceInfo& prevPassInfo = mSubresourceInfos[prevPassSubresourceInfoIndex];
+	if(PassTypeToQueueIndex(prevPassType) != mSwapChain->GetPresentQueueFamilyIndex())
+	{
+		VkImageMemoryBarrier imageMemoryBarrier;
+		imageMemoryBarrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		imageMemoryBarrier.pNext                           = nullptr;
+		imageMemoryBarrier.srcAccessMask                   = 0;
+		imageMemoryBarrier.dstAccessMask                   = 0;
+		imageMemoryBarrier.oldLayout                       = prevPassInfo.Layout;
+		imageMemoryBarrier.newLayout                       = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		imageMemoryBarrier.srcQueueFamilyIndex             = PassTypeToQueueIndex(prevPassType);
+		imageMemoryBarrier.dstQueueFamilyIndex             = mSwapChain->GetPresentQueueFamilyIndex();
+		imageMemoryBarrier.image                           = mVulkanGraphToBuild->mImages[imageIndex];
+		imageMemoryBarrier.subresourceRange.aspectMask     = prevPassInfo.Aspect;
+		imageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
+		imageMemoryBarrier.subresourceRange.layerCount     = 1;
+		imageMemoryBarrier.subresourceRange.baseMipLevel   = 0;
+		imageMemoryBarrier.subresourceRange.levelCount     = 1;
+
+		mVulkanGraphToBuild->mImageBarriers.push_back(imageMemoryBarrier);
+
+		return (uint32_t)(mVulkanGraphToBuild->mImageBarriers.size() - 1);
+	}
+
+	return (uint32_t)(-1);
 }
 
 void Vulkan::FrameGraphBuilder::InitializeTraverseData() const

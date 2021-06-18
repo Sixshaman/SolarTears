@@ -114,7 +114,7 @@ void ModernFrameGraphBuilder::AssignBackbufferName(const std::string_view backbu
 		SubresourceMetadataNode presentAcquireMetadataNode;
 		presentAcquireMetadataNode.PrevPassNode         = nullptr;
 		presentAcquireMetadataNode.NextPassNode         = nullptr;
-		presentAcquireMetadataNode.SubresourceInfoIndex = AddSubresourceMetadata();
+		presentAcquireMetadataNode.SubresourceInfoIndex = AddPresentSubresourceMetadata();
 		presentAcquireMetadataNode.FirstFrameHandle     = (uint32_t)(-1);
 		presentAcquireMetadataNode.FirstFrameViewHandle = (uint32_t)(-1);
 		presentAcquireMetadataNode.FrameCount           = GetSwapchainImageCount();

@@ -85,6 +85,9 @@ namespace Vulkan
 		//Creates a new subresource info record
 		uint32_t AddSubresourceMetadata() override;
 
+		//Creates a new subresource info record for present pass
+		uint32_t AddPresentSubresourceMetadata() override;
+
 		//Creates a new render pass
 		void AddRenderPass(const RenderPassName& passName, uint32_t frame) override;
 
@@ -103,11 +106,17 @@ namespace Vulkan
 		//Creates image view objects
 		void CreateTextureViews(const std::vector<TextureSubresourceCreateInfo>& textureViewCreateInfos) const override;
 
-		//Add a barrier to execute before a pass
+		//Adds a barrier to execute before a pass
 		uint32_t AddBeforePassBarrier(uint32_t imageIndex, RenderPassType prevPassType, uint32_t prevPassSubresourceInfoIndex, RenderPassType currPassType, uint32_t currPassSubresourceInfoIndex) override;
 
-		//Add a barrier to execute before a pass
+		//Adds a barrier to execute before a pass
 		uint32_t AddAfterPassBarrier(uint32_t imageIndex, RenderPassType currPassType, uint32_t currPassSubresourceInfoIndex, RenderPassType nextPassType, uint32_t nextPassSubresourceInfoIndex) override;
+
+		//Adds a barrier to execute right after acquiring a swapchain image
+		uint32_t AddAcquirePassBarrier(uint32_t imageIndex, RenderPassType nextPassType, uint32_t nextPassSubresourceInfoIndex) override;
+
+		//Adds a barrier to execute right before presenting a swapchain image
+		uint32_t AddPresentPassBarrier(uint32_t imageIndex, RenderPassType prevPassType, uint32_t prevPassSubresourceInfoIndex) override;
 
 		//Initializes per-traverse command buffer info
 		void InitializeTraverseData() const override;

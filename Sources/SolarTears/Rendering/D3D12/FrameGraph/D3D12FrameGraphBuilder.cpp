@@ -413,6 +413,17 @@ uint32_t D3D12::FrameGraphBuilder::AddSubresourceMetadata()
 	return (uint32_t)(mSubresourceInfos.size() - 1);
 }
 
+uint32_t D3D12::FrameGraphBuilder::AddPresentSubresourceMetadata()
+{
+	SubresourceInfo subresourceInfo;
+	subresourceInfo.Format                    = mSwapChain->GetBackbufferFormat();
+	subresourceInfo.State                     = D3D12_RESOURCE_STATE_PRESENT;
+	subresourceInfo.BarrierPromotedFromCommon = false;
+
+	mSubresourceInfos.push_back(subresourceInfo);
+	return (uint32_t)(mSubresourceInfos.size() - 1);
+}
+
 void D3D12::FrameGraphBuilder::AddRenderPass(const RenderPassName& passName, uint32_t frame)
 {
 	mD3d12GraphToBuild->mRenderPasses.push_back(mRenderPassCreateFunctions.at(passName)(mDevice, this, passName, frame));
@@ -785,6 +796,26 @@ uint32_t D3D12::FrameGraphBuilder::AddAfterPassBarrier(uint32_t imageIndex, Rend
 
 		return (uint32_t)(mD3d12GraphToBuild->mResourceBarriers.size() - 1);
 	}
+
+	return (uint32_t)(-1);
+}
+
+uint32_t D3D12::FrameGraphBuilder::AddAcquirePassBarrier(uint32_t imageIndex, RenderPassType nextPassType, uint32_t nextPassSubresourceInfoIndex)
+{
+	//Since D3D12 doesn't have the concept of present-from-compute or a dedicated present queue, it never needs a barrier after acquiring a swapchain image
+	UNREFERENCED_PARAMETER(imageIndex);
+	UNREFERENCED_PARAMETER(nextPassType);
+	UNREFERENCED_PARAMETER(nextPassSubresourceInfoIndex);
+
+	return (uint32_t)(-1);
+}
+
+uint32_t D3D12::FrameGraphBuilder::AddPresentPassBarrier(uint32_t imageIndex, RenderPassType prevPassType, uint32_t prevPassSubresourceInfoIndex)
+{
+	//Since D3D12 doesn't have the concept of present-from-compute or a dedicated present queue, it never needs a barrier before presenting a swapchain image
+	UNREFERENCED_PARAMETER(imageIndex);
+	UNREFERENCED_PARAMETER(prevPassType);
+	UNREFERENCED_PARAMETER(prevPassSubresourceInfoIndex);
 
 	return (uint32_t)(-1);
 }

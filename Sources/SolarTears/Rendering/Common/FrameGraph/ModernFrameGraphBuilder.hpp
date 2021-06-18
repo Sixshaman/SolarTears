@@ -136,6 +136,9 @@ protected:
 	//Creates a new subresource info record
 	virtual uint32_t AddSubresourceMetadata() = 0;
 
+	//Creates a new subresource info record for present pass
+	virtual uint32_t AddPresentSubresourceMetadata() = 0;
+
 	//Creates a new render pass
 	virtual void AddRenderPass(const RenderPassName& passName, uint32_t frame) = 0;
 
@@ -159,6 +162,12 @@ protected:
 
 	//Add a barrier to execute before a pass
 	virtual uint32_t AddAfterPassBarrier(uint32_t imageIndex, RenderPassType currPassType, uint32_t currPassSubresourceInfoIndex, RenderPassType nextPassType, uint32_t nextPassSubresourceInfoIndex) = 0;
+
+	//Adds a barrier to execute right after acquiring a swapchain image
+	virtual uint32_t AddAcquirePassBarrier(uint32_t imageIndex, RenderPassType nextPassType, uint32_t nextPassSubresourceInfoIndex) = 0;
+
+	//Adds a barrier to execute right before presenting a swapchain image
+	virtual uint32_t AddPresentPassBarrier(uint32_t imageIndex, RenderPassType prevPassType, uint32_t prevPassSubresourceInfoIndex) = 0;
 
 	//Initializes command buffer, job info, etc. for the frame graph
 	virtual void InitializeTraverseData() const = 0;

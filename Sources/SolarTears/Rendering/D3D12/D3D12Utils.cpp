@@ -26,7 +26,7 @@ bool D3D12::D3D12Utils::IsStatePromoteableTo(D3D12_RESOURCE_STATES state)
 {
     //This function is only used for non-simultaneous access textures
     UINT implicitCommonPromotionFlags = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_COPY_DEST | D3D12_RESOURCE_STATE_COPY_SOURCE;
-    return (state & implicitCommonPromotionFlags) != 0;;
+    return (state & implicitCommonPromotionFlags) != 0;
 }
 
 DXGI_FORMAT D3D12::D3D12Utils::ConvertToTypeless(DXGI_FORMAT format)
