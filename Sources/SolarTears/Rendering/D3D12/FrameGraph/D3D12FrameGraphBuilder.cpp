@@ -635,6 +635,8 @@ uint32_t D3D12::FrameGraphBuilder::AddBeforePassBarrier(uint32_t imageIndex, Ren
 	* 
 	*    15. Copy -> Graphics/Compute, state automatically promoted: No barrier needed
 	*    16. Copy -> Graphics/Compute, state non-promoted:           Need a barrier COMMON -> New state
+	* 
+	*    17. Graphics/Compute/Copy -> Present: No barrier needed
 	*/
 
 	const SubresourceInfo& prevPassInfo = mSubresourceInfos[prevPassSubresourceInfoIndex];
@@ -687,6 +689,10 @@ uint32_t D3D12::FrameGraphBuilder::AddBeforePassBarrier(uint32_t imageIndex, Ren
 	{
 		barrierNeeded = !currPassInfo.BarrierPromotedFromCommon;
 	}
+	else if (currPassType == RenderPassType::Present) //Rule 17
+	{
+		barrierNeeded = false;
+	}
 
 	if(barrierNeeded)
 	{
@@ -731,6 +737,8 @@ uint32_t D3D12::FrameGraphBuilder::AddAfterPassBarrier(uint32_t imageIndex, Rend
 	* 
 	*    17. Copy -> Graphics/Compute, state will be automatically promoted: No barrier needed
 	*    18. Copy -> Graphics/Compute, state will not be promoted:           No barrier needed, will be handled by the next state's barrier
+	* 
+	*    19. Present -> Graphics/Compute/Copy: No barrier needed
 	*/
 
 	const SubresourceInfo& currPassInfo = mSubresourceInfos[currPassSubresourceInfoIndex];
@@ -781,6 +789,10 @@ uint32_t D3D12::FrameGraphBuilder::AddAfterPassBarrier(uint32_t imageIndex, Rend
 	{
 		barrierNeeded = false;
 	}
+	else if(currPassType == RenderPassType::Present) //Rule 19
+	{
+		barrierNeeded = false;
+	}
 
 	if(barrierNeeded)
 	{
@@ -796,26 +808,6 @@ uint32_t D3D12::FrameGraphBuilder::AddAfterPassBarrier(uint32_t imageIndex, Rend
 
 		return (uint32_t)(mD3d12GraphToBuild->mResourceBarriers.size() - 1);
 	}
-
-	return (uint32_t)(-1);
-}
-
-uint32_t D3D12::FrameGraphBuilder::AddAcquirePassBarrier(uint32_t imageIndex, RenderPassType nextPassType, uint32_t nextPassSubresourceInfoIndex)
-{
-	//Since D3D12 doesn't have the concept of present-from-compute or a dedicated present queue, it never needs a barrier after acquiring a swapchain image
-	UNREFERENCED_PARAMETER(imageIndex);
-	UNREFERENCED_PARAMETER(nextPassType);
-	UNREFERENCED_PARAMETER(nextPassSubresourceInfoIndex);
-
-	return (uint32_t)(-1);
-}
-
-uint32_t D3D12::FrameGraphBuilder::AddPresentPassBarrier(uint32_t imageIndex, RenderPassType prevPassType, uint32_t prevPassSubresourceInfoIndex)
-{
-	//Since D3D12 doesn't have the concept of present-from-compute or a dedicated present queue, it never needs a barrier before presenting a swapchain image
-	UNREFERENCED_PARAMETER(imageIndex);
-	UNREFERENCED_PARAMETER(prevPassType);
-	UNREFERENCED_PARAMETER(prevPassSubresourceInfoIndex);
 
 	return (uint32_t)(-1);
 }

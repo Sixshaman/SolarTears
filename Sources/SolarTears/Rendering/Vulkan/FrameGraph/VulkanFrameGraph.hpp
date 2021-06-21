@@ -45,7 +45,6 @@ namespace Vulkan
 		std::vector<VkImageView> mImageViews;
 
 		std::vector<VkImageMemoryBarrier> mImageBarriers;
-		uint32_t mPresentPassBarrierIndex;
 
 		VkDeviceMemory mImageMemory;
 

@@ -13,8 +13,6 @@ Vulkan::FrameGraph::FrameGraph(VkDevice device, const FrameGraphConfig& frameGra
 {
 	mImageMemory = VK_NULL_HANDLE;
 
-	mPresentPassBarrierIndex = (uint32_t)(-1);
-
 	CreateSemaphores();
 }
 
@@ -52,7 +50,7 @@ void Vulkan::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommandBuffers* 
 	uint32_t currentFrameResourceIndex = frameIndex % Utils::InFlightFrameCount;
 	VkSemaphore lastTraverseSemaphore = preTraverseSemaphore;
 
-	BarrierSpan presentAcquirePassBarrierSpan = mRenderPassBarriers[mPresentPassBarrierIndex];
+	BarrierSpan presentAcquirePassBarrierSpan = mRenderPassBarriers.back();
 
 	const bool hasAcquirePass    = (presentAcquirePassBarrierSpan.AfterPassBegin != presentAcquirePassBarrierSpan.AfterPassEnd);
 	const bool hasGraphicsPasses = (mGraphicsPassSpans.size() > 0);

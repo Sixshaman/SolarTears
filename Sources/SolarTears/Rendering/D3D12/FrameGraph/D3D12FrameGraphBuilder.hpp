@@ -88,12 +88,6 @@ namespace D3D12
 		//Add a barrier to execute before a pass
 		uint32_t AddAfterPassBarrier(uint32_t imageIndex, RenderPassType currPassType, uint32_t currPassSubresourceInfoIndex, RenderPassType nextPassType, uint32_t nextPassSubresourceInfoIndex) override;
 
-		//Adds a barrier to execute right after acquiring a swapchain image
-		uint32_t AddAcquirePassBarrier(uint32_t imageIndex, RenderPassType nextPassType, uint32_t nextPassSubresourceInfoIndex) override;
-
-		//Adds a barrier to execute right before presenting a swapchain image
-		uint32_t AddPresentPassBarrier(uint32_t imageIndex, RenderPassType prevPassType, uint32_t prevPassSubresourceInfoIndex) override;
-
 		//Initializes per-traverse command buffer info
 		void InitializeTraverseData() const override;
 

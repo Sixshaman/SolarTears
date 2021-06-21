@@ -486,85 +486,100 @@ void ModernFrameGraphBuilder::BuildPassObjects()
 
 void ModernFrameGraphBuilder::BuildBarriers()
 {
-	//COMMON
-	mGraphToBuild->mRenderPassBarriers.resize(mRenderPassNames.size());
+	mGraphToBuild->mRenderPassBarriers.resize(mRenderPassNames.size() + 1);
 	mGraphToBuild->mMultiframeBarrierInfos.clear();
 
-	uint32_t currentBarrierCount = 0;
+	uint32_t totalBarrierCount = 0;
 	for(size_t i = 0; i < mRenderPassNames.size(); i++)
 	{
 		RenderPassName renderPassName = mRenderPassNames[i];
-
-		const auto& nameIdMap     = mRenderPassesSubresourceNameIds.at(renderPassName);
-		const auto& idMetadataMap = mRenderPassesSubresourceMetadatas.at(renderPassName);
-
-		std::vector<SubresourceMetadataNode*> passMetadatasForBeforeBarriers;
-		std::vector<SubresourceMetadataNode*> passMetadatasForAfterBarriers;
-		for(auto& subresourceNameId: nameIdMap)
-		{
-			SubresourceMetadataNode& subresourceMetadata = mRenderPassesSubresourceMetadatas.at(renderPassName).at(subresourceNameId.second);
-			
-			if(!(subresourceMetadata.Flags & TextureFlagAutoBeforeBarrier))
-			{
-				passMetadatasForBeforeBarriers.push_back(&subresourceMetadata);
-			}
-
-			if(!(subresourceMetadata.Flags & TextureFlagAutoAfterBarrier))
-			{
-				passMetadatasForAfterBarriers.push_back(&subresourceMetadata);
-			}
-		}
-
-		ModernFrameGraph::BarrierSpan barrierSpan;
-		barrierSpan.BeforePassBegin = currentBarrierCount;
-
-		for(SubresourceMetadataNode* subresourceMetadata: passMetadatasForBeforeBarriers)
-		{
-			SubresourceMetadataNode* prevSubresourceMetadata = subresourceMetadata->PrevPassNode;
-			
-			uint32_t barrierId = AddBeforePassBarrier(subresourceMetadata->FirstFrameHandle, prevSubresourceMetadata->PassType, prevSubresourceMetadata->SubresourceInfoIndex, subresourceMetadata->PassType, subresourceMetadata->SubresourceInfoIndex);
-			if(barrierId != (uint32_t)(-1))
-			{
-				currentBarrierCount++;
-
-				if(subresourceMetadata->FrameCount > 1)
-				{
-					ModernFrameGraph::MultiframeBarrierInfo multiframeBarrierInfo;
-					multiframeBarrierInfo.BarrierIndex  = barrierId;
-					multiframeBarrierInfo.BaseTexIndex  = subresourceMetadata->FirstFrameHandle;
-					multiframeBarrierInfo.TexturePeriod = subresourceMetadata->FrameCount;
-
-					mGraphToBuild->mMultiframeBarrierInfos.push_back(multiframeBarrierInfo);
-				}
-			}
-		}
-
-		barrierSpan.BeforePassEnd  = currentBarrierCount;
-		barrierSpan.AfterPassBegin = currentBarrierCount;
-
-		for(SubresourceMetadataNode* subresourceMetadata: passMetadatasForBeforeBarriers)
-		{
-			SubresourceMetadataNode* nextSubresourceMetadata = subresourceMetadata->NextPassNode;
-			
-			uint32_t barrierId = AddAfterPassBarrier(subresourceMetadata->FirstFrameHandle, subresourceMetadata->PassType, subresourceMetadata->SubresourceInfoIndex, nextSubresourceMetadata->PassType, nextSubresourceMetadata->SubresourceInfoIndex);
-			if(barrierId != (uint32_t)(-1))
-			{
-				currentBarrierCount++;
-
-				if(subresourceMetadata->FrameCount > 1)
-				{
-					ModernFrameGraph::MultiframeBarrierInfo multiframeBarrierInfo;
-					multiframeBarrierInfo.BarrierIndex  = barrierId;
-					multiframeBarrierInfo.BaseTexIndex  = subresourceMetadata->FirstFrameHandle;
-					multiframeBarrierInfo.TexturePeriod = subresourceMetadata->FrameCount;
-
-					mGraphToBuild->mMultiframeBarrierInfos.push_back(multiframeBarrierInfo);
-				}
-			}
-		}
-
-		mGraphToBuild->mRenderPassBarriers[i] = barrierSpan;
+		totalBarrierCount += BuildPassBarriers(renderPassName, totalBarrierCount, &mGraphToBuild->mRenderPassBarriers[i]);
 	}
+
+	BuildPassBarriers(RenderPassName(PresentPassName), totalBarrierCount, &mGraphToBuild->mRenderPassBarriers.back());
+}
+
+uint32_t ModernFrameGraphBuilder::BuildPassBarriers(const RenderPassName& passName, uint32_t barrierOffset, ModernFrameGraph::BarrierSpan* outBarrierSpan)
+{
+	const auto& nameIdMap     = mRenderPassesSubresourceNameIds.at(passName);
+	const auto& idMetadataMap = mRenderPassesSubresourceMetadatas.at(passName);
+
+	std::vector<SubresourceMetadataNode*> passMetadatasForBeforeBarriers;
+	std::vector<SubresourceMetadataNode*> passMetadatasForAfterBarriers;
+	for(auto& subresourceNameId: nameIdMap)
+	{
+		SubresourceMetadataNode& subresourceMetadata = mRenderPassesSubresourceMetadatas.at(passName).at(subresourceNameId.second);
+			
+		if(!(subresourceMetadata.Flags & TextureFlagAutoBeforeBarrier))
+		{
+			passMetadatasForBeforeBarriers.push_back(&subresourceMetadata);
+		}
+
+		if(!(subresourceMetadata.Flags & TextureFlagAutoAfterBarrier))
+		{
+			passMetadatasForAfterBarriers.push_back(&subresourceMetadata);
+		}
+	}
+
+
+	uint32_t passBarrierCount = 0;
+
+	ModernFrameGraph::BarrierSpan barrierSpan;
+	barrierSpan.BeforePassBegin = barrierOffset + passBarrierCount;
+
+	for(SubresourceMetadataNode* subresourceMetadata: passMetadatasForBeforeBarriers)
+	{
+		SubresourceMetadataNode* prevSubresourceMetadata = subresourceMetadata->PrevPassNode;
+			
+		uint32_t barrierId = AddBeforePassBarrier(subresourceMetadata->FirstFrameHandle, prevSubresourceMetadata->PassType, prevSubresourceMetadata->SubresourceInfoIndex, subresourceMetadata->PassType, subresourceMetadata->SubresourceInfoIndex);
+		if(barrierId != (uint32_t)(-1))
+		{
+			passBarrierCount++;
+
+			if(subresourceMetadata->FrameCount > 1)
+			{
+				ModernFrameGraph::MultiframeBarrierInfo multiframeBarrierInfo;
+				multiframeBarrierInfo.BarrierIndex  = barrierId;
+				multiframeBarrierInfo.BaseTexIndex  = subresourceMetadata->FirstFrameHandle;
+				multiframeBarrierInfo.TexturePeriod = subresourceMetadata->FrameCount;
+
+				mGraphToBuild->mMultiframeBarrierInfos.push_back(multiframeBarrierInfo);
+			}
+		}
+	}
+
+	barrierSpan.BeforePassEnd  = barrierOffset + passBarrierCount;
+	barrierSpan.AfterPassBegin = barrierOffset + passBarrierCount;
+
+	for(SubresourceMetadataNode* subresourceMetadata: passMetadatasForBeforeBarriers)
+	{
+		SubresourceMetadataNode* nextSubresourceMetadata = subresourceMetadata->NextPassNode;
+			
+		uint32_t barrierId = AddAfterPassBarrier(subresourceMetadata->FirstFrameHandle, subresourceMetadata->PassType, subresourceMetadata->SubresourceInfoIndex, nextSubresourceMetadata->PassType, nextSubresourceMetadata->SubresourceInfoIndex);
+		if(barrierId != (uint32_t)(-1))
+		{
+			passBarrierCount++;
+
+			if(subresourceMetadata->FrameCount > 1)
+			{
+				ModernFrameGraph::MultiframeBarrierInfo multiframeBarrierInfo;
+				multiframeBarrierInfo.BarrierIndex  = barrierId;
+				multiframeBarrierInfo.BaseTexIndex  = subresourceMetadata->FirstFrameHandle;
+				multiframeBarrierInfo.TexturePeriod = subresourceMetadata->FrameCount;
+
+				mGraphToBuild->mMultiframeBarrierInfos.push_back(multiframeBarrierInfo);
+			}
+		}
+	}
+
+	barrierSpan.AfterPassEnd = barrierOffset + passBarrierCount;
+
+	if(outBarrierSpan)
+	{
+		*outBarrierSpan = barrierSpan;
+	}
+
+	return passBarrierCount;
 }
 
 void ModernFrameGraphBuilder::BuildSubresources()

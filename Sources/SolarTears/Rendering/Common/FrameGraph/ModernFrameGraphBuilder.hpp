@@ -99,6 +99,9 @@ private:
 	//Build the between-pass barriers
 	void BuildBarriers();
 
+	//Build the before- and after-pass barriers
+	uint32_t BuildPassBarriers(const RenderPassName& passName, uint32_t barrierOffset, ModernFrameGraph::BarrierSpan* outBarrierSpan);
+
 	//Create subresources
 	void BuildSubresources();
 
@@ -162,12 +165,6 @@ protected:
 
 	//Add a barrier to execute before a pass
 	virtual uint32_t AddAfterPassBarrier(uint32_t imageIndex, RenderPassType currPassType, uint32_t currPassSubresourceInfoIndex, RenderPassType nextPassType, uint32_t nextPassSubresourceInfoIndex) = 0;
-
-	//Adds a barrier to execute right after acquiring a swapchain image
-	virtual uint32_t AddAcquirePassBarrier(uint32_t imageIndex, RenderPassType nextPassType, uint32_t nextPassSubresourceInfoIndex) = 0;
-
-	//Adds a barrier to execute right before presenting a swapchain image
-	virtual uint32_t AddPresentPassBarrier(uint32_t imageIndex, RenderPassType prevPassType, uint32_t prevPassSubresourceInfoIndex) = 0;
 
 	//Initializes command buffer, job info, etc. for the frame graph
 	virtual void InitializeTraverseData() const = 0;
