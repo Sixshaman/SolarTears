@@ -12,28 +12,28 @@ namespace Vulkan
 	namespace VulkanUtils
 	{
 		template<typename T>
-		static constexpr VkFormat FormatForVectorType = VK_FORMAT_UNDEFINED;
+		constexpr VkFormat FormatForVectorType = VK_FORMAT_UNDEFINED;
 
 		template<>
-		static constexpr VkFormat FormatForVectorType<DirectX::XMFLOAT4> = VK_FORMAT_R32G32B32A32_SFLOAT;
+		constexpr VkFormat FormatForVectorType<DirectX::XMFLOAT4> = VK_FORMAT_R32G32B32A32_SFLOAT;
 
 		template<>
-		static constexpr VkFormat FormatForVectorType<DirectX::XMFLOAT3> = VK_FORMAT_R32G32B32_SFLOAT;
+		constexpr VkFormat FormatForVectorType<DirectX::XMFLOAT3> = VK_FORMAT_R32G32B32_SFLOAT;
 
 		template<>
-		static constexpr VkFormat FormatForVectorType<DirectX::XMFLOAT2> = VK_FORMAT_R32G32_SFLOAT;
+		constexpr VkFormat FormatForVectorType<DirectX::XMFLOAT2> = VK_FORMAT_R32G32_SFLOAT;
 
 		template<typename T>
-		static constexpr VkIndexType FormatForIndexType = VK_INDEX_TYPE_MAX_ENUM;
+		constexpr VkIndexType FormatForIndexType = VK_INDEX_TYPE_MAX_ENUM;
 
 		template<>
-		static constexpr VkIndexType FormatForIndexType<uint32_t> = VK_INDEX_TYPE_UINT32;
+		constexpr VkIndexType FormatForIndexType<uint32_t> = VK_INDEX_TYPE_UINT32;
 
 		template<>
-		static constexpr VkIndexType FormatForIndexType<uint16_t> = VK_INDEX_TYPE_UINT16;
+		constexpr VkIndexType FormatForIndexType<uint16_t> = VK_INDEX_TYPE_UINT16;
 
 		template<>
-		static constexpr VkIndexType FormatForIndexType<uint8_t> = VK_INDEX_TYPE_UINT8_EXT;
+		constexpr VkIndexType FormatForIndexType<uint8_t> = VK_INDEX_TYPE_UINT8_EXT;
 
 		class VkException
 		{

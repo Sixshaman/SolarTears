@@ -40,12 +40,4 @@ void D3D12::FrameGraphDescriptorCreator::RecreateFrameGraphSrvUavDescriptors(ID3
 			mFrameGraphToCreateDescriptors->mRenderPasses[i]->RevalidateSrvUavDescriptors(prevStartDescriptorGpu, startDescriptorGpu);
 		}
 	}
-
-	for(size_t i = 0; i < mFrameGraphToCreateDescriptors->mSwapchainRenderPasses.size(); i++)
-	{
-		if(mFrameGraphToCreateDescriptors->mSwapchainRenderPasses[i] != nullptr)
-		{
-			mFrameGraphToCreateDescriptors->mSwapchainRenderPasses[i]->RevalidateSrvUavDescriptors(prevStartDescriptorGpu, startDescriptorGpu);
-		}
-	}
 }

@@ -27,7 +27,7 @@ namespace D3D12
 		};
 
 	public:
-		FrameGraphBuilder(FrameGraph* graphToBuild, const SwapChain* swapChain, const ShaderManager* shaderManager, const MemoryManager* memoryManager);
+		FrameGraphBuilder(FrameGraph* graphToBuild, const SwapChain* swapChain);
 		~FrameGraphBuilder();
 
 		void RegisterRenderPass(const std::string_view passName, RenderPassCreateFunc createFunc, RenderPassType passType);

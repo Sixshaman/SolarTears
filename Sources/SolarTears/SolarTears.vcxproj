@@ -56,7 +56,7 @@
     <ClInclude Include="Rendering\Common\FrameGraph\FrameGraphConfig.hpp" />
     <ClInclude Include="Rendering\Common\FrameGraph\ModernFrameGraph.hpp" />
     <ClInclude Include="Rendering\Common\FrameGraph\ModernFrameGraphBuilder.hpp" />
-    <ClInclude Include="Rendering\Common\FrameGraph\ModernRenderPass.hpp" />
+    <ClInclude Include="Rendering\Common\FrameGraph\ModernFrameGraphMisc.hpp" />
     <ClInclude Include="Rendering\Common\Renderer.hpp" />
     <ClInclude Include="Rendering\Common\RenderingUtils.hpp" />
     <ClInclude Include="Rendering\Common\Scene\ModernRenderableScene.hpp" />

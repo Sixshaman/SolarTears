@@ -27,7 +27,7 @@ protected:
 	{
 		uint32_t BarrierIndex;
 		uint32_t BaseTexIndex;
-		uint8_t  TexturePeriod;
+		uint32_t TexturePeriod;
 	};
 
 public:

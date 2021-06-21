@@ -3,7 +3,6 @@
 #include <d3d12.h>
 #include "../D3D12Utils.hpp"
 #include "../Scene/D3D12Scene.hpp"
-#include "../../Common/FrameGraph/ModernRenderPass.hpp"
 
 class LoggerQueue;
 class FrameGraphConfig;

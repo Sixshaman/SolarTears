@@ -501,8 +501,7 @@ void ModernFrameGraphBuilder::BuildBarriers()
 
 uint32_t ModernFrameGraphBuilder::BuildPassBarriers(const RenderPassName& passName, uint32_t barrierOffset, ModernFrameGraph::BarrierSpan* outBarrierSpan)
 {
-	const auto& nameIdMap     = mRenderPassesSubresourceNameIds.at(passName);
-	const auto& idMetadataMap = mRenderPassesSubresourceMetadatas.at(passName);
+	const auto& nameIdMap = mRenderPassesSubresourceNameIds.at(passName);
 
 	std::vector<SubresourceMetadataNode*> passMetadatasForBeforeBarriers;
 	std::vector<SubresourceMetadataNode*> passMetadatasForAfterBarriers;
@@ -697,16 +696,11 @@ uint32_t ModernFrameGraphBuilder::PrepareResourceLocations(std::vector<TextureRe
 {
 	uint32_t imageCount = 0;
 
-	std::array<std::vector<TextureResourceCreateInfo>&, 2> createInfoArrays = {textureCreateInfos, backbufferCreateInfos};
-	std::array<uint32_t, createInfoArrays.size()>          backbufferSpan;
-	for(size_t i = 0; i < createInfoArrays.size(); i++)
-	{
-		imageCount += ValidateImageAndViewIndices(textureCreateInfos, imageCount);
-		backbufferSpan[i] = imageCount;
-	}
+	imageCount += ValidateImageAndViewIndices(textureCreateInfos, imageCount);
+	mGraphToBuild->mBackbufferImageSpan.Begin = imageCount;
 
-	mGraphToBuild->mBackbufferImageSpan.Begin = backbufferSpan[0];
-	mGraphToBuild->mBackbufferImageSpan.End   = backbufferSpan[1];
+	imageCount += ValidateImageAndViewIndices(backbufferCreateInfos, imageCount);
+	mGraphToBuild->mBackbufferImageSpan.End = imageCount;
 
 	return imageCount;
 }
@@ -748,7 +742,7 @@ void ModernFrameGraphBuilder::ValidateImageAndViewIndicesInResource(TextureResou
 
 	std::vector<uint64_t> differentSortKeys;
 	differentSortKeys.push_back(resourceMetadataNodes[0]->ViewSortKey);
-	for(size_t nodeIndex = 1; nodeIndex < resourceMetadataNodes.size(); nodeIndex++)
+	for(uint32_t nodeIndex = 1; nodeIndex < (uint32_t)resourceMetadataNodes.size(); nodeIndex++)
 	{
 		uint64_t currSortKey = resourceMetadataNodes[nodeIndex]->ViewSortKey;
 		if(currSortKey != differentSortKeys.back())
@@ -760,7 +754,7 @@ void ModernFrameGraphBuilder::ValidateImageAndViewIndicesInResource(TextureResou
 		}
 	}
 
-	differentImageViewSpans.back().End = resourceMetadataNodes.size();
+	differentImageViewSpans.back().End = (uint32_t)resourceMetadataNodes.size();
 
 	std::vector<uint32_t> assignedImageViewIds;
 	AllocateImageViews(differentSortKeys, headNode->FrameCount, assignedImageViewIds);

@@ -13,28 +13,28 @@ namespace D3D12
 	namespace D3D12Utils
 	{
 		template<typename T>
-		static constexpr DXGI_FORMAT FormatForVectorType = DXGI_FORMAT_UNKNOWN;
+		constexpr DXGI_FORMAT FormatForVectorType = DXGI_FORMAT_UNKNOWN;
 
 		template<>
-		static constexpr DXGI_FORMAT FormatForVectorType<DirectX::XMFLOAT4> = DXGI_FORMAT_R32G32B32A32_FLOAT;
+		constexpr DXGI_FORMAT FormatForVectorType<DirectX::XMFLOAT4> = DXGI_FORMAT_R32G32B32A32_FLOAT;
 
 		template<>
-		static constexpr DXGI_FORMAT FormatForVectorType<DirectX::XMFLOAT3> = DXGI_FORMAT_R32G32B32_FLOAT;
+		constexpr DXGI_FORMAT FormatForVectorType<DirectX::XMFLOAT3> = DXGI_FORMAT_R32G32B32_FLOAT;
 
 		template<>
-		static constexpr DXGI_FORMAT FormatForVectorType<DirectX::XMFLOAT2> = DXGI_FORMAT_R32G32_FLOAT;
+		constexpr DXGI_FORMAT FormatForVectorType<DirectX::XMFLOAT2> = DXGI_FORMAT_R32G32_FLOAT;
 
 		template<typename T>
-		static constexpr DXGI_FORMAT FormatForIndexType = DXGI_FORMAT_UNKNOWN;
+		constexpr DXGI_FORMAT FormatForIndexType = DXGI_FORMAT_UNKNOWN;
 
 		template<>
-		static constexpr DXGI_FORMAT FormatForIndexType<uint32_t> = DXGI_FORMAT_R32_UINT;
+		constexpr DXGI_FORMAT FormatForIndexType<uint32_t> = DXGI_FORMAT_R32_UINT;
 
 		template<>
-		static constexpr DXGI_FORMAT FormatForIndexType<uint16_t> = DXGI_FORMAT_R16_UINT;
+		constexpr DXGI_FORMAT FormatForIndexType<uint16_t> = DXGI_FORMAT_R16_UINT;
 
 		template<>
-		static constexpr DXGI_FORMAT FormatForIndexType<uint8_t> = DXGI_FORMAT_R8_UINT;
+		constexpr DXGI_FORMAT FormatForIndexType<uint8_t> = DXGI_FORMAT_R8_UINT;
 
 		bool IsStateWriteable(D3D12_RESOURCE_STATES state);
 		bool IsStateComputeFriendly(D3D12_RESOURCE_STATES state);

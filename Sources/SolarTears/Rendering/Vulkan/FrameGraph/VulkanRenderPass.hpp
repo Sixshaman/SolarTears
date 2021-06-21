@@ -3,7 +3,6 @@
 #include <unordered_set>
 #include <vulkan/vulkan.h>
 #include "../VulkanUtils.hpp"
-#include "../../Common/FrameGraph/ModernRenderPass.hpp"
 
 class LoggerQueue;
 class FrameGraphConfig;
@@ -17,7 +16,7 @@ namespace Vulkan
 	//This would eliminate the cost of dereferencing class pointer, then dereferencing vtable, then indexing through vtable.
 	//But it would require storing all possible things a renderpass can require (pipeline, VkRenderPass object, etc.), even if pass doesn't require them.
 	//To improve code cleaniness, virtual method approach was used.
-	class RenderPass: public ModernRenderPass
+	class RenderPass
 	{
 	public:
 		RenderPass(VkDevice device);

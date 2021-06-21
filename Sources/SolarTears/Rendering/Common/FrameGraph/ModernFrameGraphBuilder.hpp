@@ -2,11 +2,12 @@
 
 #include <vector>
 #include <string>
-#include "ModernRenderPass.hpp"
 #include <unordered_set>
 #include <unordered_map>
+#include "ModernFrameGraph.hpp"
+#include "ModernFrameGraphMisc.hpp"
+#include "../../../Core/DataStructures/Span.hpp"
 
-class ModernFrameGraph;
 class FrameGraphConfig;
 
 class ModernFrameGraphBuilder

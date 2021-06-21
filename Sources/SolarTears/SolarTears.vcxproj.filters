@@ -351,14 +351,14 @@
     <ClInclude Include="Rendering\Common\FrameGraph\ModernFrameGraphBuilder.hpp">
       <Filter>Rendering\Common\FrameGraph</Filter>
     </ClInclude>
-    <ClInclude Include="Rendering\Common\FrameGraph\ModernRenderPass.hpp">
-      <Filter>Rendering\Common\FrameGraph</Filter>
-    </ClInclude>
     <ClInclude Include="Rendering\Common\FrameGraph\ModernFrameGraph.hpp">
       <Filter>Rendering\Common\FrameGraph</Filter>
     </ClInclude>
     <ClInclude Include="Core\DataStructures\Span.hpp">
       <Filter>Core\DataStructures</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Common\FrameGraph\ModernFrameGraphMisc.hpp">
+      <Filter>Rendering\Common\FrameGraph</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

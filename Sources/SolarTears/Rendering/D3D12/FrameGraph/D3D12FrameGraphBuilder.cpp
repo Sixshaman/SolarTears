@@ -461,7 +461,7 @@ bool D3D12::FrameGraphBuilder::ValidateSubresourceViewParameters(SubresourceMeta
 	const uint32_t stateKey  = (uint32_t)thisPassSubresourceInfo.State & (srvStateMask | uavStateMask | rtvStateMask | dsvStateMask); //Other states are not needed for separate views (i.e. descriptors)
 	const uint32_t formatKey = (uint32_t)thisPassSubresourceInfo.Format * (stateKey != 0); //Creating the view is only needed if the state is descriptorable
 
-	node->ViewSortKey = (stateKey << 32) | formatKey;
+	node->ViewSortKey = ((uint64_t)stateKey << 32) | formatKey;
 
 	return thisPassSubresourceInfo.Format != 0 && (promotionCommonFlagBeforeChange == thisPassSubresourceInfo.BarrierPromotedFromCommon); //Only the format should be propagated. But if common promotion flag has changed, the propagation has to start again
 }

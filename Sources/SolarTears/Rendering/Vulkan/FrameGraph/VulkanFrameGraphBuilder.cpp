@@ -391,7 +391,7 @@ void Vulkan::FrameGraphBuilder::CreateTextures(const std::vector<TextureResource
 			imageBarrier.oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;
 			imageBarrier.newLayout                       = lastLayout;
 			imageBarrier.srcQueueFamilyIndex             = queueIndices[0]; //Resources were created with that queue ownership
-			imageBarrier.dstQueueFamilyIndex             = mDeviceQueues->GetGraphicsQueueFamilyIndex();
+			imageBarrier.dstQueueFamilyIndex             = PassTypeToQueueIndex(lastPassType);
 			imageBarrier.image                           = image;
 			imageBarrier.subresourceRange.aspectMask     = lastAspectMask;
 			imageBarrier.subresourceRange.baseMipLevel   = 0;
@@ -526,7 +526,7 @@ bool Vulkan::FrameGraphBuilder::ValidateSubresourceViewParameters(SubresourceMet
 		accessFlagsPropagated = true;
 	}
 
-	node->ViewSortKey = ((uint32_t)thisPassSubresourceInfo.Aspect << 32) | (uint32_t)thisPassSubresourceInfo.Format;
+	node->ViewSortKey = ((uint64_t)thisPassSubresourceInfo.Aspect << 32) | (uint32_t)thisPassSubresourceInfo.Format;
 	return thisPassSubresourceInfo.Format != 0 && thisPassSubresourceInfo.Aspect != 0 && !accessFlagsPropagated;
 }
 
