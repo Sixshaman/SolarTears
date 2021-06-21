@@ -115,6 +115,28 @@ void Vulkan::SwapChain::Present(VkSemaphore presentSemaphore)
 	ThrowIfFailed(vkQueuePresentKHR(mPresentQueue, &presentInfo));
 }
 
+void Vulkan::SwapChain::PresentQueueSubmit(VkCommandBuffer commandBuffer, VkSemaphore waitSemaphore, VkPipelineStageFlags stageFlags, VkSemaphore signalSemaphore, VkFence signalFence)
+{
+	std::array commandBuffers = {commandBuffer};
+	std::array waitSemaphores = {waitSemaphore};
+	std::array waitStageFlags = {stageFlags};
+	std::array sgnlSemaphores = {signalSemaphore};
+
+	VkSubmitInfo submitInfo;
+	submitInfo.sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	submitInfo.pNext                = nullptr;
+	submitInfo.waitSemaphoreCount   = (uint32_t)waitSemaphores.size();
+	submitInfo.pWaitSemaphores      = waitSemaphores.data();
+	submitInfo.pWaitDstStageMask    = waitStageFlags.data();
+	submitInfo.commandBufferCount   = (uint32_t)commandBuffers.size();
+	submitInfo.pCommandBuffers      = commandBuffers.data();
+	submitInfo.signalSemaphoreCount = (uint32_t)sgnlSemaphores.size();
+	submitInfo.pSignalSemaphores    = sgnlSemaphores.data();
+
+	std::array submitInfos = {submitInfo};
+	ThrowIfFailed(vkQueueSubmit(mPresentQueue, (uint32_t)submitInfos.size(), submitInfos.data(), signalFence));
+}
+
 uint32_t Vulkan::SwapChain::GetPresentQueueFamilyIndex() const
 {
 	return mPresentQueueFamilyIndex;

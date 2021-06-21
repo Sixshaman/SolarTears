@@ -24,6 +24,8 @@ namespace Vulkan
 		void AcquireImage(VkDevice device, uint32_t frameInFlightIndex);
 		void Present(VkSemaphore presentSemaphore);
 
+		void PresentQueueSubmit(VkCommandBuffer commandBuffer, VkSemaphore waitSemaphore, VkPipelineStageFlags stageFlags, VkSemaphore signalSemaphore, VkFence signalFence);
+
 		VkSemaphore GetImageAcquiredSemaphore(uint32_t frameInFlightIndex) const;
 
 		uint32_t GetPresentQueueFamilyIndex() const;

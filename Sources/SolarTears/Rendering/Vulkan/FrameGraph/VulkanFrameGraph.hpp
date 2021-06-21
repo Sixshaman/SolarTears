@@ -24,7 +24,7 @@ namespace Vulkan
 		FrameGraph(VkDevice device, const FrameGraphConfig& frameGraphConfig);
 		~FrameGraph();
 
-		void Traverse(ThreadPool* threadPool, WorkerCommandBuffers* commandBuffers, RenderableScene* scene, DeviceQueues* deviceQueues, VkFence traverseFence, uint32_t frameIndex, uint32_t swapchainImageIndex, VkSemaphore preTraverseSemaphore, VkSemaphore* outPostTraverseSemaphore);
+		void Traverse(ThreadPool* threadPool, WorkerCommandBuffers* commandBuffers, RenderableScene* scene, DeviceQueues* deviceQueues, SwapChain* swapchain, VkFence traverseFence, uint32_t frameIndex, uint32_t swapchainImageIndex, VkSemaphore preTraverseSemaphore, VkSemaphore* outPostTraverseSemaphore);
 
 	private:
 		void CreateSemaphores();
@@ -45,10 +45,13 @@ namespace Vulkan
 		std::vector<VkImageView> mImageViews;
 
 		std::vector<VkImageMemoryBarrier> mImageBarriers;
+		uint32_t mPresentPassBarrierIndex;
 
 		VkDeviceMemory mImageMemory;
 
-		VkSemaphore mGraphicsToPresentSemaphores[Utils::InFlightFrameCount];
+		VkSemaphore mAcquireSemaphores[Utils::InFlightFrameCount];
+		VkSemaphore mGraphicsSemaphores[Utils::InFlightFrameCount];
+		VkSemaphore mPresentSemaphores[Utils::InFlightFrameCount];
 
 		//Used to track the command buffers that were used to record render passes
 		std::vector<VkCommandBuffer> mFrameRecordedGraphicsCommandBuffers;
