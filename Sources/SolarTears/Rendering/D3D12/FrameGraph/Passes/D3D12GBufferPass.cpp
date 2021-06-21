@@ -44,7 +44,6 @@ void D3D12::GBufferPass::Register(FrameGraphBuilder* frameGraphBuilder, const st
 	frameGraphBuilder->RegisterRenderPass(passName, PassCreateFunc, RenderPassType::Graphics);
 
 	frameGraphBuilder->RegisterWriteSubresource(passName, ColorBufferImageId);
-	frameGraphBuilder->EnableSubresourceAutoBarrier(passName, ColorBufferImageId, false);
 	frameGraphBuilder->SetPassSubresourceFormat(passName, ColorBufferImageId, ColorOutputFormat); //TODO: maybe passing the format????
 	frameGraphBuilder->SetPassSubresourceState(passName, ColorBufferImageId, D3D12_RESOURCE_STATE_RENDER_TARGET);
 }

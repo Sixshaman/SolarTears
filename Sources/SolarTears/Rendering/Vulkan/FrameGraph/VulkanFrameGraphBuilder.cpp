@@ -9,13 +9,7 @@
 #include <algorithm>
 #include <numeric>
 
-Vulkan::FrameGraphBuilder::FrameGraphBuilder(FrameGraph* graphToBuild, const DescriptorManager* descriptorManager, 
-	                                         const InstanceParameters* instanceParameters, const DeviceParameters* deviceParameters, 
-	                                         const ShaderManager* shaderManager, const MemoryManager* memoryManager, 
-	                                         const DeviceQueues* deviceQueues, const SwapChain* swapchain, const WorkerCommandBuffers* workerCommandBuffers): ModernFrameGraphBuilder(graphToBuild), mVulkanGraphToBuild(graphToBuild),
-	                                                                                                        mDescriptorManager(descriptorManager), mInstanceParameters(instanceParameters), mDeviceParameters(deviceParameters), 
-	                                                                                                        mShaderManager(shaderManager), mMemoryManager(memoryManager), 
-	                                                                                                        mDeviceQueues(deviceQueues), mSwapChain(swapchain), mWorkerCommandBuffers(workerCommandBuffers)
+Vulkan::FrameGraphBuilder::FrameGraphBuilder(FrameGraph* graphToBuild, const SwapChain* swapchain): ModernFrameGraphBuilder(graphToBuild), mVulkanGraphToBuild(graphToBuild), mSwapChain(swapchain)
 {
 	mImageViewCount = 0;
 }
@@ -107,11 +101,6 @@ const Vulkan::SwapChain* Vulkan::FrameGraphBuilder::GetSwapChain() const
 const Vulkan::DeviceParameters* Vulkan::FrameGraphBuilder::GetDeviceParameters() const
 {
 	return mDeviceParameters;
-}
-
-const Vulkan::MemoryManager* Vulkan::FrameGraphBuilder::GetMemoryManager() const
-{
-	return mMemoryManager;
 }
 
 const Vulkan::ShaderManager* Vulkan::FrameGraphBuilder::GetShaderManager() const
@@ -311,6 +300,19 @@ VkAccessFlags Vulkan::FrameGraphBuilder::GetNextPassSubresourceAccessFlags(const
 
 	uint32_t subresourceInfoIndex = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr).NextPassNode->SubresourceInfoIndex;
 	return mSubresourceInfos[subresourceInfoIndex].Access;
+}
+
+void Vulkan::FrameGraphBuilder::Build(const InstanceParameters* instanceParameters, const DeviceParameters* deviceParameters, const DescriptorManager* descriptorManager, const MemoryManager* memoryManager, const ShaderManager* shaderManager, const DeviceQueues* deviceQueues, WorkerCommandBuffers* workerCommandBuffers)
+{
+	mInstanceParameters   = instanceParameters;
+	mDeviceParameters     = deviceParameters;
+	mDescriptorManager    = descriptorManager;
+	mMemoryManager        = memoryManager;
+	mShaderManager        = shaderManager;
+	mDeviceQueues         = deviceQueues;
+	mWorkerCommandBuffers = workerCommandBuffers;
+
+	ModernFrameGraphBuilder::Build();
 }
 
 void Vulkan::FrameGraphBuilder::CreateTextures(const std::vector<TextureResourceCreateInfo>& textureCreateInfos, const std::vector<TextureResourceCreateInfo>& backbufferCreateInfos, uint32_t totalTextureCount) const

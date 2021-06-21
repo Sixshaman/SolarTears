@@ -10,18 +10,11 @@
 #include <algorithm>
 #include <numeric>
 
-D3D12::FrameGraphBuilder::FrameGraphBuilder(ID3D12Device8* device, FrameGraph* graphToBuild, const RenderableScene* scene, const DeviceFeatures* deviceFeatures, 
-	                                        const SwapChain* swapChain, const ShaderManager* shaderManager, const MemoryManager* memoryManager): ModernFrameGraphBuilder(graphToBuild), mD3d12GraphToBuild(graphToBuild), mDevice(device),
-	                                                                                                                                             mScene(scene), mSwapChain(swapChain), mDeviceFeatures(deviceFeatures), 
-	                                                                                                                                             mShaderManager(shaderManager), mMemoryAllocator(memoryManager)
+D3D12::FrameGraphBuilder::FrameGraphBuilder(FrameGraph* graphToBuild, const SwapChain* swapChain): ModernFrameGraphBuilder(graphToBuild), mD3d12GraphToBuild(graphToBuild), mSwapChain(swapChain)
 {
 	mSrvUavCbvDescriptorCount = 0;
 	mRtvDescriptorCount       = 0;
 	mDsvDescriptorCount       = 0;
-	
-	mSrvUavCbvDescriptorSize = mDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-	mRtvDescriptorSize       = mDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-	mDsvDescriptorSize       = mDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 }
 
 D3D12::FrameGraphBuilder::~FrameGraphBuilder()
@@ -57,34 +50,9 @@ void D3D12::FrameGraphBuilder::SetPassSubresourceState(const std::string_view pa
 	mSubresourceInfos[subresourceInfoIndex].State = state;
 }
 
-ID3D12Device8* D3D12::FrameGraphBuilder::GetDevice() const
-{
-	return mDevice;
-}
-
-const D3D12::RenderableScene* D3D12::FrameGraphBuilder::GetScene() const
-{
-	return mScene;
-}
-
-const D3D12::SwapChain* D3D12::FrameGraphBuilder::GetSwapChain() const
-{
-	return mSwapChain;
-}
-
-const D3D12::DeviceFeatures* D3D12::FrameGraphBuilder::GetDeviceFeatures() const
-{
-	return mDeviceFeatures;
-}
-
 const D3D12::ShaderManager* D3D12::FrameGraphBuilder::GetShaderManager() const
 {
 	return mShaderManager;
-}
-
-const D3D12::MemoryManager* D3D12::FrameGraphBuilder::GetMemoryManager() const
-{
-	return mMemoryAllocator;
 }
 
 ID3D12Resource2* D3D12::FrameGraphBuilder::GetRegisteredResource(const std::string_view passName, const std::string_view subresourceId, uint32_t frame) const
@@ -221,6 +189,19 @@ D3D12_RESOURCE_STATES D3D12::FrameGraphBuilder::GetNextPassSubresourceState(cons
 
 	uint32_t subresourceInfoIndex = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr).NextPassNode->SubresourceInfoIndex;
 	return mSubresourceInfos[subresourceInfoIndex].State;
+}
+
+void D3D12::FrameGraphBuilder::Build(ID3D12Device8* device, const ShaderManager* shaderManager, const MemoryManager* memoryManager)
+{
+	mDevice          = device;
+	mShaderManager   = shaderManager;
+	mMemoryAllocator = memoryManager;
+
+	mSrvUavCbvDescriptorSize = mDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	mRtvDescriptorSize       = mDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	mDsvDescriptorSize       = mDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+
+	ModernFrameGraphBuilder::Build();
 }
 
 D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetFrameGraphSrvHeapStart() const

@@ -17,7 +17,7 @@ namespace D3D12
 
 	using RenderPassCreateFunc = std::unique_ptr<RenderPass>(*)(ID3D12Device8*, const FrameGraphBuilder*, const std::string&, uint32_t);
 
-	class FrameGraphBuilder: public ModernFrameGraphBuilder
+	class FrameGraphBuilder final: public ModernFrameGraphBuilder
 	{
 		struct SubresourceInfo
 		{
@@ -27,7 +27,7 @@ namespace D3D12
 		};
 
 	public:
-		FrameGraphBuilder(ID3D12Device8* device, FrameGraph* graphToBuild, const RenderableScene* scene, const DeviceFeatures* deviceFeatures, const SwapChain* swapChain, const ShaderManager* shaderManager, const MemoryManager* memoryManager);
+		FrameGraphBuilder(FrameGraph* graphToBuild, const SwapChain* swapChain, const ShaderManager* shaderManager, const MemoryManager* memoryManager);
 		~FrameGraphBuilder();
 
 		void RegisterRenderPass(const std::string_view passName, RenderPassCreateFunc createFunc, RenderPassType passType);
@@ -35,12 +35,7 @@ namespace D3D12
 		void SetPassSubresourceFormat(const std::string_view passName, const std::string_view subresourceId, DXGI_FORMAT format);
 		void SetPassSubresourceState(const std::string_view passName,  const std::string_view subresourceId, D3D12_RESOURCE_STATES state);
 
-		ID3D12Device8*          GetDevice()         const;
-		const RenderableScene*  GetScene()          const;
-		const SwapChain*        GetSwapChain()      const;
-		const DeviceFeatures*   GetDeviceFeatures() const;
-		const ShaderManager*    GetShaderManager()  const;
-		const MemoryManager*    GetMemoryManager()  const;
+		const ShaderManager* GetShaderManager() const;
 
 		ID3D12Resource2*            GetRegisteredResource(const std::string_view passName,          const std::string_view subresourceId, uint32_t frame) const;
 		D3D12_CPU_DESCRIPTOR_HANDLE GetRegisteredSubresourceSrvUav(const std::string_view passName, const std::string_view subresourceId, uint32_t frame) const;
@@ -57,42 +52,44 @@ namespace D3D12
 		D3D12_CPU_DESCRIPTOR_HANDLE GetFrameGraphRtvHeapStart() const;
 		D3D12_CPU_DESCRIPTOR_HANDLE GetFrameGraphDsvHeapStart() const;
 
+		void Build(ID3D12Device8* device, const ShaderManager* shaderManager, const MemoryManager* memoryManager);
+
 	private:
 		//Creates a new subresource info record
-		uint32_t AddSubresourceMetadata() override;
+		uint32_t AddSubresourceMetadata() override final;
 
 		//Creates a new subresource info record for present pass
-		uint32_t AddPresentSubresourceMetadata() override;
+		uint32_t AddPresentSubresourceMetadata() override final;
 
 		//Creates a new render pass
-		void AddRenderPass(const RenderPassName& passName, uint32_t frame) override;
+		void AddRenderPass(const RenderPassName& passName, uint32_t frame) override final;
 
 		//Gives a free render pass span id
-		uint32_t NextPassSpanId() override;
+		uint32_t NextPassSpanId() override final;
 
 		//Propagates subresource info (format, access flags, etc.) to a node from the previous one. Also initializes view key. Returns true if propagation succeeded or wasn't needed
-		bool ValidateSubresourceViewParameters(SubresourceMetadataNode* node) override;
+		bool ValidateSubresourceViewParameters(SubresourceMetadataNode* node) override final;
 
 		//Allocates the storage for image views defined by sort keys
-		void AllocateImageViews(const std::vector<uint64_t>& sortKeys, uint32_t frameCount, std::vector<uint32_t>& outViewIds) override;
+		void AllocateImageViews(const std::vector<uint64_t>& sortKeys, uint32_t frameCount, std::vector<uint32_t>& outViewIds) override final;
 
 		//Creates image objects
-		void CreateTextures(const std::vector<TextureResourceCreateInfo>& textureCreateInfos, const std::vector<TextureResourceCreateInfo>& backbufferCreateInfos, uint32_t totalTextureCount) const override;
+		void CreateTextures(const std::vector<TextureResourceCreateInfo>& textureCreateInfos, const std::vector<TextureResourceCreateInfo>& backbufferCreateInfos, uint32_t totalTextureCount) const override final;
 
 		//Creates image view objects
-		void CreateTextureViews(const std::vector<TextureSubresourceCreateInfo>& textureViewCreateInfos) const override;
+		void CreateTextureViews(const std::vector<TextureSubresourceCreateInfo>& textureViewCreateInfos) const override final;
 
 		//Add a barrier to execute before a pass
-		uint32_t AddBeforePassBarrier(uint32_t imageIndex, RenderPassType prevPassType, uint32_t prevPassSubresourceInfoIndex, RenderPassType currPassType, uint32_t currPassSubresourceInfoIndex) override;
+		uint32_t AddBeforePassBarrier(uint32_t imageIndex, RenderPassType prevPassType, uint32_t prevPassSubresourceInfoIndex, RenderPassType currPassType, uint32_t currPassSubresourceInfoIndex) override final;
 
 		//Add a barrier to execute before a pass
-		uint32_t AddAfterPassBarrier(uint32_t imageIndex, RenderPassType currPassType, uint32_t currPassSubresourceInfoIndex, RenderPassType nextPassType, uint32_t nextPassSubresourceInfoIndex) override;
+		uint32_t AddAfterPassBarrier(uint32_t imageIndex, RenderPassType currPassType, uint32_t currPassSubresourceInfoIndex, RenderPassType nextPassType, uint32_t nextPassSubresourceInfoIndex) override final;
 
 		//Initializes per-traverse command buffer info
-		void InitializeTraverseData() const override;
+		void InitializeTraverseData() const override final;
 
 		//Get the number of swapchain images
-		uint32_t GetSwapchainImageCount() const override;
+		uint32_t GetSwapchainImageCount() const override final;
 
 	private:
 		FrameGraph* mD3d12GraphToBuild;
@@ -111,8 +108,6 @@ namespace D3D12
 
 		//Several things that might be needed to create some of the passes
 		ID3D12Device8*         mDevice;
-		const RenderableScene* mScene;
-		const DeviceFeatures*  mDeviceFeatures;
 		const MemoryManager*   mMemoryAllocator;
 		const SwapChain*       mSwapChain;
 		const ShaderManager*   mShaderManager;
