@@ -139,7 +139,7 @@ void D3D12::Renderer::CreateFrameGraph(uint32_t viewportWidth, uint32_t viewport
 
 	mFrameGraph = std::make_unique<D3D12::FrameGraph>(frameGraphConfig);
 
-	D3D12::FrameGraphBuilder frameGraphBuilder(mFrameGraph.get(), mScene.get(), mDeviceFeatures.get(), mShaderManager.get());
+	D3D12::FrameGraphBuilder frameGraphBuilder(mFrameGraph.get(), mSwapChain.get());
 
 	GBufferPass::Register(&frameGraphBuilder,   "GBuffer");
 	CopyImagePass::Register(&frameGraphBuilder, "CopyImage");
@@ -150,7 +150,7 @@ void D3D12::Renderer::CreateFrameGraph(uint32_t viewportWidth, uint32_t viewport
 
 	frameGraphBuilder.AssignBackbufferName("Backbuffer");
 
-	frameGraphBuilder.Build(mDevice.get(), mMemoryAllocator.get(), mSwapChain.get());
+	frameGraphBuilder.Build(mDevice.get(), mShaderManager.get(), mMemoryAllocator.get());
 
 	SceneDescriptorCreator      sceneDescriptorCreator(mScene.get());
 	FrameGraphDescriptorCreator frameGraphDescriptorCreator(mFrameGraph.get());

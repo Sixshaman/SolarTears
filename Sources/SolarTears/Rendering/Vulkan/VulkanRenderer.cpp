@@ -47,7 +47,7 @@ Vulkan::Renderer::Renderer(LoggerQueue* loggerQueue, FrameCounter* frameCounter,
 
 	mSwapChain = std::make_unique<SwapChain>(mLoggingBoard, mInstance, mDevice);
 
-	mCommandBuffers = std::make_unique<WorkerCommandBuffers>(mDevice, mThreadPoolRef->GetWorkerThreadCount(), mDeviceQueues.get());
+	mCommandBuffers = std::make_unique<WorkerCommandBuffers>(mDevice, mThreadPoolRef->GetWorkerThreadCount(), mDeviceQueues.get(), mSwapChain.get());
 
 	CreateFences();
 
@@ -145,7 +145,7 @@ void Vulkan::Renderer::CreateFrameGraph(uint32_t viewportWidth, uint32_t viewpor
 
 	mFrameGraph = std::make_unique<FrameGraph>(mDevice, frameGraphConfig);
 
-	FrameGraphBuilder frameGraphBuilder(mFrameGraph.get(), mDescriptorManager.get(), &mInstanceParameters, &mDeviceParameters, mShaderManager.get());
+	FrameGraphBuilder frameGraphBuilder(mFrameGraph.get(), mSwapChain.get());
 
 	GBufferPass::Register(&frameGraphBuilder, "GBuffer");
 	CopyImagePass::Register(&frameGraphBuilder, "CopyImage");
@@ -156,7 +156,7 @@ void Vulkan::Renderer::CreateFrameGraph(uint32_t viewportWidth, uint32_t viewpor
 
 	frameGraphBuilder.AssignBackbufferName("Backbuffer");
 
-	frameGraphBuilder.Build(mDeviceQueues.get(), mCommandBuffers.get(), mMemoryAllocator.get(), mSwapChain.get());
+	frameGraphBuilder.Build(&mInstanceParameters, &mDeviceParameters, mDescriptorManager.get(), mMemoryAllocator.get(), mShaderManager.get(), mDeviceQueues.get(), mCommandBuffers.get());
 }
 
 void Vulkan::Renderer::RenderScene()
@@ -174,7 +174,7 @@ void Vulkan::Renderer::RenderScene()
 	mSwapChain->AcquireImage(mDevice, currentFrameResourceIndex);
 
 	VkSemaphore postTraverseSemaphore = VK_NULL_HANDLE;
-	mFrameGraph->Traverse(mThreadPoolRef, mCommandBuffers.get(), mScene.get(), mDeviceQueues.get(), frameFence, currentFrameResourceIndex, currentSwapchainIndex, preTraverseSemaphore, &postTraverseSemaphore);
+	mFrameGraph->Traverse(mThreadPoolRef, mCommandBuffers.get(), mScene.get(), mDeviceQueues.get(), mSwapChain.get(), frameFence, currentFrameResourceIndex, currentSwapchainIndex, preTraverseSemaphore, &postTraverseSemaphore);
 
 	mSwapChain->Present(postTraverseSemaphore);
 }
