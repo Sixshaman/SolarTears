@@ -24,6 +24,7 @@ public:
 
 private:
 	void CreateScene();
+	void CreateFrameGraph(Window* window);
 
 private:
 	bool mPaused;

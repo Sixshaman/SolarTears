@@ -104,8 +104,6 @@ void Vulkan::Renderer::AttachToWindow(Window* window)
 	mCommandBuffers->CreatePresentCommandBuffers(mSwapChain.get());
 
 	InitializeSwapchainImages();
-
-	CreateFrameGraph(window->GetWidth(), window->GetHeight());
 }
 
 void Vulkan::Renderer::ResizeWindowBuffers(Window* window)
@@ -117,8 +115,6 @@ void Vulkan::Renderer::ResizeWindowBuffers(Window* window)
 	mSwapChain->Recreate(mPhysicalDevice, mInstanceParameters, mDeviceParameters, window);
 		
 	InitializeSwapchainImages();
-
-	CreateFrameGraph(window->GetWidth(), window->GetHeight());
 }
 
 void Vulkan::Renderer::InitScene(SceneDescription* sceneDescription)
@@ -138,13 +134,8 @@ void Vulkan::Renderer::InitScene(SceneDescription* sceneDescription)
 	sceneDescriptorCreator.RecreateSceneDescriptors(mDescriptorManager.get(), mShaderManager.get());
 }
 
-void Vulkan::Renderer::CreateFrameGraph(uint32_t viewportWidth, uint32_t viewportHeight)
+void Vulkan::Renderer::InitFrameGraph(const FrameGraphConfig& frameGraphConfig)
 {
-	mFrameGraph.reset();
-
-	FrameGraphConfig frameGraphConfig;
-	frameGraphConfig.SetScreenSize((uint16_t)viewportWidth, (uint16_t)viewportHeight);
-
 	mFrameGraph = std::make_unique<FrameGraph>(mDevice, frameGraphConfig);
 
 	FrameGraphBuilder frameGraphBuilder(mFrameGraph.get(), mSwapChain.get());

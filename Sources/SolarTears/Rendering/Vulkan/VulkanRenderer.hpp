@@ -35,6 +35,8 @@ namespace Vulkan
 		void InitScene(SceneDescription* sceneDescription) override;
 		void RenderScene()                                 override;
 
+		void InitFrameGraph(const FrameGraphConfig& frameGraphConfig) override;
+
 	private:
 		void InitInstance();
 		void SelectPhysicalDevice(VkPhysicalDevice* outPhysicalDevice);
@@ -43,8 +45,6 @@ namespace Vulkan
 
 	private:
 		void InitializeSwapchainImages();
-
-		void CreateFrameGraph(uint32_t viewportWidth, uint32_t viewportHeight);
 
 	private:
 		ThreadPool*         mThreadPoolRef;

@@ -4,6 +4,7 @@
 #include "Scene/SceneDescription.hpp"
 #include "Scene/Scene.hpp"
 #include "../Input/Inputter.hpp"
+#include "../Rendering/Common/FrameGraph/FrameGraphConfig.hpp"
 #include "../Rendering/Vulkan/VulkanRenderer.hpp"
 #include "../Rendering/D3D12/D3D12Renderer.hpp"
 #include "../Logging/LoggerQueue.hpp"
@@ -35,6 +36,8 @@ void Engine::BindToWindow(Window* window)
 	mRenderingSystem->AttachToWindow(window);
 	mInputSystem->AttachToWindow(window);
 
+	CreateFrameGraph(window);
+		
 	window->SetResizeCallbackUserPtr(this);
 
 	window->RegisterResizeStartedCallback([](Window* window, void* userObject)
@@ -49,6 +52,7 @@ void Engine::BindToWindow(Window* window)
 	{
 		Engine* that = reinterpret_cast<Engine*>(userObject);
 		that->mRenderingSystem->ResizeWindowBuffers(window);
+		that->CreateFrameGraph(window);
 		that->mPaused = false;
 	});
 }
@@ -139,4 +143,11 @@ void Engine::CreateScene()
 	mRenderingSystem->InitScene(&sceneDesc);
 
 	sceneDesc.BuildScene(mScene.get());
+}
+
+void Engine::CreateFrameGraph(Window* window)
+{
+	FrameGraphConfig frameGraphConfig;
+	frameGraphConfig.SetScreenSize((uint16_t)window->GetWidth(), (uint16_t)window->GetHeight());
+	mRenderingSystem->InitFrameGraph(frameGraphConfig);
 }

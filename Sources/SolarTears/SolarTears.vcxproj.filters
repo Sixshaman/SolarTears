@@ -109,6 +109,9 @@
     <Filter Include="Rendering\Common\Scene">
       <UniqueIdentifier>{7c0f8120-5022-4610-8845-7801a1d2affc}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Rendering\Common\FrameGraph\Passes">
+      <UniqueIdentifier>{a634bc32-c40b-449f-bc51-2ba19ac989c2}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Platform\Win32\Win32Application.hpp">

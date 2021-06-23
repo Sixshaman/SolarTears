@@ -35,14 +35,14 @@ namespace D3D12
 		void InitScene(SceneDescription* sceneDescription) override;
 		void RenderScene()                                 override;
 
+		void InitFrameGraph(const FrameGraphConfig& frameGraphConfig) override;
+
 	private:
 		void CreateFactory();
 		void CreateAdapter(IDXGIAdapter4** outAdapter);
 
 		void EnableDebugMode();
 		void CreateDevice(IDXGIAdapter4* adapter);
-
-		void CreateFrameGraph(uint32_t viewportWidth, uint32_t viewportHeight);
 
 	private:
 		ThreadPool*         mThreadPoolRef;

@@ -16,6 +16,8 @@
 	(The end) 
 */
 
+class FrameGraphConfig;
+
 class Renderer
 {
 public: 
@@ -27,6 +29,8 @@ public:
 
 	virtual void InitScene(SceneDescription* scene) = 0;
 	virtual void RenderScene()                      = 0;
+
+	virtual void InitFrameGraph(const FrameGraphConfig& frameGraphConfig) = 0;
 
 protected:
 	LoggerQueue* mLoggingBoard;
