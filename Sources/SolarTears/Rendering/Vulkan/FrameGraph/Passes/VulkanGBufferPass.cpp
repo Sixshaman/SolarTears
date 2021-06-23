@@ -52,6 +52,7 @@ void Vulkan::GBufferPass::Register(FrameGraphBuilder* frameGraphBuilder, const s
 	frameGraphBuilder->SetPassSubresourceStageFlags(passName, ColorBufferImageId, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
 	frameGraphBuilder->SetPassSubresourceLayout(passName, ColorBufferImageId, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 	frameGraphBuilder->SetPassSubresourceUsage(passName, ColorBufferImageId, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+	frameGraphBuilder->SetPassSubresourceAccessFlags(passName, ColorBufferImageId, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
 }
 
 void Vulkan::GBufferPass::RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig) const
