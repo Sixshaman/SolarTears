@@ -493,6 +493,11 @@ void ModernFrameGraphBuilder::BuildPassObjects()
 			}
 		}
 	}
+
+	ModernFrameGraph::RenderPassSpanInfo presentPassSpanInfo;
+	presentPassSpanInfo.PassSpanBegin = NextPassSpanId();
+	presentPassSpanInfo.OwnFrames     = 0;
+	mGraphToBuild->mPassFrameSpans.push_back(presentPassSpanInfo);
 }
 
 void ModernFrameGraphBuilder::BuildBarriers()
@@ -512,14 +517,15 @@ void ModernFrameGraphBuilder::BuildBarriers()
 
 uint32_t ModernFrameGraphBuilder::BuildPassBarriers(const RenderPassName& passName, uint32_t barrierOffset, ModernFrameGraph::BarrierSpan* outBarrierSpan)
 {
-	const auto& nameIdMap = mRenderPassesSubresourceNameIds.at(passName);
+	const auto& nameIdMap   = mRenderPassesSubresourceNameIds.at(passName);
+	const auto& metadataMap = mRenderPassesSubresourceMetadatas.at(passName);
 
-	std::vector<SubresourceMetadataNode*> passMetadatasForBeforeBarriers;
-	std::vector<SubresourceMetadataNode*> passMetadatasForAfterBarriers;
+	std::vector<const SubresourceMetadataNode*> passMetadatasForBeforeBarriers;
+	std::vector<const SubresourceMetadataNode*> passMetadatasForAfterBarriers;
 	for(auto& subresourceNameId: nameIdMap)
 	{
-		SubresourceMetadataNode& subresourceMetadata = mRenderPassesSubresourceMetadatas.at(passName).at(subresourceNameId.second);
-			
+		const SubresourceMetadataNode& subresourceMetadata = metadataMap.at(subresourceNameId.second);
+	
 		if(!(subresourceMetadata.Flags & TextureFlagAutoBeforeBarrier) && !(subresourceMetadata.PrevPassNode->Flags & TextureFlagAutoAfterBarrier))
 		{
 			passMetadatasForBeforeBarriers.push_back(&subresourceMetadata);
@@ -537,7 +543,7 @@ uint32_t ModernFrameGraphBuilder::BuildPassBarriers(const RenderPassName& passNa
 	ModernFrameGraph::BarrierSpan barrierSpan;
 	barrierSpan.BeforePassBegin = barrierOffset + passBarrierCount;
 
-	for(SubresourceMetadataNode* subresourceMetadata: passMetadatasForBeforeBarriers)
+	for(const SubresourceMetadataNode* subresourceMetadata: passMetadatasForBeforeBarriers)
 	{
 		SubresourceMetadataNode* prevSubresourceMetadata = subresourceMetadata->PrevPassNode;
 			
@@ -561,7 +567,7 @@ uint32_t ModernFrameGraphBuilder::BuildPassBarriers(const RenderPassName& passNa
 	barrierSpan.BeforePassEnd  = barrierOffset + passBarrierCount;
 	barrierSpan.AfterPassBegin = barrierOffset + passBarrierCount;
 
-	for(SubresourceMetadataNode* subresourceMetadata: passMetadatasForBeforeBarriers)
+	for(const SubresourceMetadataNode* subresourceMetadata: passMetadatasForBeforeBarriers)
 	{
 		SubresourceMetadataNode* nextSubresourceMetadata = subresourceMetadata->NextPassNode;
 			
@@ -693,7 +699,14 @@ void ModernFrameGraphBuilder::PropagateMetadatasInResource(const TextureResource
 
 	do
 	{
-		if(ValidateSubresourceViewParameters(currentNode))
+		SubresourceMetadataNode* prevPassNode = currentNode->PrevPassNode;
+
+		//Frame count for all nodes should be the same. As for calculating the value, we can do it
+		//two ways: with max or with lcm. Since it's only related to a single resource, swapping 
+		//can be made as fine with 3 ping-pong data as with 2. So max will suffice
+		currentNode->FrameCount = std::max(currentNode->FrameCount, prevPassNode->FrameCount);
+
+		if(ValidateSubresourceViewParameters(currentNode, prevPassNode))
 		{
 			//Reset the head node if propagation succeeded. This means the further propagation all the way may be needed
 			headNode = currentNode;

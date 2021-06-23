@@ -96,7 +96,7 @@ namespace Vulkan
 		uint32_t NextPassSpanId() override final;
 
 		//Propagates subresource info (format, access flags, etc.) to a node from the previous one. Also initializes view key. Returns true if propagation succeeded or wasn't needed
-		bool ValidateSubresourceViewParameters(SubresourceMetadataNode* node) override final;
+		bool ValidateSubresourceViewParameters(SubresourceMetadataNode* currNode, SubresourceMetadataNode* prevNode) override final;
 
 		//Allocates the storage for image views defined by sort keys
 		void AllocateImageViews(const std::vector<uint64_t>& sortKeys, uint32_t frameCount, std::vector<uint32_t>& outViewIds) override final;

@@ -153,7 +153,7 @@ protected:
 	virtual uint32_t NextPassSpanId() = 0;
 
 	//Propagates info (format, access flags, etc.) from one SubresourceInfo to another. Returns true if propagation succeeded or wasn't needed
-	virtual bool ValidateSubresourceViewParameters(SubresourceMetadataNode* node) = 0;
+	virtual bool ValidateSubresourceViewParameters(SubresourceMetadataNode* currNode, SubresourceMetadataNode* prevNode) = 0;
 		
 	//Allocates the storage for image views defined by sort keys
 	virtual void AllocateImageViews(const std::vector<uint64_t>& sortKeys, uint32_t frameCount, std::vector<uint32_t>& outViewIds) = 0;

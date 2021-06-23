@@ -55,6 +55,9 @@ namespace D3D12
 		void Build(ID3D12Device8* device, const ShaderManager* shaderManager, const MemoryManager* memoryManager);
 
 	private:
+		D3D12_COMMAND_LIST_TYPE PassTypeToListType(RenderPassType passType);
+
+	private:
 		//Creates a new subresource info record
 		uint32_t AddSubresourceMetadata() override final;
 
@@ -68,7 +71,7 @@ namespace D3D12
 		uint32_t NextPassSpanId() override final;
 
 		//Propagates subresource info (format, access flags, etc.) to a node from the previous one. Also initializes view key. Returns true if propagation succeeded or wasn't needed
-		bool ValidateSubresourceViewParameters(SubresourceMetadataNode* node) override final;
+		bool ValidateSubresourceViewParameters(SubresourceMetadataNode* currNode, SubresourceMetadataNode* prevNode) override final;
 
 		//Allocates the storage for image views defined by sort keys
 		void AllocateImageViews(const std::vector<uint64_t>& sortKeys, uint32_t frameCount, std::vector<uint32_t>& outViewIds) override final;

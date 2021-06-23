@@ -71,7 +71,5 @@ namespace Vulkan
 
 		VkBuffer       mIntermediateBuffer;
 		VkDeviceMemory mIntermediateBufferMemory;
-
-		VkSemaphore mGraphicsQueueSemaphore;
 	};
 }

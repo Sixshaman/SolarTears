@@ -40,9 +40,9 @@ uint32_t Vulkan::WorkerCommandBuffers::GetWorkerThreadCount() const
 void Vulkan::WorkerCommandBuffers::InitCommandBuffers(uint32_t graphicsQueueFamilyIndex, uint32_t computeQueueFamilyIndex, uint32_t transferQueueFamilyIndex)
 {
 	//Always initialize different buffers, even if hardware doesn't have separate compute/graphics queues.
-	//That's to have the same logic in frame graphs with different queue types
-	std::unordered_set<uint32_t> queues = {graphicsQueueFamilyIndex, computeQueueFamilyIndex, transferQueueFamilyIndex};
-	mSeparateQueueCount                 = (uint32_t)queues.size();
+	//That's to have the same logic in frame graphs with different queue types, without fear of submitting cross-queue
+	std::vector<uint32_t> queues = {graphicsQueueFamilyIndex, computeQueueFamilyIndex, transferQueueFamilyIndex};
+	mSeparateQueueCount          = (uint32_t)queues.size();
 
 	//1 for each worker thread plus 1 for the main thread per queue per frame
 	for(uint32_t t = 0; t < mWorkerThreadCount + 1; t++)
@@ -56,6 +56,26 @@ void Vulkan::WorkerCommandBuffers::InitCommandBuffers(uint32_t graphicsQueueFami
 
 				VkCommandBuffer commandBuffer = CreateCommandBuffer(commandPool);
 				mCommandBuffers.push_back(commandBuffer);
+
+
+#if defined(DEBUG) || defined(_DEBUG)
+				std::string threadName = (t < mWorkerThreadCount) ? "WorkerThread" + std::to_string(t) : "MainThread";
+				if(queueFamilyIndex == graphicsQueueFamilyIndex)
+				{
+					VulkanUtils::SetDebugObjectName(mDeviceRef, commandPool,   "GraphicsCommandPool-"   + threadName + "-Frame" + std::to_string(f));
+					VulkanUtils::SetDebugObjectName(mDeviceRef, commandBuffer, "GraphicsCommandBuffer-" + threadName + "-Frame" + std::to_string(f));
+				}
+				else if(queueFamilyIndex == computeQueueFamilyIndex)
+				{
+					VulkanUtils::SetDebugObjectName(mDeviceRef, commandPool,   "ComputeCommandPool-"   + threadName + "-Frame" + std::to_string(f));
+					VulkanUtils::SetDebugObjectName(mDeviceRef, commandBuffer, "ComputeCommandBuffer-" + threadName + "-Frame" + std::to_string(f));
+				}
+				else if(queueFamilyIndex == transferQueueFamilyIndex)
+				{
+					VulkanUtils::SetDebugObjectName(mDeviceRef, commandPool,   "TransferCommandPool-"   + threadName + "-Frame" + std::to_string(f));
+					VulkanUtils::SetDebugObjectName(mDeviceRef, commandBuffer, "TransferCommandBuffer-" + threadName + "-Frame" + std::to_string(f));
+				}
+#endif
 			}
 		}
 	}
@@ -74,9 +94,10 @@ void Vulkan::WorkerCommandBuffers::InitCommandBuffers(uint32_t graphicsQueueFami
 		mCommandBuffers.push_back(VK_NULL_HANDLE);
 	}
 
-	mCommandBufferIndexForGraphics = (uint32_t)std::distance(queues.begin(), queues.find(graphicsQueueFamilyIndex));
-	mCommandBufferIndexForCompute  = (uint32_t)std::distance(queues.begin(), queues.find(computeQueueFamilyIndex));
-	mCommandBufferIndexForTransfer = (uint32_t)std::distance(queues.begin(), queues.find(transferQueueFamilyIndex));
+
+	mCommandBufferIndexForGraphics = 0;
+	mCommandBufferIndexForCompute  = 1;
+	mCommandBufferIndexForTransfer = 2;
 }
 
 void Vulkan::WorkerCommandBuffers::InitPresentQueueCommandBuffers(uint32_t presentQueueFamilyIndex)
@@ -93,6 +114,12 @@ void Vulkan::WorkerCommandBuffers::InitPresentQueueCommandBuffers(uint32_t prese
 
 		VkCommandBuffer commandBuffer = CreateCommandBuffer(commandPool);
 		mCommandBuffers[acquireBufferIndex] = commandBuffer;
+
+
+#if defined(DEBUG) || defined(_DEBUG)
+		VulkanUtils::SetDebugObjectName(mDeviceRef, commandPool,   "AcquireCommandPool-Frame"   + std::to_string(f));
+		VulkanUtils::SetDebugObjectName(mDeviceRef, commandBuffer, "AcquireCommandBuffer-Frame" + std::to_string(f));
+#endif
 	}
 
 	//Buffers for present pass
@@ -107,6 +134,12 @@ void Vulkan::WorkerCommandBuffers::InitPresentQueueCommandBuffers(uint32_t prese
 
 		VkCommandBuffer commandBuffer = CreateCommandBuffer(commandPool);
 		mCommandBuffers[presentBufferIndex] = commandBuffer;
+
+
+#if defined(DEBUG) || defined(_DEBUG)
+		VulkanUtils::SetDebugObjectName(mDeviceRef, commandPool,   "PresentCommandPool-Frame"   + std::to_string(f));
+		VulkanUtils::SetDebugObjectName(mDeviceRef, commandBuffer, "PresentCommandBuffer-Frame" + std::to_string(f));
+#endif
 	}
 }
 

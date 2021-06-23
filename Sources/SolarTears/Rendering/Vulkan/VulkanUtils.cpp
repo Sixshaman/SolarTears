@@ -6,6 +6,24 @@
 #include <fstream>
 #include <cinttypes>
 
+static inline void SetDebugObjectNameHandle(const VkDevice device, VkObjectType objectType, uint64_t handle, const std::string_view name)
+{
+    #ifdef VK_EXT_debug_utils
+    VkDebugUtilsObjectNameInfoEXT imageNameInfo;
+	imageNameInfo.sType        = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+	imageNameInfo.pNext        = nullptr;
+	imageNameInfo.objectType   = objectType;
+	imageNameInfo.objectHandle = handle;
+	imageNameInfo.pObjectName  = name.data();
+
+	ThrowIfFailed(vkSetDebugUtilsObjectNameEXT(device, &imageNameInfo));
+
+#else
+    UNREFERENCED_PARAMETER(image);
+    UNREFERENCED_PARAMETER(name);
+#endif
+}
+
 Vulkan::VulkanUtils::VkException::VkException(VkResult res, const std::wstring& funcionName, const std::wstring& filename, int lineNumber): ErrorCode(res), FunctionName(funcionName), Filename(filename), LineNumber(lineNumber)
 {
 }
@@ -42,20 +60,17 @@ void Vulkan::VulkanUtils::LoadShaderModuleFromFile(const std::wstring& filename,
 
 void Vulkan::VulkanUtils::SetDebugObjectName(const VkDevice device, VkImage image, const std::string_view name)
 {
-#ifdef VK_EXT_debug_utils
-    VkDebugUtilsObjectNameInfoEXT imageNameInfo;
-	imageNameInfo.sType        = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
-	imageNameInfo.pNext        = nullptr;
-	imageNameInfo.objectType   = VK_OBJECT_TYPE_IMAGE;
-	imageNameInfo.objectHandle = reinterpret_cast<uint64_t>(image);
-	imageNameInfo.pObjectName  = name.data();
+    SetDebugObjectNameHandle(device, VK_OBJECT_TYPE_IMAGE, reinterpret_cast<uint64_t>(image), name);
+}
 
-	ThrowIfFailed(vkSetDebugUtilsObjectNameEXT(device, &imageNameInfo));
+void Vulkan::VulkanUtils::SetDebugObjectName(const VkDevice device, VkCommandBuffer commandBuffer, const std::string_view name)
+{
+    SetDebugObjectNameHandle(device, VK_OBJECT_TYPE_COMMAND_BUFFER, reinterpret_cast<uint64_t>(commandBuffer), name);
+}
 
-#else
-    UNREFERENCED_PARAMETER(image);
-    UNREFERENCED_PARAMETER(name);
-#endif
+void Vulkan::VulkanUtils::SetDebugObjectName(const VkDevice device, VkCommandPool commandPool, const std::string_view name)
+{
+    SetDebugObjectNameHandle(device, VK_OBJECT_TYPE_COMMAND_POOL, reinterpret_cast<uint64_t>(commandPool), name);
 }
 
 VkBool32 Vulkan::VulkanUtils::DebugReportCCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType, uint64_t object, size_t location, int32_t messageCode, const char* pLayerPrefix, const char* pMessage, void* pUserData)

@@ -305,8 +305,8 @@ void Vulkan::Renderer::CreateFences()
 
 void Vulkan::Renderer::InitializeSwapchainImages()
 {
-	VkCommandBuffer commandBuffer = mCommandBuffers->GetMainThreadGraphicsCommandBuffer(0);
-	VkCommandPool   commandPool   = mCommandBuffers->GetMainThreadComputeCommandPool(0);
+	VkCommandBuffer commandBuffer = mCommandBuffers->GetMainThreadPresentCommandBuffer(0);
+	VkCommandPool   commandPool   = mCommandBuffers->GetMainThreadPresentCommandPool(0);
 
 	ThrowIfFailed(vkResetCommandPool(mDevice, commandPool, 0));
 

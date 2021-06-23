@@ -132,7 +132,8 @@ void D3D12::FrameGraph::RecordGraphicsPasses(ID3D12GraphicsCommandList6* command
 	{
 		const RenderPassSpanInfo passSpanInfo = mPassFrameSpans[passSpanIndex];
 
-		uint32_t renderPassFrame = passSpanInfo.OwnFrames * swapchainImageIndex + frameIndex % passSpanInfo.OwnFrames;
+		uint32_t totalPassFrames = mPassFrameSpans[passSpanIndex + 1].PassSpanBegin - passSpanInfo.PassSpanBegin; //The number passSpanIndex + 1 is always a valid index because the present pass, which is always last, is never accessed there
+		uint32_t renderPassFrame = passSpanInfo.OwnFrames * swapchainImageIndex * (passSpanInfo.OwnFrames != totalPassFrames) + frameIndex % passSpanInfo.OwnFrames;
 		uint32_t renderPassIndex = passSpanInfo.PassSpanBegin + renderPassFrame;
 
 		BarrierSpan barrierSpan            = mRenderPassBarriers[passSpanIndex];

@@ -380,7 +380,14 @@ void Vulkan::FrameGraphBuilder::CreateTextures(const std::vector<TextureResource
 #if defined(DEBUG) || defined(_DEBUG)
 			if(mInstanceParameters->IsDebugUtilsExtensionEnabled())
 			{
-				VulkanUtils::SetDebugObjectName(mVulkanGraphToBuild->mDeviceRef, image, textureCreateInfo.Name);
+				if(textureCreateInfo.MetadataHead->FrameCount == 1)
+				{
+					VulkanUtils::SetDebugObjectName(mVulkanGraphToBuild->mDeviceRef, image, textureCreateInfo.Name);
+				}
+				else
+				{
+					VulkanUtils::SetDebugObjectName(mVulkanGraphToBuild->mDeviceRef, image, std::string(textureCreateInfo.Name) + std::to_string(frame));
+				}
 			}
 #endif
 
@@ -414,7 +421,7 @@ void Vulkan::FrameGraphBuilder::CreateTextures(const std::vector<TextureResource
 			VkImage swapchainImage = mSwapChain->GetSwapchainImage(frame);
 
 #if defined(DEBUG) || defined(_DEBUG)
-			VulkanUtils::SetDebugObjectName(mVulkanGraphToBuild->mDeviceRef, swapchainImage, mBackbufferName);
+			VulkanUtils::SetDebugObjectName(mVulkanGraphToBuild->mDeviceRef, swapchainImage, mBackbufferName + std::to_string(frame));
 #endif
 
 			VkImageMemoryBarrier imageBarrier;
@@ -474,7 +481,7 @@ void Vulkan::FrameGraphBuilder::CreateTextures(const std::vector<TextureResource
 
 	std::array<VkMemoryBarrier,       0> memoryBarriers;
 	std::array<VkBufferMemoryBarrier, 0> bufferBarriers;
-	vkCmdPipelineBarrier(graphicsCommandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0,
+	vkCmdPipelineBarrier(graphicsCommandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0,
 		                 (uint32_t)memoryBarriers.size(),            memoryBarriers.data(),
 		                 (uint32_t)bufferBarriers.size(),            bufferBarriers.data(),
 		                 (uint32_t)imageInitialStateBarriers.size(), imageInitialStateBarriers.data());
@@ -524,10 +531,10 @@ uint32_t Vulkan::FrameGraphBuilder::NextPassSpanId()
 	return (uint32_t)mVulkanGraphToBuild->mRenderPasses.size();
 }
 
-bool Vulkan::FrameGraphBuilder::ValidateSubresourceViewParameters(SubresourceMetadataNode* node)
+bool Vulkan::FrameGraphBuilder::ValidateSubresourceViewParameters(SubresourceMetadataNode* currNode, SubresourceMetadataNode* prevNode)
 {
-	SubresourceInfo& prevPassSubresourceInfo = mSubresourceInfos[node->PrevPassNode->SubresourceInfoIndex];
-	SubresourceInfo& thisPassSubresourceInfo = mSubresourceInfos[node->SubresourceInfoIndex];
+	SubresourceInfo& prevPassSubresourceInfo = mSubresourceInfos[prevNode->SubresourceInfoIndex];
+	SubresourceInfo& thisPassSubresourceInfo = mSubresourceInfos[currNode->SubresourceInfoIndex];
 	
 	bool dataPropagated = false;
 	if(thisPassSubresourceInfo.Format == VK_FORMAT_UNDEFINED && prevPassSubresourceInfo.Format != VK_FORMAT_UNDEFINED)
@@ -544,7 +551,7 @@ bool Vulkan::FrameGraphBuilder::ValidateSubresourceViewParameters(SubresourceMet
 		dataPropagated = true;
 	}
 
-	if(node->PassType == node->PrevPassNode->PassType && thisPassSubresourceInfo.Layout == prevPassSubresourceInfo.Layout && thisPassSubresourceInfo.Access != prevPassSubresourceInfo.Access)
+	if(PassTypeToQueueIndex(currNode->PassType) == PassTypeToQueueIndex(prevNode->PassType) && thisPassSubresourceInfo.Layout == prevPassSubresourceInfo.Layout && thisPassSubresourceInfo.Access != prevPassSubresourceInfo.Access)
 	{
 		thisPassSubresourceInfo.Access |= prevPassSubresourceInfo.Access;
 		prevPassSubresourceInfo.Access |= thisPassSubresourceInfo.Access;
@@ -560,7 +567,7 @@ bool Vulkan::FrameGraphBuilder::ValidateSubresourceViewParameters(SubresourceMet
 		dataPropagated = true;
 	}
 
-	node->ViewSortKey = ((uint64_t)thisPassSubresourceInfo.Aspect << 32) | (uint32_t)thisPassSubresourceInfo.Format;
+	currNode->ViewSortKey = ((uint64_t)thisPassSubresourceInfo.Aspect << 32) | (uint32_t)thisPassSubresourceInfo.Format;
 	return dataPropagated;
 }
 

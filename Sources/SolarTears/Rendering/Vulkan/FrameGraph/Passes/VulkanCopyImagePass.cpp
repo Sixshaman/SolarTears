@@ -28,12 +28,14 @@ void Vulkan::CopyImagePass::Register(FrameGraphBuilder* frameGraphBuilder, const
 	frameGraphBuilder->SetPassSubresourceStageFlags(passName, SrcImageId, VK_PIPELINE_STAGE_TRANSFER_BIT);
 	frameGraphBuilder->SetPassSubresourceLayout(passName, SrcImageId, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 	frameGraphBuilder->SetPassSubresourceUsage(passName, SrcImageId, VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+	frameGraphBuilder->SetPassSubresourceAccessFlags(passName, SrcImageId, VK_ACCESS_TRANSFER_READ_BIT);
 
 	frameGraphBuilder->RegisterWriteSubresource(passName, DstImageId);
 	frameGraphBuilder->SetPassSubresourceAspectFlags(passName, DstImageId, 0);
 	frameGraphBuilder->SetPassSubresourceStageFlags(passName, DstImageId, VK_PIPELINE_STAGE_TRANSFER_BIT);
 	frameGraphBuilder->SetPassSubresourceLayout(passName, DstImageId, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 	frameGraphBuilder->SetPassSubresourceUsage(passName, DstImageId, VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+	frameGraphBuilder->SetPassSubresourceAccessFlags(passName, DstImageId, VK_ACCESS_TRANSFER_WRITE_BIT);
 }
 
 Vulkan::CopyImagePass::~CopyImagePass()

@@ -415,10 +415,10 @@ uint32_t D3D12::FrameGraphBuilder::NextPassSpanId()
 	return (uint32_t)mD3d12GraphToBuild->mRenderPasses.size();
 }
 
-bool D3D12::FrameGraphBuilder::ValidateSubresourceViewParameters(SubresourceMetadataNode* node)
+bool D3D12::FrameGraphBuilder::ValidateSubresourceViewParameters(SubresourceMetadataNode* currNode, SubresourceMetadataNode* prevNode)
 {
-	SubresourceInfo& prevPassSubresourceInfo = mSubresourceInfos[node->PrevPassNode->SubresourceInfoIndex];
-	SubresourceInfo& thisPassSubresourceInfo = mSubresourceInfos[node->SubresourceInfoIndex];
+	SubresourceInfo& prevPassSubresourceInfo = mSubresourceInfos[prevNode->SubresourceInfoIndex];
+	SubresourceInfo& thisPassSubresourceInfo = mSubresourceInfos[currNode->SubresourceInfoIndex];
 
 	bool dataPropagated = false;
 
@@ -439,7 +439,7 @@ bool D3D12::FrameGraphBuilder::ValidateSubresourceViewParameters(SubresourceMeta
 
 			dataPropagated = true;
 		}
-		else if (node->PrevPassNode->PassType == node->PassType) //Queue hasn't changed => ExecuteCommandLists wasn't called => No decay happened
+		else if(PassTypeToListType(prevNode->PassType) == PassTypeToListType(currNode->PassType)) //Queue hasn't changed => ExecuteCommandLists wasn't called => No decay happened
 		{
 			if (prevPassSubresourceInfo.State == thisPassSubresourceInfo.State) //Propagation of state promotion
 			{
@@ -470,7 +470,7 @@ bool D3D12::FrameGraphBuilder::ValidateSubresourceViewParameters(SubresourceMeta
 	const uint32_t stateKey  = (uint32_t)thisPassSubresourceInfo.State & (srvStateMask | uavStateMask | rtvStateMask | dsvStateMask); //Other states are not needed for separate views (i.e. descriptors)
 	const uint32_t formatKey = (uint32_t)thisPassSubresourceInfo.Format * (stateKey != 0); //Creating the view is only needed if the state is descriptorable
 
-	node->ViewSortKey = ((uint64_t)stateKey << 32) | formatKey;
+	currNode->ViewSortKey = ((uint64_t)stateKey << 32) | formatKey;
 
 	return dataPropagated; //Only the format should be propagated. But if common promotion flag has changed, the propagation has to start again
 }
@@ -810,4 +810,25 @@ void D3D12::FrameGraphBuilder::InitializeTraverseData() const
 uint32_t D3D12::FrameGraphBuilder::GetSwapchainImageCount() const
 {
 	return mSwapChain->SwapchainImageCount;
+}
+
+D3D12_COMMAND_LIST_TYPE D3D12::FrameGraphBuilder::PassTypeToListType(RenderPassType passType)
+{
+	switch (passType)
+	{
+	case RenderPassType::Graphics:
+		return D3D12_COMMAND_LIST_TYPE_DIRECT;
+
+	case RenderPassType::Compute:
+		return D3D12_COMMAND_LIST_TYPE_COMPUTE;
+
+	case RenderPassType::Transfer:
+		return D3D12_COMMAND_LIST_TYPE_COPY;
+
+	case RenderPassType::Present:
+		return D3D12_COMMAND_LIST_TYPE_DIRECT;
+
+	default:
+		return D3D12_COMMAND_LIST_TYPE_DIRECT;
+	}
 }

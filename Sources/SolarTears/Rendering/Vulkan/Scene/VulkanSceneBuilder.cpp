@@ -20,27 +20,15 @@ Vulkan::RenderableSceneBuilder::RenderableSceneBuilder(RenderableScene* sceneToB
 	mIntermediateBuffer        = VK_NULL_HANDLE;
 	mIntermediateBufferMemory  = VK_NULL_HANDLE;
 
-	mGraphicsQueueSemaphore = VK_NULL_HANDLE;
-
 	DDSTextureLoaderVk::SetVkCreateImageFuncPtr(vkCreateImage);
 
 	mTexturePlacementAlignment = 1;
-
-
-	VkSemaphoreCreateInfo graphicsQueueSemaphoreCreateInfo;
-	graphicsQueueSemaphoreCreateInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-	graphicsQueueSemaphoreCreateInfo.pNext = nullptr;
-	graphicsQueueSemaphoreCreateInfo.flags = 0;
-
-	ThrowIfFailed(vkCreateSemaphore(mVulkanSceneToBuild->mDeviceRef, &graphicsQueueSemaphoreCreateInfo, nullptr, &mGraphicsQueueSemaphore));
 }
 
 Vulkan::RenderableSceneBuilder::~RenderableSceneBuilder()
 {
 	SafeDestroyObject(vkDestroyBuffer, mVulkanSceneToBuild->mDeviceRef, mIntermediateBuffer);
 	SafeDestroyObject(vkFreeMemory,    mVulkanSceneToBuild->mDeviceRef, mIntermediateBufferMemory);
-
-	SafeDestroyObject(vkDestroySemaphore, mVulkanSceneToBuild->mDeviceRef, mGraphicsQueueSemaphore);
 }
 
 void Vulkan::RenderableSceneBuilder::PreCreateVertexBuffer(size_t vertexDataSize)
@@ -355,7 +343,7 @@ void Vulkan::RenderableSceneBuilder::WriteInitializationCommands() const
 void Vulkan::RenderableSceneBuilder::SubmitInitializationCommands() const
 {
 	VkCommandBuffer graphicsCommandBuffer = mWorkerCommandBuffers->GetMainThreadGraphicsCommandBuffer(0);
-	mDeviceQueues->GraphicsQueueSubmit(graphicsCommandBuffer, mGraphicsQueueSemaphore, VK_PIPELINE_STAGE_TRANSFER_BIT);
+	mDeviceQueues->GraphicsQueueSubmit(graphicsCommandBuffer);
 }
 
 void Vulkan::RenderableSceneBuilder::WaitForInitializationCommands() const
