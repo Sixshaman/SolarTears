@@ -7,13 +7,7 @@
 
 ModernFrameGraphBuilder::ModernFrameGraphBuilder(ModernFrameGraph* graphToBuild): mGraphToBuild(graphToBuild)
 {
-	//Create present quasi-pass
-	std::string presentPassName(PresentPassName);
-
-	mRenderPassTypes[presentPassName] = RenderPassType::Present;
-
-	RegisterWriteSubresource(PresentPassName, BackbufferPresentPassId);
-	RegisterReadSubresource(PresentPassName,  BackbufferPresentPassId);
+	CreatePresentPass();
 }
 
 ModernFrameGraphBuilder::~ModernFrameGraphBuilder()
@@ -119,7 +113,7 @@ void ModernFrameGraphBuilder::AssignBackbufferName(const std::string_view backbu
 		presentAcquireMetadataNode.FirstFrameViewHandle = (uint32_t)(-1);
 		presentAcquireMetadataNode.FrameCount           = GetSwapchainImageCount();
 		presentAcquireMetadataNode.Flags                = 0;
-		presentAcquireMetadataNode.PassType             = RenderPassType::Graphics;
+		presentAcquireMetadataNode.PassType             = RenderPassType::Present;
 
 		presentPassMetadataMap[backbufferIdString] = presentAcquireMetadataNode;
 	}
@@ -188,6 +182,23 @@ const FrameGraphConfig* ModernFrameGraphBuilder::GetConfig() const
 const Span<uint32_t> ModernFrameGraphBuilder::GetBackbufferImageSpan() const
 {
 	return mGraphToBuild->mBackbufferImageSpan;
+}
+
+void ModernFrameGraphBuilder::CreatePresentPass()
+{
+	//Create present quasi-pass
+	RenderPassName presentPassName(PresentPassName);
+	SubresourceId  backbufferId(BackbufferPresentPassId);
+
+	mRenderPassTypes[presentPassName] = RenderPassType::Present;
+
+	mRenderPassesReadSubresourceIds[presentPassName] = std::unordered_set<SubresourceId>();
+	mRenderPassesReadSubresourceIds[presentPassName].insert(backbufferId);
+
+	mRenderPassesWriteSubresourceIds[presentPassName] = std::unordered_set<SubresourceId>();
+	mRenderPassesWriteSubresourceIds[presentPassName].insert(backbufferId);
+
+	mRenderPassesSubresourceMetadatas[presentPassName] = std::unordered_map<SubresourceId, SubresourceMetadataNode>();
 }
 
 void ModernFrameGraphBuilder::BuildAdjacencyList(std::unordered_map<RenderPassName, std::unordered_set<RenderPassName>>& adjacencyList)
@@ -292,7 +303,7 @@ void ModernFrameGraphBuilder::BuildDependencyLevels()
 		//Async compute passes should be in the end of the frame. BUT! They should be executed AT THE START of THE PREVIOUS frame. Need to reorder stuff for that
 		RenderPassName renderPassName = mRenderPassNames[renderPassNameIndex];
 
-		mRenderPassTypes[renderPassName] = RenderPassType::Compute;
+		mRenderPassTypes[renderPassName] = RenderPassType::Graphics;
 		renderPassNameIndex--;
 	}
 
@@ -509,12 +520,12 @@ uint32_t ModernFrameGraphBuilder::BuildPassBarriers(const RenderPassName& passNa
 	{
 		SubresourceMetadataNode& subresourceMetadata = mRenderPassesSubresourceMetadatas.at(passName).at(subresourceNameId.second);
 			
-		if(!(subresourceMetadata.Flags & TextureFlagAutoBeforeBarrier))
+		if(!(subresourceMetadata.Flags & TextureFlagAutoBeforeBarrier) && !(subresourceMetadata.PrevPassNode->Flags & TextureFlagAutoAfterBarrier))
 		{
 			passMetadatasForBeforeBarriers.push_back(&subresourceMetadata);
 		}
 
-		if(!(subresourceMetadata.Flags & TextureFlagAutoAfterBarrier))
+		if(!(subresourceMetadata.Flags & TextureFlagAutoAfterBarrier) && !(subresourceMetadata.NextPassNode->Flags & TextureFlagAutoBeforeBarrier))
 		{
 			passMetadatasForAfterBarriers.push_back(&subresourceMetadata);
 		}
@@ -615,8 +626,8 @@ void ModernFrameGraphBuilder::BuildResourceCreateInfos(std::vector<TextureResour
 
 		for(const auto& nameId: nameIdMap)
 		{
-			const SubresourceName subresourceName = nameId.first;
-			const SubresourceId   subresourceId   = nameId.second;
+			const SubresourceName& subresourceName = nameId.first;
+			const SubresourceId&   subresourceId   = nameId.second;
 
 			if(!processedSubresourceNames.contains(subresourceName))
 			{
@@ -625,6 +636,7 @@ void ModernFrameGraphBuilder::BuildResourceCreateInfos(std::vector<TextureResour
 				textureCreateInfo.MetadataHead = &metadataMap.at(subresourceId);
 
 				outTextureCreateInfos.push_back(textureCreateInfo);
+				processedSubresourceNames.insert(subresourceName);
 			}
 		}
 	}
@@ -681,9 +693,9 @@ void ModernFrameGraphBuilder::PropagateMetadatasInResource(const TextureResource
 
 	do
 	{
-		if(!ValidateSubresourceViewParameters(currentNode))
+		if(ValidateSubresourceViewParameters(currentNode))
 		{
-			//Reset the head node if propagation failed. This may happen if the current pass doesn't know some info about the resource and needs it to be propagated from the pass before
+			//Reset the head node if propagation succeeded. This means the further propagation all the way may be needed
 			headNode = currentNode;
 		}
 

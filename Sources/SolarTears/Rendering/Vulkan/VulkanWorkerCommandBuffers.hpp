@@ -12,8 +12,10 @@ namespace Vulkan
 	class WorkerCommandBuffers
 	{
 	public:
-		WorkerCommandBuffers(VkDevice device, uint32_t workerThreadCount, const DeviceQueues* deviceQueues, const SwapChain* swapChain);
+		WorkerCommandBuffers(VkDevice device, uint32_t workerThreadCount, const DeviceQueues* deviceQueues);
 		~WorkerCommandBuffers();
+
+		void CreatePresentCommandBuffers(const SwapChain* swapChain);
 
 		uint32_t GetWorkerThreadCount() const;
 	

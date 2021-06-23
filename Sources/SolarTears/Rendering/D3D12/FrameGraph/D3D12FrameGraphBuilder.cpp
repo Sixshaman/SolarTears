@@ -420,25 +420,32 @@ bool D3D12::FrameGraphBuilder::ValidateSubresourceViewParameters(SubresourceMeta
 	SubresourceInfo& prevPassSubresourceInfo = mSubresourceInfos[node->PrevPassNode->SubresourceInfoIndex];
 	SubresourceInfo& thisPassSubresourceInfo = mSubresourceInfos[node->SubresourceInfoIndex];
 
+	bool dataPropagated = false;
+
 	//Validate format
 	if(thisPassSubresourceInfo.Format == DXGI_FORMAT_UNKNOWN && prevPassSubresourceInfo.Format != DXGI_FORMAT_UNKNOWN)
 	{
 		thisPassSubresourceInfo.Format = prevPassSubresourceInfo.Format;
+
+		dataPropagated = true;
 	}
 
 	//Validate common promotion flag
-	bool promotionCommonFlagBeforeChange = thisPassSubresourceInfo.BarrierPromotedFromCommon;
-	if(!promotionCommonFlagBeforeChange)
+	if(!thisPassSubresourceInfo.BarrierPromotedFromCommon)
 	{
 		if (prevPassSubresourceInfo.State == D3D12_RESOURCE_STATE_COMMON && D3D12Utils::IsStatePromoteableTo(thisPassSubresourceInfo.State)) //Promotion from common
 		{
 			thisPassSubresourceInfo.BarrierPromotedFromCommon = true;
+
+			dataPropagated = true;
 		}
 		else if (node->PrevPassNode->PassType == node->PassType) //Queue hasn't changed => ExecuteCommandLists wasn't called => No decay happened
 		{
 			if (prevPassSubresourceInfo.State == thisPassSubresourceInfo.State) //Propagation of state promotion
 			{
 				thisPassSubresourceInfo.BarrierPromotedFromCommon = true;
+
+				dataPropagated = true;
 			}
 		}
 		else
@@ -447,7 +454,9 @@ bool D3D12::FrameGraphBuilder::ValidateSubresourceViewParameters(SubresourceMeta
 			{
 				if (D3D12Utils::IsStatePromoteableTo(thisPassSubresourceInfo.State)) //State promotes again
 				{
-					prevPassSubresourceInfo.BarrierPromotedFromCommon = true;
+					thisPassSubresourceInfo.BarrierPromotedFromCommon = true;
+
+					dataPropagated = true;
 				}
 			}
 		}
@@ -463,7 +472,7 @@ bool D3D12::FrameGraphBuilder::ValidateSubresourceViewParameters(SubresourceMeta
 
 	node->ViewSortKey = ((uint64_t)stateKey << 32) | formatKey;
 
-	return thisPassSubresourceInfo.Format != 0 && (promotionCommonFlagBeforeChange == thisPassSubresourceInfo.BarrierPromotedFromCommon); //Only the format should be propagated. But if common promotion flag has changed, the propagation has to start again
+	return dataPropagated; //Only the format should be propagated. But if common promotion flag has changed, the propagation has to start again
 }
 
 void D3D12::FrameGraphBuilder::AllocateImageViews(const std::vector<uint64_t>& sortKeys, uint32_t frameCount, std::vector<uint32_t>& outViewIds)

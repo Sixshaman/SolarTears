@@ -47,7 +47,7 @@ Vulkan::Renderer::Renderer(LoggerQueue* loggerQueue, FrameCounter* frameCounter,
 
 	mSwapChain = std::make_unique<SwapChain>(mLoggingBoard, mInstance, mDevice);
 
-	mCommandBuffers = std::make_unique<WorkerCommandBuffers>(mDevice, mThreadPoolRef->GetWorkerThreadCount(), mDeviceQueues.get(), mSwapChain.get());
+	mCommandBuffers = std::make_unique<WorkerCommandBuffers>(mDevice, mThreadPoolRef->GetWorkerThreadCount(), mDeviceQueues.get());
 
 	CreateFences();
 
@@ -100,7 +100,9 @@ void Vulkan::Renderer::AttachToWindow(Window* window)
 		//Recreate the swapchain (without changing the present queue index)
 		mSwapChain->Recreate(mPhysicalDevice, mInstanceParameters, mDeviceParameters, window);
 	}
-	
+
+	mCommandBuffers->CreatePresentCommandBuffers(mSwapChain.get());
+
 	InitializeSwapchainImages();
 
 	CreateFrameGraph(window->GetWidth(), window->GetHeight());

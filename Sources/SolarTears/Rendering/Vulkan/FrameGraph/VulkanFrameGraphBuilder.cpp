@@ -320,6 +320,7 @@ void Vulkan::FrameGraphBuilder::CreateTextures(const std::vector<TextureResource
 	mVulkanGraphToBuild->mImages.resize(totalTextureCount);
 	std::vector<VkImageMemoryBarrier> imageInitialStateBarriers(totalTextureCount); //Barriers to initialize images
 
+	std::vector<VkImage> memoryAllocateImages;
 	for(const TextureResourceCreateInfo& textureCreateInfo: textureCreateInfos)
 	{
 		SubresourceMetadataNode* headNode    = textureCreateInfo.MetadataHead;
@@ -401,23 +402,57 @@ void Vulkan::FrameGraphBuilder::CreateTextures(const std::vector<TextureResource
 
 			mVulkanGraphToBuild->mImages[headNode->FirstFrameHandle + frame] = image;
 			imageInitialStateBarriers[headNode->FirstFrameHandle + frame]    = imageBarrier;
+
+			memoryAllocateImages.push_back(image);
 		}
 	}
+
+	for(const TextureResourceCreateInfo& backbufferCreateInfo: backbufferCreateInfos)
+	{
+		for(uint32_t frame = 0; frame < backbufferCreateInfo.MetadataHead->FrameCount; frame++)
+		{
+			VkImage swapchainImage = mSwapChain->GetSwapchainImage(frame);
+
+#if defined(DEBUG) || defined(_DEBUG)
+			VulkanUtils::SetDebugObjectName(mVulkanGraphToBuild->mDeviceRef, swapchainImage, mBackbufferName);
+#endif
+
+			VkImageMemoryBarrier imageBarrier;
+			imageBarrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+			imageBarrier.pNext                           = nullptr;
+			imageBarrier.srcAccessMask                   = 0;
+			imageBarrier.dstAccessMask                   = 0;
+			imageBarrier.oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;
+			imageBarrier.newLayout                       = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+			imageBarrier.srcQueueFamilyIndex             = 0; 
+			imageBarrier.dstQueueFamilyIndex             = PassTypeToQueueIndex(RenderPassType::Present);
+			imageBarrier.image                           = swapchainImage;
+			imageBarrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+			imageBarrier.subresourceRange.baseMipLevel   = 0;
+			imageBarrier.subresourceRange.levelCount     = VK_REMAINING_MIP_LEVELS;
+			imageBarrier.subresourceRange.baseArrayLayer = 0;
+			imageBarrier.subresourceRange.layerCount     = VK_REMAINING_ARRAY_LAYERS;
+
+			mVulkanGraphToBuild->mImages[backbufferCreateInfo.MetadataHead->FirstFrameHandle + frame] = swapchainImage;
+			imageInitialStateBarriers[backbufferCreateInfo.MetadataHead->FirstFrameHandle + frame]    = imageBarrier;
+		}
+	}
+
 
 	SafeDestroyObject(vkFreeMemory, mVulkanGraphToBuild->mDeviceRef, mVulkanGraphToBuild->mImageMemory);
 
 	std::vector<VkDeviceSize> textureMemoryOffsets;
-	mVulkanGraphToBuild->mImageMemory = mMemoryManager->AllocateImagesMemory(mVulkanGraphToBuild->mDeviceRef, mVulkanGraphToBuild->mImages, textureMemoryOffsets);
+	mVulkanGraphToBuild->mImageMemory = mMemoryManager->AllocateImagesMemory(mVulkanGraphToBuild->mDeviceRef, memoryAllocateImages, textureMemoryOffsets);
 
-	std::vector<VkBindImageMemoryInfo> bindImageMemoryInfos(mVulkanGraphToBuild->mImages.size());
-	for(size_t i = 0; i < mVulkanGraphToBuild->mImages.size(); i++)
+	std::vector<VkBindImageMemoryInfo> bindImageMemoryInfos(memoryAllocateImages.size());
+	for(size_t i = 0; i < memoryAllocateImages.size(); i++)
 	{
 		//TODO: mGPU?
 		bindImageMemoryInfos[i].sType        = VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO;
 		bindImageMemoryInfos[i].pNext        = nullptr;
 		bindImageMemoryInfos[i].memory       = mVulkanGraphToBuild->mImageMemory;
 		bindImageMemoryInfos[i].memoryOffset = textureMemoryOffsets[i];
-		bindImageMemoryInfos[i].image        = mVulkanGraphToBuild->mImages[i];
+		bindImageMemoryInfos[i].image        = memoryAllocateImages[i];
 	}
 
 	ThrowIfFailed(vkBindImageMemory2(mVulkanGraphToBuild->mDeviceRef, (uint32_t)(bindImageMemoryInfos.size()), bindImageMemoryInfos.data()));
@@ -448,19 +483,6 @@ void Vulkan::FrameGraphBuilder::CreateTextures(const std::vector<TextureResource
 
 	mDeviceQueues->GraphicsQueueSubmit(graphicsCommandBuffer);
 
-
-	for(const TextureResourceCreateInfo& backbufferCreateInfo: backbufferCreateInfos)
-	{
-		for(uint32_t frame = 0; frame < backbufferCreateInfo.MetadataHead->FrameCount; frame++)
-		{
-			mVulkanGraphToBuild->mImages[backbufferCreateInfo.MetadataHead->FirstFrameHandle + frame] = mSwapChain->GetSwapchainImage(frame);
-
-#if defined(DEBUG) || defined(_DEBUG)
-			VulkanUtils::SetDebugObjectName(mVulkanGraphToBuild->mDeviceRef, mVulkanGraphToBuild->mImages.back(), mBackbufferName);
-#endif
-		}
-	}
-
 	mDeviceQueues->GraphicsQueueWait(); //TODO: may wait after build finished
 }
 
@@ -484,7 +506,7 @@ uint32_t Vulkan::FrameGraphBuilder::AddPresentSubresourceMetadata()
 	subresourceInfo.Format = mSwapChain->GetBackbufferFormat();
 	subresourceInfo.Layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 	subresourceInfo.Usage  = 0;
-	subresourceInfo.Aspect = 0;
+	subresourceInfo.Aspect = VK_IMAGE_ASPECT_COLOR_BIT;
 	subresourceInfo.Stage  = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 	subresourceInfo.Access = 0;
 
@@ -506,28 +528,40 @@ bool Vulkan::FrameGraphBuilder::ValidateSubresourceViewParameters(SubresourceMet
 {
 	SubresourceInfo& prevPassSubresourceInfo = mSubresourceInfos[node->PrevPassNode->SubresourceInfoIndex];
 	SubresourceInfo& thisPassSubresourceInfo = mSubresourceInfos[node->SubresourceInfoIndex];
-
+	
+	bool dataPropagated = false;
 	if(thisPassSubresourceInfo.Format == VK_FORMAT_UNDEFINED && prevPassSubresourceInfo.Format != VK_FORMAT_UNDEFINED)
 	{
 		thisPassSubresourceInfo.Format = prevPassSubresourceInfo.Format;
+
+		dataPropagated = true;
 	}
 
 	if(thisPassSubresourceInfo.Aspect == 0 && prevPassSubresourceInfo.Aspect != 0)
 	{
 		thisPassSubresourceInfo.Aspect = prevPassSubresourceInfo.Aspect;
+
+		dataPropagated = true;
 	}
 
-	bool accessFlagsPropagated = false;
 	if(node->PassType == node->PrevPassNode->PassType && thisPassSubresourceInfo.Layout == prevPassSubresourceInfo.Layout && thisPassSubresourceInfo.Access != prevPassSubresourceInfo.Access)
 	{
 		thisPassSubresourceInfo.Access |= prevPassSubresourceInfo.Access;
 		prevPassSubresourceInfo.Access |= thisPassSubresourceInfo.Access;
 
-		accessFlagsPropagated = true;
+		dataPropagated = true;
+	}
+
+	if(thisPassSubresourceInfo.Usage != prevPassSubresourceInfo.Usage)
+	{
+		thisPassSubresourceInfo.Usage |= prevPassSubresourceInfo.Usage;
+		prevPassSubresourceInfo.Usage |= thisPassSubresourceInfo.Usage;
+
+		dataPropagated = true;
 	}
 
 	node->ViewSortKey = ((uint64_t)thisPassSubresourceInfo.Aspect << 32) | (uint32_t)thisPassSubresourceInfo.Format;
-	return thisPassSubresourceInfo.Format != 0 && thisPassSubresourceInfo.Aspect != 0 && !accessFlagsPropagated;
+	return dataPropagated;
 }
 
 void Vulkan::FrameGraphBuilder::AllocateImageViews(const std::vector<uint64_t>& sortKeys, uint32_t frameCount, std::vector<uint32_t>& outViewIds)
@@ -561,13 +595,14 @@ void Vulkan::FrameGraphBuilder::CreateTextureViews(const std::vector<TextureSubr
 uint32_t Vulkan::FrameGraphBuilder::AddBeforePassBarrier(uint32_t imageIndex, RenderPassType prevPassType, uint32_t prevPassSubresourceInfoIndex, RenderPassType currPassType, uint32_t currPassSubresourceInfoIndex)
 {
 	/*
-	*    1. Same queue family, layout unchanged: No barrier needed
-	*    2. Same queue family, layout changed:   Need a barrier Old layout -> New layout
+	*    1. Same queue family, layout unchanged:          No barrier needed
+	*    2. Same queue family, layout changed to PRESENT: No barrier needed, handled by the previous state's barrier
+	*    3. Same queue family, layout changed:            Need a barrier Old layout -> New layout
 	*
-	*    3. Queue family changed, layout unchanged: Need an acquire barrier with new access mask
-	*    4. Queue family changed, layout changed:   Need an acquire + layout change barrier
-	*    5. Queue family changed, from present:     Need an acquire barrier with new access mask
-	*    6. Queue family changed, to present:       Need an acquire barrier with source and destination access masks 0
+	*    4. Queue family changed, layout unchanged: Need an acquire barrier with new access mask
+	*    5. Queue family changed, layout changed:   Need an acquire + layout change barrier
+	*    6. Queue family changed, from present:     Need an acquire barrier with new access mask
+	*    7. Queue family changed, to present:       Need an acquire barrier with source and destination access masks 0
 	*/
 
 	const SubresourceInfo& prevPassInfo = mSubresourceInfos[prevPassSubresourceInfoIndex];
@@ -577,11 +612,11 @@ uint32_t Vulkan::FrameGraphBuilder::AddBeforePassBarrier(uint32_t imageIndex, Re
 	VkAccessFlags prevAccessMask = prevPassInfo.Access;
 	VkAccessFlags currAccessMask = currPassInfo.Access;
 
-	if(prevPassType == currPassType) //Rules 1, 2
+	if(PassTypeToQueueIndex(prevPassType) == PassTypeToQueueIndex(currPassType)) //Rules 1, 2, 3
 	{
-		barrierNeeded = (prevPassInfo.Layout != currPassInfo.Layout);
+		barrierNeeded = (currPassInfo.Layout != VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) && (prevPassInfo.Layout != currPassInfo.Layout);
 	}
-	else //Rules 3, 4, 5, 6
+	else //Rules 4, 5, 6, 7
 	{
 		prevAccessMask = 0; //Access mask should be set to 0 in an acquire barrier change
 
@@ -633,7 +668,7 @@ uint32_t Vulkan::FrameGraphBuilder::AddAfterPassBarrier(uint32_t imageIndex, Ren
 	bool barrierNeeded = false;
 	VkAccessFlags currAccessMask = currPassInfo.Access;
 	VkAccessFlags nextAccessMask = nextPassInfo.Access;
-	if(currPassType == nextPassType) //Rules 1, 2, 3
+	if(PassTypeToQueueIndex(currPassType) == PassTypeToQueueIndex(nextPassType)) //Rules 1, 2, 3
 	{
 		barrierNeeded = (nextPassInfo.Layout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 	}

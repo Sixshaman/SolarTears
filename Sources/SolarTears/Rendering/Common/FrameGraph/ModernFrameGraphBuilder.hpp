@@ -70,6 +70,9 @@ public:
 	const FrameGraphConfig* GetConfig() const;
 
 private:
+	//Creates present pass
+	void CreatePresentPass();
+
 	//Builds frame graph adjacency list
 	void BuildAdjacencyList(std::unordered_map<RenderPassName, std::unordered_set<RenderPassName>>& adjacencyList);
 
