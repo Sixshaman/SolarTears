@@ -127,7 +127,7 @@ void D3D12::Renderer::CreateDevice(IDXGIAdapter4* adapter)
 	mLoggingBoard->PostLogMessage(std::wstring(L"GPU: ") + adapterDesc.Description);
 	mLoggingBoard->PostLogMessage(L"");
 
-	THROW_IF_FAILED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(mDevice.put())));
+	THROW_IF_FAILED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(mDevice.put())));
 }
 
 void D3D12::Renderer::CreateFrameGraph(uint32_t viewportWidth, uint32_t viewportHeight)
