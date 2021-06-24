@@ -363,6 +363,12 @@
     <ClInclude Include="Rendering\Common\FrameGraph\ModernFrameGraphMisc.hpp">
       <Filter>Rendering\Common\FrameGraph</Filter>
     </ClInclude>
+    <ClInclude Include="Rendering\Common\FrameGraph\Passes\GBufferPass.hpp">
+      <Filter>Rendering\Common\FrameGraph\Passes</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Common\FrameGraph\Passes\CopyImagePass.hpp">
+      <Filter>Rendering\Common\FrameGraph\Passes</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Platform\Win32\Win32Application.cpp">

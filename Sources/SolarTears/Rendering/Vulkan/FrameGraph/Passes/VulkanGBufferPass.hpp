@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../VulkanRenderPass.hpp"
+#include "../../../Common/FrameGraph/Passes/GBufferPass.hpp"
 
 namespace Vulkan
 {
@@ -10,20 +11,13 @@ namespace Vulkan
 	class DescriptorManager;
 	class RenderableScene;
 
-	class GBufferPass: public RenderPass
+	class GBufferPass: public RenderPass, public GBufferPassBase
 	{
 	public:
-		static constexpr std::string_view ColorBufferImageId = "GBufferPass-ColorBufferImage";
-
-	public:
+		GBufferPass(VkDevice device, const FrameGraphBuilder* frameGraphBuilder, const std::string& passName, uint32_t frame);
 		~GBufferPass();
 
 		void RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* renderableScene, const FrameGraphConfig& frameGraphConfig) const override;
-
-		static void Register(FrameGraphBuilder* frameGraphBuilder, const std::string& passName);
-
-	private:
-		GBufferPass(VkDevice device, const FrameGraphBuilder* frameGraphBuilder, const std::string& passName, uint32_t frame);
 
 	private:
 		void CreateRenderPass(const FrameGraphBuilder* frameGraphBuilder, const DeviceParameters* deviceParameters, const std::string& currentPassName);

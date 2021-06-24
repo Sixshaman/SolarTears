@@ -36,15 +36,8 @@ Vulkan::GBufferPass::~GBufferPass()
 
 void Vulkan::GBufferPass::Register(FrameGraphBuilder* frameGraphBuilder, const std::string& passName)
 {
-	auto PassCreateFunc = [](VkDevice device, const FrameGraphBuilder* builder, const std::string& name, uint32_t frame) -> std::unique_ptr<RenderPass>
-	{
-		//Using new because make_unique can't access private constructor
-		return std::unique_ptr<GBufferPass>(new GBufferPass(device, builder, name, frame));
-	};
-
-	frameGraphBuilder->RegisterRenderPass(passName, PassCreateFunc, RenderPassType::Graphics);
-
 	frameGraphBuilder->RegisterWriteSubresource(passName, ColorBufferImageId);
+
 	frameGraphBuilder->EnableSubresourceAutoBeforeBarrier(passName, ColorBufferImageId, true);
 	frameGraphBuilder->EnableSubresourceAutoAfterBarrier(passName, ColorBufferImageId, true);
 	frameGraphBuilder->SetPassSubresourceFormat(passName, ColorBufferImageId, VK_FORMAT_B8G8R8A8_UNORM); //TODO: maybe passing the format????

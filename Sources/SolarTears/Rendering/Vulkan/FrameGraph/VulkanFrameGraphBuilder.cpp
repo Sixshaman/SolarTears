@@ -9,6 +9,9 @@
 #include <algorithm>
 #include <numeric>
 
+#include "Passes/VulkanGBufferPass.hpp"
+#include "Passes/VulkanCopyImagePass.hpp"
+
 Vulkan::FrameGraphBuilder::FrameGraphBuilder(FrameGraph* graphToBuild, const SwapChain* swapchain): ModernFrameGraphBuilder(graphToBuild), mVulkanGraphToBuild(graphToBuild), mSwapChain(swapchain)
 {
 	mImageViewCount = 0;
@@ -16,17 +19,6 @@ Vulkan::FrameGraphBuilder::FrameGraphBuilder(FrameGraph* graphToBuild, const Swa
 
 Vulkan::FrameGraphBuilder::~FrameGraphBuilder()
 {
-}
-
-void Vulkan::FrameGraphBuilder::RegisterRenderPass(const std::string_view passName, RenderPassCreateFunc createFunc, RenderPassType passType)
-{
-	RenderPassName renderPassName(passName);
-	assert(!mRenderPassCreateFunctions.contains(renderPassName));
-
-	mRenderPassNames.push_back(renderPassName);
-	mRenderPassCreateFunctions[renderPassName] = createFunc;
-
-	mRenderPassTypes[renderPassName] = passType;
 }
 
 void Vulkan::FrameGraphBuilder::SetPassSubresourceFormat(const std::string_view passName, const std::string_view subresourceId, VkFormat format)
@@ -335,7 +327,7 @@ void Vulkan::FrameGraphBuilder::CreateTextures(const std::vector<TextureResource
 		{
 			const SubresourceInfo& subresourceInfo = mSubresourceInfos[currentNode->SubresourceInfoIndex];
 
-			queueIndices[0] = PassTypeToQueueIndex(currentNode->PassType);
+			queueIndices[0] = PassClassToQueueIndex(currentNode->PassClass);
 			usageFlags     |= subresourceInfo.Usage;
 			
 			//TODO: mutable format lists
@@ -346,11 +338,11 @@ void Vulkan::FrameGraphBuilder::CreateTextures(const std::vector<TextureResource
 
 		} while(currentNode != headNode);
 
-		uint32_t lastSubresourceInfo   = headNode->PrevPassNode->SubresourceInfoIndex;
-		RenderPassType lastPassType    = headNode->PrevPassNode->PassType;
-		VkImageLayout  lastLayout      = mSubresourceInfos[lastSubresourceInfo].Layout;
-		VkAccessFlags  lastAccessFlags = mSubresourceInfos[lastSubresourceInfo].Access;
-		VkAccessFlags  lastAspectMask  = mSubresourceInfos[lastSubresourceInfo].Aspect;
+		uint32_t lastSubresourceInfo    = headNode->PrevPassNode->SubresourceInfoIndex;
+		RenderPassClass lastPassClass   = headNode->PrevPassNode->PassClass;
+		VkImageLayout   lastLayout      = mSubresourceInfos[lastSubresourceInfo].Layout;
+		VkAccessFlags   lastAccessFlags = mSubresourceInfos[lastSubresourceInfo].Access;
+		VkAccessFlags   lastAspectMask  = mSubresourceInfos[lastSubresourceInfo].Aspect;
 
 
 		VkImageCreateInfo imageCreateInfo;
@@ -399,7 +391,7 @@ void Vulkan::FrameGraphBuilder::CreateTextures(const std::vector<TextureResource
 			imageBarrier.oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;
 			imageBarrier.newLayout                       = lastLayout;
 			imageBarrier.srcQueueFamilyIndex             = queueIndices[0]; //Resources were created with that queue ownership
-			imageBarrier.dstQueueFamilyIndex             = PassTypeToQueueIndex(lastPassType);
+			imageBarrier.dstQueueFamilyIndex             = PassClassToQueueIndex(lastPassClass);
 			imageBarrier.image                           = image;
 			imageBarrier.subresourceRange.aspectMask     = lastAspectMask;
 			imageBarrier.subresourceRange.baseMipLevel   = 0;
@@ -432,7 +424,7 @@ void Vulkan::FrameGraphBuilder::CreateTextures(const std::vector<TextureResource
 			imageBarrier.oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;
 			imageBarrier.newLayout                       = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 			imageBarrier.srcQueueFamilyIndex             = 0; 
-			imageBarrier.dstQueueFamilyIndex             = PassTypeToQueueIndex(RenderPassType::Present);
+			imageBarrier.dstQueueFamilyIndex             = PassClassToQueueIndex(RenderPassClass::Present);
 			imageBarrier.image                           = swapchainImage;
 			imageBarrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
 			imageBarrier.subresourceRange.baseMipLevel   = 0;
@@ -521,8 +513,11 @@ uint32_t Vulkan::FrameGraphBuilder::AddPresentSubresourceMetadata()
 	return (uint32_t)(mSubresourceInfos.size() - 1);
 }
 
-void Vulkan::FrameGraphBuilder::AddRenderPass(const RenderPassName& passName, uint32_t frame)
+void Vulkan::FrameGraphBuilder::CreatePassObject(const RenderPassName& passName, uint32_t frame)
 {
+	RenderPassType passType = mRenderPassTypes.at(passName);
+
+
 	mVulkanGraphToBuild->mRenderPasses.push_back(mRenderPassCreateFunctions.at(passName)(mVulkanGraphToBuild->mDeviceRef, this, passName, frame));
 }
 
@@ -551,7 +546,7 @@ bool Vulkan::FrameGraphBuilder::ValidateSubresourceViewParameters(SubresourceMet
 		dataPropagated = true;
 	}
 
-	if(PassTypeToQueueIndex(currNode->PassType) == PassTypeToQueueIndex(prevNode->PassType) && thisPassSubresourceInfo.Layout == prevPassSubresourceInfo.Layout && thisPassSubresourceInfo.Access != prevPassSubresourceInfo.Access)
+	if(PassClassToQueueIndex(currNode->PassClass) == PassClassToQueueIndex(prevNode->PassClass) && thisPassSubresourceInfo.Layout == prevPassSubresourceInfo.Layout && thisPassSubresourceInfo.Access != prevPassSubresourceInfo.Access)
 	{
 		thisPassSubresourceInfo.Access |= prevPassSubresourceInfo.Access;
 		prevPassSubresourceInfo.Access |= thisPassSubresourceInfo.Access;
@@ -599,7 +594,7 @@ void Vulkan::FrameGraphBuilder::CreateTextureViews(const std::vector<TextureSubr
 	}
 }
 
-uint32_t Vulkan::FrameGraphBuilder::AddBeforePassBarrier(uint32_t imageIndex, RenderPassType prevPassType, uint32_t prevPassSubresourceInfoIndex, RenderPassType currPassType, uint32_t currPassSubresourceInfoIndex)
+uint32_t Vulkan::FrameGraphBuilder::AddBeforePassBarrier(uint32_t imageIndex, RenderPassClass prevPassClass, uint32_t prevPassSubresourceInfoIndex, RenderPassClass currPassClass, uint32_t currPassSubresourceInfoIndex)
 {
 	/*
 	*    1. Same queue family, layout unchanged:          No barrier needed
@@ -619,7 +614,7 @@ uint32_t Vulkan::FrameGraphBuilder::AddBeforePassBarrier(uint32_t imageIndex, Re
 	VkAccessFlags prevAccessMask = prevPassInfo.Access;
 	VkAccessFlags currAccessMask = currPassInfo.Access;
 
-	if(PassTypeToQueueIndex(prevPassType) == PassTypeToQueueIndex(currPassType)) //Rules 1, 2, 3
+	if(PassClassToQueueIndex(prevPassClass) == PassClassToQueueIndex(currPassClass)) //Rules 1, 2, 3
 	{
 		barrierNeeded = (currPassInfo.Layout != VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) && (prevPassInfo.Layout != currPassInfo.Layout);
 	}
@@ -639,8 +634,8 @@ uint32_t Vulkan::FrameGraphBuilder::AddBeforePassBarrier(uint32_t imageIndex, Re
 		imageMemoryBarrier.dstAccessMask                   = currAccessMask;
 		imageMemoryBarrier.oldLayout                       = prevPassInfo.Layout;
 		imageMemoryBarrier.newLayout                       = currPassInfo.Layout;
-		imageMemoryBarrier.srcQueueFamilyIndex             = PassTypeToQueueIndex(prevPassType);
-		imageMemoryBarrier.dstQueueFamilyIndex             = PassTypeToQueueIndex(currPassType);
+		imageMemoryBarrier.srcQueueFamilyIndex             = PassClassToQueueIndex(prevPassClass);
+		imageMemoryBarrier.dstQueueFamilyIndex             = PassClassToQueueIndex(currPassClass);
 		imageMemoryBarrier.image                           = mVulkanGraphToBuild->mImages[imageIndex];
 		imageMemoryBarrier.subresourceRange.aspectMask     = prevPassInfo.Aspect | currPassInfo.Aspect;
 		imageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
@@ -656,7 +651,7 @@ uint32_t Vulkan::FrameGraphBuilder::AddBeforePassBarrier(uint32_t imageIndex, Re
 	return (uint32_t)(-1);
 }
 
-uint32_t Vulkan::FrameGraphBuilder::AddAfterPassBarrier(uint32_t imageIndex, RenderPassType currPassType, uint32_t currPassSubresourceInfoIndex, RenderPassType nextPassType, uint32_t nextPassSubresourceInfoIndex)
+uint32_t Vulkan::FrameGraphBuilder::AddAfterPassBarrier(uint32_t imageIndex, RenderPassClass currPassClass, uint32_t currPassSubresourceInfoIndex, RenderPassClass nextPassClass, uint32_t nextPassSubresourceInfoIndex)
 {
 	/*
 	*    1. Same queue family, layout unchanged:           No barrier needed
@@ -675,7 +670,7 @@ uint32_t Vulkan::FrameGraphBuilder::AddAfterPassBarrier(uint32_t imageIndex, Ren
 	bool barrierNeeded = false;
 	VkAccessFlags currAccessMask = currPassInfo.Access;
 	VkAccessFlags nextAccessMask = nextPassInfo.Access;
-	if(PassTypeToQueueIndex(currPassType) == PassTypeToQueueIndex(nextPassType)) //Rules 1, 2, 3
+	if(PassClassToQueueIndex(currPassClass) == PassClassToQueueIndex(nextPassClass)) //Rules 1, 2, 3
 	{
 		barrierNeeded = (nextPassInfo.Layout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 	}
@@ -695,8 +690,8 @@ uint32_t Vulkan::FrameGraphBuilder::AddAfterPassBarrier(uint32_t imageIndex, Ren
 		imageMemoryBarrier.dstAccessMask                   = nextAccessMask;
 		imageMemoryBarrier.oldLayout                       = currPassInfo.Layout;
 		imageMemoryBarrier.newLayout                       = nextPassInfo.Layout;
-		imageMemoryBarrier.srcQueueFamilyIndex             = PassTypeToQueueIndex(currPassType);
-		imageMemoryBarrier.dstQueueFamilyIndex             = PassTypeToQueueIndex(nextPassType);
+		imageMemoryBarrier.srcQueueFamilyIndex             = PassClassToQueueIndex(currPassClass);
+		imageMemoryBarrier.dstQueueFamilyIndex             = PassClassToQueueIndex(nextPassClass);
 		imageMemoryBarrier.image                           = mVulkanGraphToBuild->mImages[imageIndex];
 		imageMemoryBarrier.subresourceRange.aspectMask     = currPassInfo.Aspect | nextPassInfo.Aspect;
 		imageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
@@ -722,20 +717,20 @@ uint32_t Vulkan::FrameGraphBuilder::GetSwapchainImageCount() const
 	return mSwapChain->SwapchainImageCount;
 }
 
-uint32_t Vulkan::FrameGraphBuilder::PassTypeToQueueIndex(RenderPassType passType) const
+uint32_t Vulkan::FrameGraphBuilder::PassClassToQueueIndex(RenderPassClass passClass) const
 {
-	switch(passType)
+	switch(passClass)
 	{
-	case RenderPassType::Graphics:
+	case RenderPassClass::Graphics:
 		return mDeviceQueues->GetGraphicsQueueFamilyIndex();
 
-	case RenderPassType::Compute:
+	case RenderPassClass::Compute:
 		return mDeviceQueues->GetComputeQueueFamilyIndex();
 
-	case RenderPassType::Transfer:
+	case RenderPassClass::Transfer:
 		return mDeviceQueues->GetTransferQueueFamilyIndex();
 
-	case RenderPassType::Present:
+	case RenderPassClass::Present:
 		return mSwapChain->GetPresentQueueFamilyIndex();
 
 	default:

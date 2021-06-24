@@ -21,7 +21,7 @@ D3D12::FrameGraphBuilder::~FrameGraphBuilder()
 {
 }
 
-void D3D12::FrameGraphBuilder::RegisterRenderPass(const std::string_view passName, RenderPassCreateFunc createFunc, RenderPassType passType)
+void D3D12::FrameGraphBuilder::RegisterRenderPass(const std::string_view passName, RenderPassCreateFunc createFunc, RenderPassClass passClass)
 {
 	RenderPassName renderPassName(passName);
 	assert(!mRenderPassCreateFunctions.contains(renderPassName));
@@ -29,7 +29,7 @@ void D3D12::FrameGraphBuilder::RegisterRenderPass(const std::string_view passNam
 	mRenderPassNames.push_back(renderPassName);
 	mRenderPassCreateFunctions[renderPassName] = createFunc;
 
-	mRenderPassTypes[renderPassName] = passType;
+	mRenderPassClasses[renderPassName] = passClass;
 }
 
 void D3D12::FrameGraphBuilder::SetPassSubresourceFormat(const std::string_view passName, const std::string_view subresourceId, DXGI_FORMAT format)
@@ -411,7 +411,7 @@ uint32_t D3D12::FrameGraphBuilder::AddPresentSubresourceMetadata()
 	return (uint32_t)(mSubresourceInfos.size() - 1);
 }
 
-void D3D12::FrameGraphBuilder::AddRenderPass(const RenderPassName& passName, uint32_t frame)
+void D3D12::FrameGraphBuilder::CreatePassObject(const RenderPassName& passName, uint32_t frame)
 {
 	mD3d12GraphToBuild->mRenderPasses.push_back(mRenderPassCreateFunctions.at(passName)(mDevice, this, passName, frame));
 }
@@ -445,7 +445,7 @@ bool D3D12::FrameGraphBuilder::ValidateSubresourceViewParameters(SubresourceMeta
 
 			dataPropagated = true;
 		}
-		else if(prevNode->PassType == currNode->PassType) //Queue hasn't changed => ExecuteCommandLists wasn't called => No decay happened
+		else if(prevNode->PassClass == currNode->PassClass) //Queue hasn't changed => ExecuteCommandLists wasn't called => No decay happened
 		{
 			if (prevPassSubresourceInfo.State == thisPassSubresourceInfo.State) //Propagation of state promotion
 			{
@@ -608,7 +608,7 @@ void D3D12::FrameGraphBuilder::CreateTextureViews(const std::vector<TextureSubre
 	}
 }
 
-uint32_t D3D12::FrameGraphBuilder::AddBeforePassBarrier(uint32_t imageIndex, RenderPassType prevPassType, uint32_t prevPassSubresourceInfoIndex, RenderPassType currPassType, uint32_t currPassSubresourceInfoIndex)
+uint32_t D3D12::FrameGraphBuilder::AddBeforePassBarrier(uint32_t imageIndex, RenderPassClass prevPassClass, uint32_t prevPassSubresourceInfoIndex, RenderPassClass currPassClass, uint32_t currPassSubresourceInfoIndex)
 {
 	/*
 	*    1.  Same queue, state unchanged:                                 No barrier needed
@@ -641,7 +641,7 @@ uint32_t D3D12::FrameGraphBuilder::AddBeforePassBarrier(uint32_t imageIndex, Ren
 	D3D12_RESOURCE_STATES prevPassState = prevPassInfo.State;
 	D3D12_RESOURCE_STATES currPassState = currPassInfo.State;
 
-	if(PassTypeToListType(prevPassType) == PassTypeToListType(currPassType)) //Rules 1, 2, 3, 4
+	if(PassClassToListType(prevPassClass) == PassClassToListType(currPassClass)) //Rules 1, 2, 3, 4
 	{
 		if(prevPassState == D3D12_RESOURCE_STATE_PRESENT) //Rule 2 or 4
 		{
@@ -652,7 +652,7 @@ uint32_t D3D12::FrameGraphBuilder::AddBeforePassBarrier(uint32_t imageIndex, Ren
 			barrierNeeded = (currPassState != D3D12_RESOURCE_STATE_PRESENT) && (prevPassState != currPassState);
 		}
 	}
-	else if(PassTypeToListType(prevPassType) == D3D12_COMMAND_LIST_TYPE_DIRECT && PassTypeToListType(currPassType) == D3D12_COMMAND_LIST_TYPE_COMPUTE) //Rules 5, 6, 7, 8
+	else if(PassClassToListType(prevPassClass) == D3D12_COMMAND_LIST_TYPE_DIRECT && PassClassToListType(currPassClass) == D3D12_COMMAND_LIST_TYPE_COMPUTE) //Rules 5, 6, 7, 8
 	{
 		if(prevPassInfo.BarrierPromotedFromCommon && !D3D12Utils::IsStateWriteable(prevPassState)) //Rule 6
 		{
@@ -664,7 +664,7 @@ uint32_t D3D12::FrameGraphBuilder::AddBeforePassBarrier(uint32_t imageIndex, Ren
 			barrierNeeded = false;
 		}
 	}
-	else if(PassTypeToListType(prevPassType) == D3D12_COMMAND_LIST_TYPE_COMPUTE && PassTypeToListType(currPassType) == D3D12_COMMAND_LIST_TYPE_DIRECT) //Rules 9, 10, 11, 12, 13
+	else if(PassClassToListType(prevPassClass) == D3D12_COMMAND_LIST_TYPE_COMPUTE && PassClassToListType(currPassClass) == D3D12_COMMAND_LIST_TYPE_DIRECT) //Rules 9, 10, 11, 12, 13
 	{
 		if(prevPassInfo.BarrierPromotedFromCommon && !D3D12Utils::IsStateWriteable(prevPassState)) //Rule 10
 		{
@@ -676,11 +676,11 @@ uint32_t D3D12::FrameGraphBuilder::AddBeforePassBarrier(uint32_t imageIndex, Ren
 			barrierNeeded = !currPassInfo.BarrierPromotedFromCommon && (prevPassState != currPassState) && !D3D12Utils::IsStateComputeFriendly(currPassState);
 		}
 	}
-	else if(PassTypeToListType(currPassType) == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 14, 15
+	else if(PassClassToListType(currPassClass) == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 14, 15
 	{
 		barrierNeeded = false;
 	}
-	else if(PassTypeToListType(prevPassType) == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 16, 17
+	else if(PassClassToListType(prevPassClass) == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 16, 17
 	{
 		barrierNeeded = !currPassInfo.BarrierPromotedFromCommon;
 	}
@@ -703,7 +703,7 @@ uint32_t D3D12::FrameGraphBuilder::AddBeforePassBarrier(uint32_t imageIndex, Ren
 	return (uint32_t)(-1);
 }
 
-uint32_t D3D12::FrameGraphBuilder::AddAfterPassBarrier(uint32_t imageIndex, RenderPassType currPassType, uint32_t currPassSubresourceInfoIndex, RenderPassType nextPassType, uint32_t nextPassSubresourceInfoIndex)
+uint32_t D3D12::FrameGraphBuilder::AddAfterPassBarrier(uint32_t imageIndex, RenderPassClass currPassClass, uint32_t currPassSubresourceInfoIndex, RenderPassClass nextPassClass, uint32_t nextPassSubresourceInfoIndex)
 {
 	/*
 	*    1.  Same queue, state unchanged:                                           No barrier needed
@@ -737,7 +737,7 @@ uint32_t D3D12::FrameGraphBuilder::AddAfterPassBarrier(uint32_t imageIndex, Rend
 	D3D12_RESOURCE_STATES currPassState = currPassInfo.State;
 	D3D12_RESOURCE_STATES nextPassState = nextPassInfo.State;
 
-	if(PassTypeToListType(currPassType) == PassTypeToListType(nextPassType)) //Rules 1, 2, 3, 4
+	if(PassClassToListType(currPassClass) == PassClassToListType(nextPassClass)) //Rules 1, 2, 3, 4
 	{
 		if(nextPassState == D3D12_RESOURCE_STATE_PRESENT) //Rules 2, 3
 		{
@@ -748,7 +748,7 @@ uint32_t D3D12::FrameGraphBuilder::AddAfterPassBarrier(uint32_t imageIndex, Rend
 			barrierNeeded = false;
 		}
 	}
-	else if(PassTypeToListType(currPassType) == D3D12_COMMAND_LIST_TYPE_DIRECT && PassTypeToListType(nextPassType) == D3D12_COMMAND_LIST_TYPE_COMPUTE) //Rules 5, 6, 7, 8
+	else if(PassClassToListType(currPassClass) == D3D12_COMMAND_LIST_TYPE_DIRECT && PassClassToListType(nextPassClass) == D3D12_COMMAND_LIST_TYPE_COMPUTE) //Rules 5, 6, 7, 8
 	{
 		if(currPassInfo.BarrierPromotedFromCommon && !D3D12Utils::IsStateWriteable(currPassState)) //Rule 6
 		{
@@ -759,7 +759,7 @@ uint32_t D3D12::FrameGraphBuilder::AddAfterPassBarrier(uint32_t imageIndex, Rend
 			barrierNeeded = !nextPassInfo.BarrierPromotedFromCommon && (currPassState != nextPassState);
 		}
 	}
-	else if(PassTypeToListType(currPassType) == D3D12_COMMAND_LIST_TYPE_COMPUTE && PassTypeToListType(nextPassType) == D3D12_COMMAND_LIST_TYPE_DIRECT) //Rules 9, 10, 11, 12, 13, 14
+	else if(PassClassToListType(currPassClass) == D3D12_COMMAND_LIST_TYPE_COMPUTE && PassClassToListType(nextPassClass) == D3D12_COMMAND_LIST_TYPE_DIRECT) //Rules 9, 10, 11, 12, 13, 14
 	{
 		if(currPassInfo.BarrierPromotedFromCommon && !D3D12Utils::IsStateWriteable(currPassState)) //Rule 10, 11
 		{
@@ -770,11 +770,11 @@ uint32_t D3D12::FrameGraphBuilder::AddAfterPassBarrier(uint32_t imageIndex, Rend
 			barrierNeeded = !nextPassInfo.BarrierPromotedFromCommon && (currPassState != nextPassState) && D3D12Utils::IsStateComputeFriendly(nextPassState);
 		}
 	}
-	else if(PassTypeToListType(nextPassType) == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 15, 16
+	else if(PassClassToListType(nextPassClass) == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 15, 16
 	{
 		barrierNeeded = !currPassInfo.BarrierPromotedFromCommon || D3D12Utils::IsStateWriteable(currPassState);
 	}
-	else if(PassTypeToListType(currPassType) == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 17, 18
+	else if(PassClassToListType(currPassClass) == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 17, 18
 	{
 		barrierNeeded = false;
 	}
@@ -807,17 +807,17 @@ uint32_t D3D12::FrameGraphBuilder::GetSwapchainImageCount() const
 	return mSwapChain->SwapchainImageCount;
 }
 
-D3D12_COMMAND_LIST_TYPE D3D12::FrameGraphBuilder::PassTypeToListType(RenderPassType passType)
+D3D12_COMMAND_LIST_TYPE D3D12::FrameGraphBuilder::PassClassToListType(RenderPassClass passClass)
 {
-	switch (passType)
+	switch(passClass)
 	{
-	case RenderPassType::Graphics:
+	case RenderPassClass::Graphics:
 		return D3D12_COMMAND_LIST_TYPE_DIRECT;
-	case RenderPassType::Compute:
+	case RenderPassClass::Compute:
 		return D3D12_COMMAND_LIST_TYPE_COMPUTE;
-	case RenderPassType::Transfer:
+	case RenderPassClass::Transfer:
 		return D3D12_COMMAND_LIST_TYPE_COPY;
-	case RenderPassType::Present:
+	case RenderPassClass::Present:
 		return D3D12_COMMAND_LIST_TYPE_DIRECT;
 	default:
 		return D3D12_COMMAND_LIST_TYPE_DIRECT;

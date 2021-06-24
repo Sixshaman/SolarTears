@@ -36,8 +36,6 @@ namespace Vulkan
 		FrameGraphBuilder(FrameGraph* graphToBuild, const SwapChain* swapchain);
 		~FrameGraphBuilder();
 
-		void RegisterRenderPass(const std::string_view passName, RenderPassCreateFunc createFunc, RenderPassType passType);
-
 		void SetPassSubresourceFormat(const std::string_view passName,      const std::string_view subresourceId, VkFormat format);
 		void SetPassSubresourceLayout(const std::string_view passName,      const std::string_view subresourceId, VkImageLayout layout);
 		void SetPassSubresourceUsage(const std::string_view passName,       const std::string_view subresourceId, VkImageUsageFlags usage);
@@ -77,7 +75,7 @@ namespace Vulkan
 
 	private:
 		//Converts pass type to a queue family index
-		uint32_t PassTypeToQueueIndex(RenderPassType passType) const;
+		uint32_t PassClassToQueueIndex(RenderPassClass passClass) const;
 
 		//Creates an image view
 		VkImageView CreateImageView(VkImage image, uint32_t subresourceInfoIndex) const;
@@ -90,7 +88,7 @@ namespace Vulkan
 		uint32_t AddPresentSubresourceMetadata() override final;
 
 		//Creates a new render pass
-		void AddRenderPass(const RenderPassName& passName, uint32_t frame) override final;
+		void CreatePassObject(const RenderPassName& passName, uint32_t frame) override final;
 
 		//Gives a free render pass span id
 		uint32_t NextPassSpanId() override final;
@@ -108,10 +106,10 @@ namespace Vulkan
 		void CreateTextureViews(const std::vector<TextureSubresourceCreateInfo>& textureViewCreateInfos) const override final;
 
 		//Adds a barrier to execute before a pass
-		uint32_t AddBeforePassBarrier(uint32_t imageIndex, RenderPassType prevPassType, uint32_t prevPassSubresourceInfoIndex, RenderPassType currPassType, uint32_t currPassSubresourceInfoIndex) override final;
+		uint32_t AddBeforePassBarrier(uint32_t imageIndex, RenderPassClass prevPassClass, uint32_t prevPassSubresourceInfoIndex, RenderPassClass currPassClass, uint32_t currPassSubresourceInfoIndex) override final;
 
 		//Adds a barrier to execute before a pass
-		uint32_t AddAfterPassBarrier(uint32_t imageIndex, RenderPassType currPassType, uint32_t currPassSubresourceInfoIndex, RenderPassType nextPassType, uint32_t nextPassSubresourceInfoIndex) override final;
+		uint32_t AddAfterPassBarrier(uint32_t imageIndex, RenderPassClass currPassClass, uint32_t currPassSubresourceInfoIndex, RenderPassClass nextPassClass, uint32_t nextPassSubresourceInfoIndex) override final;
 
 		//Initializes per-traverse command buffer info
 		void InitializeTraverseData() const override final;
@@ -121,8 +119,6 @@ namespace Vulkan
 
 	private:
 		FrameGraph* mVulkanGraphToBuild;
-
-		std::unordered_map<RenderPassName, RenderPassCreateFunc> mRenderPassCreateFunctions;
 
 		std::vector<SubresourceInfo> mSubresourceInfos;
 

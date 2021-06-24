@@ -30,8 +30,6 @@ namespace D3D12
 		FrameGraphBuilder(FrameGraph* graphToBuild, const SwapChain* swapChain);
 		~FrameGraphBuilder();
 
-		void RegisterRenderPass(const std::string_view passName, RenderPassCreateFunc createFunc, RenderPassType passType);
-
 		void SetPassSubresourceFormat(const std::string_view passName, const std::string_view subresourceId, DXGI_FORMAT format);
 		void SetPassSubresourceState(const std::string_view passName,  const std::string_view subresourceId, D3D12_RESOURCE_STATES state);
 
@@ -55,7 +53,7 @@ namespace D3D12
 		void Build(ID3D12Device8* device, const ShaderManager* shaderManager, const MemoryManager* memoryManager);
 
 	private:
-		D3D12_COMMAND_LIST_TYPE PassTypeToListType(RenderPassType passType);
+		D3D12_COMMAND_LIST_TYPE PassClassToListType(RenderPassClass passType);
 
 	private:
 		//Creates a new subresource info record
@@ -65,7 +63,7 @@ namespace D3D12
 		uint32_t AddPresentSubresourceMetadata() override final;
 
 		//Creates a new render pass
-		void AddRenderPass(const RenderPassName& passName, uint32_t frame) override final;
+		void CreatePassObject(const RenderPassName& passName, uint32_t frame) override final;
 
 		//Gives a free render pass span id
 		uint32_t NextPassSpanId() override final;
@@ -83,10 +81,10 @@ namespace D3D12
 		void CreateTextureViews(const std::vector<TextureSubresourceCreateInfo>& textureViewCreateInfos) const override final;
 
 		//Add a barrier to execute before a pass
-		uint32_t AddBeforePassBarrier(uint32_t imageIndex, RenderPassType prevPassType, uint32_t prevPassSubresourceInfoIndex, RenderPassType currPassType, uint32_t currPassSubresourceInfoIndex) override final;
+		uint32_t AddBeforePassBarrier(uint32_t imageIndex, RenderPassClass prevPassClass, uint32_t prevPassSubresourceInfoIndex, RenderPassClass currPassClass, uint32_t currPassSubresourceInfoIndex) override final;
 
 		//Add a barrier to execute before a pass
-		uint32_t AddAfterPassBarrier(uint32_t imageIndex, RenderPassType currPassType, uint32_t currPassSubresourceInfoIndex, RenderPassType nextPassType, uint32_t nextPassSubresourceInfoIndex) override final;
+		uint32_t AddAfterPassBarrier(uint32_t imageIndex, RenderPassClass currPassClass, uint32_t currPassSubresourceInfoIndex, RenderPassClass nextPassClasse, uint32_t nextPassSubresourceInfoIndex) override final;
 
 		//Initializes per-traverse command buffer info
 		void InitializeTraverseData() const override final;
@@ -96,8 +94,6 @@ namespace D3D12
 
 	private:
 		FrameGraph* mD3d12GraphToBuild;
-
-		std::unordered_map<RenderPassName, RenderPassCreateFunc> mRenderPassCreateFunctions;
 
 		std::vector<SubresourceInfo> mSubresourceInfos;
 

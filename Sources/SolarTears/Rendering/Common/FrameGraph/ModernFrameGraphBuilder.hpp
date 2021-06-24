@@ -29,12 +29,12 @@ protected:
 		SubresourceMetadataNode* NextPassNode;
 
 		//In case of ping-pong or swapchain images the images are stored in a range. ImageIndex and ImageViewIndex point to the first image/view in the range
-		uint32_t       FirstFrameHandle;      //The id of the first frame in the list of frame graph textures. Common for all nodes in the resource
-		uint32_t       FirstFrameViewHandle;  //The id of the first frame in the frame graph texture views
-		uint32_t       FrameCount;            //The number of different frames in the resource. Common for all nodes in the resource
-		uint32_t       SubresourceInfoIndex;  //The id of the API-specific subresource data
-		uint32_t       Flags;                 //Per-subresource flags
-		RenderPassType PassType;              //The pass type (Graphics/Compute/Copy) that uses the node
+		uint32_t        FirstFrameHandle;      //The id of the first frame in the list of frame graph textures. Common for all nodes in the resource
+		uint32_t        FirstFrameViewHandle;  //The id of the first frame in the frame graph texture views
+		uint32_t        FrameCount;            //The number of different frames in the resource. Common for all nodes in the resource
+		uint32_t        SubresourceInfoIndex;  //The id of the API-specific subresource data
+		uint32_t        Flags;                 //Per-subresource flags
+		RenderPassClass PassClass;             //The pass class (Graphics/Compute/Copy) that uses the node
 
 		uint64_t ViewSortKey; //The key to determine unique image views for subresource
 	};
@@ -55,6 +55,8 @@ protected:
 public:
 	ModernFrameGraphBuilder(ModernFrameGraph* graphToBuild);
 	~ModernFrameGraphBuilder();
+
+	void RegisterRenderPass(RenderPassType passType, const std::string_view passName);
 
 	void RegisterReadSubresource(const std::string_view passName, const std::string_view subresourceId);
 	void RegisterWriteSubresource(const std::string_view passName, const std::string_view subresourceId);
@@ -147,7 +149,7 @@ protected:
 	virtual uint32_t AddPresentSubresourceMetadata() = 0;
 
 	//Creates a new render pass
-	virtual void AddRenderPass(const RenderPassName& passName, uint32_t frame) = 0;
+	virtual void CreatePassObject(const RenderPassName& passName, uint32_t frame) = 0;
 
 	//Gives a free render pass span id
 	virtual uint32_t NextPassSpanId() = 0;
@@ -165,10 +167,10 @@ protected:
 	virtual void CreateTextureViews(const std::vector<TextureSubresourceCreateInfo>& textureViewCreateInfos) const = 0;
 
 	//Add a barrier to execute before a pass
-	virtual uint32_t AddBeforePassBarrier(uint32_t imageIndex, RenderPassType prevPassType, uint32_t prevPassSubresourceInfoIndex, RenderPassType currPassType, uint32_t currPassSubresourceInfoIndex) = 0;
+	virtual uint32_t AddBeforePassBarrier(uint32_t imageIndex, RenderPassClass prevPassClass, uint32_t prevPassSubresourceInfoIndex, RenderPassClass currPassClass, uint32_t currPassSubresourceInfoIndex) = 0;
 
 	//Add a barrier to execute before a pass
-	virtual uint32_t AddAfterPassBarrier(uint32_t imageIndex, RenderPassType currPassType, uint32_t currPassSubresourceInfoIndex, RenderPassType nextPassType, uint32_t nextPassSubresourceInfoIndex) = 0;
+	virtual uint32_t AddAfterPassBarrier(uint32_t imageIndex, RenderPassClass currPassClass, uint32_t currPassSubresourceInfoIndex, RenderPassClass nextPassClass, uint32_t nextPassSubresourceInfoIndex) = 0;
 
 	//Initializes command buffer, job info, etc. for the frame graph
 	virtual void InitializeTraverseData() const = 0;
@@ -181,9 +183,9 @@ protected:
 
 	std::vector<RenderPassName> mRenderPassNames;
 
-	std::unordered_map<RenderPassName, RenderPassType> mRenderPassTypes;
-	std::unordered_map<RenderPassName, uint32_t>       mRenderPassDependencyLevels;
-	std::unordered_map<RenderPassName, uint32_t>       mRenderPassOwnPeriods;
+	std::unordered_map<RenderPassName, RenderPassClass> mRenderPassClasses;
+	std::unordered_map<RenderPassName, uint32_t>        mRenderPassDependencyLevels;
+	std::unordered_map<RenderPassName, uint32_t>        mRenderPassOwnPeriods;
 
 	std::unordered_map<RenderPassName, std::unordered_set<SubresourceId>> mRenderPassesReadSubresourceIds;
 	std::unordered_map<RenderPassName, std::unordered_set<SubresourceId>> mRenderPassesWriteSubresourceIds;

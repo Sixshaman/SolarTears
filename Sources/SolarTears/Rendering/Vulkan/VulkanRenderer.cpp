@@ -21,9 +21,6 @@
 #include <array>
 #include <unordered_set>
 
-#include "FrameGraph/Passes/VulkanGBufferPass.hpp"
-#include "FrameGraph/Passes/VulkanCopyImagePass.hpp"
-
 Vulkan::Renderer::Renderer(LoggerQueue* loggerQueue, FrameCounter* frameCounter, ThreadPool* threadPool): ::Renderer(loggerQueue), mInstanceParameters(loggerQueue), mDeviceParameters(loggerQueue), mThreadPoolRef(threadPool), mFrameCounterRef(frameCounter)
 {
 	mDynamicLibrary = std::make_unique<FunctionsLibrary>();

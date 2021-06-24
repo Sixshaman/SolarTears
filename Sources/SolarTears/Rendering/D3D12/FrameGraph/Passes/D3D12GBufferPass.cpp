@@ -35,17 +35,10 @@ D3D12::GBufferPass::~GBufferPass()
 
 void D3D12::GBufferPass::Register(FrameGraphBuilder* frameGraphBuilder, const std::string& passName)
 {
-	auto PassCreateFunc = [](ID3D12Device8* device, const FrameGraphBuilder* builder, const std::string& name, uint32_t frame) -> std::unique_ptr<RenderPass>
-	{
-		//Using new because make_unique can't access private constructor
-		return std::unique_ptr<GBufferPass>(new GBufferPass(device, builder, name, frame));
-	};
-
-	frameGraphBuilder->RegisterRenderPass(passName, PassCreateFunc, RenderPassType::Graphics);
-
 	frameGraphBuilder->RegisterWriteSubresource(passName, ColorBufferImageId);
+
 	frameGraphBuilder->SetPassSubresourceFormat(passName, ColorBufferImageId, ColorOutputFormat); //TODO: maybe passing the format????
-	frameGraphBuilder->SetPassSubresourceState(passName, ColorBufferImageId, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	frameGraphBuilder->SetPassSubresourceState(passName,  ColorBufferImageId, D3D12_RESOURCE_STATE_RENDER_TARGET);
 }
 
 void D3D12::GBufferPass::RecordExecution(ID3D12GraphicsCommandList6* commandList, const RenderableScene* scene, const ShaderManager* shaderManager, const FrameGraphConfig& frameGraphConfig) const

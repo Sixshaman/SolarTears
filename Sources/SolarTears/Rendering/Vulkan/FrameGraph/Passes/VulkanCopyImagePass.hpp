@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../VulkanRenderPass.hpp"
+#include "../../../Common/FrameGraph/Passes/CopyImagePass.hpp"
 
 class FrameGraphConfig;
 
@@ -8,20 +9,13 @@ namespace Vulkan
 {
 	class FrameGraphBuilder;
 
-	class CopyImagePass: public RenderPass
+	class CopyImagePass: public RenderPass, public CopyImagePassBase
 	{
 	public:
-		static constexpr std::string_view SrcImageId = "CopyImagePass-SrcImage";
-		static constexpr std::string_view DstImageId = "CopyImagePass-DstImage";
-
-	public:
-		static void Register(FrameGraphBuilder* frameGraphBuilder, const std::string& passName);
+		CopyImagePass(VkDevice device, const FrameGraphBuilder* frameGraphBuilder, const std::string& currentPassName, uint32_t frame);
 		~CopyImagePass();
 
 		void RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig) const override;
-
-	private:
-		CopyImagePass(VkDevice device, const FrameGraphBuilder* frameGraphBuilder, const std::string& currentPassName, uint32_t frame);
 
 	private:
 		VkImage mSrcImageRef;

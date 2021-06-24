@@ -13,14 +13,6 @@ D3D12::CopyImagePass::CopyImagePass(ID3D12Device8* device, const FrameGraphBuild
 
 void D3D12::CopyImagePass::Register(FrameGraphBuilder* frameGraphBuilder, const std::string& passName)
 {
-	auto PassCreateFunc = [](ID3D12Device8* device, const FrameGraphBuilder* builder, const std::string& name, uint32_t frame) -> std::unique_ptr<RenderPass>
-	{
-		//Using new because make_unique can't access private constructor
-		return std::unique_ptr<CopyImagePass>(new CopyImagePass(device, builder, name, frame));
-	};
-
-	frameGraphBuilder->RegisterRenderPass(passName, PassCreateFunc, RenderPassType::Transfer);
-
 	frameGraphBuilder->RegisterReadSubresource(passName,  SrcImageId);
 	frameGraphBuilder->RegisterWriteSubresource(passName, DstImageId);
 
