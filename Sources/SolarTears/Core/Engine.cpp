@@ -5,10 +5,14 @@
 #include "Scene/Scene.hpp"
 #include "../Input/Inputter.hpp"
 #include "../Rendering/Common/FrameGraph/FrameGraphConfig.hpp"
+#include "../Rendering/Common/FrameGraph/FrameGraphDescription.hpp"
 #include "../Rendering/Vulkan/VulkanRenderer.hpp"
 #include "../Rendering/D3D12/D3D12Renderer.hpp"
 #include "../Logging/LoggerQueue.hpp"
 #include "../Logging/VisualStudioDebugLogger.hpp"
+
+#include "../Rendering/Common/FrameGraph/Passes/CopyImagePass.hpp"
+#include "../Rendering/Common/FrameGraph/Passes/GBufferPass.hpp"
 
 Engine::Engine(): mPaused(false)
 {
@@ -149,5 +153,19 @@ void Engine::CreateFrameGraph(Window* window)
 {
 	FrameGraphConfig frameGraphConfig;
 	frameGraphConfig.SetScreenSize((uint16_t)window->GetWidth(), (uint16_t)window->GetHeight());
-	mRenderingSystem->InitFrameGraph(frameGraphConfig);
+
+
+	FrameGraphDescription frameGraphDescription;
+
+	frameGraphDescription.AddRenderPass(GBufferPassBase::PassType,   "GBuffer");
+	frameGraphDescription.AddRenderPass(CopyImagePassBase::PassType, "CopyImage");
+
+	frameGraphDescription.AssignSubresourceName("GBuffer",   GBufferPassBase::ColorBufferImageId, "ColorBuffer");
+	frameGraphDescription.AssignSubresourceName("CopyImage", CopyImagePassBase::SrcImageId,       "ColorBuffer");
+	frameGraphDescription.AssignSubresourceName("CopyImage", CopyImagePassBase::DstImageId,       "Backbuffer");
+
+	frameGraphDescription.AssignBackbufferName("Backbuffer");
+
+
+	mRenderingSystem->InitFrameGraph(std::move(frameGraphConfig), std::move(frameGraphDescription));
 }

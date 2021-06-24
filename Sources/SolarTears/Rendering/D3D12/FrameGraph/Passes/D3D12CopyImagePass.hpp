@@ -21,6 +21,9 @@ namespace D3D12
 
 		void RevalidateSrvUavDescriptors(D3D12_GPU_DESCRIPTOR_HANDLE prevHeapStart, D3D12_GPU_DESCRIPTOR_HANDLE newHeapStart) override;
 
+	public:
+		static void OnAdd(FrameGraphBuilder* frameGraphBuilder, const std::string& passName);
+
 	private:
 		ID3D12Resource* mSrcImageRef;
 		ID3D12Resource* mDstImageRef;

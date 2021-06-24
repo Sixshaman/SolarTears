@@ -9,7 +9,7 @@
 #include <array>
 #include <wil/com.h>
 
-D3D12::FrameGraph::FrameGraph(const FrameGraphConfig& frameGraphConfig): ModernFrameGraph(frameGraphConfig)
+D3D12::FrameGraph::FrameGraph(FrameGraphConfig&& frameGraphConfig): ModernFrameGraph(std::move(frameGraphConfig))
 {
 	mSrvUavDescriptorCount = 0;
 }
@@ -94,6 +94,10 @@ void D3D12::FrameGraph::Traverse(ThreadPool* threadPool, const WorkerCommandList
 		ID3D12CommandAllocator*     mainGraphicsCommandAllocator = commandLists->GetMainThreadDirectCommandAllocator(currentFrameResourceIndex);
 		
 		BeginCommandList(mainGraphicsCommandList, mainGraphicsCommandAllocator, (uint32_t)(mGraphicsPassSpans.size() - 1));
+
+		std::array descriptorHeaps = {descriptorManager->GetSrvUavCbvHeap()};
+		mainGraphicsCommandList->SetDescriptorHeaps((UINT)descriptorHeaps.size(), descriptorHeaps.data());
+
 		RecordGraphicsPasses(mainGraphicsCommandList, scene, shaderManager, (uint32_t)(mGraphicsPassSpans.size() - 1), frameIndex, swapchainImageIndex);
 		EndCommandList(mainGraphicsCommandList);
 

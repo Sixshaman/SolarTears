@@ -88,21 +88,11 @@ void D3D12::Renderer::RenderScene()
 	mSwapChain->Present();
 }
 
-void D3D12::Renderer::InitFrameGraph(const FrameGraphConfig& frameGraphConfig)
+void D3D12::Renderer::InitFrameGraph(FrameGraphConfig&& frameGraphConfig, FrameGraphDescription&& frameGraphDescription)
 {
-	mFrameGraph = std::make_unique<D3D12::FrameGraph>(frameGraphConfig);
+	mFrameGraph = std::make_unique<D3D12::FrameGraph>(std::move(frameGraphConfig));
 
-	D3D12::FrameGraphBuilder frameGraphBuilder(mFrameGraph.get(), mSwapChain.get());
-
-	GBufferPass::Register(&frameGraphBuilder,   "GBuffer");
-	CopyImagePass::Register(&frameGraphBuilder, "CopyImage");
-
-	frameGraphBuilder.AssignSubresourceName("GBuffer",   GBufferPass::ColorBufferImageId, "ColorBuffer");
-	frameGraphBuilder.AssignSubresourceName("CopyImage", CopyImagePass::SrcImageId,       "ColorBuffer");
-	frameGraphBuilder.AssignSubresourceName("CopyImage", CopyImagePass::DstImageId,       "Backbuffer");
-
-	frameGraphBuilder.AssignBackbufferName("Backbuffer");
-
+	D3D12::FrameGraphBuilder frameGraphBuilder(mFrameGraph.get(), std::move(frameGraphDescription), mSwapChain.get());
 	frameGraphBuilder.Build(mDevice.get(), mShaderManager.get(), mMemoryAllocator.get());
 
 	SceneDescriptorCreator      sceneDescriptorCreator(mScene.get());

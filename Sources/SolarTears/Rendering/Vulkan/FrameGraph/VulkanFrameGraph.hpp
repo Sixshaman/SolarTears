@@ -21,7 +21,7 @@ namespace Vulkan
 		friend class FrameGraphBuilder;
 
 	public:
-		FrameGraph(VkDevice device, const FrameGraphConfig& frameGraphConfig);
+		FrameGraph(VkDevice device, FrameGraphConfig&& frameGraphConfig);
 		~FrameGraph();
 
 		void Traverse(ThreadPool* threadPool, WorkerCommandBuffers* commandBuffers, RenderableScene* scene, DeviceQueues* deviceQueues, SwapChain* swapchain, VkFence traverseFence, uint32_t frameIndex, uint32_t swapchainImageIndex, VkSemaphore preTraverseSemaphore, VkSemaphore* outPostTraverseSemaphore);

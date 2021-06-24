@@ -16,6 +16,7 @@ namespace D3D12
 	class DeviceFeatures;
 
 	using RenderPassCreateFunc = std::unique_ptr<RenderPass>(*)(ID3D12Device8*, const FrameGraphBuilder*, const std::string&, uint32_t);
+	using RenderPassAddFunc    = void(*)(FrameGraphBuilder* frameGraphBuilder, const std::string& passName);
 
 	class FrameGraphBuilder final: public ModernFrameGraphBuilder
 	{
@@ -27,7 +28,7 @@ namespace D3D12
 		};
 
 	public:
-		FrameGraphBuilder(FrameGraph* graphToBuild, const SwapChain* swapChain);
+		FrameGraphBuilder(FrameGraph* graphToBuild, FrameGraphDescription&& frameGraphDescription, const SwapChain* swapChain);
 		~FrameGraphBuilder();
 
 		void SetPassSubresourceFormat(const std::string_view passName, const std::string_view subresourceId, DXGI_FORMAT format);
@@ -53,6 +54,13 @@ namespace D3D12
 		void Build(ID3D12Device8* device, const ShaderManager* shaderManager, const MemoryManager* memoryManager);
 
 	private:
+		//Adds a render pass of type Pass to the frame graph pass table
+		template<typename Pass>
+		void AddPassToTable();
+
+		//Initializes frame graph pass table
+		void InitPassTable();
+
 		D3D12_COMMAND_LIST_TYPE PassClassToListType(RenderPassClass passType);
 
 	private:
@@ -62,8 +70,11 @@ namespace D3D12
 		//Creates a new subresource info record for present pass
 		uint32_t AddPresentSubresourceMetadata() override final;
 
+		//Registers render pass inputs and outputs
+		void RegisterPassSubresources(RenderPassType passType, const FrameGraphDescription::RenderPassName& passName) override;
+
 		//Creates a new render pass
-		void CreatePassObject(const RenderPassName& passName, uint32_t frame) override final;
+		void CreatePassObject(const FrameGraphDescription::RenderPassName& passName, RenderPassType passType, uint32_t frame) override final;
 
 		//Gives a free render pass span id
 		uint32_t NextPassSpanId() override final;
@@ -95,6 +106,9 @@ namespace D3D12
 	private:
 		FrameGraph* mD3d12GraphToBuild;
 
+		std::unordered_map<RenderPassType, RenderPassAddFunc>    mPassAddFuncTable;
+		std::unordered_map<RenderPassType, RenderPassCreateFunc> mPassCreateFuncTable;
+
 		std::vector<SubresourceInfo> mSubresourceInfos;
 
 		UINT mSrvUavCbvDescriptorCount;
@@ -112,3 +126,5 @@ namespace D3D12
 		const ShaderManager*   mShaderManager;
 	};
 }
+
+#include "D3D12FrameGraphBuilder.inl"

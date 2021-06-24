@@ -17,6 +17,9 @@ namespace Vulkan
 
 		void RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig) const override;
 
+	public:
+		static void OnAdd(FrameGraphBuilder* frameGraphBuilder, const std::string& passName);
+
 	private:
 		VkImage mSrcImageRef;
 		VkImage mDstImageRef;

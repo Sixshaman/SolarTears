@@ -35,7 +35,7 @@ namespace D3D12
 		void InitScene(SceneDescription* sceneDescription) override;
 		void RenderScene()                                 override;
 
-		void InitFrameGraph(const FrameGraphConfig& frameGraphConfig) override;
+		void InitFrameGraph(FrameGraphConfig&& frameGraphConfig, FrameGraphDescription&& frameGraphDescription) override;
 
 	private:
 		void CreateFactory();

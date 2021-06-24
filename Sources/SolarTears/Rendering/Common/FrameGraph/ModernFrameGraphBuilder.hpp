@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include "ModernFrameGraph.hpp"
 #include "ModernFrameGraphMisc.hpp"
+#include "FrameGraphDescription.hpp"
 #include "../../../Core/DataStructures/Span.hpp"
 
 class FrameGraphConfig;
@@ -15,13 +16,6 @@ class ModernFrameGraphBuilder
 protected:
 	constexpr static uint32_t TextureFlagAutoBeforeBarrier = 0x01; //A before-barrier is handled by render pass itself
 	constexpr static uint32_t TextureFlagAutoAfterBarrier  = 0x02; //An after-barrier is handled by render pass itself
-
-	using RenderPassName  = std::string;
-	using SubresourceId   = std::string;
-	using SubresourceName = std::string;
-
-	constexpr static std::string_view PresentPassName         = "SPECIAL_PRESENT_ACQUIRE_PASS";
-	constexpr static std::string_view BackbufferPresentPassId = "SpecialPresentAcquirePass-Backbuffer";
 
 	struct SubresourceMetadataNode
 	{
@@ -53,16 +47,11 @@ protected:
 	};
 
 public:
-	ModernFrameGraphBuilder(ModernFrameGraph* graphToBuild);
+	ModernFrameGraphBuilder(ModernFrameGraph* graphToBuild, FrameGraphDescription&& frameGraphDescription);
 	~ModernFrameGraphBuilder();
-
-	void RegisterRenderPass(RenderPassType passType, const std::string_view passName);
 
 	void RegisterReadSubresource(const std::string_view passName, const std::string_view subresourceId);
 	void RegisterWriteSubresource(const std::string_view passName, const std::string_view subresourceId);
-
-	void AssignSubresourceName(const std::string_view passName, const std::string_view subresourceId, const std::string_view subresourceName);
-	void AssignBackbufferName(const std::string_view backbufferName);
 
 	void EnableSubresourceAutoBeforeBarrier(const std::string_view passName, const std::string_view subresourceId, bool autoBarrier = true);
 	void EnableSubresourceAutoAfterBarrier(const std::string_view passName, const std::string_view subresourceId,  bool autoBarrier = true);
@@ -72,29 +61,35 @@ public:
 	const FrameGraphConfig* GetConfig() const;
 
 private:
+	void RegisterRenderPass(RenderPassType passType, const std::string_view passName);
+
+private:
 	//Creates present pass
 	void CreatePresentPass();
 
 	//Builds frame graph adjacency list
-	void BuildAdjacencyList(std::unordered_map<RenderPassName, std::unordered_set<RenderPassName>>& adjacencyList);
+	void BuildAdjacencyList(std::unordered_map<FrameGraphDescription::RenderPassName, std::unordered_set<FrameGraphDescription::RenderPassName>>& adjacencyList);
 
 	//Sorts frame graph passes topologically
-	void SortRenderPassesTopological(const std::unordered_map<RenderPassName, std::unordered_set<RenderPassName>>& adjacencyList, std::vector<RenderPassName>& unsortedPasses);
+	void BuildSortedRenderPassesTopological(const std::unordered_map<FrameGraphDescription::RenderPassName, std::unordered_set<FrameGraphDescription::RenderPassName>>& adjacencyList);
 
 	//Sorts frame graph passes (already sorted topologically) by dependency level
-	void SortRenderPassesDependency(const std::unordered_map<RenderPassName, std::unordered_set<RenderPassName>>& adjacencyList, std::vector<RenderPassName>& topologicallySortedPasses);
+	void BuildSortedRenderPassesDependency(const std::unordered_map<FrameGraphDescription::RenderPassName, std::unordered_set<FrameGraphDescription::RenderPassName>>& adjacencyList);
 
-	////Builds render pass dependency levels
+	//Builds render pass dependency levels
 	void BuildDependencyLevels();
+
+	//Changes pass classes according to async compute/transfer use
+	void AdjustPassClasses();
 
 	//Validates PrevPassMetadata and NextPassMetadata links in each subresource info
 	void ValidateSubresourceLinks();
 
-	//Validates queue families in each subresource info
-	void ValidateSubresourcePassTypes();
+	//Validates pass classes in each subresource info
+	void ValidateSubresourcePassClasses();
 
 	//Finds all passes that use swapchain images. Such passes need to be swapped every frame
-	void FindBackbufferPasses(std::unordered_set<RenderPassName>& swapchainPassNames);
+	void FindBackbufferPasses(std::unordered_set<FrameGraphDescription::RenderPassName>& swapchainPassNames);
 
 	//Finds own render pass periods, i.e. the minimum number of pass objects required for all possible non-swapchain frame combinations
 	void CalculatePassPeriods();
@@ -106,7 +101,7 @@ private:
 	void BuildBarriers();
 
 	//Build the before- and after-pass barriers
-	uint32_t BuildPassBarriers(const RenderPassName& passName, uint32_t barrierOffset, ModernFrameGraph::BarrierSpan* outBarrierSpan);
+	uint32_t BuildPassBarriers(const FrameGraphDescription::RenderPassName& passName, uint32_t barrierOffset, ModernFrameGraph::BarrierSpan* outBarrierSpan);
 
 	//Create subresources
 	void BuildSubresources();
@@ -133,10 +128,10 @@ private:
 	void ValidateImageAndViewIndicesInResource(TextureResourceCreateInfo* createInfo, uint32_t imageIndex);
 
 	//Recursively sort subtree topologically
-	void TopologicalSortNode(const std::unordered_map<RenderPassName, std::unordered_set<RenderPassName>>& adjacencyList, std::unordered_set<RenderPassName>& visited, std::unordered_set<RenderPassName>& onStack, const RenderPassName& renderPassName, std::vector<RenderPassName>& sortedPassNames);
+	void TopologicalSortNode(const std::unordered_map<FrameGraphDescription::RenderPassName, std::unordered_set<FrameGraphDescription::RenderPassName>>& adjacencyList, std::unordered_set<FrameGraphDescription::RenderPassName>& visited, std::unordered_set<FrameGraphDescription::RenderPassName>& onStack, const FrameGraphDescription::RenderPassName& renderPassName);
 
 	//Test if two writingPass writes to readingPass
-	bool PassesIntersect(const RenderPassName& writingPass, const RenderPassName& readingPass);
+	bool PassesIntersect(const FrameGraphDescription::RenderPassName& writingPass, const FrameGraphDescription::RenderPassName& readingPass);
 
 protected:
 	const Span<uint32_t> GetBackbufferImageSpan() const;
@@ -148,8 +143,11 @@ protected:
 	//Creates a new subresource info record for present pass
 	virtual uint32_t AddPresentSubresourceMetadata() = 0;
 
+	//Registers render pass inputs and outputs
+	virtual void RegisterPassSubresources(RenderPassType passType, const FrameGraphDescription::RenderPassName& passName) = 0;
+
 	//Creates a new render pass
-	virtual void CreatePassObject(const RenderPassName& passName, uint32_t frame) = 0;
+	virtual void CreatePassObject(const FrameGraphDescription::RenderPassName& passName, RenderPassType passType, uint32_t frame) = 0;
 
 	//Gives a free render pass span id
 	virtual uint32_t NextPassSpanId() = 0;
@@ -181,17 +179,18 @@ protected:
 protected:
 	ModernFrameGraph* mGraphToBuild;
 
-	std::vector<RenderPassName> mRenderPassNames;
+	FrameGraphDescription mFrameGraphDescription;
 
-	std::unordered_map<RenderPassName, RenderPassClass> mRenderPassClasses;
-	std::unordered_map<RenderPassName, uint32_t>        mRenderPassDependencyLevels;
-	std::unordered_map<RenderPassName, uint32_t>        mRenderPassOwnPeriods;
+	std::vector<FrameGraphDescription::RenderPassName> mSortedRenderPassNames;
 
-	std::unordered_map<RenderPassName, std::unordered_set<SubresourceId>> mRenderPassesReadSubresourceIds;
-	std::unordered_map<RenderPassName, std::unordered_set<SubresourceId>> mRenderPassesWriteSubresourceIds;
+	std::unordered_map<RenderPassType, RenderPassClass> mRenderPassClassTable;
+	
+	std::unordered_map<FrameGraphDescription::RenderPassName, RenderPassClass> mRenderPassClasses;
+	std::unordered_map<FrameGraphDescription::RenderPassName, uint32_t>        mRenderPassDependencyLevels;
+	std::unordered_map<FrameGraphDescription::RenderPassName, uint32_t>        mRenderPassOwnPeriods;
 
-	std::unordered_map<RenderPassName, std::unordered_map<SubresourceName, SubresourceId>>           mRenderPassesSubresourceNameIds;
-	std::unordered_map<RenderPassName, std::unordered_map<SubresourceId,   SubresourceMetadataNode>> mRenderPassesSubresourceMetadatas;
+	std::unordered_map<FrameGraphDescription::RenderPassName, std::unordered_set<FrameGraphDescription::SubresourceId>> mRenderPassesReadSubresourceIds;
+	std::unordered_map<FrameGraphDescription::RenderPassName, std::unordered_set<FrameGraphDescription::SubresourceId>> mRenderPassesWriteSubresourceIds;
 
-	SubresourceName mBackbufferName;
+	std::unordered_map<FrameGraphDescription::RenderPassName, std::unordered_map<FrameGraphDescription::SubresourceId, SubresourceMetadataNode>> mRenderPassesSubresourceMetadatas;
 };

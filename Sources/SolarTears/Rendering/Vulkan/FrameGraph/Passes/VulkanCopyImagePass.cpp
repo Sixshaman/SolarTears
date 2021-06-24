@@ -13,10 +13,13 @@ Vulkan::CopyImagePass::CopyImagePass(VkDevice device, const FrameGraphBuilder* f
 	mDstImageAspectFlags = frameGraphBuilder->GetRegisteredSubresourceAspectFlags(currentPassName, DstImageId);
 }
 
-void Register(Vulkan::FrameGraphBuilder* frameGraphBuilder, const std::string& passName)
+Vulkan::CopyImagePass::~CopyImagePass()
 {
-	frameGraphBuilder->RegisterReadSubresource(passName, SrcImageId);
-	frameGraphBuilder->RegisterWriteSubresource(passName, DstImageId);
+}
+
+void Vulkan::CopyImagePass::OnAdd(FrameGraphBuilder* frameGraphBuilder, const std::string& passName)
+{
+	CopyImagePassBase::OnAdd(frameGraphBuilder, passName);
 
 	frameGraphBuilder->SetPassSubresourceAspectFlags(passName, SrcImageId, 0);
 	frameGraphBuilder->SetPassSubresourceStageFlags(passName, SrcImageId, VK_PIPELINE_STAGE_TRANSFER_BIT);
@@ -29,10 +32,6 @@ void Register(Vulkan::FrameGraphBuilder* frameGraphBuilder, const std::string& p
 	frameGraphBuilder->SetPassSubresourceLayout(passName, DstImageId, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 	frameGraphBuilder->SetPassSubresourceUsage(passName, DstImageId, VK_IMAGE_USAGE_TRANSFER_DST_BIT);
 	frameGraphBuilder->SetPassSubresourceAccessFlags(passName, DstImageId, VK_ACCESS_TRANSFER_WRITE_BIT);
-}
-
-Vulkan::CopyImagePass::~CopyImagePass()
-{
 }
 
 void Vulkan::CopyImagePass::RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig) const

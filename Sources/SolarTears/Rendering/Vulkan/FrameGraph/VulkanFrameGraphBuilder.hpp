@@ -19,6 +19,7 @@ namespace Vulkan
 	class DescriptorManager;
 
 	using RenderPassCreateFunc = std::unique_ptr<RenderPass>(*)(VkDevice, const FrameGraphBuilder*, const std::string&, uint32_t);
+	using RenderPassAddFunc    = void(*)(FrameGraphBuilder* frameGraphBuilder, const std::string& passName);
 
 	class FrameGraphBuilder final: public ModernFrameGraphBuilder
 	{
@@ -33,7 +34,7 @@ namespace Vulkan
 		};
 
 	public:
-		FrameGraphBuilder(FrameGraph* graphToBuild, const SwapChain* swapchain);
+		FrameGraphBuilder(FrameGraph* graphToBuild, FrameGraphDescription&& frameGraphDescription, const SwapChain* swapchain);
 		~FrameGraphBuilder();
 
 		void SetPassSubresourceFormat(const std::string_view passName,      const std::string_view subresourceId, VkFormat format);
@@ -74,6 +75,13 @@ namespace Vulkan
 		void Build(const InstanceParameters* instanceParameters, const DeviceParameters* deviceParameters, const DescriptorManager* descriptorManager, const MemoryManager* memoryManager, const ShaderManager* shaderManager, const DeviceQueues* deviceQueues, WorkerCommandBuffers* workerCommandBuffers);
 
 	private:
+		//Adds a render pass of type Pass to the frame graph pass table
+		template<typename Pass>
+		void AddPassToTable();
+		
+		//Initializes frame graph pass table
+		void InitPassTable();
+
 		//Converts pass type to a queue family index
 		uint32_t PassClassToQueueIndex(RenderPassClass passClass) const;
 
@@ -87,8 +95,11 @@ namespace Vulkan
 		//Creates a new subresource info record for present pass
 		uint32_t AddPresentSubresourceMetadata() override final;
 
+		//Registers render pass inputs and outputs
+		void RegisterPassSubresources(RenderPassType passType, const FrameGraphDescription::RenderPassName& passName) override;
+
 		//Creates a new render pass
-		void CreatePassObject(const RenderPassName& passName, uint32_t frame) override final;
+		void CreatePassObject(const FrameGraphDescription::RenderPassName& passName, RenderPassType passType, uint32_t frame) override final;
 
 		//Gives a free render pass span id
 		uint32_t NextPassSpanId() override final;
@@ -120,6 +131,9 @@ namespace Vulkan
 	private:
 		FrameGraph* mVulkanGraphToBuild;
 
+		std::unordered_map<RenderPassType, RenderPassAddFunc>    mPassAddFuncTable;
+		std::unordered_map<RenderPassType, RenderPassCreateFunc> mPassCreateFuncTable;
+
 		std::vector<SubresourceInfo> mSubresourceInfos;
 
 		uint32_t mImageViewCount;
@@ -135,3 +149,5 @@ namespace Vulkan
 		const MemoryManager*        mMemoryManager;
 	};
 }
+
+#include "VulkanFrameGraphBuilder.inl"

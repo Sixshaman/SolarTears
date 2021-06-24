@@ -369,6 +369,9 @@
     <ClInclude Include="Rendering\Common\FrameGraph\Passes\CopyImagePass.hpp">
       <Filter>Rendering\Common\FrameGraph\Passes</Filter>
     </ClInclude>
+    <ClInclude Include="Rendering\Common\FrameGraph\FrameGraphDescription.hpp">
+      <Filter>Rendering\Common\FrameGraph</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Platform\Win32\Win32Application.cpp">
@@ -587,6 +590,15 @@
     <ClCompile Include="Rendering\Common\FrameGraph\ModernFrameGraph.cpp">
       <Filter>Rendering\Common\FrameGraph</Filter>
     </ClCompile>
+    <ClCompile Include="Rendering\Common\FrameGraph\Passes\CopyImagePass.cpp">
+      <Filter>Rendering\Common\FrameGraph\Passes</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Common\FrameGraph\Passes\GBufferPass.cpp">
+      <Filter>Rendering\Common\FrameGraph\Passes</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Common\FrameGraph\FrameGraphDescription.cpp">
+      <Filter>Rendering\Common\FrameGraph</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="Platform\Win32\Win32Util.inl">
@@ -609,6 +621,12 @@
     </None>
     <None Include="Rendering\Vulkan\Scene\VulkanSceneBuilder.inl">
       <Filter>Rendering\Vulkan\Scene</Filter>
+    </None>
+    <None Include="Rendering\D3D12\FrameGraph\D3D12FrameGraphBuilder.inl">
+      <Filter>Rendering\D3D12\FrameGraph</Filter>
+    </None>
+    <None Include="Rendering\Vulkan\FrameGraph\VulkanFrameGraphBuilder.inl">
+      <Filter>Rendering\Vulkan\FrameGraph</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>

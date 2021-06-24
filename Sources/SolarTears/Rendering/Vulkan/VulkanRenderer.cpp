@@ -131,21 +131,11 @@ void Vulkan::Renderer::InitScene(SceneDescription* sceneDescription)
 	sceneDescriptorCreator.RecreateSceneDescriptors(mDescriptorManager.get(), mShaderManager.get());
 }
 
-void Vulkan::Renderer::InitFrameGraph(const FrameGraphConfig& frameGraphConfig)
+void Vulkan::Renderer::InitFrameGraph(FrameGraphConfig&& frameGraphConfig, FrameGraphDescription&& frameGraphDescription)
 {
-	mFrameGraph = std::make_unique<FrameGraph>(mDevice, frameGraphConfig);
+	mFrameGraph = std::make_unique<FrameGraph>(mDevice, std::move(frameGraphConfig));
 
-	FrameGraphBuilder frameGraphBuilder(mFrameGraph.get(), mSwapChain.get());
-
-	GBufferPass::Register(&frameGraphBuilder, "GBuffer");
-	CopyImagePass::Register(&frameGraphBuilder, "CopyImage");
-
-	frameGraphBuilder.AssignSubresourceName("GBuffer",   GBufferPass::ColorBufferImageId, "ColorBuffer");
-	frameGraphBuilder.AssignSubresourceName("CopyImage", CopyImagePass::SrcImageId,       "ColorBuffer");
-	frameGraphBuilder.AssignSubresourceName("CopyImage", CopyImagePass::DstImageId,       "Backbuffer");
-
-	frameGraphBuilder.AssignBackbufferName("Backbuffer");
-
+	FrameGraphBuilder frameGraphBuilder(mFrameGraph.get(), std::move(frameGraphDescription), mSwapChain.get());
 	frameGraphBuilder.Build(&mInstanceParameters, &mDeviceParameters, mDescriptorManager.get(), mMemoryAllocator.get(), mShaderManager.get(), mDeviceQueues.get(), mCommandBuffers.get());
 }
 

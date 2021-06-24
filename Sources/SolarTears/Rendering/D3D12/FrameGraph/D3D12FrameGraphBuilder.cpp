@@ -10,32 +10,26 @@
 #include <algorithm>
 #include <numeric>
 
-D3D12::FrameGraphBuilder::FrameGraphBuilder(FrameGraph* graphToBuild, const SwapChain* swapChain): ModernFrameGraphBuilder(graphToBuild), mD3d12GraphToBuild(graphToBuild), mSwapChain(swapChain)
+#include "Passes/D3D12GBufferPass.hpp"
+#include "Passes/D3D12CopyImagePass.hpp"
+
+D3D12::FrameGraphBuilder::FrameGraphBuilder(FrameGraph* graphToBuild, FrameGraphDescription&& frameGraphDescription, const SwapChain* swapChain): ModernFrameGraphBuilder(graphToBuild, std::move(frameGraphDescription)), mD3d12GraphToBuild(graphToBuild), mSwapChain(swapChain)
 {
 	mSrvUavCbvDescriptorCount = 0;
 	mRtvDescriptorCount       = 0;
 	mDsvDescriptorCount       = 0;
+
+	InitPassTable();
 }
 
 D3D12::FrameGraphBuilder::~FrameGraphBuilder()
 {
 }
 
-void D3D12::FrameGraphBuilder::RegisterRenderPass(const std::string_view passName, RenderPassCreateFunc createFunc, RenderPassClass passClass)
-{
-	RenderPassName renderPassName(passName);
-	assert(!mRenderPassCreateFunctions.contains(renderPassName));
-
-	mRenderPassNames.push_back(renderPassName);
-	mRenderPassCreateFunctions[renderPassName] = createFunc;
-
-	mRenderPassClasses[renderPassName] = passClass;
-}
-
 void D3D12::FrameGraphBuilder::SetPassSubresourceFormat(const std::string_view passName, const std::string_view subresourceId, DXGI_FORMAT format)
 {
-	RenderPassName passNameStr(passName);
-	SubresourceId  subresourceIdStr(subresourceId);
+	FrameGraphDescription::RenderPassName passNameStr(passName);
+	FrameGraphDescription::SubresourceId  subresourceIdStr(subresourceId);
 
 	uint32_t subresourceInfoIndex = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr).SubresourceInfoIndex;
 	mSubresourceInfos[subresourceInfoIndex].Format = format;
@@ -43,8 +37,8 @@ void D3D12::FrameGraphBuilder::SetPassSubresourceFormat(const std::string_view p
 
 void D3D12::FrameGraphBuilder::SetPassSubresourceState(const std::string_view passName, const std::string_view subresourceId, D3D12_RESOURCE_STATES state)
 {
-	RenderPassName passNameStr(passName);
-	SubresourceId  subresourceIdStr(subresourceId);
+	FrameGraphDescription::RenderPassName passNameStr(passName);
+	FrameGraphDescription::SubresourceId  subresourceIdStr(subresourceId);
 
 	uint32_t subresourceInfoIndex = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr).SubresourceInfoIndex;
 	mSubresourceInfos[subresourceInfoIndex].State = state;
@@ -57,8 +51,8 @@ const D3D12::ShaderManager* D3D12::FrameGraphBuilder::GetShaderManager() const
 
 ID3D12Resource2* D3D12::FrameGraphBuilder::GetRegisteredResource(const std::string_view passName, const std::string_view subresourceId, uint32_t frame) const
 {
-	const RenderPassName passNameStr(passName);
-	const SubresourceId  subresourceIdStr(subresourceId);
+	const FrameGraphDescription::RenderPassName passNameStr(passName);
+	const FrameGraphDescription::SubresourceId  subresourceIdStr(subresourceId);
 
 	const SubresourceMetadataNode& metadataNode = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr);
 	if(metadataNode.FirstFrameHandle == (uint32_t)(-1))
@@ -82,8 +76,8 @@ ID3D12Resource2* D3D12::FrameGraphBuilder::GetRegisteredResource(const std::stri
 
 D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceSrvUav(const std::string_view passName, const std::string_view subresourceId, uint32_t frame) const
 {
-	const RenderPassName passNameStr(passName);
-	const SubresourceId  subresourceIdStr(subresourceId);
+	const FrameGraphDescription::RenderPassName passNameStr(passName);
+	const FrameGraphDescription::SubresourceId  subresourceIdStr(subresourceId);
 
 	const SubresourceMetadataNode& metadataNode = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr);
 	const SubresourceInfo& subresourceInfo = mSubresourceInfos[metadataNode.SubresourceInfoIndex];
@@ -107,8 +101,8 @@ D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceSr
 
 D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceRtv(const std::string_view passName, const std::string_view subresourceId, uint32_t frame) const
 {
-	const RenderPassName passNameStr(passName);
-	const SubresourceId  subresourceIdStr(subresourceId);
+	const FrameGraphDescription::RenderPassName passNameStr(passName);
+	const FrameGraphDescription::SubresourceId  subresourceIdStr(subresourceId);
 
 	const SubresourceMetadataNode& metadataNode = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr);
 	const SubresourceInfo& subresourceInfo = mSubresourceInfos[metadataNode.SubresourceInfoIndex];
@@ -132,8 +126,8 @@ D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceRt
 
 D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceDsv(const std::string_view passName, const std::string_view subresourceId, uint32_t frame) const
 {
-	const RenderPassName passNameStr(passName);
-	const SubresourceId  subresourceIdStr(subresourceId);
+	const FrameGraphDescription::RenderPassName passNameStr(passName);
+	const FrameGraphDescription::SubresourceId  subresourceIdStr(subresourceId);
 
 	const SubresourceMetadataNode& metadataNode = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr);
 	const SubresourceInfo& subresourceInfo = mSubresourceInfos[metadataNode.SubresourceInfoIndex];
@@ -157,8 +151,8 @@ D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceDs
 
 DXGI_FORMAT D3D12::FrameGraphBuilder::GetRegisteredSubresourceFormat(const std::string_view passName, const std::string_view subresourceId) const
 {
-	const RenderPassName passNameStr(passName);
-	const SubresourceId  subresourceIdStr(subresourceId);
+	const FrameGraphDescription::RenderPassName passNameStr(passName);
+	const FrameGraphDescription::SubresourceId  subresourceIdStr(subresourceId);
 
 	uint32_t subresourceInfoIndex = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr).SubresourceInfoIndex;
 	return mSubresourceInfos[subresourceInfoIndex].Format;
@@ -166,8 +160,8 @@ DXGI_FORMAT D3D12::FrameGraphBuilder::GetRegisteredSubresourceFormat(const std::
 
 D3D12_RESOURCE_STATES D3D12::FrameGraphBuilder::GetRegisteredSubresourceState(const std::string_view passName, const std::string_view subresourceId) const
 {
-	const RenderPassName passNameStr(passName);
-	const SubresourceId  subresourceIdStr(subresourceId);
+	const FrameGraphDescription::RenderPassName passNameStr(passName);
+	const FrameGraphDescription::SubresourceId  subresourceIdStr(subresourceId);
 
 	uint32_t subresourceInfoIndex = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr).SubresourceInfoIndex;
 	return mSubresourceInfos[subresourceInfoIndex].State;
@@ -175,8 +169,8 @@ D3D12_RESOURCE_STATES D3D12::FrameGraphBuilder::GetRegisteredSubresourceState(co
 
 D3D12_RESOURCE_STATES D3D12::FrameGraphBuilder::GetPreviousPassSubresourceState(const std::string_view passName, const std::string_view subresourceId) const
 {
-	const RenderPassName passNameStr(passName);
-	const SubresourceId  subresourceIdStr(subresourceId);
+	const FrameGraphDescription::RenderPassName passNameStr(passName);
+	const FrameGraphDescription::SubresourceId  subresourceIdStr(subresourceId);
 
 	uint32_t subresourceInfoIndex = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr).PrevPassNode->SubresourceInfoIndex;
 	return mSubresourceInfos[subresourceInfoIndex].State;
@@ -184,8 +178,8 @@ D3D12_RESOURCE_STATES D3D12::FrameGraphBuilder::GetPreviousPassSubresourceState(
 
 D3D12_RESOURCE_STATES D3D12::FrameGraphBuilder::GetNextPassSubresourceState(const std::string_view passName, const std::string_view subresourceId) const
 {
-	const RenderPassName passNameStr(passName);
-	const SubresourceId  subresourceIdStr(subresourceId);
+	const FrameGraphDescription::RenderPassName passNameStr(passName);
+	const FrameGraphDescription::SubresourceId  subresourceIdStr(subresourceId);
 
 	uint32_t subresourceInfoIndex = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr).NextPassNode->SubresourceInfoIndex;
 	return mSubresourceInfos[subresourceInfoIndex].State;
@@ -269,6 +263,8 @@ void D3D12::FrameGraphBuilder::CreateTextures(const std::vector<TextureResourceC
 			{
 				resourceFlags &= ~D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
 			}
+
+			currentNode = currentNode->NextPassNode;
 
 		} while(currentNode != headNode);
 
@@ -383,7 +379,7 @@ void D3D12::FrameGraphBuilder::CreateTextures(const std::vector<TextureResourceC
 			mD3d12GraphToBuild->mTextures[imageIndex] = swapchainImage2.get();
 
 #if defined(DEBUG) || defined(_DEBUG)
-			D3D12Utils::SetDebugObjectName(mD3d12GraphToBuild->mTextures[imageIndex], mBackbufferName + std::to_string(frame));
+			D3D12Utils::SetDebugObjectName(mD3d12GraphToBuild->mTextures[imageIndex], std::string(backbufferCreateInfo.Name) + std::to_string(frame));
 #endif
 		}
 	}
@@ -411,9 +407,16 @@ uint32_t D3D12::FrameGraphBuilder::AddPresentSubresourceMetadata()
 	return (uint32_t)(mSubresourceInfos.size() - 1);
 }
 
-void D3D12::FrameGraphBuilder::CreatePassObject(const RenderPassName& passName, uint32_t frame)
+void D3D12::FrameGraphBuilder::RegisterPassSubresources(RenderPassType passType, const FrameGraphDescription::RenderPassName& passName)
 {
-	mD3d12GraphToBuild->mRenderPasses.push_back(mRenderPassCreateFunctions.at(passName)(mDevice, this, passName, frame));
+	auto passRegisterFunc = mPassAddFuncTable.at(passType);
+	passRegisterFunc(this, passName);
+}
+
+void D3D12::FrameGraphBuilder::CreatePassObject(const FrameGraphDescription::RenderPassName& passName, RenderPassType passType, uint32_t frame)
+{
+	auto passCreateFunc = mPassCreateFuncTable.at(passType);
+	mD3d12GraphToBuild->mRenderPasses.push_back(passCreateFunc(mDevice, this, passName, frame));
 }
 
 uint32_t D3D12::FrameGraphBuilder::NextPassSpanId()
@@ -805,6 +808,15 @@ void D3D12::FrameGraphBuilder::InitializeTraverseData() const
 uint32_t D3D12::FrameGraphBuilder::GetSwapchainImageCount() const
 {
 	return mSwapChain->SwapchainImageCount;
+}
+
+void D3D12::FrameGraphBuilder::InitPassTable()
+{
+	mPassAddFuncTable.clear();
+	mPassCreateFuncTable.clear();
+
+	AddPassToTable<GBufferPass>();
+	AddPassToTable<CopyImagePass>();
 }
 
 D3D12_COMMAND_LIST_TYPE D3D12::FrameGraphBuilder::PassClassToListType(RenderPassClass passClass)

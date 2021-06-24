@@ -11,17 +11,16 @@ D3D12::CopyImagePass::CopyImagePass(ID3D12Device8* device, const FrameGraphBuild
 	mDstImageRef = frameGraphBuilder->GetRegisteredResource(currentPassName, DstImageId, frame);
 }
 
-void D3D12::CopyImagePass::Register(FrameGraphBuilder* frameGraphBuilder, const std::string& passName)
+D3D12::CopyImagePass::~CopyImagePass()
 {
-	frameGraphBuilder->RegisterReadSubresource(passName,  SrcImageId);
-	frameGraphBuilder->RegisterWriteSubresource(passName, DstImageId);
+}
+
+void D3D12::CopyImagePass::OnAdd(FrameGraphBuilder* frameGraphBuilder, const std::string& passName)
+{
+	CopyImagePassBase::OnAdd(frameGraphBuilder, passName);
 
 	frameGraphBuilder->SetPassSubresourceState(passName, SrcImageId, D3D12_RESOURCE_STATE_COPY_SOURCE);
 	frameGraphBuilder->SetPassSubresourceState(passName, DstImageId, D3D12_RESOURCE_STATE_COPY_DEST);
-}
-
-D3D12::CopyImagePass::~CopyImagePass()
-{
 }
 
 void D3D12::CopyImagePass::RecordExecution(ID3D12GraphicsCommandList6* commandList, const RenderableScene* scene, const ShaderManager* shaderManager, const FrameGraphConfig& frameGraphConfig) const

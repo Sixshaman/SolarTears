@@ -22,6 +22,9 @@ namespace D3D12
 
 		void RevalidateSrvUavDescriptors(D3D12_GPU_DESCRIPTOR_HANDLE prevHeapStart, D3D12_GPU_DESCRIPTOR_HANDLE newHeapStart) override;
 
+	public:
+		static void OnAdd(FrameGraphBuilder* frameGraphBuilder, const std::string& passName);
+
 	private:
 		void CreatePipelineState(ID3D12Device8* device, const ShaderManager* shaderManager);
 

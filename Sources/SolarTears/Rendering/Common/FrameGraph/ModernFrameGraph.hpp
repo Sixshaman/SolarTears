@@ -31,7 +31,7 @@ protected:
 	};
 
 public:
-	ModernFrameGraph(const FrameGraphConfig& frameGraphConfig);
+	ModernFrameGraph(FrameGraphConfig&& frameGraphConfig);
 	~ModernFrameGraph();
 
 protected:

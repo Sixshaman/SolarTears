@@ -34,9 +34,9 @@ Vulkan::GBufferPass::~GBufferPass()
 	SafeDestroyObject(vkDestroyFramebuffer, mDeviceRef, mFramebuffer);
 }
 
-void Vulkan::GBufferPass::Register(FrameGraphBuilder* frameGraphBuilder, const std::string& passName)
+void Vulkan::GBufferPass::OnAdd(FrameGraphBuilder* frameGraphBuilder, const std::string& passName)
 {
-	frameGraphBuilder->RegisterWriteSubresource(passName, ColorBufferImageId);
+	GBufferPassBase::OnAdd(frameGraphBuilder, passName);
 
 	frameGraphBuilder->EnableSubresourceAutoBeforeBarrier(passName, ColorBufferImageId, true);
 	frameGraphBuilder->EnableSubresourceAutoAfterBarrier(passName, ColorBufferImageId, true);

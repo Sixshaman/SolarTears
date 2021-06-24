@@ -54,6 +54,7 @@
     <ClInclude Include="Platform\Win32\Win32MouseKeyMap.hpp" />
     <ClInclude Include="Platform\Win32\Win32Window.hpp" />
     <ClInclude Include="Rendering\Common\FrameGraph\FrameGraphConfig.hpp" />
+    <ClInclude Include="Rendering\Common\FrameGraph\FrameGraphDescription.hpp" />
     <ClInclude Include="Rendering\Common\FrameGraph\ModernFrameGraph.hpp" />
     <ClInclude Include="Rendering\Common\FrameGraph\ModernFrameGraphBuilder.hpp" />
     <ClInclude Include="Rendering\Common\FrameGraph\ModernFrameGraphMisc.hpp" />
@@ -132,8 +133,11 @@
     <ClCompile Include="Platform\Win32\Win32MouseKeyMap.cpp" />
     <ClCompile Include="Platform\Win32\Win32Window.cpp" />
     <ClCompile Include="Rendering\Common\FrameGraph\FrameGraphConfig.cpp" />
+    <ClCompile Include="Rendering\Common\FrameGraph\FrameGraphDescription.cpp" />
     <ClCompile Include="Rendering\Common\FrameGraph\ModernFrameGraph.cpp" />
     <ClCompile Include="Rendering\Common\FrameGraph\ModernFrameGraphBuilder.cpp" />
+    <ClCompile Include="Rendering\Common\FrameGraph\Passes\CopyImagePass.cpp" />
+    <ClCompile Include="Rendering\Common\FrameGraph\Passes\GBufferPass.cpp" />
     <ClCompile Include="Rendering\Common\Renderer.cpp" />
     <ClCompile Include="Rendering\Common\RenderingUtils.cpp" />
     <ClCompile Include="Rendering\Common\Scene\ModernRenderableScene.cpp" />
@@ -202,6 +206,8 @@
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv</Outputs>
     </CustomBuild>
     <None Include="Rendering\D3D12\D3D12Utils.inl" />
+    <None Include="Rendering\D3D12\FrameGraph\D3D12FrameGraphBuilder.inl" />
+    <None Include="Rendering\Vulkan\FrameGraph\VulkanFrameGraphBuilder.inl" />
     <None Include="Rendering\Vulkan\Scene\VulkanSceneBuilder.inl" />
     <None Include="Shaders\D3D12\CommonHeader.hlsli" />
     <None Include="Shaders\D3D12\GBuffer\GBufferInclude.hlsli" />

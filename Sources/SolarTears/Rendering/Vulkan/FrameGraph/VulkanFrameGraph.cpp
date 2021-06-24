@@ -9,7 +9,7 @@
 #include <array>
 #include <latch>
 
-Vulkan::FrameGraph::FrameGraph(VkDevice device, const FrameGraphConfig& frameGraphConfig): ModernFrameGraph(frameGraphConfig), mDeviceRef(device)
+Vulkan::FrameGraph::FrameGraph(VkDevice device, FrameGraphConfig&& frameGraphConfig): ModernFrameGraph(std::move(frameGraphConfig)), mDeviceRef(device)
 {
 	mImageMemory = VK_NULL_HANDLE;
 

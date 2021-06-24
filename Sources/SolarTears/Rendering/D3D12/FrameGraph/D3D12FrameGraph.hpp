@@ -22,7 +22,7 @@ namespace D3D12
 		friend class FrameGraphBuilder;
 
 	public:
-		FrameGraph(const FrameGraphConfig& frameGraphConfig);
+		FrameGraph(FrameGraphConfig&& frameGraphConfig);
 		~FrameGraph();
 
 		void Traverse(ThreadPool* threadPool, const WorkerCommandLists* commandLists, const RenderableScene* scene, const ShaderManager* shaderManager, const SrvDescriptorManager* descriptorManager, DeviceQueues* deviceQueues, uint32_t frameIndex, uint32_t swapchainImageIndex);
