@@ -1,11 +1,12 @@
-cd ../Sources/3rdParty/DirectXShaderCompiler
-"utils/hct/hctstart.cmd" ./ ../../../UtilsBuild/DirectXShaderCompiler.bin
+CALL "../3rdParty/DirectXShaderCompiler/utils/hct/hctstart.cmd" ../3rdParty/DirectXShaderCompiler ../../UtilsBuild/DirectXShaderCompiler.bin
 
-hctbuild -Release
+if not exist external/taef python utils/hct/hctgettaef.py
+CALL "utils/hct/hctbuild.cmd" -Release -vs2019
 
 cd ../../..
 if not exist "Utils" mkdir Utils
-if not exist "Utils/DXC" mkdir Utils/DXC
+cd Utils
+if not exist "DXC" mkdir DXC
+cd ..
 
-move /Y "UtilsBuild/DirectXShaderCompiler.bin/Release" "Utils/DXC/Release"
-copy dxil.dll "Utils/DXC/Release/bin/dxil.dll"
+move /Y "UtilsBuild/DirectXShaderCompiler.bin/Release" "Utils/DXC/Release
