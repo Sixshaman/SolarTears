@@ -1,7 +1,5 @@
-cd ../Sources/3rdParty/DirectXShaderCompiler
-"utils/hct/hctstart.cmd" ./ ../../../UtilsBuild/DirectXShaderCompiler.bin
-
-hctbuild -Debug
+CALL "../3rdParty/DirectXShaderCompiler/utils/hct/hctstart.cmd" ../3rdParty/DirectXShaderCompiler ../../UtilsBuild/DirectXShaderCompiler.bin
+CALL "utils/hct/hctbuild.cmd" -Debug
 
 cd ../../..
 if not exist "Utils" mkdir Utils

@@ -359,7 +359,7 @@
       <AdditionalDependencies>vulkan-1.lib;d3d12.lib;dxgi.lib;dxguid.lib;dxcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
-      <Command>if not exist "$(SolutionDir)..\Utils\DXC\Debug\bin\dxc.exe" "$(SolutionDir)..\BuildUtils\BuildDXC_Debug.cmd"</Command>
+      <Command>if not exist "$(SolutionDir)..\Utils\DXC\Debug\bin\dxc.exe" "$(SolutionDir)..\UtilsBuild\BuildDXC_Debug.cmd"</Command>
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -380,6 +380,9 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>vulkan-1.lib;d3d12.lib;dxgi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PreBuildEvent>
+      <Command>if not exist "$(SolutionDir)..\Utils\DXC\Debug\bin\dxc.exe" "$(SolutionDir)..\UtilsBuild\BuildDXC_Release.cmd"</Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
