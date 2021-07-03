@@ -208,7 +208,7 @@ void Window::CreateMainWindow(HINSTANCE hInstance, const std::wstring& title, in
 	
 	WNDCLASSEX wc;
 	wc.cbSize        = sizeof(WNDCLASSEX);
-	wc.style         = CS_HREDRAW | CS_VREDRAW | CS_PARENTDC;                                                                               
+	wc.style         = CS_HREDRAW | CS_VREDRAW | CS_PARENTDC | CS_OWNDC;
 	wc.cbClsExtra    = 0;
 	wc.cbWndExtra    = 0;
 	wc.hInstance     = hInstance;

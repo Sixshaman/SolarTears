@@ -8,6 +8,7 @@
 #include "../Rendering/Common/FrameGraph/FrameGraphDescription.hpp"
 #include "../Rendering/Vulkan/VulkanRenderer.hpp"
 #include "../Rendering/D3D12/D3D12Renderer.hpp"
+#include "../Rendering/OGL/OGLRenderer.hpp"
 #include "../Logging/LoggerQueue.hpp"
 #include "../Logging/VisualStudioDebugLogger.hpp"
 
@@ -25,7 +26,7 @@ Engine::Engine(): mPaused(false)
 	mFrameCounter = std::make_unique<FrameCounter>();
 	mFPSCounter   = std::make_unique<FPSCounter>();
 
-	mRenderingSystem = std::make_unique<Vulkan::Renderer>(mLoggerQueue.get(), mFrameCounter.get(), mThreadPool.get());
+	mRenderingSystem = std::make_unique<OpenGL::Renderer>(mLoggerQueue.get(), mFrameCounter.get());
 	mInputSystem     = std::make_unique<Inputter>(mLoggerQueue.get());
 
 	CreateScene();

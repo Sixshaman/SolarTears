@@ -85,6 +85,13 @@
     <ClInclude Include="Rendering\D3D12\Scene\D3D12Scene.hpp" />
     <ClInclude Include="Rendering\D3D12\Scene\D3D12SceneBuilder.hpp" />
     <ClInclude Include="Rendering\D3D12\Scene\D3D12SceneDescriptorCreator.hpp" />
+    <ClInclude Include="Rendering\OGL\OGLContext.hpp" />
+    <ClInclude Include="Rendering\OGL\OGLFunctionLoader.hpp" />
+    <ClInclude Include="Rendering\OGL\OGLFunctions.hpp" />
+    <ClInclude Include="Rendering\OGL\OGLRenderer.hpp" />
+    <ClInclude Include="Rendering\OGL\Platform\OGLContextWin32.hpp" />
+    <ClInclude Include="Rendering\OGL\Platform\OGLFunctionsWin32.hpp" />
+    <ClInclude Include="Rendering\OGL\Platform\OGLFunctionLoaderWin32.hpp" />
     <ClInclude Include="Rendering\Vulkan\FrameGraph\Passes\VulkanCopyImagePass.hpp" />
     <ClInclude Include="Rendering\Vulkan\FrameGraph\Passes\VulkanGBufferPass.hpp" />
     <ClInclude Include="Rendering\Vulkan\FrameGraph\VulkanFrameGraph.hpp" />
@@ -162,6 +169,10 @@
     <ClCompile Include="Rendering\D3D12\Scene\D3D12Scene.cpp" />
     <ClCompile Include="Rendering\D3D12\Scene\D3D12SceneBuilder.cpp" />
     <ClCompile Include="Rendering\D3D12\Scene\D3D12SceneDescriptorCreator.cpp" />
+    <ClCompile Include="Rendering\OGL\OGLRenderer.cpp" />
+    <ClCompile Include="Rendering\OGL\Platform\OGLContextWin32.cpp" />
+    <ClCompile Include="Rendering\OGL\Platform\OGLFunctionLoaderWin32.cpp" />
+    <ClCompile Include="Rendering\OGL\Platform\OGLFunctionsWin32.cpp" />
     <ClCompile Include="Rendering\Vulkan\FrameGraph\Passes\VulkanCopyImagePass.cpp" />
     <ClCompile Include="Rendering\Vulkan\FrameGraph\Passes\VulkanGBufferPass.cpp" />
     <ClCompile Include="Rendering\Vulkan\FrameGraph\VulkanFrameGraph.cpp" />
@@ -207,6 +218,7 @@
     </CustomBuild>
     <None Include="Rendering\D3D12\D3D12Utils.inl" />
     <None Include="Rendering\D3D12\FrameGraph\D3D12FrameGraphBuilder.inl" />
+    <None Include="Rendering\OGL\OGLFunctionLoader.inl" />
     <None Include="Rendering\Vulkan\FrameGraph\VulkanFrameGraphBuilder.inl" />
     <None Include="Rendering\Vulkan\Scene\VulkanSceneBuilder.inl" />
     <None Include="Shaders\D3D12\CommonHeader.hlsli" />
@@ -356,7 +368,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>vulkan-1.lib;d3d12.lib;dxgi.lib;dxguid.lib;dxcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>vulkan-1.lib;opengl32.lib;d3d12.lib;dxgi.lib;dxguid.lib;dxcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
       <Command>if not exist "$(SolutionDir)..\Utils\DXC\Debug\bin\dxc.exe" "$(SolutionDir)..\UtilsBuild\BuildDXC_Debug.cmd"

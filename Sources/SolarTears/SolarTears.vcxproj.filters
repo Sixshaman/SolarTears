@@ -112,6 +112,12 @@
     <Filter Include="Rendering\Common\FrameGraph\Passes">
       <UniqueIdentifier>{a634bc32-c40b-449f-bc51-2ba19ac989c2}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Rendering\OGL">
+      <UniqueIdentifier>{5d6a6793-be16-48fe-be33-c203611982c2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Rendering\OGL\Platform">
+      <UniqueIdentifier>{36d332d0-69dc-42bb-a361-ebe85464d692}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Platform\Win32\Win32Application.hpp">
@@ -372,6 +378,27 @@
     <ClInclude Include="Rendering\Common\FrameGraph\FrameGraphDescription.hpp">
       <Filter>Rendering\Common\FrameGraph</Filter>
     </ClInclude>
+    <ClInclude Include="Rendering\OGL\OGLRenderer.hpp">
+      <Filter>Rendering\OGL</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\OGL\OGLContext.hpp">
+      <Filter>Rendering\OGL</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\OGL\Platform\OGLContextWin32.hpp">
+      <Filter>Rendering\OGL\Platform</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\OGL\Platform\OGLFunctionsWin32.hpp">
+      <Filter>Rendering\OGL\Platform</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\OGL\Platform\OGLFunctionLoaderWin32.hpp">
+      <Filter>Rendering\OGL\Platform</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\OGL\OGLFunctions.hpp">
+      <Filter>Rendering\OGL</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\OGL\OGLFunctionLoader.hpp">
+      <Filter>Rendering\OGL</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Platform\Win32\Win32Application.cpp">
@@ -599,6 +626,18 @@
     <ClCompile Include="Rendering\Common\FrameGraph\FrameGraphDescription.cpp">
       <Filter>Rendering\Common\FrameGraph</Filter>
     </ClCompile>
+    <ClCompile Include="Rendering\OGL\OGLRenderer.cpp">
+      <Filter>Rendering\OGL</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\OGL\Platform\OGLContextWin32.cpp">
+      <Filter>Rendering\OGL\Platform</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\OGL\Platform\OGLFunctionsWin32.cpp">
+      <Filter>Rendering\OGL\Platform</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\OGL\Platform\OGLFunctionLoaderWin32.cpp">
+      <Filter>Rendering\OGL\Platform</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="Platform\Win32\Win32Util.inl">
@@ -627,6 +666,9 @@
     </None>
     <None Include="Rendering\Vulkan\FrameGraph\VulkanFrameGraphBuilder.inl">
       <Filter>Rendering\Vulkan\FrameGraph</Filter>
+    </None>
+    <None Include="Rendering\OGL\OGLFunctionLoader.inl">
+      <Filter>Rendering\OGL</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>
