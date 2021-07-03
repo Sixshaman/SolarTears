@@ -19,6 +19,8 @@ namespace OpenGL
 		void MakeCurrent();
 		void DoneCurrent();
 
+		void SwapBuffers();
+
 	private:
 		wil::unique_hdc_window mHdc;
 

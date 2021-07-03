@@ -78,3 +78,12 @@ void OpenGL::GLContext::DoneCurrent()
 {
 	wglMakeCurrent(mHdc.get(), nullptr);
 }
+
+void OpenGL::GLContext::SwapBuffers()
+{
+	[[unlikely]]
+	if(!wglSwapLayerBuffers(mHdc.get(), 0))
+	{
+		THROW_HR(HRESULT_FROM_WIN32(GetLastError()));
+	}
+}

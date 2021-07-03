@@ -29,6 +29,10 @@ void OpenGL::Renderer::InitScene(SceneDescription* sceneDescription)
 
 void OpenGL::Renderer::RenderScene()
 {
+	mGLContext->MakeCurrent();
+
+	mGLContext->SwapBuffers();
+	mGLContext->DoneCurrent();
 }
 
 void OpenGL::Renderer::InitFrameGraph(FrameGraphConfig&& frameGraphConfig, FrameGraphDescription&& frameGraphDescription)
