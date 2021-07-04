@@ -54,6 +54,11 @@ void Vulkan::FunctionsLibrary::LoadInstanceFunctions(VkInstance instance)
 	vkGetPhysicalDeviceExternalFenceProperties                        = (PFN_vkGetPhysicalDeviceExternalFenceProperties)(vkGetInstanceProcAddr(instance,                        "vkGetPhysicalDeviceExternalFenceProperties"));
 	vkEnumeratePhysicalDeviceGroups                                   = (PFN_vkEnumeratePhysicalDeviceGroups)(vkGetInstanceProcAddr(instance,                                   "vkEnumeratePhysicalDeviceGroups"));
 
+#if defined(VK_EXT_ACQUIRE_DRM_DISPLAY_EXTENSION_NAME)
+	vkAcquireDrmDisplayEXT                                            = (PFN_vkAcquireDrmDisplayEXT)(vkGetInstanceProcAddr(instance,                                            "vkAcquireDrmDisplayEXT"));
+	vkGetDrmDisplayEXT                                                = (PFN_vkGetDrmDisplayEXT)(vkGetInstanceProcAddr(instance,                                                "vkGetDrmDisplayEXT"));
+#endif
+
 #if defined(VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME)
 	vkGetPhysicalDeviceCalibrateableTimeDomainsEXT                    = (PFN_vkGetPhysicalDeviceCalibrateableTimeDomainsEXT)(vkGetInstanceProcAddr(instance,                    "vkGetPhysicalDeviceCalibrateableTimeDomainsEXT"));
 #endif
@@ -145,6 +150,11 @@ void Vulkan::FunctionsLibrary::LoadInstanceFunctions(VkInstance instance)
 	vkGetPhysicalDeviceExternalImageFormatPropertiesNV                = (PFN_vkGetPhysicalDeviceExternalImageFormatPropertiesNV)(vkGetInstanceProcAddr(instance,                "vkGetPhysicalDeviceExternalImageFormatPropertiesNV"));
 #endif
 
+#if defined(VK_KHR_VIDEO_QUEUE_EXTENSION_NAME) && defined(VK_ENABLE_BETA_EXTENSIONS)
+	vkGetPhysicalDeviceVideoCapabilitiesKHR                           = (PFN_vkGetPhysicalDeviceVideoCapabilitiesKHR)(vkGetInstanceProcAddr(instance,                           "vkGetPhysicalDeviceVideoCapabilitiesKHR"));
+	vkGetPhysicalDeviceVideoFormatPropertiesKHR                       = (PFN_vkGetPhysicalDeviceVideoFormatPropertiesKHR)(vkGetInstanceProcAddr(instance,                       "vkGetPhysicalDeviceVideoFormatPropertiesKHR"));
+#endif
+
 #if defined(VK_KHR_ANDROID_SURFACE_EXTENSION_NAME) && defined(VK_USE_PLATFORM_ANDROID_KHR)
 	vkCreateAndroidSurfaceKHR                                         = (PFN_vkCreateAndroidSurfaceKHR)(vkGetInstanceProcAddr(instance,                                         "vkCreateAndroidSurfaceKHR"));
 #endif
@@ -174,6 +184,11 @@ void Vulkan::FunctionsLibrary::LoadInstanceFunctions(VkInstance instance)
 	vkCreateMetalSurfaceEXT                                           = (PFN_vkCreateMetalSurfaceEXT)(vkGetInstanceProcAddr(instance,                                           "vkCreateMetalSurfaceEXT"));
 #endif
 
+#if defined(VK_QNX_SCREEN_SURFACE_EXTENSION_NAME) && defined(VK_USE_PLATFORM_SCREEN_QNX)
+	vkCreateScreenSurfaceQNX                                          = (PFN_vkCreateScreenSurfaceQNX)(vkGetInstanceProcAddr(instance,                                          "vkCreateScreenSurfaceQNX"));
+	vkGetPhysicalDeviceScreenPresentationSupportQNX                   = (PFN_vkGetPhysicalDeviceScreenPresentationSupportQNX)(vkGetInstanceProcAddr(instance,                   "vkGetPhysicalDeviceScreenPresentationSupportQNX"));
+#endif
+
 #if defined(VK_NN_VI_SURFACE_EXTENSION_NAME) && defined(VK_USE_PLATFORM_VI_NN)
 	vkCreateViSurfaceNN                                               = (PFN_vkCreateViSurfaceNN)(vkGetInstanceProcAddr(instance,                                               "vkCreateViSurfaceNN"));
 #endif
@@ -190,6 +205,11 @@ void Vulkan::FunctionsLibrary::LoadInstanceFunctions(VkInstance instance)
 #if defined(VK_KHR_WIN32_SURFACE_EXTENSION_NAME) && defined(VK_USE_PLATFORM_WIN32_KHR)
 	vkCreateWin32SurfaceKHR                                           = (PFN_vkCreateWin32SurfaceKHR)(vkGetInstanceProcAddr(instance,                                           "vkCreateWin32SurfaceKHR"));
 	vkGetPhysicalDeviceWin32PresentationSupportKHR                    = (PFN_vkGetPhysicalDeviceWin32PresentationSupportKHR)(vkGetInstanceProcAddr(instance,                    "vkGetPhysicalDeviceWin32PresentationSupportKHR"));
+#endif
+
+#if defined(VK_NV_ACQUIRE_WINRT_DISPLAY_EXTENSION_NAME) && defined(VK_USE_PLATFORM_WIN32_KHR)
+	vkAcquireWinrtDisplayNV                                           = (PFN_vkAcquireWinrtDisplayNV)(vkGetInstanceProcAddr(instance,                                           "vkAcquireWinrtDisplayNV"));
+	vkGetWinrtDisplayNV                                               = (PFN_vkGetWinrtDisplayNV)(vkGetInstanceProcAddr(instance,                                               "vkGetWinrtDisplayNV"));
 #endif
 
 #if defined(VK_KHR_XCB_SURFACE_EXTENSION_NAME) && defined(VK_USE_PLATFORM_XCB_KHR)
@@ -376,6 +396,10 @@ void Vulkan::FunctionsLibrary::LoadDeviceFunctions(VkDevice device)
 	vkGetCalibratedTimestampsEXT                      = (PFN_vkGetCalibratedTimestampsEXT)(vkGetDeviceProcAddr(device,                      "vkGetCalibratedTimestampsEXT"));
 #endif
 
+#if defined(VK_EXT_COLOR_WRITE_ENABLE_EXTENSION_NAME)
+	vkCmdSetColorWriteEnableEXT                       = (PFN_vkCmdSetColorWriteEnableEXT)(vkGetDeviceProcAddr(device,                       "vkCmdSetColorWriteEnableEXT"));
+#endif
+
 #if defined(VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME)
 	vkCmdBeginConditionalRenderingEXT                 = (PFN_vkCmdBeginConditionalRenderingEXT)(vkGetDeviceProcAddr(device,                 "vkCmdBeginConditionalRenderingEXT"));
 	vkCmdEndConditionalRenderingEXT                   = (PFN_vkCmdEndConditionalRenderingEXT)(vkGetDeviceProcAddr(device,                   "vkCmdEndConditionalRenderingEXT"));
@@ -411,6 +435,14 @@ void Vulkan::FunctionsLibrary::LoadDeviceFunctions(VkDevice device)
 	vkGetSwapchainCounterEXT                          = (PFN_vkGetSwapchainCounterEXT)(vkGetDeviceProcAddr(device,                          "vkGetSwapchainCounterEXT"));
 #endif
 
+#if defined(VK_EXT_EXTENDED_DYNAMIC_STATE_2_EXTENSION_NAME)
+	vkCmdSetPatchControlPointsEXT                     = (PFN_vkCmdSetPatchControlPointsEXT)(vkGetDeviceProcAddr(device,                     "vkCmdSetPatchControlPointsEXT"));
+	vkCmdSetRasterizerDiscardEnableEXT                = (PFN_vkCmdSetRasterizerDiscardEnableEXT)(vkGetDeviceProcAddr(device,                "vkCmdSetRasterizerDiscardEnableEXT"));
+	vkCmdSetDepthBiasEnableEXT                        = (PFN_vkCmdSetDepthBiasEnableEXT)(vkGetDeviceProcAddr(device,                        "vkCmdSetDepthBiasEnableEXT"));
+	vkCmdSetLogicOpEXT                                = (PFN_vkCmdSetLogicOpEXT)(vkGetDeviceProcAddr(device,                                "vkCmdSetLogicOpEXT"));
+	vkCmdSetPrimitiveRestartEnableEXT                 = (PFN_vkCmdSetPrimitiveRestartEnableEXT)(vkGetDeviceProcAddr(device,                 "vkCmdSetPrimitiveRestartEnableEXT"));
+#endif
+
 #if defined(VK_EXT_EXTENDED_DYNAMIC_STATE_EXTENSION_NAME)
 	vkCmdSetCullModeEXT                               = (PFN_vkCmdSetCullModeEXT)(vkGetDeviceProcAddr(device,                               "vkCmdSetCullModeEXT"));
 	vkCmdSetFrontFaceEXT                              = (PFN_vkCmdSetFrontFaceEXT)(vkGetDeviceProcAddr(device,                              "vkCmdSetFrontFaceEXT"));
@@ -442,6 +474,11 @@ void Vulkan::FunctionsLibrary::LoadDeviceFunctions(VkDevice device)
 	vkCmdSetLineStippleEXT                            = (PFN_vkCmdSetLineStippleEXT)(vkGetDeviceProcAddr(device,                            "vkCmdSetLineStippleEXT"));
 #endif
 
+#if defined(VK_EXT_MULTI_DRAW_EXTENSION_NAME)
+	vkCmdDrawMultiEXT                                 = (PFN_vkCmdDrawMultiEXT)(vkGetDeviceProcAddr(device,                                 "vkCmdDrawMultiEXT"));
+	vkCmdDrawMultiIndexedEXT                          = (PFN_vkCmdDrawMultiIndexedEXT)(vkGetDeviceProcAddr(device,                          "vkCmdDrawMultiIndexedEXT"));
+#endif
+
 #if defined(VK_EXT_PRIVATE_DATA_EXTENSION_NAME)
 	vkCreatePrivateDataSlotEXT                        = (PFN_vkCreatePrivateDataSlotEXT)(vkGetDeviceProcAddr(device,                        "vkCreatePrivateDataSlotEXT"));
 	vkDestroyPrivateDataSlotEXT                       = (PFN_vkDestroyPrivateDataSlotEXT)(vkGetDeviceProcAddr(device,                       "vkDestroyPrivateDataSlotEXT"));
@@ -469,9 +506,18 @@ void Vulkan::FunctionsLibrary::LoadDeviceFunctions(VkDevice device)
 	vkMergeValidationCachesEXT                        = (PFN_vkMergeValidationCachesEXT)(vkGetDeviceProcAddr(device,                        "vkMergeValidationCachesEXT"));
 #endif
 
+#if defined(VK_EXT_VERTEX_INPUT_DYNAMIC_STATE_EXTENSION_NAME)
+	vkCmdSetVertexInputEXT                            = (PFN_vkCmdSetVertexInputEXT)(vkGetDeviceProcAddr(device,                            "vkCmdSetVertexInputEXT"));
+#endif
+
 #if defined(VK_GOOGLE_DISPLAY_TIMING_EXTENSION_NAME)
 	vkGetRefreshCycleDurationGOOGLE                   = (PFN_vkGetRefreshCycleDurationGOOGLE)(vkGetDeviceProcAddr(device,                   "vkGetRefreshCycleDurationGOOGLE"));
 	vkGetPastPresentationTimingGOOGLE                 = (PFN_vkGetPastPresentationTimingGOOGLE)(vkGetDeviceProcAddr(device,                 "vkGetPastPresentationTimingGOOGLE"));
+#endif
+
+#if defined(VK_HUAWEI_SUBPASS_SHADING_EXTENSION_NAME)
+	vkGetSubpassShadingMaxWorkgroupSizeHUAWEI         = (PFN_vkGetSubpassShadingMaxWorkgroupSizeHUAWEI)(vkGetDeviceProcAddr(device,         "vkGetSubpassShadingMaxWorkgroupSizeHUAWEI"));
+	vkCmdSubpassShadingHUAWEI                         = (PFN_vkCmdSubpassShadingHUAWEI)(vkGetDeviceProcAddr(device,                         "vkCmdSubpassShadingHUAWEI"));
 #endif
 
 #if defined(VK_INTEL_PERFORMANCE_QUERY_EXTENSION_NAME)
@@ -486,6 +532,25 @@ void Vulkan::FunctionsLibrary::LoadDeviceFunctions(VkDevice device)
 	vkGetPerformanceParameterINTEL                    = (PFN_vkGetPerformanceParameterINTEL)(vkGetDeviceProcAddr(device,                    "vkGetPerformanceParameterINTEL"));
 #endif
 
+#if defined(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME)
+	vkDestroyAccelerationStructureKHR                 = (PFN_vkDestroyAccelerationStructureKHR)(vkGetDeviceProcAddr(device,                 "vkDestroyAccelerationStructureKHR"));
+	vkCmdCopyAccelerationStructureKHR                 = (PFN_vkCmdCopyAccelerationStructureKHR)(vkGetDeviceProcAddr(device,                 "vkCmdCopyAccelerationStructureKHR"));
+	vkCopyAccelerationStructureKHR                    = (PFN_vkCopyAccelerationStructureKHR)(vkGetDeviceProcAddr(device,                    "vkCopyAccelerationStructureKHR"));
+	vkCmdCopyAccelerationStructureToMemoryKHR         = (PFN_vkCmdCopyAccelerationStructureToMemoryKHR)(vkGetDeviceProcAddr(device,         "vkCmdCopyAccelerationStructureToMemoryKHR"));
+	vkCopyAccelerationStructureToMemoryKHR            = (PFN_vkCopyAccelerationStructureToMemoryKHR)(vkGetDeviceProcAddr(device,            "vkCopyAccelerationStructureToMemoryKHR"));
+	vkCmdCopyMemoryToAccelerationStructureKHR         = (PFN_vkCmdCopyMemoryToAccelerationStructureKHR)(vkGetDeviceProcAddr(device,         "vkCmdCopyMemoryToAccelerationStructureKHR"));
+	vkCopyMemoryToAccelerationStructureKHR            = (PFN_vkCopyMemoryToAccelerationStructureKHR)(vkGetDeviceProcAddr(device,            "vkCopyMemoryToAccelerationStructureKHR"));
+	vkCmdWriteAccelerationStructuresPropertiesKHR     = (PFN_vkCmdWriteAccelerationStructuresPropertiesKHR)(vkGetDeviceProcAddr(device,     "vkCmdWriteAccelerationStructuresPropertiesKHR"));
+	vkWriteAccelerationStructuresPropertiesKHR        = (PFN_vkWriteAccelerationStructuresPropertiesKHR)(vkGetDeviceProcAddr(device,        "vkWriteAccelerationStructuresPropertiesKHR"));
+	vkGetDeviceAccelerationStructureCompatibilityKHR  = (PFN_vkGetDeviceAccelerationStructureCompatibilityKHR)(vkGetDeviceProcAddr(device,  "vkGetDeviceAccelerationStructureCompatibilityKHR"));
+	vkCreateAccelerationStructureKHR                  = (PFN_vkCreateAccelerationStructureKHR)(vkGetDeviceProcAddr(device,                  "vkCreateAccelerationStructureKHR"));
+	vkCmdBuildAccelerationStructuresKHR               = (PFN_vkCmdBuildAccelerationStructuresKHR)(vkGetDeviceProcAddr(device,               "vkCmdBuildAccelerationStructuresKHR"));
+	vkCmdBuildAccelerationStructuresIndirectKHR       = (PFN_vkCmdBuildAccelerationStructuresIndirectKHR)(vkGetDeviceProcAddr(device,       "vkCmdBuildAccelerationStructuresIndirectKHR"));
+	vkBuildAccelerationStructuresKHR                  = (PFN_vkBuildAccelerationStructuresKHR)(vkGetDeviceProcAddr(device,                  "vkBuildAccelerationStructuresKHR"));
+	vkGetAccelerationStructureDeviceAddressKHR        = (PFN_vkGetAccelerationStructureDeviceAddressKHR)(vkGetDeviceProcAddr(device,        "vkGetAccelerationStructureDeviceAddressKHR"));
+	vkGetAccelerationStructureBuildSizesKHR           = (PFN_vkGetAccelerationStructureBuildSizesKHR)(vkGetDeviceProcAddr(device,           "vkGetAccelerationStructureBuildSizesKHR"));
+#endif
+
 #if defined(VK_KHR_COPY_COMMANDS_2_EXTENSION_NAME)
 	vkCmdCopyBuffer2KHR                               = (PFN_vkCmdCopyBuffer2KHR)(vkGetDeviceProcAddr(device,                               "vkCmdCopyBuffer2KHR"));
 	vkCmdCopyImage2KHR                                = (PFN_vkCmdCopyImage2KHR)(vkGetDeviceProcAddr(device,                                "vkCmdCopyImage2KHR"));
@@ -493,6 +558,14 @@ void Vulkan::FunctionsLibrary::LoadDeviceFunctions(VkDevice device)
 	vkCmdCopyBufferToImage2KHR                        = (PFN_vkCmdCopyBufferToImage2KHR)(vkGetDeviceProcAddr(device,                        "vkCmdCopyBufferToImage2KHR"));
 	vkCmdCopyImageToBuffer2KHR                        = (PFN_vkCmdCopyImageToBuffer2KHR)(vkGetDeviceProcAddr(device,                        "vkCmdCopyImageToBuffer2KHR"));
 	vkCmdResolveImage2KHR                             = (PFN_vkCmdResolveImage2KHR)(vkGetDeviceProcAddr(device,                             "vkCmdResolveImage2KHR"));
+#endif
+
+#if defined(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME)
+	vkCreateDeferredOperationKHR                      = (PFN_vkCreateDeferredOperationKHR)(vkGetDeviceProcAddr(device,                      "vkCreateDeferredOperationKHR"));
+	vkDestroyDeferredOperationKHR                     = (PFN_vkDestroyDeferredOperationKHR)(vkGetDeviceProcAddr(device,                     "vkDestroyDeferredOperationKHR"));
+	vkGetDeferredOperationMaxConcurrencyKHR           = (PFN_vkGetDeferredOperationMaxConcurrencyKHR)(vkGetDeviceProcAddr(device,           "vkGetDeferredOperationMaxConcurrencyKHR"));
+	vkGetDeferredOperationResultKHR                   = (PFN_vkGetDeferredOperationResultKHR)(vkGetDeviceProcAddr(device,                   "vkGetDeferredOperationResultKHR"));
+	vkDeferredOperationJoinKHR                        = (PFN_vkDeferredOperationJoinKHR)(vkGetDeviceProcAddr(device,                        "vkDeferredOperationJoinKHR"));
 #endif
 
 #if defined(VK_KHR_DESCRIPTOR_UPDATE_TEMPLATE_EXTENSION_NAME)
@@ -543,6 +616,16 @@ void Vulkan::FunctionsLibrary::LoadDeviceFunctions(VkDevice device)
 	vkCmdPushDescriptorSetKHR                         = (PFN_vkCmdPushDescriptorSetKHR)(vkGetDeviceProcAddr(device,                         "vkCmdPushDescriptorSetKHR"));
 #endif
 
+#if defined(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME)
+	vkCmdTraceRaysKHR                                 = (PFN_vkCmdTraceRaysKHR)(vkGetDeviceProcAddr(device,                                 "vkCmdTraceRaysKHR"));
+	vkGetRayTracingShaderGroupHandlesKHR              = (PFN_vkGetRayTracingShaderGroupHandlesKHR)(vkGetDeviceProcAddr(device,              "vkGetRayTracingShaderGroupHandlesKHR"));
+	vkGetRayTracingCaptureReplayShaderGroupHandlesKHR = (PFN_vkGetRayTracingCaptureReplayShaderGroupHandlesKHR)(vkGetDeviceProcAddr(device, "vkGetRayTracingCaptureReplayShaderGroupHandlesKHR"));
+	vkCreateRayTracingPipelinesKHR                    = (PFN_vkCreateRayTracingPipelinesKHR)(vkGetDeviceProcAddr(device,                    "vkCreateRayTracingPipelinesKHR"));
+	vkCmdTraceRaysIndirectKHR                         = (PFN_vkCmdTraceRaysIndirectKHR)(vkGetDeviceProcAddr(device,                         "vkCmdTraceRaysIndirectKHR"));
+	vkGetRayTracingShaderGroupStackSizeKHR            = (PFN_vkGetRayTracingShaderGroupStackSizeKHR)(vkGetDeviceProcAddr(device,            "vkGetRayTracingShaderGroupStackSizeKHR"));
+	vkCmdSetRayTracingPipelineStackSizeKHR            = (PFN_vkCmdSetRayTracingPipelineStackSizeKHR)(vkGetDeviceProcAddr(device,            "vkCmdSetRayTracingPipelineStackSizeKHR"));
+#endif
+
 #if defined(VK_KHR_SHARED_PRESENTABLE_IMAGE_EXTENSION_NAME)
 	vkGetSwapchainStatusKHR                           = (PFN_vkGetSwapchainStatusKHR)(vkGetDeviceProcAddr(device,                           "vkGetSwapchainStatusKHR"));
 #endif
@@ -553,6 +636,25 @@ void Vulkan::FunctionsLibrary::LoadDeviceFunctions(VkDevice device)
 	vkGetSwapchainImagesKHR                           = (PFN_vkGetSwapchainImagesKHR)(vkGetDeviceProcAddr(device,                           "vkGetSwapchainImagesKHR"));
 	vkAcquireNextImageKHR                             = (PFN_vkAcquireNextImageKHR)(vkGetDeviceProcAddr(device,                             "vkAcquireNextImageKHR"));
 	vkQueuePresentKHR                                 = (PFN_vkQueuePresentKHR)(vkGetDeviceProcAddr(device,                                 "vkQueuePresentKHR"));
+#endif
+
+#if defined(VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME)
+	vkCmdSetEvent2KHR                                 = (PFN_vkCmdSetEvent2KHR)(vkGetDeviceProcAddr(device,                                 "vkCmdSetEvent2KHR"));
+	vkCmdResetEvent2KHR                               = (PFN_vkCmdResetEvent2KHR)(vkGetDeviceProcAddr(device,                               "vkCmdResetEvent2KHR"));
+	vkCmdWaitEvents2KHR                               = (PFN_vkCmdWaitEvents2KHR)(vkGetDeviceProcAddr(device,                               "vkCmdWaitEvents2KHR"));
+	vkCmdPipelineBarrier2KHR                          = (PFN_vkCmdPipelineBarrier2KHR)(vkGetDeviceProcAddr(device,                          "vkCmdPipelineBarrier2KHR"));
+	vkQueueSubmit2KHR                                 = (PFN_vkQueueSubmit2KHR)(vkGetDeviceProcAddr(device,                                 "vkQueueSubmit2KHR"));
+	vkCmdWriteTimestamp2KHR                           = (PFN_vkCmdWriteTimestamp2KHR)(vkGetDeviceProcAddr(device,                           "vkCmdWriteTimestamp2KHR"));
+	vkCmdWriteBufferMarker2AMD                        = (PFN_vkCmdWriteBufferMarker2AMD)(vkGetDeviceProcAddr(device,                        "vkCmdWriteBufferMarker2AMD"));
+	vkGetQueueCheckpointData2NV                       = (PFN_vkGetQueueCheckpointData2NV)(vkGetDeviceProcAddr(device,                       "vkGetQueueCheckpointData2NV"));
+#endif
+
+#if defined(VK_NVX_BINARY_IMPORT_EXTENSION_NAME)
+	vkCreateCuModuleNVX                               = (PFN_vkCreateCuModuleNVX)(vkGetDeviceProcAddr(device,                               "vkCreateCuModuleNVX"));
+	vkCreateCuFunctionNVX                             = (PFN_vkCreateCuFunctionNVX)(vkGetDeviceProcAddr(device,                             "vkCreateCuFunctionNVX"));
+	vkDestroyCuModuleNVX                              = (PFN_vkDestroyCuModuleNVX)(vkGetDeviceProcAddr(device,                              "vkDestroyCuModuleNVX"));
+	vkDestroyCuFunctionNVX                            = (PFN_vkDestroyCuFunctionNVX)(vkGetDeviceProcAddr(device,                            "vkDestroyCuFunctionNVX"));
+	vkCmdCuLaunchKernelNVX                            = (PFN_vkCmdCuLaunchKernelNVX)(vkGetDeviceProcAddr(device,                            "vkCmdCuLaunchKernelNVX"));
 #endif
 
 #if defined(VK_NVX_IMAGE_VIEW_HANDLE_EXTENSION_NAME)
@@ -578,6 +680,10 @@ void Vulkan::FunctionsLibrary::LoadDeviceFunctions(VkDevice device)
 	vkDestroyIndirectCommandsLayoutNV                 = (PFN_vkDestroyIndirectCommandsLayoutNV)(vkGetDeviceProcAddr(device,                 "vkDestroyIndirectCommandsLayoutNV"));
 #endif
 
+#if defined(VK_NV_FRAGMENT_SHADING_RATE_ENUMS_EXTENSION_NAME)
+	vkCmdSetFragmentShadingRateEnumNV                 = (PFN_vkCmdSetFragmentShadingRateEnumNV)(vkGetDeviceProcAddr(device,                 "vkCmdSetFragmentShadingRateEnumNV"));
+#endif
+
 #if defined(VK_NV_MESH_SHADER_EXTENSION_NAME)
 	vkCmdDrawMeshTasksNV                              = (PFN_vkCmdDrawMeshTasksNV)(vkGetDeviceProcAddr(device,                              "vkCmdDrawMeshTasksNV"));
 	vkCmdDrawMeshTasksIndirectNV                      = (PFN_vkCmdDrawMeshTasksIndirectNV)(vkGetDeviceProcAddr(device,                      "vkCmdDrawMeshTasksIndirectNV"));
@@ -587,8 +693,11 @@ void Vulkan::FunctionsLibrary::LoadDeviceFunctions(VkDevice device)
 #if defined(VK_NV_RAY_TRACING_EXTENSION_NAME)
 	vkCompileDeferredNV                               = (PFN_vkCompileDeferredNV)(vkGetDeviceProcAddr(device,                               "vkCompileDeferredNV"));
 	vkCreateAccelerationStructureNV                   = (PFN_vkCreateAccelerationStructureNV)(vkGetDeviceProcAddr(device,                   "vkCreateAccelerationStructureNV"));
+	vkDestroyAccelerationStructureNV                  = (PFN_vkDestroyAccelerationStructureNV)(vkGetDeviceProcAddr(device,                  "vkDestroyAccelerationStructureNV"));
 	vkGetAccelerationStructureMemoryRequirementsNV    = (PFN_vkGetAccelerationStructureMemoryRequirementsNV)(vkGetDeviceProcAddr(device,    "vkGetAccelerationStructureMemoryRequirementsNV"));
+	vkBindAccelerationStructureMemoryNV               = (PFN_vkBindAccelerationStructureMemoryNV)(vkGetDeviceProcAddr(device,               "vkBindAccelerationStructureMemoryNV"));
 	vkCmdCopyAccelerationStructureNV                  = (PFN_vkCmdCopyAccelerationStructureNV)(vkGetDeviceProcAddr(device,                  "vkCmdCopyAccelerationStructureNV"));
+	vkCmdWriteAccelerationStructuresPropertiesNV      = (PFN_vkCmdWriteAccelerationStructuresPropertiesNV)(vkGetDeviceProcAddr(device,      "vkCmdWriteAccelerationStructuresPropertiesNV"));
 	vkCmdBuildAccelerationStructureNV                 = (PFN_vkCmdBuildAccelerationStructureNV)(vkGetDeviceProcAddr(device,                 "vkCmdBuildAccelerationStructureNV"));
 	vkCmdTraceRaysNV                                  = (PFN_vkCmdTraceRaysNV)(vkGetDeviceProcAddr(device,                                  "vkCmdTraceRaysNV"));
 	vkGetAccelerationStructureHandleNV                = (PFN_vkGetAccelerationStructureHandleNV)(vkGetDeviceProcAddr(device,                "vkGetAccelerationStructureHandleNV"));
@@ -605,37 +714,25 @@ void Vulkan::FunctionsLibrary::LoadDeviceFunctions(VkDevice device)
 	vkCmdSetCoarseSampleOrderNV                       = (PFN_vkCmdSetCoarseSampleOrderNV)(vkGetDeviceProcAddr(device,                       "vkCmdSetCoarseSampleOrderNV"));
 #endif
 
-#if defined(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME) && defined(VK_ENABLE_BETA_EXTENSIONS)
-	vkCreateDeferredOperationKHR                      = (PFN_vkCreateDeferredOperationKHR)(vkGetDeviceProcAddr(device,                      "vkCreateDeferredOperationKHR"));
-	vkDestroyDeferredOperationKHR                     = (PFN_vkDestroyDeferredOperationKHR)(vkGetDeviceProcAddr(device,                     "vkDestroyDeferredOperationKHR"));
-	vkGetDeferredOperationMaxConcurrencyKHR           = (PFN_vkGetDeferredOperationMaxConcurrencyKHR)(vkGetDeviceProcAddr(device,           "vkGetDeferredOperationMaxConcurrencyKHR"));
-	vkGetDeferredOperationResultKHR                   = (PFN_vkGetDeferredOperationResultKHR)(vkGetDeviceProcAddr(device,                   "vkGetDeferredOperationResultKHR"));
-	vkDeferredOperationJoinKHR                        = (PFN_vkDeferredOperationJoinKHR)(vkGetDeviceProcAddr(device,                        "vkDeferredOperationJoinKHR"));
+#if defined(VK_KHR_VIDEO_DECODE_QUEUE_EXTENSION_NAME) && defined(VK_ENABLE_BETA_EXTENSIONS)
+	vkCmdDecodeVideoKHR                               = (PFN_vkCmdDecodeVideoKHR)(vkGetDeviceProcAddr(device,                               "vkCmdDecodeVideoKHR"));
 #endif
 
-#if defined(VK_KHR_RAY_TRACING_EXTENSION_NAME) && defined(VK_ENABLE_BETA_EXTENSIONS)
-	vkDestroyAccelerationStructureKHR                 = (PFN_vkDestroyAccelerationStructureKHR)(vkGetDeviceProcAddr(device,                 "vkDestroyAccelerationStructureKHR"));
-	vkGetAccelerationStructureMemoryRequirementsKHR   = (PFN_vkGetAccelerationStructureMemoryRequirementsKHR)(vkGetDeviceProcAddr(device,   "vkGetAccelerationStructureMemoryRequirementsKHR"));
-	vkBindAccelerationStructureMemoryKHR              = (PFN_vkBindAccelerationStructureMemoryKHR)(vkGetDeviceProcAddr(device,              "vkBindAccelerationStructureMemoryKHR"));
-	vkCmdCopyAccelerationStructureKHR                 = (PFN_vkCmdCopyAccelerationStructureKHR)(vkGetDeviceProcAddr(device,                 "vkCmdCopyAccelerationStructureKHR"));
-	vkCopyAccelerationStructureKHR                    = (PFN_vkCopyAccelerationStructureKHR)(vkGetDeviceProcAddr(device,                    "vkCopyAccelerationStructureKHR"));
-	vkCmdCopyAccelerationStructureToMemoryKHR         = (PFN_vkCmdCopyAccelerationStructureToMemoryKHR)(vkGetDeviceProcAddr(device,         "vkCmdCopyAccelerationStructureToMemoryKHR"));
-	vkCopyAccelerationStructureToMemoryKHR            = (PFN_vkCopyAccelerationStructureToMemoryKHR)(vkGetDeviceProcAddr(device,            "vkCopyAccelerationStructureToMemoryKHR"));
-	vkCmdCopyMemoryToAccelerationStructureKHR         = (PFN_vkCmdCopyMemoryToAccelerationStructureKHR)(vkGetDeviceProcAddr(device,         "vkCmdCopyMemoryToAccelerationStructureKHR"));
-	vkCopyMemoryToAccelerationStructureKHR            = (PFN_vkCopyMemoryToAccelerationStructureKHR)(vkGetDeviceProcAddr(device,            "vkCopyMemoryToAccelerationStructureKHR"));
-	vkCmdWriteAccelerationStructuresPropertiesKHR     = (PFN_vkCmdWriteAccelerationStructuresPropertiesKHR)(vkGetDeviceProcAddr(device,     "vkCmdWriteAccelerationStructuresPropertiesKHR"));
-	vkWriteAccelerationStructuresPropertiesKHR        = (PFN_vkWriteAccelerationStructuresPropertiesKHR)(vkGetDeviceProcAddr(device,        "vkWriteAccelerationStructuresPropertiesKHR"));
-	vkCmdTraceRaysKHR                                 = (PFN_vkCmdTraceRaysKHR)(vkGetDeviceProcAddr(device,                                 "vkCmdTraceRaysKHR"));
-	vkGetRayTracingShaderGroupHandlesKHR              = (PFN_vkGetRayTracingShaderGroupHandlesKHR)(vkGetDeviceProcAddr(device,              "vkGetRayTracingShaderGroupHandlesKHR"));
-	vkGetRayTracingCaptureReplayShaderGroupHandlesKHR = (PFN_vkGetRayTracingCaptureReplayShaderGroupHandlesKHR)(vkGetDeviceProcAddr(device, "vkGetRayTracingCaptureReplayShaderGroupHandlesKHR"));
-	vkCreateRayTracingPipelinesKHR                    = (PFN_vkCreateRayTracingPipelinesKHR)(vkGetDeviceProcAddr(device,                    "vkCreateRayTracingPipelinesKHR"));
-	vkCmdTraceRaysIndirectKHR                         = (PFN_vkCmdTraceRaysIndirectKHR)(vkGetDeviceProcAddr(device,                         "vkCmdTraceRaysIndirectKHR"));
-	vkGetDeviceAccelerationStructureCompatibilityKHR  = (PFN_vkGetDeviceAccelerationStructureCompatibilityKHR)(vkGetDeviceProcAddr(device,  "vkGetDeviceAccelerationStructureCompatibilityKHR"));
-	vkCreateAccelerationStructureKHR                  = (PFN_vkCreateAccelerationStructureKHR)(vkGetDeviceProcAddr(device,                  "vkCreateAccelerationStructureKHR"));
-	vkCmdBuildAccelerationStructureKHR                = (PFN_vkCmdBuildAccelerationStructureKHR)(vkGetDeviceProcAddr(device,                "vkCmdBuildAccelerationStructureKHR"));
-	vkCmdBuildAccelerationStructureIndirectKHR        = (PFN_vkCmdBuildAccelerationStructureIndirectKHR)(vkGetDeviceProcAddr(device,        "vkCmdBuildAccelerationStructureIndirectKHR"));
-	vkBuildAccelerationStructureKHR                   = (PFN_vkBuildAccelerationStructureKHR)(vkGetDeviceProcAddr(device,                   "vkBuildAccelerationStructureKHR"));
-	vkGetAccelerationStructureDeviceAddressKHR        = (PFN_vkGetAccelerationStructureDeviceAddressKHR)(vkGetDeviceProcAddr(device,        "vkGetAccelerationStructureDeviceAddressKHR"));
+#if defined(VK_KHR_VIDEO_ENCODE_QUEUE_EXTENSION_NAME) && defined(VK_ENABLE_BETA_EXTENSIONS)
+	vkCmdEncodeVideoKHR                               = (PFN_vkCmdEncodeVideoKHR)(vkGetDeviceProcAddr(device,                               "vkCmdEncodeVideoKHR"));
+#endif
+
+#if defined(VK_KHR_VIDEO_QUEUE_EXTENSION_NAME) && defined(VK_ENABLE_BETA_EXTENSIONS)
+	vkCreateVideoSessionKHR                           = (PFN_vkCreateVideoSessionKHR)(vkGetDeviceProcAddr(device,                           "vkCreateVideoSessionKHR"));
+	vkDestroyVideoSessionKHR                          = (PFN_vkDestroyVideoSessionKHR)(vkGetDeviceProcAddr(device,                          "vkDestroyVideoSessionKHR"));
+	vkCreateVideoSessionParametersKHR                 = (PFN_vkCreateVideoSessionParametersKHR)(vkGetDeviceProcAddr(device,                 "vkCreateVideoSessionParametersKHR"));
+	vkUpdateVideoSessionParametersKHR                 = (PFN_vkUpdateVideoSessionParametersKHR)(vkGetDeviceProcAddr(device,                 "vkUpdateVideoSessionParametersKHR"));
+	vkDestroyVideoSessionParametersKHR                = (PFN_vkDestroyVideoSessionParametersKHR)(vkGetDeviceProcAddr(device,                "vkDestroyVideoSessionParametersKHR"));
+	vkGetVideoSessionMemoryRequirementsKHR            = (PFN_vkGetVideoSessionMemoryRequirementsKHR)(vkGetDeviceProcAddr(device,            "vkGetVideoSessionMemoryRequirementsKHR"));
+	vkBindVideoSessionMemoryKHR                       = (PFN_vkBindVideoSessionMemoryKHR)(vkGetDeviceProcAddr(device,                       "vkBindVideoSessionMemoryKHR"));
+	vkCmdBeginVideoCodingKHR                          = (PFN_vkCmdBeginVideoCodingKHR)(vkGetDeviceProcAddr(device,                          "vkCmdBeginVideoCodingKHR"));
+	vkCmdControlVideoCodingKHR                        = (PFN_vkCmdControlVideoCodingKHR)(vkGetDeviceProcAddr(device,                        "vkCmdControlVideoCodingKHR"));
+	vkCmdEndVideoCodingKHR                            = (PFN_vkCmdEndVideoCodingKHR)(vkGetDeviceProcAddr(device,                            "vkCmdEndVideoCodingKHR"));
 #endif
 
 #if defined(VK_ANDROID_EXTERNAL_MEMORY_ANDROID_HARDWARE_BUFFER_EXTENSION_NAME) && defined(VK_USE_PLATFORM_ANDROID_KHR)
@@ -648,6 +745,16 @@ void Vulkan::FunctionsLibrary::LoadDeviceFunctions(VkDevice device)
 	vkGetSwapchainGrallocUsage2ANDROID                = (PFN_vkGetSwapchainGrallocUsage2ANDROID)(vkGetDeviceProcAddr(device,                "vkGetSwapchainGrallocUsage2ANDROID"));
 	vkAcquireImageANDROID                             = (PFN_vkAcquireImageANDROID)(vkGetDeviceProcAddr(device,                             "vkAcquireImageANDROID"));
 	vkQueueSignalReleaseImageANDROID                  = (PFN_vkQueueSignalReleaseImageANDROID)(vkGetDeviceProcAddr(device,                  "vkQueueSignalReleaseImageANDROID"));
+#endif
+
+#if defined(VK_FUCHSIA_EXTERNAL_MEMORY_EXTENSION_NAME) && defined(VK_USE_PLATFORM_FUCHSIA)
+	vkGetMemoryZirconHandleFUCHSIA                    = (PFN_vkGetMemoryZirconHandleFUCHSIA)(vkGetDeviceProcAddr(device,                    "vkGetMemoryZirconHandleFUCHSIA"));
+	vkGetMemoryZirconHandlePropertiesFUCHSIA          = (PFN_vkGetMemoryZirconHandlePropertiesFUCHSIA)(vkGetDeviceProcAddr(device,          "vkGetMemoryZirconHandlePropertiesFUCHSIA"));
+#endif
+
+#if defined(VK_FUCHSIA_EXTERNAL_SEMAPHORE_EXTENSION_NAME) && defined(VK_USE_PLATFORM_FUCHSIA)
+	vkGetSemaphoreZirconHandleFUCHSIA                 = (PFN_vkGetSemaphoreZirconHandleFUCHSIA)(vkGetDeviceProcAddr(device,                 "vkGetSemaphoreZirconHandleFUCHSIA"));
+	vkImportSemaphoreZirconHandleFUCHSIA              = (PFN_vkImportSemaphoreZirconHandleFUCHSIA)(vkGetDeviceProcAddr(device,              "vkImportSemaphoreZirconHandleFUCHSIA"));
 #endif
 
 #if defined(VK_EXT_FULL_SCREEN_EXCLUSIVE_EXTENSION_NAME) && defined(VK_USE_PLATFORM_WIN32_KHR)
