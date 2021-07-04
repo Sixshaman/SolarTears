@@ -169,6 +169,7 @@
     <ClCompile Include="Rendering\D3D12\Scene\D3D12Scene.cpp" />
     <ClCompile Include="Rendering\D3D12\Scene\D3D12SceneBuilder.cpp" />
     <ClCompile Include="Rendering\D3D12\Scene\D3D12SceneDescriptorCreator.cpp" />
+    <ClCompile Include="Rendering\OGL\OGLFunctions.cpp" />
     <ClCompile Include="Rendering\OGL\OGLRenderer.cpp" />
     <ClCompile Include="Rendering\OGL\Platform\OGLContextWin32.cpp" />
     <ClCompile Include="Rendering\OGL\Platform\OGLFunctionLoaderWin32.cpp" />
@@ -219,6 +220,7 @@
     <None Include="Rendering\D3D12\D3D12Utils.inl" />
     <None Include="Rendering\D3D12\FrameGraph\D3D12FrameGraphBuilder.inl" />
     <None Include="Rendering\OGL\OGLFunctionLoader.inl" />
+    <None Include="Rendering\OGL\Platform\OGLFunctionLoaderWin32.inl" />
     <None Include="Rendering\Vulkan\FrameGraph\VulkanFrameGraphBuilder.inl" />
     <None Include="Rendering\Vulkan\Scene\VulkanSceneBuilder.inl" />
     <None Include="Shaders\D3D12\CommonHeader.hlsli" />

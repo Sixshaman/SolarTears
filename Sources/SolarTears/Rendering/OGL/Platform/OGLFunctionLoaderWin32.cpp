@@ -1,5 +1,6 @@
 #include "OGLFunctionLoaderWin32.hpp"
 #include "OGLFunctionsWin32.hpp"
+#include "../OGLFunctions.hpp"
 #include <cassert>
 #include <wil/resource.h>
 
@@ -8,26 +9,10 @@ namespace wil
 	using unique_hglrc = wil::unique_any<HGLRC, decltype(&::wglDeleteContext), ::wglDeleteContext>;
 }
 
-#define LOAD_OGL_FUNCTION(name) name = (decltype(name))(wglGetProcAddress(#name))
-
-static void LoadWGLFunctionsFromContext()
-{
-#ifdef WGL_ARB_extensions_string
-
-#ifdef WGL_ARB_create_context
-	LOAD_OGL_FUNCTION(wglCreateContextAttribsARB);
-#endif
-
-#ifdef WGL_ARB_pixel_format
-	LOAD_OGL_FUNCTION(wglGetPixelFormatAttribivARB);
-	LOAD_OGL_FUNCTION(wglGetPixelFormatAttribfvARB);
-	LOAD_OGL_FUNCTION(wglChoosePixelFormatARB);
-#endif
-
-#endif
-}
+#define LOAD_OGL_FUNCTION(type, name) name = (type)(wglGetProcAddress(#name))
 
 #include "../OGLFunctionLoader.inl"
+#include "OGLFunctionLoaderWin32.inl"
 
 void OpenGL::LoadOpenGLFunctions()
 {

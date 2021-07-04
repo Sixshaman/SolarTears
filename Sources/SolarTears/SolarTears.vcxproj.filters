@@ -638,6 +638,9 @@
     <ClCompile Include="Rendering\OGL\Platform\OGLFunctionLoaderWin32.cpp">
       <Filter>Rendering\OGL\Platform</Filter>
     </ClCompile>
+    <ClCompile Include="Rendering\OGL\OGLFunctions.cpp">
+      <Filter>Rendering\OGL</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="Platform\Win32\Win32Util.inl">
@@ -669,6 +672,9 @@
     </None>
     <None Include="Rendering\OGL\OGLFunctionLoader.inl">
       <Filter>Rendering\OGL</Filter>
+    </None>
+    <None Include="Rendering\OGL\Platform\OGLFunctionLoaderWin32.inl">
+      <Filter>Rendering\OGL\Platform</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>
