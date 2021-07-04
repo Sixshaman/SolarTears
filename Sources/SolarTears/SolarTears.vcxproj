@@ -62,6 +62,7 @@
     <ClInclude Include="Rendering\Common\FrameGraph\Passes\GBufferPass.hpp" />
     <ClInclude Include="Rendering\Common\Renderer.hpp" />
     <ClInclude Include="Rendering\Common\RenderingUtils.hpp" />
+    <ClInclude Include="Rendering\Common\Scene\ClassicRenderableScene.hpp" />
     <ClInclude Include="Rendering\Common\Scene\ModernRenderableScene.hpp" />
     <ClInclude Include="Rendering\Common\Scene\ModernRenderableSceneBuilder.hpp" />
     <ClInclude Include="Rendering\Common\Scene\RenderableSceneBase.hpp" />
@@ -89,9 +90,12 @@
     <ClInclude Include="Rendering\OGL\OGLFunctionLoader.hpp" />
     <ClInclude Include="Rendering\OGL\OGLFunctions.hpp" />
     <ClInclude Include="Rendering\OGL\OGLRenderer.hpp" />
+    <ClInclude Include="Rendering\OGL\OGLUtils.hpp" />
     <ClInclude Include="Rendering\OGL\Platform\OGLContextWin32.hpp" />
     <ClInclude Include="Rendering\OGL\Platform\OGLFunctionsWin32.hpp" />
     <ClInclude Include="Rendering\OGL\Platform\OGLFunctionLoaderWin32.hpp" />
+    <ClInclude Include="Rendering\OGL\Scene\OGLScene.hpp" />
+    <ClInclude Include="Rendering\OGL\Scene\OGLSceneBuilder.hpp" />
     <ClInclude Include="Rendering\Vulkan\FrameGraph\Passes\VulkanCopyImagePass.hpp" />
     <ClInclude Include="Rendering\Vulkan\FrameGraph\Passes\VulkanGBufferPass.hpp" />
     <ClInclude Include="Rendering\Vulkan\FrameGraph\VulkanFrameGraph.hpp" />
@@ -147,6 +151,7 @@
     <ClCompile Include="Rendering\Common\FrameGraph\Passes\GBufferPass.cpp" />
     <ClCompile Include="Rendering\Common\Renderer.cpp" />
     <ClCompile Include="Rendering\Common\RenderingUtils.cpp" />
+    <ClCompile Include="Rendering\Common\Scene\ClassicRenderableScene.cpp" />
     <ClCompile Include="Rendering\Common\Scene\ModernRenderableScene.cpp" />
     <ClCompile Include="Rendering\Common\Scene\ModernRenderableSceneBuilder.cpp" />
     <ClCompile Include="Rendering\Common\Scene\RenderableSceneBase.cpp" />
@@ -174,6 +179,7 @@
     <ClCompile Include="Rendering\OGL\Platform\OGLContextWin32.cpp" />
     <ClCompile Include="Rendering\OGL\Platform\OGLFunctionLoaderWin32.cpp" />
     <ClCompile Include="Rendering\OGL\Platform\OGLFunctionsWin32.cpp" />
+    <ClCompile Include="Rendering\OGL\Scene\OGLScene.cpp" />
     <ClCompile Include="Rendering\Vulkan\FrameGraph\Passes\VulkanCopyImagePass.cpp" />
     <ClCompile Include="Rendering\Vulkan\FrameGraph\Passes\VulkanGBufferPass.cpp" />
     <ClCompile Include="Rendering\Vulkan\FrameGraph\VulkanFrameGraph.cpp" />
