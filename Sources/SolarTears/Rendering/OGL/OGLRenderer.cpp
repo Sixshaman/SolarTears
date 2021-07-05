@@ -6,6 +6,14 @@
 OpenGL::Renderer::Renderer(LoggerQueue* loggerQueue, FrameCounter* frameCounter): ::Renderer(loggerQueue), mFrameCounterRef(frameCounter)
 {
 	LoadOpenGLFunctions();
+
+#if defined(DEBUG) || defined(_DEBUG)
+	glEnable(GL_DEBUG_OUTPUT);
+	glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+
+	glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
+
+#endif
 }
 
 OpenGL::Renderer::~Renderer()
