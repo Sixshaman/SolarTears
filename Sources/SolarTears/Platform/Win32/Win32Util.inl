@@ -20,24 +20,24 @@ std::wstring ConvertUTF8ToWstring(const std::string_view str)
 	return result;
 }
 
-void SystemDebugMessage(const std::string& str)
+void SystemDebugMessage(const std::string_view str)
 {
-#if defined(DEBUG) || defined(_DEBUG)
-	OutputDebugStringA(str.c_str());
-	OutputDebugStringA("\n");
-#else
-	UNREFERENCED_PARAMETER(str);
-#endif
+	SystemDebugMessage(str.data());
 }
 
-void SystemDebugMessage(const std::wstring& str)
+void SystemDebugMessage(const std::wstring_view str)
 {
-#if defined(DEBUG) || defined(_DEBUG)
-	OutputDebugStringW(str.c_str());
-	OutputDebugStringW(L"\n");
-#else
-	UNREFERENCED_PARAMETER(str);
-#endif
+	SystemDebugMessage(str.data());
+}
+
+void SystemDebugMessage(const char* str)
+{
+	OutputDebugStringA(str);
+}
+
+void SystemDebugMessage(const wchar_t* str)
+{
+	OutputDebugStringW(str);
 }
 
 std::wstring GetMainDirectory()

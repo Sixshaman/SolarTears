@@ -5,10 +5,11 @@
 #include <string>
 #include <fstream>
 #include <cinttypes>
+#include <format>
 
 static inline void SetDebugObjectNameHandle(const VkDevice device, VkObjectType objectType, uint64_t handle, const std::string_view name)
 {
-    #ifdef VK_EXT_debug_utils
+#ifdef VK_EXT_debug_utils
     VkDebugUtilsObjectNameInfoEXT imageNameInfo;
 	imageNameInfo.sType        = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
 	imageNameInfo.pNext        = nullptr;
@@ -73,52 +74,230 @@ void Vulkan::VulkanUtils::SetDebugObjectName(const VkDevice device, VkCommandPoo
     SetDebugObjectNameHandle(device, VK_OBJECT_TYPE_COMMAND_POOL, reinterpret_cast<uint64_t>(commandPool), name);
 }
 
-VkBool32 Vulkan::VulkanUtils::DebugReportCCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType, uint64_t object, size_t location, int32_t messageCode, const char* pLayerPrefix, const char* pMessage, void* pUserData)
+VkBool32 Vulkan::VulkanUtils::DebugReportCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
 {
     UNREFERENCED_PARAMETER(pUserData);
 
-    std::string strResult;
-
-    switch (flags)
+    Utils::SystemDebugMessage("DEBUG ");
+    switch(messageSeverity)
     {
-    case VK_DEBUG_REPORT_INFORMATION_BIT_EXT:
-        strResult += "INFO: ";
+    case VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT:
+        Utils::SystemDebugMessage("VERBOSE (");
         break;
-    case VK_DEBUG_REPORT_WARNING_BIT_EXT:
-        strResult += "WARNING: ";
+
+    case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT:
+        Utils::SystemDebugMessage("INFO (");
         break;
-    case VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT:
-        strResult += "PERFORMANCE WARNING: ";
+
+    case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT:
+        Utils::SystemDebugMessage("WARNING (");
         break;
-    case VK_DEBUG_REPORT_ERROR_BIT_EXT:
-        strResult += "ERROR: ";
+
+    case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT:
+        Utils::SystemDebugMessage("ERROR (");
         break;
-    case VK_DEBUG_REPORT_DEBUG_BIT_EXT:
-        strResult += "DEBUG: ";
-        break;
+
     default:
         break;
     }
 
-    std::string objectName;
-    if(objectType == VK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT || object == VK_NULL_HANDLE)
+    switch(messageType)
     {
-        objectName = "undefined";
-    }
-    else
-    {
-        objectName = Utils::StringFormat("0x%.16" PRIx64, object);
+    case VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT:
+        Utils::SystemDebugMessage("General): ");
+        break;
+
+    case VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT:
+        Utils::SystemDebugMessage("Validation): ");
+        break;
+
+    case VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT:
+        Utils::SystemDebugMessage("Performance): ");
+        break;
+
+    default:
+        break;
     }
 
-    strResult += "The component ";
-    strResult += pLayerPrefix;
-    strResult += " has triggered the report. [";
-    strResult += Utils::StringFormat("%d", (uint32_t)messageCode);
-    strResult += "] ";
-    strResult += pMessage;
-    strResult += " Location: ";
-    strResult += Utils::StringFormat("0x%.8X", location);
+    Utils::SystemDebugMessage(pCallbackData->pMessage);
+    Utils::SystemDebugMessage(std::format(" Id: {} ({:#04x})", pCallbackData->messageIdNumber, pCallbackData->messageIdNumber));
+    Utils::SystemDebugMessage(std::format(" See https://www.khronos.org/registry/vulkan/specs/1.2-extensions/html/vkspec.html#{} for more info.", pCallbackData->pMessageIdName));
+    Utils::SystemDebugMessage(" Objects: ");
 
-    Utils::SystemDebugMessage(strResult);
+    for(const VkDebugUtilsObjectNameInfoEXT* objectInfo = pCallbackData->pObjects; objectInfo != pCallbackData->pObjects + pCallbackData->objectCount; objectInfo++)
+    {
+        Utils::SystemDebugMessage("{");
+
+        switch (objectInfo->objectType)
+        {
+        case VK_OBJECT_TYPE_INSTANCE:
+            Utils::SystemDebugMessage("Instance ");
+            break;
+
+        case VK_OBJECT_TYPE_PHYSICAL_DEVICE:
+            Utils::SystemDebugMessage("Physical device ");
+		    break;
+
+        case VK_OBJECT_TYPE_DEVICE:
+            Utils::SystemDebugMessage("Device ");
+		    break;
+
+        case VK_OBJECT_TYPE_QUEUE:
+            Utils::SystemDebugMessage("Queue ");
+		    break;
+
+        case VK_OBJECT_TYPE_SEMAPHORE:
+            Utils::SystemDebugMessage("Semaphore ");
+		    break;
+
+        case VK_OBJECT_TYPE_COMMAND_BUFFER:
+            Utils::SystemDebugMessage("Command buffer ");
+		    break;
+
+        case VK_OBJECT_TYPE_FENCE:
+            Utils::SystemDebugMessage("Fence ");
+		    break;
+
+        case VK_OBJECT_TYPE_DEVICE_MEMORY:
+            Utils::SystemDebugMessage("Device memory ");
+		    break;
+
+        case VK_OBJECT_TYPE_BUFFER:
+            Utils::SystemDebugMessage("Buffer ");
+		    break;
+
+        case VK_OBJECT_TYPE_IMAGE:
+            Utils::SystemDebugMessage("Image ");
+		    break;
+
+        case VK_OBJECT_TYPE_EVENT:
+            Utils::SystemDebugMessage("Event ");
+		    break;
+
+        case VK_OBJECT_TYPE_QUERY_POOL:
+            Utils::SystemDebugMessage("Query pool ");
+		    break;
+
+        case VK_OBJECT_TYPE_BUFFER_VIEW:
+            Utils::SystemDebugMessage("Buffer view ");
+		    break;
+
+        case VK_OBJECT_TYPE_IMAGE_VIEW:
+            Utils::SystemDebugMessage("Image view ");
+		    break;
+
+        case VK_OBJECT_TYPE_SHADER_MODULE:
+            Utils::SystemDebugMessage("Shader module ");
+		    break;
+
+        case VK_OBJECT_TYPE_PIPELINE_CACHE:
+            Utils::SystemDebugMessage("Pipeline cache ");
+		    break;
+
+        case VK_OBJECT_TYPE_PIPELINE_LAYOUT:
+            Utils::SystemDebugMessage("Pipeline layout ");
+		    break;
+
+        case VK_OBJECT_TYPE_RENDER_PASS:
+            Utils::SystemDebugMessage("Render pass ");
+		    break;
+
+        case VK_OBJECT_TYPE_PIPELINE:
+            Utils::SystemDebugMessage("Pipeline ");
+		    break;
+
+        case VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT:
+            Utils::SystemDebugMessage("Descriptor set layout ");
+		    break;
+
+        case VK_OBJECT_TYPE_SAMPLER:
+            Utils::SystemDebugMessage("Sampler ");
+		    break;
+
+        case VK_OBJECT_TYPE_DESCRIPTOR_POOL:
+            Utils::SystemDebugMessage("Descriptor pool ");
+		    break;
+
+        case VK_OBJECT_TYPE_DESCRIPTOR_SET:
+            Utils::SystemDebugMessage("Descriptor set ");
+		    break;
+
+        case VK_OBJECT_TYPE_FRAMEBUFFER:
+            Utils::SystemDebugMessage("Framebuffer ");
+		    break;
+
+        case VK_OBJECT_TYPE_COMMAND_POOL:
+            Utils::SystemDebugMessage("Command pool ");
+		    break;
+
+        case VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION:
+            Utils::SystemDebugMessage("Sampler ycbcr conversion ");
+            break;
+
+        case VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE:
+            Utils::SystemDebugMessage("Descriptor update template ");
+            break;
+
+        case VK_OBJECT_TYPE_SURFACE_KHR:
+            Utils::SystemDebugMessage("Surface ");
+		    break;
+
+        case VK_OBJECT_TYPE_SWAPCHAIN_KHR:
+            Utils::SystemDebugMessage("Swapchain ");
+		    break;
+
+        case VK_OBJECT_TYPE_DISPLAY_KHR:
+            Utils::SystemDebugMessage("Display ");
+            break;
+
+        case VK_OBJECT_TYPE_DISPLAY_MODE_KHR:
+            Utils::SystemDebugMessage("Display mode ");
+            break;
+
+        case VK_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT:
+            Utils::SystemDebugMessage("Debug report callback ");
+		    break;
+
+        case VK_OBJECT_TYPE_DEBUG_UTILS_MESSENGER_EXT:
+            Utils::SystemDebugMessage("Debug utils messenger ");
+            break;
+
+        case VK_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR:
+            Utils::SystemDebugMessage("Acceleration structure ");
+            break;
+
+        case VK_OBJECT_TYPE_VALIDATION_CACHE_EXT:
+            Utils::SystemDebugMessage("Validation cache ");
+		    break;
+
+        case VK_OBJECT_TYPE_DEFERRED_OPERATION_KHR:
+            Utils::SystemDebugMessage("Deferred operation ");
+            break;
+
+        case VK_OBJECT_TYPE_INDIRECT_COMMANDS_LAYOUT_NV:
+            Utils::SystemDebugMessage("Indirect commands ");
+            break;
+
+        case VK_OBJECT_TYPE_PRIVATE_DATA_SLOT_EXT:
+            Utils::SystemDebugMessage("Private data slot ");
+            break;
+
+        default:
+            Utils::SystemDebugMessage("Unknown ");
+		    break;
+        }
+
+        if(objectInfo->pObjectName != nullptr)
+        {
+            Utils::SystemDebugMessage("\"");
+            Utils::SystemDebugMessage(objectInfo->pObjectName);
+            Utils::SystemDebugMessage("\"");
+        }
+
+        Utils::SystemDebugMessage(std::format(" [{:#08x}]", objectInfo->objectHandle));
+        Utils::SystemDebugMessage("}");
+    }
+
+    Utils::SystemDebugMessage("\n");
     return VK_FALSE;
 }

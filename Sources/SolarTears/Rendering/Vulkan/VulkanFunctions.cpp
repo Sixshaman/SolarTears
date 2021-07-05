@@ -2,7 +2,7 @@
 
 #ifdef VK_NO_PROTOTYPES
 
-#define DEFINE_VULKAN_FUNCTION(funcName) PFN_##funcName funcName;
+#define DEFINE_VULKAN_FUNCTION(funcName) PFN_##funcName funcName = nullptr;
 
 extern "C"
 {

@@ -30,6 +30,8 @@ Vulkan::Renderer::Renderer(LoggerQueue* loggerQueue, FrameCounter* frameCounter,
 	InitInstance();
 	mDynamicLibrary->LoadInstanceFunctions(mInstance);
 
+	InitDebuggingEnvironment();
+
 	SelectPhysicalDevice(&mPhysicalDevice);
 
 	mDeviceParameters.InvalidateDeviceParameters(mPhysicalDevice);
@@ -70,6 +72,11 @@ Vulkan::Renderer::~Renderer()
 	mDescriptorManager.reset();
 
 	SafeDestroyDevice(mDevice);
+
+#if (defined(DEBUG) || defined(_DEBUG)) && defined(VK_EXT_debug_report)
+	SafeDestroyObject(vkDestroyDebugUtilsMessengerEXT, mInstance, mDebugMessenger);
+#endif
+
 	SafeDestroyInstance(mInstance);
 }
 
@@ -200,6 +207,24 @@ void Vulkan::Renderer::InitInstance()
 	instanceCreateInfo.ppEnabledExtensionNames = enabledExtensionsCStrs.data();
 
 	ThrowIfFailed(vkCreateInstance(&instanceCreateInfo, nullptr, &mInstance));
+}
+
+void Vulkan::Renderer::InitDebuggingEnvironment()
+{
+	mDebugMessenger = nullptr;
+
+#if (defined(DEBUG) || defined(_DEBUG)) && defined(VK_EXT_debug_utils)
+	VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo;
+	debugMessengerCreateInfo.sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+	debugMessengerCreateInfo.pNext           = nullptr;
+	debugMessengerCreateInfo.flags           = 0;
+	debugMessengerCreateInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+	debugMessengerCreateInfo.messageType     = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+	debugMessengerCreateInfo.pfnUserCallback = VulkanUtils::DebugReportCallback;
+	debugMessengerCreateInfo.pUserData       = nullptr;
+
+	ThrowIfFailed(vkCreateDebugUtilsMessengerEXT(mInstance, &debugMessengerCreateInfo, nullptr, &mDebugMessenger));
+#endif
 }
 
 void Vulkan::Renderer::SelectPhysicalDevice(VkPhysicalDevice* outPhysicalDevice)

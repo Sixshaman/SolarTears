@@ -21,7 +21,6 @@ namespace Vulkan
 	{
 	#if defined(DEBUG) || defined(_DEBUG)
 		VK_EXT_DEBUG_UTILS_EXTENSION_NAME,         //DEBUG UTILS
-		VK_EXT_DEBUG_REPORT_EXTENSION_NAME,        //Debug reports!
 		VK_EXT_VALIDATION_FEATURES_EXTENSION_NAME, //VVvvvvvvvvvalidation!
 	#endif
 
@@ -46,18 +45,26 @@ namespace Vulkan
 	#endif
 	};
 
+#if defined(DEBUG) || defined(_DEBUG)
+	static const std::array global_enabled_validation_features = {VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT, VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT};
+#endif
+
 	//TODO: designated structure initializers
 	static const std::unordered_map<std::string, vgs::StructureBlob> global_config_instance_extension_structures =
 	{
+#if defined(DEBUG) || defined(_DEBUG)
+		//Set the callback that will be executed during vkCreateInstance()/vkDestroyInstance()
 		{
-			VK_EXT_DEBUG_REPORT_EXTENSION_NAME,
+			VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
 			vgs::StructureBlob
 			(
-				VkDebugReportCallbackCreateInfoEXT
+				VkDebugUtilsMessengerCreateInfoEXT
 				{
-					.flags       = VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT | VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT,
-					.pfnCallback = VulkanUtils::DebugReportCCallback,
-					.pUserData   = nullptr
+					.flags           = 0,
+					.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
+					.messageType     = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
+					.pfnUserCallback = VulkanUtils::DebugReportCallback,
+					.pUserData       = nullptr
 				}
 			)
 		},
@@ -71,12 +78,13 @@ namespace Vulkan
 				VkValidationFeaturesEXT
 				{
 					.enabledValidationFeatureCount  = 2,
-					.pEnabledValidationFeatures     = std::array<VkValidationFeatureEnableEXT, 2>({VK_VALIDATION_FEATURE_ENABLE_GPU_ASSISTED_EXT, VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT}).data(),
-					.disabledValidationFeatureCount = 0,
+					.pEnabledValidationFeatures     = global_enabled_validation_features.data(),
+					.disabledValidationFeatureCount = (uint32_t)(global_enabled_validation_features.size()),
 					.pDisabledValidationFeatures    = nullptr
 				}
 			)
 		}
+#endif
 	};
 }
 

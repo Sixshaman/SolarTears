@@ -16,14 +16,13 @@
 
 namespace Utils
 {
-	std::string  StringFormat(const char*    format, ...);
-	std::wstring StringFormat(const wchar_t* format, ...);
-
 	std::string  ConvertWstringToUTF8(const std::wstring_view str);
 	std::wstring ConvertUTF8ToWstring(const std::string_view  str);
 	
-	void SystemDebugMessage(const std::string&  str);
-	void SystemDebugMessage(const std::wstring& str);
+	void SystemDebugMessage(const std::string_view  str);
+	void SystemDebugMessage(const std::wstring_view str);
+	void SystemDebugMessage(const char*    str);
+	void SystemDebugMessage(const wchar_t* str);
 
 	std::wstring GetMainDirectory();
 }

@@ -39,6 +39,7 @@ namespace Vulkan
 
 	private:
 		void InitInstance();
+		void InitDebuggingEnvironment();
 		void SelectPhysicalDevice(VkPhysicalDevice* outPhysicalDevice);
 		void CreateLogicalDevice(VkPhysicalDevice physicalDevice, const std::unordered_set<uint32_t>& queueFamilies);
 		void CreateFences();
@@ -73,5 +74,9 @@ namespace Vulkan
 		std::unique_ptr<WorkerCommandBuffers> mCommandBuffers;
 
 		std::unique_ptr<MemoryManager> mMemoryAllocator;
+
+#if (defined(DEBUG) || defined(_DEBUG)) && defined(VK_EXT_debug_utils)
+		VkDebugUtilsMessengerEXT mDebugMessenger;
+#endif
 	};
 }

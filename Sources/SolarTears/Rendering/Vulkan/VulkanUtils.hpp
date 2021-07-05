@@ -56,7 +56,7 @@ namespace Vulkan
 		void SetDebugObjectName(const VkDevice device, VkCommandBuffer commandBuffer, const std::string_view name);
 		void SetDebugObjectName(const VkDevice device, VkCommandPool   commandPool,   const std::string_view name);
 
-		VkBool32 DebugReportCCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType, uint64_t object, size_t location, int32_t messageCode, const char* pLayerPrefix, const char* pMessage, void* pUserData);
+		VkBool32 DebugReportCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
 	}
 }
 

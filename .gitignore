@@ -60,3 +60,4 @@ DXC
 /Compiled/Bin_Debug/Shaders/D3D12/GBuffer/GBufferDrawPS.cso
 *.cso
 /Compiled/Bin_Debug/SolarTearsd.ilk
+/Compiled/Bin_Debug/SolarTearsd.exp
