@@ -662,6 +662,9 @@
     <ClCompile Include="Rendering\Common\Scene\ClassicRenderableScene.cpp">
       <Filter>Rendering\Common\Scene</Filter>
     </ClCompile>
+    <ClCompile Include="Rendering\OGL\OGLUtils.cpp">
+      <Filter>Rendering\OGL</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="Platform\Win32\Win32Util.inl">

@@ -176,6 +176,7 @@
     <ClCompile Include="Rendering\D3D12\Scene\D3D12SceneDescriptorCreator.cpp" />
     <ClCompile Include="Rendering\OGL\OGLFunctions.cpp" />
     <ClCompile Include="Rendering\OGL\OGLRenderer.cpp" />
+    <ClCompile Include="Rendering\OGL\OGLUtils.cpp" />
     <ClCompile Include="Rendering\OGL\Platform\OGLContextWin32.cpp" />
     <ClCompile Include="Rendering\OGL\Platform\OGLFunctionLoaderWin32.cpp" />
     <ClCompile Include="Rendering\OGL\Platform\OGLFunctionsWin32.cpp" />
