@@ -21,13 +21,13 @@ namespace OpenGL
 		friend class SceneDescriptorCreator;
 
 	public:
-		RenderableScene(const GLContext* glContext);
+		RenderableScene();
 		~RenderableScene();
 
 		void FinalizeSceneUpdating() override final;
 
 	public:
-		void DrawObjectsOntoGBuffer(const GLContext* glContext) const;
+		void DrawObjectsOntoGBuffer() const;
 
 	private:
 		GLuint mSceneVertexArray;

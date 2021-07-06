@@ -2,7 +2,7 @@
 #include "../OGLFunctions.hpp"
 #include "../OGLUtils.hpp"
 
-OpenGL::RenderableScene::RenderableScene(const GLContext* glContext): ClassicRenderableScene()
+OpenGL::RenderableScene::RenderableScene(): ClassicRenderableScene()
 {
 }
 
@@ -63,7 +63,7 @@ void OpenGL::RenderableScene::FinalizeSceneUpdating()
 	//mScheduledSceneUpdatesCount = freeSpaceIndex;
 }
 
-void OpenGL::RenderableScene::DrawObjectsOntoGBuffer(const GLContext* glContext) const
+void OpenGL::RenderableScene::DrawObjectsOntoGBuffer() const
 {
 	glBindVertexArray(mSceneVertexArray);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mSceneElementBuffer);

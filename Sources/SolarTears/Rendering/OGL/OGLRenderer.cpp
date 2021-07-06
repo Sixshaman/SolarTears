@@ -2,6 +2,7 @@
 #include "OGLContext.hpp"
 #include "OGLFunctionLoader.hpp"
 #include "OGLFunctions.hpp"
+#include "OGLUtils.hpp"
 
 OpenGL::Renderer::Renderer(LoggerQueue* loggerQueue, FrameCounter* frameCounter): ::Renderer(loggerQueue), mFrameCounterRef(frameCounter)
 {
@@ -12,7 +13,7 @@ OpenGL::Renderer::Renderer(LoggerQueue* loggerQueue, FrameCounter* frameCounter)
 	glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
 
 	glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
-
+	glDebugMessageCallback(OGLUtils::GLDebugCallback, nullptr);
 #endif
 }
 
