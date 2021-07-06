@@ -348,9 +348,6 @@
     <ClInclude Include="Rendering\Common\Scene\ModernRenderableScene.hpp">
       <Filter>Rendering\Common\Scene</Filter>
     </ClInclude>
-    <ClInclude Include="Rendering\Vulkan\Scene\VulkanSceneDescriptorCreater.hpp">
-      <Filter>Rendering\Vulkan\Scene</Filter>
-    </ClInclude>
     <ClInclude Include="Rendering\Vulkan\VulkanDescriptorManager.hpp">
       <Filter>Rendering\Vulkan</Filter>
     </ClInclude>
@@ -416,6 +413,9 @@
     </ClInclude>
     <ClInclude Include="Rendering\Common\Scene\ClassicRenderableSceneBuilder.hpp">
       <Filter>Rendering\Common\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Vulkan\Scene\VulkanSceneDescriptorCreator.hpp">
+      <Filter>Rendering\Vulkan\Scene</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

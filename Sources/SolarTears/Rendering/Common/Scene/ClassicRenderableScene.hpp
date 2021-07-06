@@ -27,6 +27,9 @@ public:
 	~ClassicRenderableScene();
 
 protected:
+	void FinalizeSceneUpdatingImpl();
+
+protected:
 	//Created from outside
 	std::vector<MeshSubobjectRange> mSceneMeshes;
 	std::vector<SceneSubobject>     mSceneSubobjects;
