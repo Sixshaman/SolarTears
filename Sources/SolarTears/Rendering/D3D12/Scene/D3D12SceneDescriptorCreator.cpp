@@ -11,6 +11,11 @@ D3D12::SceneDescriptorCreator::~SceneDescriptorCreator()
 
 UINT D3D12::SceneDescriptorCreator::GetDescriptorCountNeeded()
 {
+	if(!mSceneToMakeDescriptors)
+	{
+		return 0;
+	}
+
 	return (UINT)mSceneToMakeDescriptors->mSceneTextures.size();
 }
 

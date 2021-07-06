@@ -11,6 +11,8 @@ Application::~Application()
 
 int Application::Run(Engine* engine)
 {
+	engine->Start();
+
 	MSG msg = {};
 	while(msg.message != WM_QUIT)
 	{

@@ -28,12 +28,15 @@ Engine::Engine(): mPaused(false)
 
 	mRenderingSystem = std::make_unique<OpenGL::Renderer>(mLoggerQueue.get(), mFrameCounter.get());
 	mInputSystem     = std::make_unique<Inputter>(mLoggerQueue.get());
-
-	CreateScene();
 }
 
 Engine::~Engine()
 {
+}
+
+void Engine::Start()
+{
+	CreateScene();
 }
 
 void Engine::BindToWindow(Window* window)
@@ -44,7 +47,6 @@ void Engine::BindToWindow(Window* window)
 	CreateFrameGraph(window);
 		
 	window->SetResizeCallbackUserPtr(this);
-
 	window->RegisterResizeStartedCallback([](Window* window, void* userObject)
 	{
 		UNREFERENCED_PARAMETER(window);

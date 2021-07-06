@@ -19,6 +19,8 @@ public:
 	Engine();
 	~Engine();
 
+	void Start();
+
 	void BindToWindow(Window* window);
 	void Update();
 
