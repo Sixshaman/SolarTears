@@ -414,6 +414,9 @@
     <ClInclude Include="Rendering\Common\Scene\ClassicRenderableScene.hpp">
       <Filter>Rendering\Common\Scene</Filter>
     </ClInclude>
+    <ClInclude Include="Rendering\Common\Scene\ClassicRenderableSceneBuilder.hpp">
+      <Filter>Rendering\Common\Scene</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Platform\Win32\Win32Application.cpp">
@@ -664,6 +667,12 @@
     </ClCompile>
     <ClCompile Include="Rendering\OGL\OGLUtils.cpp">
       <Filter>Rendering\OGL</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Common\Scene\ClassicRenderableSceneBuilder.cpp">
+      <Filter>Rendering\Common\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\OGL\Scene\OGLSceneBuilder.cpp">
+      <Filter>Rendering\OGL\Scene</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

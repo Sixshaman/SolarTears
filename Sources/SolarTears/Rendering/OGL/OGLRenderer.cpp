@@ -3,6 +3,8 @@
 #include "OGLFunctionLoader.hpp"
 #include "OGLFunctions.hpp"
 #include "OGLUtils.hpp"
+#include "Scene/OGLScene.hpp"
+#include "Scene/OGLSceneBuilder.hpp"
 
 OpenGL::Renderer::Renderer(LoggerQueue* loggerQueue, FrameCounter* frameCounter): ::Renderer(loggerQueue), mFrameCounterRef(frameCounter)
 {
@@ -33,7 +35,15 @@ void OpenGL::Renderer::ResizeWindowBuffers(Window* window)
 
 void OpenGL::Renderer::InitScene(SceneDescription* sceneDescription)
 {
-	UNREFERENCED_PARAMETER(sceneDescription);
+	mGLContext->MakeCurrent();
+
+	mScene = std::make_unique<RenderableScene>();
+	sceneDescription->BindRenderableComponent(mScene.get());
+
+	RenderableSceneBuilder sceneBuilder(mScene.get());
+	sceneDescription->BuildRenderableComponent(&sceneBuilder);
+
+	mGLContext->DoneCurrent();
 }
 
 void OpenGL::Renderer::RenderScene()

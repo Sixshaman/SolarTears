@@ -6,6 +6,10 @@ OpenGL::RenderableScene::RenderableScene(): ClassicRenderableScene()
 {
 }
 
+OpenGL::RenderableScene::~RenderableScene()
+{
+}
+
 void OpenGL::RenderableScene::FinalizeSceneUpdating()
 {
 	//glMapBuffer(mSceneUniformBuffer, )

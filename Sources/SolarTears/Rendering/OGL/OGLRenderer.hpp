@@ -30,5 +30,7 @@ namespace OpenGL
 		const FrameCounter* mFrameCounterRef;
 
 		std::unique_ptr<GLContext> mGLContext;
+
+		std::unique_ptr<RenderableScene> mScene;
 	};
 }
