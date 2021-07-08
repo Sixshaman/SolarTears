@@ -3,6 +3,19 @@
 #include <DirectXMath.h>
 #include "RenderableSceneMisc.hpp"
 #include "../../../Core/Scene/Scene.hpp"
+#include <span>
+
+struct ObjectDataUpdateInfo
+{
+	RenderableSceneMeshHandle ObjectId;
+	SceneObjectLocation       ObjectLocation;
+};
+
+struct alignas(DirectX::XMMATRIX) FrameDataUpdateInfo
+{
+	DirectX::XMMATRIX ViewMatrix;
+	DirectX::XMMATRIX ProjMatrix;
+};
 
 class RenderableSceneBase
 {
@@ -17,42 +30,39 @@ protected:
 		DirectX::XMFLOAT4X4 ViewProjMatrix;
 	};
 
-	enum class SceneUpdateType
+	struct SceneSubobject
 	{
-		UPDATE_UNDEFINED, //Nothing
-		UPDATE_OBJECT,    //Per-object data
-		UPDATE_COMMON     //Per-frame data
+		uint32_t IndexCount;
+		uint32_t FirstIndex;
+		int32_t  VertexOffset;
+		uint32_t MaterialIndex;
 	};
 
-	struct ScheduledSceneUpdate
+	struct SceneMaterialData
 	{
-		SceneUpdateType UpdateType;       //The type of update
-		uint32_t        ObjectIndex;      //Object index to update from. -1 if UpdateType is UPDATE_COMMON
-		uint32_t        DirtyFramesCount; //Dirty frames count
+	};
+
+	struct SceneMaterial
+	{
+		SceneMaterialData MaterialDta;
+		uint32_t          TextureIndex;
+		uint32_t          NormalMapIndex;
+	};
+
+	struct SceneObject
+	{
+		uint32_t PerObjectDataIndex;
+		uint32_t FirstSubobjectIndex;
+		uint32_t AfterLastSubobjectIndex;
 	};
 
 public:
 	RenderableSceneBase(uint32_t maxDirtyFrames);
 	~RenderableSceneBase();
 
-	void UpdateSceneMeshData(RenderableSceneMeshHandle meshHandle, const SceneObjectLocation& sceneObjectLocation);
-	void UpdateSceneCameraData(DirectX::XMMATRIX View, DirectX::XMMATRIX Proj);
-
-	virtual void FinalizeSceneUpdating() = 0;
+	virtual void UpdateSceneObjects(const FrameDataUpdateInfo& frameUpdate, const std::span<ObjectDataUpdateInfo> objectUpdates) = 0;
 
 protected:
-	//Set from inside
-	uint32_t mMaxDirtyFrames;
-
-protected:
-	//Set from outside
-	std::vector<PerObjectData> mScenePerObjectData;
-	PerFrameData               mScenePerFrameData;
-
-	uint32_t                          mScheduledSceneUpdatesCount;
-	std::vector<ScheduledSceneUpdate> mScheduledSceneUpdates;
-
-	//TODO: potentially bad cache performance
-	std::vector<uint32_t> mObjectDataScheduledUpdateIndices;
-	uint32_t              mFrameDataScheduledUpdateIndex;
+	void CalculatePerObjectData(const SceneObjectLocation& sceneObjectLocation, PerObjectData* outPerObjectData);
+	void UpdateSceneCameraData(DirectX::FXMMATRIX View, DirectX::FXMMATRIX Proj, PerFrameData* outPerFrameData);
 };

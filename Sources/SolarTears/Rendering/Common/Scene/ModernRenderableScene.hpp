@@ -1,6 +1,7 @@
 #pragma once
 
 #include "RenderableSceneBase.hpp"
+#include <span>
 
 class FrameCounter;
 
@@ -9,28 +10,11 @@ class ModernRenderableScene: public RenderableSceneBase
 {
 	friend class ModernRenderableSceneBuilder;
 
-protected:
-	struct SceneSubobject
-	{
-		uint32_t IndexCount;
-		uint32_t FirstIndex;
-		int32_t  VertexOffset;
-		uint32_t TextureDescriptorSetIndex;
-
-		//Material data will be set VIA ROOT CONSTANTS
-	};
-
-	struct MeshSubobjectRange
-	{
-		uint32_t FirstSubobjectIndex;
-		uint32_t AfterLastSubobjectIndex;
-	};
-
 public:
 	ModernRenderableScene(const FrameCounter* frameCounter);
 	~ModernRenderableScene();
 
-	void FinalizeSceneUpdating() override final;
+	void FinalizeSceneUpdating(const FrameDataUpdateInfo& frameUpdate, const std::span<ObjectDataUpdateInfo> objectUpdates) override final;
 
 protected:
 	void Init();

@@ -20,10 +20,9 @@ ModernRenderableScene::~ModernRenderableScene()
 {
 }
 
-void ModernRenderableScene::FinalizeSceneUpdating()
+void ModernRenderableScene::FinalizeSceneUpdating(const FrameDataUpdateInfo& frameUpdate, const std::span<ObjectDataUpdateInfo> objectUpdates)
 {
 	//Do not need to worry about calling vkFlushMemoryMappedRanges, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT will handle this
-
 	uint32_t frameResourceIndex = mFrameCounterRef->GetFrameCount() % Utils::InFlightFrameCount;
 
 	uint32_t        lastUpdatedObjectIndex = (uint32_t)(-1);
