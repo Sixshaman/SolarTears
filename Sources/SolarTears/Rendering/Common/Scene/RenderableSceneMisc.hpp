@@ -25,8 +25,10 @@ struct RenderableSceneMeshHandle
 {
 	uint32_t Id;
 
-	bool operator==(const RenderableSceneMeshHandle right) {return Id == right.Id;}
-	bool operator!=(const RenderableSceneMeshHandle right) {return Id != right.Id;}
+	bool operator==(const RenderableSceneMeshHandle right) const { return Id == right.Id; }
+	bool operator!=(const RenderableSceneMeshHandle right) const { return Id != right.Id; }
+	bool operator< (const RenderableSceneMeshHandle right) const { return Id <  right.Id; }
+	bool operator> (const RenderableSceneMeshHandle right) const { return Id >  right.Id; }
 };
 
 static constexpr RenderableSceneMeshHandle INVALID_SCENE_MESH_HANDLE = {.Id = (uint32_t)(-1)};

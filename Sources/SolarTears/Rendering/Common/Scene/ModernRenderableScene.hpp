@@ -14,7 +14,7 @@ public:
 	ModernRenderableScene(const FrameCounter* frameCounter);
 	~ModernRenderableScene();
 
-	void FinalizeSceneUpdating(const FrameDataUpdateInfo& frameUpdate, const std::span<ObjectDataUpdateInfo> objectUpdates) override final;
+	void UpdateSceneObjects(const FrameDataUpdateInfo& frameUpdate, const std::span<ObjectDataUpdateInfo> objectUpdates) override final;
 
 protected:
 	void Init();
@@ -30,6 +30,10 @@ protected:
 	//Created from outside
 	std::vector<MeshSubobjectRange> mSceneMeshes;
 	std::vector<SceneSubobject>     mSceneSubobjects;
+
+	std::vector<RenderableSceneMeshHandle> mPrevFrameMeshUpdates; //Sorted, ping-pongs with mNextFrameMeshUpdates
+	std::vector<RenderableSceneMeshHandle> mCurrFrameMeshUpdates; //Sorted, used immediately each frame for rendering
+	std::vector<RenderableSceneMeshHandle> mNextFrameMeshUpdates; //Sorted, ping-pongs with mPrevFrameMeshUpdates
 
 	void* mSceneConstantDataBufferPointer; //Constant buffer is persistently mapped
 

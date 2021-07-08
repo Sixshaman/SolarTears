@@ -11,71 +11,85 @@ ModernRenderableScene::ModernRenderableScene(const FrameCounter* frameCounter): 
 	mGBufferFrameChunkDataSize  = 0;
 	mGBufferObjectChunkDataSize = 0;
 
-	mScheduledSceneUpdates.push_back(RenderableSceneBase::ScheduledSceneUpdate());
-	mObjectDataScheduledUpdateIndices.push_back(0);
-	mScenePerObjectData.push_back(RenderableSceneBase::PerObjectData());
+	mScheduledMeshUpdates.push_back(INVALID_SCENE_MESH_HANDLE);
 }
 
 ModernRenderableScene::~ModernRenderableScene()
 {
 }
 
-void ModernRenderableScene::FinalizeSceneUpdating(const FrameDataUpdateInfo& frameUpdate, const std::span<ObjectDataUpdateInfo> objectUpdates)
+void ModernRenderableScene::UpdateSceneObjects(const FrameDataUpdateInfo& frameUpdate, const std::span<ObjectDataUpdateInfo> objectUpdates)
 {
-	//Do not need to worry about calling vkFlushMemoryMappedRanges, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT will handle this
-	uint32_t frameResourceIndex = mFrameCounterRef->GetFrameCount() % Utils::InFlightFrameCount;
-
-	uint32_t        lastUpdatedObjectIndex = (uint32_t)(-1);
-	uint32_t        freeSpaceIndex         = 0; //We go through all scheduled updates and replace those that have DirtyFrameCount = 0
-	SceneUpdateType lastUpdateType         = SceneUpdateType::UPDATE_UNDEFINED;
-	for(uint32_t i = 0; i < mScheduledSceneUpdatesCount; i++)
+	auto prevFrameUpdatePointer = mPrevFrameMeshUpdates.begin();
+	auto currFrameUpdatePointer = mCurrFrameMeshUpdates.begin();
+	auto nextFrameUpdatePointer = mNextFrameMeshUpdates.begin();
+	auto objectUpdatePointer    = objectUpdates.begin();
+	while(*prevFrameUpdatePointer != INVALID_SCENE_MESH_HANDLE || objectUpdatePointer != objectUpdates.end())
 	{
-		//TODO: make it without switch statement
-		uint64_t bufferOffset  = 0;
-		uint64_t updateSize    = 0;
-		uint64_t flushSize     = 0;
-		void*  updatePointer = nullptr;
+		RenderableSceneMeshHandle prevFrameUpdateId = *prevFrameUpdatePointer;
+		RenderableSceneMeshHandle objectUpdateId    = objectUpdatePointer->ObjectId;
 
-		switch(mScheduledSceneUpdates[i].UpdateType)
+		if(prevFrameUpdateId < objectUpdateId)
 		{
-		case SceneUpdateType::UPDATE_OBJECT:
-		{
-			bufferOffset  = CalculatePerObjectDataOffset(mScheduledSceneUpdates[i].ObjectIndex, frameResourceIndex);
-			updateSize    = sizeof(RenderableSceneBase::PerObjectData);
-			flushSize     = mGBufferObjectChunkDataSize;
-			updatePointer = &mScenePerObjectData[mScheduledSceneUpdates[i].ObjectIndex];
-			break;
+			//Schedule 1 update for the current frame, the rest updates of the same object go to the next frame
+			*currFrameUpdatePointer = prevFrameUpdateId;
+			++currFrameUpdatePointer;
+
+			while(*(++prevFrameUpdatePointer) == prevFrameUpdateId)
+			{
+				*nextFrameUpdatePointer = prevFrameUpdateId;
+				++nextFrameUpdatePointer;
+			}
 		}
-		case SceneUpdateType::UPDATE_COMMON:
+		else if(prevFrameUpdateId == objectUpdateId)
 		{
-			bufferOffset  = CalculatePerFrameDataOffset(frameResourceIndex);
-			updateSize    = sizeof(RenderableSceneBase::PerFrameData);
-			flushSize     = mGBufferFrameChunkDataSize;
-			updatePointer = &mScenePerFrameData;
-			break;
+			//Previous updates of this object don't matter anymore, grab 1 update from objectUpdate to the current frame and (InFlightFrameCount - 1) for next frames
+			*currFrameUpdatePointer = prevFrameUpdateId;
+			++currFrameUpdatePointer;
+
+			for(int i = 1; i < Utils::InFlightFrameCount; i++)
+			{
+				*nextFrameUpdatePointer = objectUpdateId;
+				++nextFrameUpdatePointer;
+			}
+
+			while(*(++prevFrameUpdatePointer) == prevFrameUpdateId); //Skip all objects with this Id
+
+			++objectUpdatePointer;
 		}
-		default:
+		else if(prevFrameUpdateId > objectUpdateId)
 		{
-			break;
-		}
-		}
+			//Grab 1 update from objectUpdate to the current frame and (InFlightFrameCount - 1) for next frames
+			*currFrameUpdatePointer = objectUpdateId;
+			++currFrameUpdatePointer;
 
-		memcpy((std::byte*)mSceneConstantDataBufferPointer + bufferOffset, updatePointer, updateSize);
+			for(int i = 1; i < Utils::InFlightFrameCount; i++)
+			{
+				*nextFrameUpdatePointer = objectUpdateId;
+				++nextFrameUpdatePointer;
+			}
 
-		lastUpdatedObjectIndex = mScheduledSceneUpdates[i].ObjectIndex;
-		lastUpdateType         = mScheduledSceneUpdates[i].UpdateType;
-
-		mScheduledSceneUpdates[i].DirtyFramesCount -= 1;
-
-		if(mScheduledSceneUpdates[i].DirtyFramesCount != 0) //Shift all updates by one more element, thus erasing all that have dirty frames count == 0
-		{
-			//Shift by one
-			mScheduledSceneUpdates[freeSpaceIndex] = mScheduledSceneUpdates[i];
-			freeSpaceIndex += 1;
+			++objectUpdatePointer;
 		}
 	}
 
-	mScheduledSceneUpdatesCount = freeSpaceIndex;
+	*nextFrameUpdatePointer = INVALID_SCENE_MESH_HANDLE;
+	std::swap(mPrevFrameMeshUpdates, mNextFrameMeshUpdates);
+
+
+	//Do not need to worry about calling vkFlushMemoryMappedRanges, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT will handle this
+	uint32_t frameResourceIndex = mFrameCounterRef->GetFrameCount() % Utils::InFlightFrameCount;
+
+	PerFrameData perFrameData = PackFrameData(frameUpdate.ViewMatrix, frameUpdate.ProjMatrix);
+
+	uint64_t frameDataOffset = CalculatePerFrameDataOffset(frameResourceIndex);
+	memcpy((std::byte*)mSceneConstantDataBufferPointer + frameDataOffset, &perFrameData, sizeof(PerObjectData));
+	
+	for(auto update = mCurrFrameMeshUpdates.begin(); update != nextFrameUpdatePointer; update++)
+	{
+		uint64_t objectDataOffset  = CalculatePerObjectDataOffset(update->Id, frameResourceIndex);
+		memcpy((std::byte*)mSceneConstantDataBufferPointer + objectDataOffset, &mScenePerObjectData[update->Id], sizeof(PerObjectData));
+	}
 }
 
 void ModernRenderableScene::Init()

@@ -63,6 +63,6 @@ public:
 	virtual void UpdateSceneObjects(const FrameDataUpdateInfo& frameUpdate, const std::span<ObjectDataUpdateInfo> objectUpdates) = 0;
 
 protected:
-	void CalculatePerObjectData(const SceneObjectLocation& sceneObjectLocation, PerObjectData* outPerObjectData);
-	void UpdateSceneCameraData(DirectX::FXMMATRIX View, DirectX::FXMMATRIX Proj, PerFrameData* outPerFrameData);
+	PerObjectData PackObjectData(const SceneObjectLocation& sceneObjectLocation)  const;
+	PerFrameData  PackFrameData(DirectX::FXMMATRIX View, DirectX::FXMMATRIX Proj) const;
 };
