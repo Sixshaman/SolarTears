@@ -1,6 +1,6 @@
 #include "RenderableSceneBuilderBase.hpp"
 
-RenderableSceneBuilderBase::RenderableSceneBuilderBase()
+RenderableSceneBuilderBase::RenderableSceneBuilderBase(RenderableSceneBase* sceneToBuild): mSceneToBuild(sceneToBuild)
 {
 }
 

@@ -2,13 +2,11 @@
 #include "ModernRenderableScene.hpp"
 #include "../RenderingUtils.hpp"
 
-ModernRenderableSceneBuilder::ModernRenderableSceneBuilder(ModernRenderableScene* sceneToBuild): mSceneToBuild(sceneToBuild)
+ModernRenderableSceneBuilder::ModernRenderableSceneBuilder(ModernRenderableScene* sceneToBuild): RenderableSceneBuilderBase(sceneToBuild), mSceneToBuild(sceneToBuild)
 {
 	mVertexBufferGpuMemoryOffset   = 0;
 	mIndexBufferGpuMemoryOffset    = 0;
 	mConstantBufferGpuMemoryOffset = 0;
-
-	mTexturePlacementAlignment = 1;
 }
 
 ModernRenderableSceneBuilder::~ModernRenderableSceneBuilder()
@@ -53,7 +51,6 @@ void ModernRenderableSceneBuilder::CreateSceneMeshMetadata(std::vector<std::wstr
 	mVertexBufferData.clear();
 	mIndexBufferData.clear();
 
-	mSceneToBuild->mSceneMeshes.clear();
 	mSceneToBuild->mSceneMeshes.clear();
 	mSceneToBuild->mSceneSubobjects.clear();
 

@@ -2,16 +2,15 @@
 #include "../RenderingUtils.hpp"
 #include "../../../Core/FrameCounter.hpp"
 
-ModernRenderableScene::ModernRenderableScene(const FrameCounter* frameCounter): RenderableSceneBase(Utils::InFlightFrameCount), mFrameCounterRef(frameCounter)
+ModernRenderableScene::ModernRenderableScene(const FrameCounter* frameCounter, uint64_t constantDataAlignment): RenderableSceneBase(Utils::InFlightFrameCount), mFrameCounterRef(frameCounter)
 {
-	mCBufferAlignmentSize = 0;
-	
 	mSceneConstantDataBufferPointer = nullptr;
 
-	mGBufferFrameChunkDataSize  = 0;
-	mGBufferObjectChunkDataSize = 0;
+	mGBufferObjectChunkDataSize = sizeof(RenderableSceneBase::PerObjectData);
+	mGBufferFrameChunkDataSize  = sizeof(RenderableSceneBase::PerFrameData);
 
-	mScheduledMeshUpdates.push_back(INVALID_SCENE_MESH_HANDLE);
+	mGBufferObjectChunkDataSize = (uint32_t)Utils::AlignMemory(mGBufferObjectChunkDataSize, constantDataAlignment);
+	mGBufferFrameChunkDataSize  = (uint32_t)Utils::AlignMemory(mGBufferFrameChunkDataSize,  constantDataAlignment);
 }
 
 ModernRenderableScene::~ModernRenderableScene()
@@ -29,54 +28,71 @@ void ModernRenderableScene::UpdateSceneObjects(const FrameDataUpdateInfo& frameU
 	//Merge mPrevFrameMeshUpdates and objectUpdates into updates for the next frame and leftovers, keeping the result sorted
 	while(mPrevFrameMeshUpdates[prevFrameUpdateIndex].MeshHandle != INVALID_SCENE_MESH_HANDLE || objectUpdateIndex < objectUpdates.size())
 	{
-		RenderableSceneMeshHandle prevFrameUpdateId = mPrevFrameMeshUpdates[prevFrameUpdateIndex].MeshHandle;
-		RenderableSceneMeshHandle objectUpdateId    = objectUpdates[objectUpdateIndex].ObjectId;
+		RenderableSceneMeshHandle updatedObjectPrevFrame = mPrevFrameMeshUpdates[prevFrameUpdateIndex].MeshHandle;
+		RenderableSceneMeshHandle updatedObjectToMerge   = objectUpdates[objectUpdateIndex].ObjectId;
 
-		if(prevFrameUpdateId < objectUpdateId)
+		if(updatedObjectPrevFrame < updatedObjectToMerge)
 		{
 			uint32_t prevDataIndex = mPrevFrameMeshUpdates[objectUpdateIndex].ObjectDataIndex;
 
 			//Schedule 1 update for the current frame
-			mCurrFrameMeshUpdates[currFrameUpdateIndex]    = prevFrameUpdateId;
-			mCurrFrameDataToUpdate[currFrameUpdateIndex++] = mPrevFrameDataToUpdate[prevDataIndex];
+			mCurrFrameMeshUpdates[currFrameUpdateIndex]  = updatedObjectPrevFrame;
+			mCurrFrameDataToUpdate[currFrameUpdateIndex] = mPrevFrameDataToUpdate[prevDataIndex];
 
 			//The remaining updates of the same object go to the next frame
-			while(mPrevFrameMeshUpdates[++prevFrameUpdateIndex] == prevFrameUpdateId)
+			while(mPrevFrameMeshUpdates[++prevFrameUpdateIndex].MeshHandle == updatedObjectPrevFrame)
 			{
-				mNextFrameMeshUpdates[nextFrameUpdateIndex++] = prevFrameUpdateId;
+				mNextFrameMeshUpdates[nextFrameUpdateIndex++] =
+				{
+					.MeshHandle      = updatedObjectPrevFrame,
+					.ObjectDataIndex = currFrameUpdateIndex
+				};
 			}
+
+			currFrameUpdateIndex++;
 		}
-		else if(prevFrameUpdateId == objectUpdateId)
+		else if(updatedObjectPrevFrame == updatedObjectToMerge)
 		{
 			//Grab 1 update from objectUpdate into the current frame
-			mCurrFrameMeshUpdates[currFrameUpdateIndex]    = objectUpdateId;
-			mCurrFrameDataToUpdate[currFrameUpdateIndex++] = PackObjectData(objectUpdates[objectUpdateIndex].ObjectLocation);
+			mCurrFrameMeshUpdates[currFrameUpdateIndex]  = updatedObjectToMerge;
+			mCurrFrameDataToUpdate[currFrameUpdateIndex] = PackObjectData(objectUpdates[objectUpdateIndex].ObjectLocation);
 
 			//Grab the same update for next (InFlightFrameCount - 1) frames
 			for(int i = 1; i < Utils::InFlightFrameCount; i++)
 			{
-				mNextFrameMeshUpdates[nextFrameUpdateIndex++] = objectUpdateId;
+				mNextFrameMeshUpdates[nextFrameUpdateIndex++] = 
+				{
+					.MeshHandle      = updatedObjectToMerge,
+					.ObjectDataIndex = currFrameUpdateIndex
+				};
 			}
 
 			//The previous updates don't matter anymore, they get rewritten
-			while(mPrevFrameMeshUpdates[++prevFrameUpdateIndex] == prevFrameUpdateId);
+			while(mPrevFrameMeshUpdates[++prevFrameUpdateIndex].MeshHandle == updatedObjectPrevFrame);
 
 			//Go to the next object update
-			objectUpdateIndex += 1;
+			objectUpdateIndex++;
+			currFrameUpdateIndex++;
 		}
-		else if(prevFrameUpdateId > objectUpdateId)
+		else if(updatedObjectPrevFrame > updatedObjectToMerge)
 		{
 			//Grab 1 update from objectUpdate into the current frame
-			mCurrFrameMeshUpdates[currFrameUpdateIndex++] = objectUpdateId;
+			mCurrFrameMeshUpdates[currFrameUpdateIndex]  = updatedObjectToMerge;
+			mCurrFrameDataToUpdate[currFrameUpdateIndex] = PackObjectData(objectUpdates[objectUpdateIndex].ObjectLocation);
 
 			//Grab the same update for next (InFlightFrameCount - 1) frames
 			for(int i = 1; i < Utils::InFlightFrameCount; i++)
 			{
-				mNextFrameMeshUpdates[nextFrameUpdateIndex++] = objectUpdateId;
+				mNextFrameMeshUpdates[nextFrameUpdateIndex++] = 
+				{
+					.MeshHandle      = updatedObjectToMerge,
+					.ObjectDataIndex = currFrameUpdateIndex
+				};
 			}
 
 			//Go to the next object update
-			objectUpdateIndex += 1;
+			objectUpdateIndex++;
+			currFrameUpdateIndex++;
 		}
 	}
 	
@@ -92,30 +108,27 @@ void ModernRenderableScene::UpdateSceneObjects(const FrameDataUpdateInfo& frameU
 	uint64_t frameDataOffset = CalculatePerFrameDataOffset(frameResourceIndex);
 	memcpy((std::byte*)mSceneConstantDataBufferPointer + frameDataOffset, &perFrameData, sizeof(PerObjectData));
 	
+	uint64_t objectDataOffset = CalculatePerObjectDataOffset(frameResourceIndex);
 	for(auto updateIndex = 0; updateIndex < currFrameUpdateIndex; updateIndex++)
 	{
-		uint32_t meshId = mCurrFrameMeshUpdates[currFrameUpdateIndex++].Id;
+		uint32_t meshId = mCurrFrameMeshUpdates[updateIndex].Id;
 
-		uint64_t objectDataOffset  = CalculatePerObjectDataOffset(meshId, frameResourceIndex);
-		memcpy((std::byte*)mSceneConstantDataBufferPointer + objectDataOffset, &mCurrFrameDataToUpdate[updateIndex], sizeof(PerObjectData));
+		uint64_t currentObjectDataOffset = objectDataOffset + mGBufferObjectChunkDataSize * (size_t)meshId;
+		memcpy((std::byte*)mSceneConstantDataBufferPointer + currentObjectDataOffset, &mCurrFrameDataToUpdate[updateIndex], sizeof(PerObjectData));
 	}
+
+	std::swap(mPrevFrameDataToUpdate, mCurrFrameDataToUpdate);
 }
 
-void ModernRenderableScene::Init()
-{
-	mGBufferObjectChunkDataSize = sizeof(RenderableSceneBase::PerObjectData);
-	mGBufferFrameChunkDataSize  = sizeof(RenderableSceneBase::PerFrameData);
 
-	mGBufferObjectChunkDataSize = (uint32_t)Utils::AlignMemory(mGBufferObjectChunkDataSize, mCBufferAlignmentSize);
-	mGBufferFrameChunkDataSize  = (uint32_t)Utils::AlignMemory(mGBufferFrameChunkDataSize,  mCBufferAlignmentSize);
-}
-
-uint64_t ModernRenderableScene::CalculatePerObjectDataOffset(uint32_t objectIndex, uint32_t currentFrameResourceIndex) const
+uint64_t ModernRenderableScene::CalculatePerObjectDataOffset(uint32_t currentFrameResourceIndex) const
 {
-	return mSceneDataConstantObjectBufferOffset + (mScenePerObjectData.size() * currentFrameResourceIndex + objectIndex) * mGBufferObjectChunkDataSize;
+	//For each frame the object data starts immediately after the frame data
+	return CalculatePerFrameDataOffset(currentFrameResourceIndex) + mGBufferFrameChunkDataSize;
 }
 
 uint64_t ModernRenderableScene::CalculatePerFrameDataOffset(uint32_t currentFrameResourceIndex) const
 {
-	return mSceneDataConstantFrameBufferOffset + currentFrameResourceIndex * mGBufferFrameChunkDataSize;
+	uint64_t wholeFrameResourceSize = (mStaticSceneObjects.size() + mRigidSceneObjects.size()) * mGBufferObjectChunkDataSize + mGBufferFrameChunkDataSize;
+	return currentFrameResourceIndex * wholeFrameResourceSize;
 }

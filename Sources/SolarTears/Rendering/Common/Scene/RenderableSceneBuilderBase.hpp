@@ -10,7 +10,7 @@
 class RenderableSceneBuilderBase
 {
 public:
-	RenderableSceneBuilderBase();
+	RenderableSceneBuilderBase(RenderableSceneBase* sceneToBuild);
 	~RenderableSceneBuilderBase();
 
 	//Can't remove meshes for now, the scene is supposed to be static
@@ -18,7 +18,10 @@ public:
 	RenderableSceneMeshHandle AddSceneMesh(const RenderableSceneMesh& sceneMesh);
 
 protected:
-	std::vector<RenderableSceneMesh> mSceneMeshes;
+	RenderableSceneBase* mSceneToBuild;
+
+	std::vector<RenderableSceneMesh> mSceneStaticMeshes;
+	std::vector<RenderableSceneMesh> mSceneRigidMeshes;
 
 	std::unordered_set<std::wstring> mSceneTextures;
 };

@@ -190,19 +190,10 @@
     <None Include="Platform\Win32\Win32Util.inl" />
     <CustomBuild Include="Shaders\Vulkan\GBuffer\GBufferDraw.frag">
       <FileType>Document</FileType>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">"$(VULKAN_SDK)\Bin\glslangValidator.exe" -V -o "$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv" "%(Identity)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">"$(VULKAN_SDK)\Bin\glslangValidator.exe" -V -Od -g -o "$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv" "%(Identity)"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling %(Identity): %(Command)</Message>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">"$(VULKAN_SDK)\Bin\glslangValidator.exe" -V -o "$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv" "%(Identity)"</Command>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compiling %(Identity): %(Command)</Message>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv</Outputs>
-    </CustomBuild>
-    <CustomBuild Include="Shaders\Vulkan\GBuffer\GBufferDraw.vert">
-      <FileType>Document</FileType>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">"$(VULKAN_SDK)\Bin\glslangValidator.exe" -V -o "$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv" "%(Identity)"</Command>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling %(Identity): %(Command)</Message>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">"$(VULKAN_SDK)\Bin\glslangValidator.exe" -V -o "$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv" "%(Identity)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">"$(VULKAN_SDK)\Bin\glslangValidator.exe" -V -g0 -o "$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv" "%(Identity)"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compiling %(Identity): %(Command)</Message>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv</Outputs>
     </CustomBuild>
@@ -212,6 +203,24 @@
     <None Include="Rendering\Vulkan\Scene\VulkanSceneBuilder.inl" />
     <None Include="Shaders\D3D12\CommonHeader.hlsli" />
     <None Include="Shaders\D3D12\GBuffer\GBufferInclude.hlsli" />
+    <CustomBuild Include="Shaders\Vulkan\GBuffer\GBufferDrawRigid.vert">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">"$(VULKAN_SDK)\Bin\glslangValidator.exe" -V -Od -g --invert-y -o "$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv" "%(Identity)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling %(Identity): %(Command)</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">"$(VULKAN_SDK)\Bin\glslangValidator.exe" -V -g0 --invert-y -o "$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv" "%(Identity)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compiling %(Identity): %(Command)</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="Shaders\Vulkan\GBuffer\GBufferDrawStatic.vert">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">"$(VULKAN_SDK)\Bin\glslangValidator.exe" -V -Od -g --invert-y -o "$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv" "%(Identity)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling %(Identity): %(Command)</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">"$(VULKAN_SDK)\Bin\glslangValidator.exe" -V -g0 --invert-y -o "$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv" "%(Identity)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compiling %(Identity): %(Command)</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv</Outputs>
+    </CustomBuild>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="Shaders\D3D12\GBuffer\GBufferDrawPS.hlsl">
@@ -219,11 +228,26 @@
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)..\Utils\DXC\Debug\bin\dxc.exe -Od -T ps_6_5 -all-resources-bound -E "main" -Zi -Zpr -Fo "$(OutDir)Shaders\D3D12\GBuffer\%(Filename).cso" -Fd "$(OutDir)Shaders\D3D12\GBuffer\%(Filename).pdb" "%(Identity)"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling %(Identity): %(Command)</Message>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Shaders\D3D12\GBuffer\%(Filename).cso;$(OutDir)Shaders\D3D12\GBuffer\%(Filename).pdb</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)..\Utils\DXC\Debug\bin\dxc.exe -O3 -T ps_6_5 -all-resources-bound -E "main" -Zpr -Fo "$(OutDir)Shaders\D3D12\GBuffer\%(Filename).cso" "%(Identity)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compiling %(Identity): %(Command)</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Shaders\D3D12\GBuffer\%(Filename).cso;</Outputs>
     </CustomBuild>
-    <CustomBuild Include="Shaders\D3D12\GBuffer\GBufferDrawVS.hlsl">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-      </ExcludedFromBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="Shaders\D3D12\GBuffer\GBufferDrawRigidVS.hlsl">
       <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)..\Utils\DXC\Debug\bin\dxc.exe -O3 -T vs_6_5 -all-resources-bound -E "main" -Zpr -Fo "$(OutDir)Shaders\D3D12\GBuffer\%(Filename).cso" "%(Identity)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compiling %(Identity): %(Command)</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Shaders\D3D12\GBuffer\%(Filename).cso;</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)..\Utils\DXC\Debug\bin\dxc.exe -Od -T vs_6_5 -all-resources-bound -E "main" -Zi -Zpr -Fo "$(OutDir)Shaders\D3D12\GBuffer\%(Filename).cso" -Fd "$(OutDir)Shaders\D3D12\GBuffer\%(Filename).pdb" "%(Identity)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling %(Identity): %(Command)</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Shaders\D3D12\GBuffer\%(Filename).cso;$(OutDir)Shaders\D3D12\GBuffer\%(Filename).pdb</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="Shaders\D3D12\GBuffer\GBufferDrawStaticVS.hlsl">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)..\Utils\DXC\Debug\bin\dxc.exe -O3 -T vs_6_5 -all-resources-bound -E "main" -Zpr -Fo "$(OutDir)Shaders\D3D12\GBuffer\%(Filename).cso" "%(Identity)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compiling %(Identity): %(Command)</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Shaders\D3D12\GBuffer\%(Filename).cso;</Outputs>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)..\Utils\DXC\Debug\bin\dxc.exe -Od -T vs_6_5 -all-resources-bound -E "main" -Zi -Zpr -Fo "$(OutDir)Shaders\D3D12\GBuffer\%(Filename).cso" -Fd "$(OutDir)Shaders\D3D12\GBuffer\%(Filename).pdb" "%(Identity)"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling %(Identity): %(Command)</Message>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Shaders\D3D12\GBuffer\%(Filename).cso;$(OutDir)Shaders\D3D12\GBuffer\%(Filename).pdb</Outputs>

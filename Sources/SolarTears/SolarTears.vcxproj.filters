@@ -631,19 +631,27 @@
     <None Include="Rendering\Vulkan\FrameGraph\VulkanFrameGraphBuilder.inl">
       <Filter>Rendering\Vulkan\FrameGraph</Filter>
     </None>
+    <None Include="Shaders\Vulkan\GBuffer\GBufferDrawStatic.vert">
+      <Filter>Shaders\Vulkan\GBuffer</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="Shaders\Vulkan\GBuffer\GBufferDraw.frag">
       <Filter>Shaders\Vulkan\GBuffer</Filter>
     </CustomBuild>
-    <CustomBuild Include="Shaders\Vulkan\GBuffer\GBufferDraw.vert">
-      <Filter>Shaders\Vulkan\GBuffer</Filter>
-    </CustomBuild>
     <CustomBuild Include="Shaders\D3D12\GBuffer\GBufferDrawPS.hlsl">
       <Filter>Shaders\D3D12\GBuffer</Filter>
     </CustomBuild>
-    <CustomBuild Include="Shaders\D3D12\GBuffer\GBufferDrawVS.hlsl">
+    <CustomBuild Include="Shaders\D3D12\GBuffer\GBufferDrawRigidVS.hlsl">
       <Filter>Shaders\D3D12\GBuffer</Filter>
     </CustomBuild>
+    <CustomBuild Include="Shaders\Vulkan\GBuffer\GBufferDrawRigid.vert">
+      <Filter>Shaders\Vulkan\GBuffer</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="Shaders\D3D12\GBuffer\GBufferDrawStaticVS.hlsl">
+      <Filter>Shaders\D3D12\GBuffer</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

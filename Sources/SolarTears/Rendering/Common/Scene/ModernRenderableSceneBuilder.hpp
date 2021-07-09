@@ -45,8 +45,6 @@ private:
 protected:
 	ModernRenderableScene* mSceneToBuild;
 
-	uint64_t mTexturePlacementAlignment;
-
 	std::vector<std::byte>             mTextureData;
 	std::vector<RenderableSceneVertex> mVertexBufferData;
 	std::vector<RenderableSceneIndex>  mIndexBufferData;

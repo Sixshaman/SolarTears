@@ -8,9 +8,8 @@
 #include "../../Common/Scene/RenderableSceneMisc.hpp"
 #include "../../Common/RenderingUtils.hpp"
 #include <array>
-#include <numeric>
 
-Vulkan::RenderableScene::RenderableScene(const VkDevice device, const FrameCounter* frameCounter, const DeviceParameters& deviceParameters): ModernRenderableScene(frameCounter), mDeviceRef(device)
+Vulkan::RenderableScene::RenderableScene(const VkDevice device, const FrameCounter* frameCounter, const DeviceParameters& deviceParameters): ModernRenderableScene(frameCounter, VulkanUtils::CalcUniformAlignment(deviceParameters)), mDeviceRef(device)
 {
 	mSceneVertexBuffer  = VK_NULL_HANDLE;
 	mSceneIndexBuffer   = VK_NULL_HANDLE;
@@ -23,10 +22,6 @@ Vulkan::RenderableScene::RenderableScene(const VkDevice device, const FrameCount
 	mBufferMemory            = VK_NULL_HANDLE;
 	mTextureMemory           = VK_NULL_HANDLE;
 	mBufferHostVisibleMemory = VK_NULL_HANDLE;
-
-	mCBufferAlignmentSize = std::lcm(deviceParameters.GetDeviceProperties().limits.minUniformBufferOffsetAlignment, deviceParameters.GetDeviceProperties().limits.nonCoherentAtomSize);
-
-	Init();
 }
 
 Vulkan::RenderableScene::~RenderableScene()

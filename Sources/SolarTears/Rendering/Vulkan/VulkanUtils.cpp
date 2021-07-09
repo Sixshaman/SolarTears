@@ -2,10 +2,12 @@
 #include "..\..\Core\Util.hpp"
 #include "..\..\Logging\LoggerQueue.hpp"
 #include "VulkanFunctions.hpp"
+#include "VulkanDeviceParameters.hpp"
 #include <string>
 #include <fstream>
 #include <cinttypes>
 #include <format>
+#include <numeric>
 
 static inline void SetDebugObjectNameHandle([[maybe_unused]] const VkDevice device, [[maybe_unused]] VkObjectType objectType, [[maybe_unused]] uint64_t handle, [[maybe_unused]] const std::string_view name)
 {
@@ -68,6 +70,11 @@ void Vulkan::VulkanUtils::SetDebugObjectName(const VkDevice device, VkCommandBuf
 void Vulkan::VulkanUtils::SetDebugObjectName(const VkDevice device, VkCommandPool commandPool, const std::string_view name)
 {
     SetDebugObjectNameHandle(device, VK_OBJECT_TYPE_COMMAND_POOL, reinterpret_cast<uint64_t>(commandPool), name);
+}
+
+uint64_t Vulkan::VulkanUtils::CalcUniformAlignment(const DeviceParameters& deviceParameters)
+{
+    return std::lcm(deviceParameters.GetDeviceProperties().limits.minUniformBufferOffsetAlignment, deviceParameters.GetDeviceProperties().limits.nonCoherentAtomSize);
 }
 
 VkBool32 Vulkan::VulkanUtils::DebugReportCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, [[maybe_unused]] void* pUserData)

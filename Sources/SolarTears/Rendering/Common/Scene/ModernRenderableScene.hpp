@@ -17,16 +17,14 @@ class ModernRenderableScene: public RenderableSceneBase
 	};
 
 public:
-	ModernRenderableScene(const FrameCounter* frameCounter);
+	ModernRenderableScene(const FrameCounter* frameCounter, uint64_t constantDataAlignment);
 	~ModernRenderableScene();
 
 	void UpdateSceneObjects(const FrameDataUpdateInfo& frameUpdate, const std::span<ObjectDataUpdateInfo> objectUpdates) override final;
 
 protected:
-	void Init();
-
-	uint64_t CalculatePerObjectDataOffset(uint32_t objectIndex, uint32_t currentFrameResourceIndex) const;
-	uint64_t CalculatePerFrameDataOffset(uint32_t currentFrameResourceIndex)                        const;
+	uint64_t CalculatePerObjectDataOffset(uint32_t currentFrameResourceIndex) const;
+	uint64_t CalculatePerFrameDataOffset(uint32_t currentFrameResourceIndex)  const;
 
 protected:
 	//Created from inside
@@ -34,9 +32,6 @@ protected:
 
 protected:
 	//Created from outside
-	std::vector<MeshSubobjectRange> mSceneMeshes;
-	std::vector<SceneSubobject>     mSceneSubobjects;
-
 	std::vector<ObjectUpdateMetadata> mPrevFrameMeshUpdates; //Sorted, ping-pongs with mNextFrameMeshUpdates
 	std::vector<ObjectUpdateMetadata> mNextFrameMeshUpdates; //Sorted, ping-pongs with mPrevFrameMeshUpdates
 
@@ -49,9 +44,4 @@ protected:
 
 	uint32_t mGBufferObjectChunkDataSize;
 	uint32_t mGBufferFrameChunkDataSize;
-
-	uint64_t mSceneDataConstantObjectBufferOffset;
-	uint64_t mSceneDataConstantFrameBufferOffset;
-
-	uint64_t mCBufferAlignmentSize;
 };

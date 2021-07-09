@@ -38,15 +38,10 @@ protected:
 		uint32_t MaterialIndex;
 	};
 
-	struct SceneMaterialData
-	{
-	};
-
 	struct SceneMaterial
 	{
-		SceneMaterialData MaterialDta;
-		uint32_t          TextureIndex;
-		uint32_t          NormalMapIndex;
+		uint32_t TextureIndex;
+		uint32_t NormalMapIndex;
 	};
 
 	struct SceneObject
@@ -65,4 +60,12 @@ public:
 protected:
 	PerObjectData PackObjectData(const SceneObjectLocation& sceneObjectLocation)  const;
 	PerFrameData  PackFrameData(DirectX::FXMMATRIX View, DirectX::FXMMATRIX Proj) const;
+
+protected:
+	std::vector<SceneObject> mStaticSceneObjects;
+	std::vector<SceneObject> mRigidSceneObjects;
+
+	std::vector<SceneMaterial> mSceneMaterials;
+
+	std::vector<SceneSubobject> mSceneSubobjects;
 };
