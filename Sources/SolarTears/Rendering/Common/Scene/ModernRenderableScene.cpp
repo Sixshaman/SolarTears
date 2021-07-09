@@ -20,60 +20,67 @@ ModernRenderableScene::~ModernRenderableScene()
 
 void ModernRenderableScene::UpdateSceneObjects(const FrameDataUpdateInfo& frameUpdate, const std::span<ObjectDataUpdateInfo> objectUpdates)
 {
-	auto prevFrameUpdatePointer = mPrevFrameMeshUpdates.begin();
-	auto currFrameUpdatePointer = mCurrFrameMeshUpdates.begin();
-	auto nextFrameUpdatePointer = mNextFrameMeshUpdates.begin();
-	auto objectUpdatePointer    = objectUpdates.begin();
-	while(*prevFrameUpdatePointer != INVALID_SCENE_MESH_HANDLE || objectUpdatePointer != objectUpdates.end())
+	uint32_t prevFrameUpdateIndex = 0;
+	uint32_t currFrameUpdateIndex = 0;
+	uint32_t nextFrameUpdateIndex = 0;
+
+	uint32_t objectUpdateIndex = 0;
+
+	//Merge mPrevFrameMeshUpdates and objectUpdates into updates for the next frame and leftovers, keeping the result sorted
+	while(mPrevFrameMeshUpdates[prevFrameUpdateIndex].MeshHandle != INVALID_SCENE_MESH_HANDLE || objectUpdateIndex < objectUpdates.size())
 	{
-		RenderableSceneMeshHandle prevFrameUpdateId = *prevFrameUpdatePointer;
-		RenderableSceneMeshHandle objectUpdateId    = objectUpdatePointer->ObjectId;
+		RenderableSceneMeshHandle prevFrameUpdateId = mPrevFrameMeshUpdates[prevFrameUpdateIndex].MeshHandle;
+		RenderableSceneMeshHandle objectUpdateId    = objectUpdates[objectUpdateIndex].ObjectId;
 
 		if(prevFrameUpdateId < objectUpdateId)
 		{
-			//Schedule 1 update for the current frame, the rest updates of the same object go to the next frame
-			*currFrameUpdatePointer = prevFrameUpdateId;
-			++currFrameUpdatePointer;
+			uint32_t prevDataIndex = mPrevFrameMeshUpdates[objectUpdateIndex].ObjectDataIndex;
 
-			while(*(++prevFrameUpdatePointer) == prevFrameUpdateId)
+			//Schedule 1 update for the current frame
+			mCurrFrameMeshUpdates[currFrameUpdateIndex]    = prevFrameUpdateId;
+			mCurrFrameDataToUpdate[currFrameUpdateIndex++] = mPrevFrameDataToUpdate[prevDataIndex];
+
+			//The remaining updates of the same object go to the next frame
+			while(mPrevFrameMeshUpdates[++prevFrameUpdateIndex] == prevFrameUpdateId)
 			{
-				*nextFrameUpdatePointer = prevFrameUpdateId;
-				++nextFrameUpdatePointer;
+				mNextFrameMeshUpdates[nextFrameUpdateIndex++] = prevFrameUpdateId;
 			}
 		}
 		else if(prevFrameUpdateId == objectUpdateId)
 		{
-			//Previous updates of this object don't matter anymore, grab 1 update from objectUpdate to the current frame and (InFlightFrameCount - 1) for next frames
-			*currFrameUpdatePointer = prevFrameUpdateId;
-			++currFrameUpdatePointer;
+			//Grab 1 update from objectUpdate into the current frame
+			mCurrFrameMeshUpdates[currFrameUpdateIndex]    = objectUpdateId;
+			mCurrFrameDataToUpdate[currFrameUpdateIndex++] = PackObjectData(objectUpdates[objectUpdateIndex].ObjectLocation);
 
+			//Grab the same update for next (InFlightFrameCount - 1) frames
 			for(int i = 1; i < Utils::InFlightFrameCount; i++)
 			{
-				*nextFrameUpdatePointer = objectUpdateId;
-				++nextFrameUpdatePointer;
+				mNextFrameMeshUpdates[nextFrameUpdateIndex++] = objectUpdateId;
 			}
 
-			while(*(++prevFrameUpdatePointer) == prevFrameUpdateId); //Skip all objects with this Id
+			//The previous updates don't matter anymore, they get rewritten
+			while(mPrevFrameMeshUpdates[++prevFrameUpdateIndex] == prevFrameUpdateId);
 
-			++objectUpdatePointer;
+			//Go to the next object update
+			objectUpdateIndex += 1;
 		}
 		else if(prevFrameUpdateId > objectUpdateId)
 		{
-			//Grab 1 update from objectUpdate to the current frame and (InFlightFrameCount - 1) for next frames
-			*currFrameUpdatePointer = objectUpdateId;
-			++currFrameUpdatePointer;
+			//Grab 1 update from objectUpdate into the current frame
+			mCurrFrameMeshUpdates[currFrameUpdateIndex++] = objectUpdateId;
 
+			//Grab the same update for next (InFlightFrameCount - 1) frames
 			for(int i = 1; i < Utils::InFlightFrameCount; i++)
 			{
-				*nextFrameUpdatePointer = objectUpdateId;
-				++nextFrameUpdatePointer;
+				mNextFrameMeshUpdates[nextFrameUpdateIndex++] = objectUpdateId;
 			}
 
-			++objectUpdatePointer;
+			//Go to the next object update
+			objectUpdateIndex += 1;
 		}
 	}
-
-	*nextFrameUpdatePointer = INVALID_SCENE_MESH_HANDLE;
+	
+	mNextFrameMeshUpdates[nextFrameUpdateIndex] = {.MeshHandle = INVALID_SCENE_MESH_HANDLE, .ObjectDataIndex = (uint32_t)(-1)};
 	std::swap(mPrevFrameMeshUpdates, mNextFrameMeshUpdates);
 
 
@@ -85,10 +92,12 @@ void ModernRenderableScene::UpdateSceneObjects(const FrameDataUpdateInfo& frameU
 	uint64_t frameDataOffset = CalculatePerFrameDataOffset(frameResourceIndex);
 	memcpy((std::byte*)mSceneConstantDataBufferPointer + frameDataOffset, &perFrameData, sizeof(PerObjectData));
 	
-	for(auto update = mCurrFrameMeshUpdates.begin(); update != nextFrameUpdatePointer; update++)
+	for(auto updateIndex = 0; updateIndex < currFrameUpdateIndex; updateIndex++)
 	{
-		uint64_t objectDataOffset  = CalculatePerObjectDataOffset(update->Id, frameResourceIndex);
-		memcpy((std::byte*)mSceneConstantDataBufferPointer + objectDataOffset, &mScenePerObjectData[update->Id], sizeof(PerObjectData));
+		uint32_t meshId = mCurrFrameMeshUpdates[currFrameUpdateIndex++].Id;
+
+		uint64_t objectDataOffset  = CalculatePerObjectDataOffset(meshId, frameResourceIndex);
+		memcpy((std::byte*)mSceneConstantDataBufferPointer + objectDataOffset, &mCurrFrameDataToUpdate[updateIndex], sizeof(PerObjectData));
 	}
 }
 

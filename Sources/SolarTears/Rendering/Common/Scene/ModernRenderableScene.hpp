@@ -10,6 +10,12 @@ class ModernRenderableScene: public RenderableSceneBase
 {
 	friend class ModernRenderableSceneBuilder;
 
+	struct ObjectUpdateMetadata
+	{
+		RenderableSceneMeshHandle MeshHandle;
+		uint32_t                  ObjectDataIndex;
+	};
+
 public:
 	ModernRenderableScene(const FrameCounter* frameCounter);
 	~ModernRenderableScene();
@@ -31,9 +37,13 @@ protected:
 	std::vector<MeshSubobjectRange> mSceneMeshes;
 	std::vector<SceneSubobject>     mSceneSubobjects;
 
-	std::vector<RenderableSceneMeshHandle> mPrevFrameMeshUpdates; //Sorted, ping-pongs with mNextFrameMeshUpdates
+	std::vector<ObjectUpdateMetadata> mPrevFrameMeshUpdates; //Sorted, ping-pongs with mNextFrameMeshUpdates
+	std::vector<ObjectUpdateMetadata> mNextFrameMeshUpdates; //Sorted, ping-pongs with mPrevFrameMeshUpdates
+
 	std::vector<RenderableSceneMeshHandle> mCurrFrameMeshUpdates; //Sorted, used immediately each frame for rendering
-	std::vector<RenderableSceneMeshHandle> mNextFrameMeshUpdates; //Sorted, ping-pongs with mPrevFrameMeshUpdates
+
+	std::vector<PerObjectData> mPrevFrameDataToUpdate;
+	std::vector<PerObjectData> mCurrFrameDataToUpdate;
 
 	void* mSceneConstantDataBufferPointer; //Constant buffer is persistently mapped
 
