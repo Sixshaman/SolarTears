@@ -18,34 +18,48 @@ D3D12::RenderableScene::~RenderableScene()
 	}
 }
 
-void D3D12::RenderableScene::DrawObjectsOntoGBuffer(ID3D12GraphicsCommandList* commandList, const ShaderManager* shaderManager) const
+void D3D12::RenderableScene::DrawObjectsOntoGBuffer(ID3D12GraphicsCommandList* commandList, const ShaderManager* shaderManager, ID3D12PipelineState* staticPipelineState, ID3D12PipelineState* rigidPipelineState) const
 {
 	uint32_t frameResourceIndex = mFrameCounterRef->GetFrameCount() % Utils::InFlightFrameCount;
+
+	std::array sceneVertexBuffers = { mSceneVertexBufferView };
+	commandList->IASetVertexBuffers(0, (UINT)sceneVertexBuffers.size(), sceneVertexBuffers.data());
+
+	commandList->IASetIndexBuffer(&mSceneIndexBufferView);
+
+	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	commandList->SetPipelineState(staticPipelineState);
 
 	UINT64 PerFrameOffset  = CalculatePerFrameDataOffset(frameResourceIndex);
 	UINT64 PerObjectOffset = CalculatePerObjectDataOffset(frameResourceIndex);
 
 	D3D12_GPU_VIRTUAL_ADDRESS constantBufferAddress = mSceneConstantBuffer->GetGPUVirtualAddress();
-	commandList->SetGraphicsRootConstantBufferView(shaderManager->GBufferPerFrameBufferBinding, CalculatePerFrameDataOffset())
+	commandList->SetGraphicsRootConstantBufferView(shaderManager->GBufferPerFrameBufferBinding,  PerFrameOffset);
+	commandList->SetGraphicsRootConstantBufferView(shaderManager->GBufferPerObjectBufferBinding, PerObjectOffset);
 
-	std::array sceneVertexBuffers = {mSceneVertexBufferView};
-	commandList->IASetVertexBuffers(0, (UINT)sceneVertexBuffers.size(), sceneVertexBuffers.data());
-
-	commandList->IASetIndexBuffer(&mSceneIndexBufferView);
-	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-	commandList->SetGraphicsRootConstantBufferView(shaderManager->GBufferPerFrameBufferBinding, constantBufferAddress + PerFrameOffset);
-	for(size_t meshIndex = 0; meshIndex < mSceneMeshes.size(); meshIndex++)
+	commandList->SetGraphicsRootDescriptorTable(shaderManager->GBufferTextureBinding, mSceneTextureDescriptorsStart);
+	for(size_t meshIndex = 0; meshIndex < mStaticSceneObjects.size(); meshIndex++)
 	{
-		UINT64 PerObjectOffset = CalculatePerObjectDataOffset((uint32_t)meshIndex, frameResourceIndex);
-
-		for(uint32_t subobjectIndex = mSceneMeshes[meshIndex].FirstSubobjectIndex; subobjectIndex < mSceneMeshes[meshIndex].AfterLastSubobjectIndex; subobjectIndex++)
+		for(uint32_t subobjectIndex = mStaticSceneObjects[meshIndex].FirstSubobjectIndex; subobjectIndex < mStaticSceneObjects[meshIndex].AfterLastSubobjectIndex; subobjectIndex++)
 		{
-			//Bind ROOT CONSTANTS for material index
+			uint32_t materialIndex = mSceneSubobjects[subobjectIndex].MaterialIndex;
+			commandList->SetGraphicsRoot32BitConstant(shaderManager->GBufferMaterialIndexBinding, materialIndex, 0);
 
-			//TODO: bindless
-			commandList->SetGraphicsRootConstantBufferView(shaderManager->GBufferPerObjectBufferBinding, constantBufferAddress + PerObjectOffset);
-			commandList->SetGraphicsRootDescriptorTable(shaderManager->GBufferTextureBinding, mSceneTextureDescriptors[mSceneSubobjects[subobjectIndex].TextureDescriptorSetIndex]);
+			commandList->DrawIndexedInstanced(mSceneSubobjects[subobjectIndex].IndexCount, 1, mSceneSubobjects[subobjectIndex].FirstIndex, mSceneSubobjects[subobjectIndex].VertexOffset, 0);
+		}
+	}
+
+
+	commandList->SetPipelineState(rigidPipelineState);
+	for(size_t meshIndex = 0; meshIndex < mRigidSceneObjects.size(); meshIndex++)
+	{
+		commandList->SetGraphicsRoot32BitConstant(shaderManager->GBufferMaterialIndexBinding, meshIndex, 0);
+
+		for(uint32_t subobjectIndex = mRigidSceneObjects[meshIndex].FirstSubobjectIndex; subobjectIndex < mRigidSceneObjects[meshIndex].AfterLastSubobjectIndex; subobjectIndex++)
+		{
+			uint32_t materialIndex = mSceneSubobjects[subobjectIndex].MaterialIndex;
+			commandList->SetGraphicsRoot32BitConstant(shaderManager->GBufferMaterialIndexBinding, materialIndex, 0);
 
 			commandList->DrawIndexedInstanced(mSceneSubobjects[subobjectIndex].IndexCount, 1, mSceneSubobjects[subobjectIndex].FirstIndex, mSceneSubobjects[subobjectIndex].VertexOffset, 0);
 		}
