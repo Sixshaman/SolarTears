@@ -31,14 +31,15 @@ void D3D12::RenderableScene::DrawObjectsOntoGBuffer(ID3D12GraphicsCommandList* c
 
 	commandList->SetPipelineState(staticPipelineState);
 
-	UINT64 PerFrameOffset  = CalculatePerFrameDataOffset(frameResourceIndex);
-	UINT64 PerObjectOffset = CalculatePerObjectDataOffset(frameResourceIndex);
+	UINT64 PerFrameOffset = CalculatePerFrameDataOffset(frameResourceIndex);
 
-	D3D12_GPU_VIRTUAL_ADDRESS constantBufferAddress = mSceneConstantBuffer->GetGPUVirtualAddress();
-	commandList->SetGraphicsRootConstantBufferView(shaderManager->GBufferPerFrameBufferBinding,  PerFrameOffset);
-	commandList->SetGraphicsRootConstantBufferView(shaderManager->GBufferPerObjectBufferBinding, PerObjectOffset);
+	D3D12_GPU_VIRTUAL_ADDRESS constantBufferAddress = mSceneConstantBuffer->GetGPUVirtualAddress() + PerFrameOffset;
+	commandList->SetGraphicsRootConstantBufferView(shaderManager->GBufferPerFrameBufferBinding, constantBufferAddress);
+	
+	commandList->SetGraphicsRootDescriptorTable(shaderManager->GBufferPerObjectBufferBinding, mSceneObjectDescriptorsStart[frameResourceIndex]);
+	commandList->SetGraphicsRootDescriptorTable(shaderManager->GBufferMaterialBinding,        mSceneMaterialDescriptorsStart);
+	commandList->SetGraphicsRootDescriptorTable(shaderManager->GBufferTextureBinding,         mSceneTextureDescriptorsStart);
 
-	commandList->SetGraphicsRootDescriptorTable(shaderManager->GBufferTextureBinding, mSceneTextureDescriptorsStart);
 	for(size_t meshIndex = 0; meshIndex < mStaticSceneObjects.size(); meshIndex++)
 	{
 		for(uint32_t subobjectIndex = mStaticSceneObjects[meshIndex].FirstSubobjectIndex; subobjectIndex < mStaticSceneObjects[meshIndex].AfterLastSubobjectIndex; subobjectIndex++)
@@ -50,11 +51,11 @@ void D3D12::RenderableScene::DrawObjectsOntoGBuffer(ID3D12GraphicsCommandList* c
 		}
 	}
 
-
 	commandList->SetPipelineState(rigidPipelineState);
+
 	for(size_t meshIndex = 0; meshIndex < mRigidSceneObjects.size(); meshIndex++)
 	{
-		commandList->SetGraphicsRoot32BitConstant(shaderManager->GBufferMaterialIndexBinding, meshIndex, 0);
+		commandList->SetGraphicsRoot32BitConstant(shaderManager->GBufferObjectIndexBinding, meshIndex, 0);
 
 		for(uint32_t subobjectIndex = mRigidSceneObjects[meshIndex].FirstSubobjectIndex; subobjectIndex < mRigidSceneObjects[meshIndex].AfterLastSubobjectIndex; subobjectIndex++)
 		{

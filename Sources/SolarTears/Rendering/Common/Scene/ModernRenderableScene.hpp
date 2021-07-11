@@ -23,8 +23,9 @@ public:
 	void UpdateSceneObjects(const FrameDataUpdateInfo& frameUpdate, const std::span<ObjectDataUpdateInfo> objectUpdates) override final;
 
 protected:
-	uint64_t CalculatePerObjectDataOffset(uint32_t currentFrameResourceIndex) const;
-	uint64_t CalculatePerFrameDataOffset(uint32_t currentFrameResourceIndex)  const;
+	uint64_t CalculatePerMaterialDataOffset(uint32_t materialIndex)                                 const;
+	uint64_t CalculatePerObjectDataOffset(uint32_t currentFrameResourceIndex, uint32_t objectIndex) const;
+	uint64_t CalculatePerFrameDataOffset(uint32_t currentFrameResourceIndex)                        const;
 
 protected:
 	//Created from inside
@@ -42,6 +43,7 @@ protected:
 
 	void* mSceneConstantDataBufferPointer; //Constant buffer is persistently mapped
 
-	uint32_t mGBufferObjectChunkDataSize;
-	uint32_t mGBufferFrameChunkDataSize;
+	uint32_t mObjectChunkDataSize;
+	uint32_t mFrameChunkDataSize;
+	uint32_t mMaterialChunkDataSize;
 };

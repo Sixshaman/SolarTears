@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <wil/com.h>
+#include "../../Common/RenderingUtils.hpp"
 #include "../../Common/Scene/ModernRenderableScene.hpp"
 #include "../../../Core/FrameCounter.hpp"
 
@@ -34,6 +35,8 @@ namespace D3D12
 
 		std::vector<wil::com_ptr_nothrow<ID3D12Resource2>> mSceneTextures;
 		D3D12_GPU_DESCRIPTOR_HANDLE                        mSceneTextureDescriptorsStart;
+		D3D12_GPU_DESCRIPTOR_HANDLE                        mSceneMaterialDescriptorsStart;
+		D3D12_GPU_DESCRIPTOR_HANDLE                        mSceneObjectDescriptorsStart[Utils::InFlightFrameCount];
 
 		wil::com_ptr_nothrow<ID3D12Heap> mHeapForGpuBuffers;
 		wil::com_ptr_nothrow<ID3D12Heap> mHeapForCpuVisibleBuffers;

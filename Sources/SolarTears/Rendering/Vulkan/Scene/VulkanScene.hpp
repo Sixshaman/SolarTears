@@ -5,6 +5,7 @@
 #include <string>
 #include "../VulkanDeviceParameters.hpp"
 #include "../../Common/Scene/ModernRenderableScene.hpp"
+#include "../../Common/RenderingUtils.hpp"
 #include "../../../Core/FrameCounter.hpp"
 
 namespace Vulkan
@@ -19,7 +20,7 @@ namespace Vulkan
 		~RenderableScene();
 
 	public:
-		void DrawObjectsOntoGBuffer(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout) const;
+		void DrawObjectsOntoGBuffer(VkCommandBuffer commandBuffer, VkPipeline staticPipeline, VkPipeline rigidPipeline) const;
 
 	private:
 		const VkDevice mDeviceRef;
@@ -34,8 +35,8 @@ namespace Vulkan
 
 		VkDescriptorPool mDescriptorPool;
 
-		VkDescriptorSet              mGBufferUniformsDescriptorSet;
-		std::vector<VkDescriptorSet> mGBufferTextureDescriptorSets;
+		VkDescriptorSet mGBufferUniformsDescriptorSets[Utils::InFlightFrameCount];
+		VkDescriptorSet mGBufferMaterialDescriptorSet;
 
 		VkDeviceMemory mBufferMemory;
 		VkDeviceMemory mBufferHostVisibleMemory;

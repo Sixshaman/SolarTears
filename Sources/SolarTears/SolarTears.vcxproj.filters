@@ -225,9 +225,6 @@
     <ClInclude Include="Rendering\D3D12\D3D12Memory.hpp">
       <Filter>Rendering\D3D12</Filter>
     </ClInclude>
-    <ClInclude Include="Rendering\D3D12\D3D12WorkerCommandLists.hpp">
-      <Filter>Rendering\D3D12</Filter>
-    </ClInclude>
     <ClInclude Include="Rendering\D3D12\D3D12Shaders.hpp">
       <Filter>Rendering\D3D12</Filter>
     </ClInclude>
@@ -339,9 +336,6 @@
     <ClInclude Include="Rendering\Common\Scene\ModernRenderableScene.hpp">
       <Filter>Rendering\Common\Scene</Filter>
     </ClInclude>
-    <ClInclude Include="Rendering\Vulkan\Scene\VulkanSceneDescriptorCreater.hpp">
-      <Filter>Rendering\Vulkan\Scene</Filter>
-    </ClInclude>
     <ClInclude Include="Rendering\Vulkan\VulkanDescriptorManager.hpp">
       <Filter>Rendering\Vulkan</Filter>
     </ClInclude>
@@ -371,6 +365,12 @@
     </ClInclude>
     <ClInclude Include="Rendering\Common\FrameGraph\FrameGraphDescription.hpp">
       <Filter>Rendering\Common\FrameGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\D3D12\D3D12WorkerCommandLists.hpp">
+      <Filter>Rendering\D3D12</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Vulkan\Scene\VulkanSceneDescriptorCreator.hpp">
+      <Filter>Rendering\Vulkan\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Core\DataStructures\CompileTimeChrono.hpp">
       <Filter>Core\DataStructures</Filter>

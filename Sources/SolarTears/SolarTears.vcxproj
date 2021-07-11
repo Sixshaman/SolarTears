@@ -93,7 +93,7 @@
     <ClInclude Include="Rendering\Vulkan\FrameGraph\VulkanRenderPass.hpp" />
     <ClInclude Include="Rendering\Vulkan\Scene\VulkanScene.hpp" />
     <ClInclude Include="Rendering\Vulkan\Scene\VulkanSceneBuilder.hpp" />
-    <ClInclude Include="Rendering\Vulkan\Scene\VulkanSceneDescriptorCreater.hpp" />
+    <ClInclude Include="Rendering\Vulkan\Scene\VulkanSceneDescriptorCreator.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanDescriptorManager.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanDeviceParameters.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanDeviceQueues.hpp" />

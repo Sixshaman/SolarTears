@@ -6,11 +6,9 @@ ModernRenderableScene::ModernRenderableScene(const FrameCounter* frameCounter, u
 {
 	mSceneConstantDataBufferPointer = nullptr;
 
-	mGBufferObjectChunkDataSize = sizeof(RenderableSceneBase::PerObjectData);
-	mGBufferFrameChunkDataSize  = sizeof(RenderableSceneBase::PerFrameData);
-
-	mGBufferObjectChunkDataSize = (uint32_t)Utils::AlignMemory(mGBufferObjectChunkDataSize, constantDataAlignment);
-	mGBufferFrameChunkDataSize  = (uint32_t)Utils::AlignMemory(mGBufferFrameChunkDataSize,  constantDataAlignment);
+	mObjectChunkDataSize   = (uint32_t)Utils::AlignMemory(sizeof(RenderableSceneBase::PerObjectData), constantDataAlignment);
+	mFrameChunkDataSize    = (uint32_t)Utils::AlignMemory(sizeof(RenderableSceneBase::PerFrameData),  constantDataAlignment);
+	mMaterialChunkDataSize = (uint32_t)Utils::AlignMemory(sizeof(RenderableSceneBase::SceneMaterial), constantDataAlignment);
 }
 
 ModernRenderableScene::~ModernRenderableScene()
@@ -108,27 +106,31 @@ void ModernRenderableScene::UpdateSceneObjects(const FrameDataUpdateInfo& frameU
 	uint64_t frameDataOffset = CalculatePerFrameDataOffset(frameResourceIndex);
 	memcpy((std::byte*)mSceneConstantDataBufferPointer + frameDataOffset, &perFrameData, sizeof(PerObjectData));
 	
-	uint64_t objectDataOffset = CalculatePerObjectDataOffset(frameResourceIndex);
 	for(auto updateIndex = 0; updateIndex < currFrameUpdateIndex; updateIndex++)
 	{
 		uint32_t meshId = mCurrFrameMeshUpdates[updateIndex].Id;
 
-		uint64_t currentObjectDataOffset = objectDataOffset + mGBufferObjectChunkDataSize * (size_t)meshId;
-		memcpy((std::byte*)mSceneConstantDataBufferPointer + currentObjectDataOffset, &mCurrFrameDataToUpdate[updateIndex], sizeof(PerObjectData));
+		uint64_t objectDataOffset = CalculatePerObjectDataOffset(frameResourceIndex, meshId);
+		memcpy((std::byte*)mSceneConstantDataBufferPointer + objectDataOffset, &mCurrFrameDataToUpdate[updateIndex], sizeof(PerObjectData));
 	}
 
 	std::swap(mPrevFrameDataToUpdate, mCurrFrameDataToUpdate);
 }
 
-
-uint64_t ModernRenderableScene::CalculatePerObjectDataOffset(uint32_t currentFrameResourceIndex) const
+uint64_t ModernRenderableScene::CalculatePerObjectDataOffset(uint32_t currentFrameResourceIndex, uint32_t objectIndex) const
 {
 	//For each frame the object data starts immediately after the frame data
-	return CalculatePerFrameDataOffset(currentFrameResourceIndex) + mGBufferFrameChunkDataSize;
+	return CalculatePerFrameDataOffset(currentFrameResourceIndex) + mFrameChunkDataSize + objectIndex * mObjectChunkDataSize;
 }
 
 uint64_t ModernRenderableScene::CalculatePerFrameDataOffset(uint32_t currentFrameResourceIndex) const
 {
-	uint64_t wholeFrameResourceSize = (mStaticSceneObjects.size() + mRigidSceneObjects.size()) * mGBufferObjectChunkDataSize + mGBufferFrameChunkDataSize;
-	return currentFrameResourceIndex * wholeFrameResourceSize;
+	uint64_t wholeFrameResourceSize = mRigidSceneObjects.size() * mObjectChunkDataSize + mFrameChunkDataSize;
+	return CalculatePerMaterialDataOffset((uint32_t)mSceneMaterials.size()) + currentFrameResourceIndex * wholeFrameResourceSize;
+}
+
+uint64_t ModernRenderableScene::CalculatePerMaterialDataOffset(uint32_t materialIndex) const
+{
+	//Materials are in the beginning of the buffer
+	return materialIndex * mMaterialChunkDataSize;
 }
