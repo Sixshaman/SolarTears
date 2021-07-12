@@ -33,6 +33,8 @@ namespace Vulkan
 		std::vector<VkImage>     mSceneTextures;
 		std::vector<VkImageView> mSceneTextureViews;
 
+		VkDescriptorPool mDescriptorPool;
+
 		VkDescriptorSet mGBufferUniformsDescriptorSets[Utils::InFlightFrameCount];
 		VkDescriptorSet mGBufferMaterialDescriptorSet;
 

@@ -15,6 +15,8 @@ Vulkan::RenderableScene::RenderableScene(const VkDevice device, const FrameCount
 	mSceneIndexBuffer   = VK_NULL_HANDLE;
 	mSceneUniformBuffer = VK_NULL_HANDLE;
 
+	mDescriptorPool = VK_NULL_HANDLE;
+
 	mGBufferMaterialDescriptorSet = VK_NULL_HANDLE;
 	std::fill_n(mGBufferUniformsDescriptorSets, Utils::InFlightFrameCount, VK_NULL_HANDLE);
 
@@ -33,6 +35,8 @@ Vulkan::RenderableScene::~RenderableScene()
 	SafeDestroyObject(vkDestroyBuffer, mDeviceRef, mSceneVertexBuffer);
 	SafeDestroyObject(vkDestroyBuffer, mDeviceRef, mSceneIndexBuffer);
 	SafeDestroyObject(vkDestroyBuffer, mDeviceRef, mSceneUniformBuffer);
+
+	SafeDestroyObject(vkDestroyDescriptorPool, mDeviceRef, mDescriptorPool);
 
 	for(size_t i = 0; i < mSceneTextureViews.size(); i++)
 	{
