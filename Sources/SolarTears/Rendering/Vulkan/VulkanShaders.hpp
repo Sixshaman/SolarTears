@@ -43,7 +43,6 @@ namespace Vulkan
 		LoggerQueue* mLogger;
 
 		std::unordered_map<SpvReflectDescriptorType, VkDescriptorType> mSpvToVkDescriptorTypes;
-		std::unordered_map<SpvReflectFormat,         VkFormat>         mSpvToVkFormats;
 
 		std::unique_ptr<spv_reflect::ShaderModule> mGBufferVertexShaderModule;
 		std::unique_ptr<spv_reflect::ShaderModule> mGBufferFragmentShaderModule;
