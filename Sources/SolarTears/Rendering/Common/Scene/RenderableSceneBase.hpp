@@ -22,7 +22,9 @@ enum class SceneDataType: uint32_t
 	ObjectData = 0x01,
 	FrameData,
 	MaterialData,
-	TextureData
+	TextureData,
+
+	Count
 };
 
 class RenderableSceneBase

@@ -97,8 +97,31 @@ ID3D12PipelineState* D3D12::GBufferPass::FirstPipeline() const
 	return mStaticPipelineState.get();
 }
 
-void D3D12::GBufferPass::RevalidateSrvUavDescriptors([[maybe_unused]] D3D12_GPU_DESCRIPTOR_HANDLE prevHeapStart, [[maybe_unused]] D3D12_GPU_DESCRIPTOR_HANDLE newHeapStart)
+consteval UINT D3D12::GBufferPass::GetPassDescriptorCountNeeded()
 {
+	return 0;
+}
+
+consteval UINT D3D12::GBufferPass::GetSceneDescriptorTypesNeeded()
+{
+	//Need descriptor tables for scene materials, textures and objects
+	return (0x01u << (UINT)SceneDataType::ObjectData) | (0x01u << (UINT)SceneDataType::MaterialData) | (0x01u << (UINT)SceneDataType::TextureData);
+}
+
+void D3D12::GBufferPass::ValidatePassDescriptors([[maybe_unused]] D3D12_GPU_DESCRIPTOR_HANDLE prevHeapStart, [[maybe_unused]] D3D12_GPU_DESCRIPTOR_HANDLE newHeapStart)
+{
+}
+
+void D3D12::GBufferPass::ValidateSceneDescriptors(const std::span<D3D12_GPU_DESCRIPTOR_HANDLE> newSceneDescriptorTables, const std::span<D3D12_GPU_VIRTUAL_ADDRESS> newSceneInlineDescriptors)
+{
+	assert(newSceneDescriptorTables.size()  >= (UINT)SceneDataType::Count);
+	assert(newSceneInlineDescriptors.size() >= (UINT)SceneDataType::Count);
+
+	mSceneObjectsTable   = newSceneDescriptorTables[(UINT)SceneDataType::ObjectData];
+	mSceneMaterialsTable = newSceneDescriptorTables[(UINT)SceneDataType::MaterialData];
+	mSceneTexturesTable  = newSceneDescriptorTables[(UINT)SceneDataType::TextureData];
+
+	mSceneFrameDataBuffer = newSceneInlineDescriptors[(UINT)SceneDataType::FrameData];
 }
 
 void D3D12::GBufferPass::LoadShaders(const ShaderManager* shaderManager, IDxcBlobEncoding** outStaticVertexShader, IDxcBlobEncoding** outRigidVertexShader, IDxcBlobEncoding** outPixelShader)

@@ -19,7 +19,11 @@ namespace D3D12
 
 		void RecordExecution(ID3D12GraphicsCommandList6* commandList, const RenderableScene* scene, const ShaderManager* shaderManager, const FrameGraphConfig& frameGraphConfig) const override;
 
-		void RevalidateSrvUavDescriptors(D3D12_GPU_DESCRIPTOR_HANDLE prevHeapStart, D3D12_GPU_DESCRIPTOR_HANDLE newHeapStart) override;
+		consteval UINT GetPassDescriptorCountNeeded()  override;
+		consteval UINT GetSceneDescriptorTypesNeeded() override;
+
+		void ValidatePassDescriptors(D3D12_GPU_DESCRIPTOR_HANDLE prevHeapStart, D3D12_GPU_DESCRIPTOR_HANDLE newHeapStart)                                                          override;
+		void ValidateSceneDescriptors(const std::span<D3D12_GPU_DESCRIPTOR_HANDLE> newSceneDescriptorTables, const std::span<D3D12_GPU_VIRTUAL_ADDRESS> newSceneInlineDescriptors) override;
 
 	public:
 		static void OnAdd(FrameGraphBuilder* frameGraphBuilder, const std::string& passName);
