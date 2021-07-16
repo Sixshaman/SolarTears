@@ -15,42 +15,20 @@ namespace D3D12
 {
 	class ShaderManager
 	{
-		static constexpr uint32_t StaticSamplerCount = 2;
-
-	public:
-		//TODO: bindless (would eliminate the need for separate tables for textures, materials and object data)
-		constexpr static UINT GBufferMaterialIndexBinding   = 0;
-		constexpr static UINT GBufferObjectIndexBinding     = 1;
-		constexpr static UINT GBufferPerObjectBufferBinding = 2;
-		constexpr static UINT GBufferTextureBinding         = 3;
-		constexpr static UINT GBufferMaterialBinding        = 4;
-		constexpr static UINT GBufferPerFrameBufferBinding  = 5;
-
-
 	public:
 		ShaderManager(LoggerQueue* logger, ID3D12Device* device);
 		~ShaderManager();
 
-	public:
-		const void* GetGBufferVertexShaderData() const;
-		const void* GetGBufferPixelShaderData()  const;
+		void LoadShaderBlob(const std::wstring& path, IDxcBlobEncoding** outBlob) const;
 
-		size_t GetGBufferVertexShaderSize()   const;
-		size_t GetGBufferPixelShaderSize() const;
-
-		ID3D12RootSignature* GetGBufferRootSignature() const;
+		void CreateRootSignature(ID3D12Device* device, const std::span<IDxcBlobEncoding*> shaderBlobs, const std::span<std::string_view> shaderBindings, std::string_view samplerBinding, const std::span<D3D12_ROOT_PARAMETER_TYPE> bindingParameterTypes, ID3D12RootSignature** outRootSignature) const;
 
 	private:
-		void BuildGBufferRootSignature(ID3D12Device* device, ID3D12ShaderReflection* vsReflection, ID3D12ShaderReflection* psReflection);
-
-	private:
-		void LoadShaderData(ID3D12Device* device);
-
-		void CreateReflectionData(IDxcUtils* dxcUtils, IDxcBlobEncoding* pBlob, ID3D12ShaderReflection** outShaderReflection) const;
+		void CreateReflectionData(IDxcBlobEncoding* pBlob, ID3D12ShaderReflection** outShaderReflection) const;
 
 		void CollectBindingInfos(ID3D12ShaderReflection* reflection, std::unordered_map<std::string, D3D12_SHADER_INPUT_BIND_DESC>& outBindingInfos, std::unordered_map<std::string, D3D12_SHADER_VISIBILITY>& outShaderVisibility, D3D12_ROOT_SIGNATURE_FLAGS* rootSignatureFlags) const;
 
-		void CreateRootSignature(ID3D12Device* device, const std::unordered_map<std::string, D3D12_SHADER_INPUT_BIND_DESC>& bindingInfos, const std::unordered_map<std::string, D3D12_SHADER_VISIBILITY>& visibilities, std::span<std::string_view> shaderInputNames, std::string_view samplersInputName, std::span<D3D12_ROOT_PARAMETER_TYPE> shaderInputTypes, D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags, ID3D12RootSignature** outRootSignature) const;
+		void BuildRootSignature(ID3D12Device* device, const std::unordered_map<std::string, D3D12_SHADER_INPUT_BIND_DESC>& bindingInfos, const std::unordered_map<std::string, D3D12_SHADER_VISIBILITY>& visibilities, std::span<std::string_view> shaderInputNames, std::string_view samplersInputName, std::span<D3D12_ROOT_PARAMETER_TYPE> shaderInputTypes, D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags, ID3D12RootSignature** outRootSignature) const;
 
 		D3D12_ROOT_SIGNATURE_FLAGS CreateDefaultRootSignatureFlags() const;
 
@@ -61,9 +39,6 @@ namespace D3D12
 	private:
 		LoggerQueue* mLogger;
 
-		wil::com_ptr_nothrow<ID3D12RootSignature> mGBufferRootSignature;
-
-		wil::com_ptr_nothrow<IDxcBlobEncoding> mGBufferVertexShaderBlob;
-		wil::com_ptr_nothrow<IDxcBlobEncoding> mGBufferPixelShaderBlob;
+		wil::com_ptr_nothrow<IDxcUtils> mDxcUtils;
 	};
 }

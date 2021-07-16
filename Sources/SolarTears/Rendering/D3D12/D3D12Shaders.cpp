@@ -8,90 +8,41 @@
 
 D3D12::ShaderManager::ShaderManager(LoggerQueue* logger, ID3D12Device* device): mLogger(logger)
 {
-	LoadShaderData(device);
+	THROW_IF_FAILED(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(mDxcUtils.put())));
 }
 
 D3D12::ShaderManager::~ShaderManager()
 {
 }
 
-const void* D3D12::ShaderManager::GetGBufferVertexShaderData() const
+void D3D12::ShaderManager::LoadShaderBlob(const std::wstring& path, IDxcBlobEncoding** outBlob) const
 {
-	return mGBufferVertexShaderBlob->GetBufferPointer();
+	THROW_IF_FAILED(mDxcUtils->LoadFile(path.c_str(), nullptr, outBlob));
 }
 
-const void* D3D12::ShaderManager::GetGBufferPixelShaderData() const
+void D3D12::ShaderManager::CreateRootSignature(ID3D12Device* device, const std::span<IDxcBlobEncoding*> shaderBlobs, const std::span<std::string_view> shaderBindings, std::string_view samplerBinding, const std::span<D3D12_ROOT_PARAMETER_TYPE> bindingParameterTypes, ID3D12RootSignature** outRootSignature) const
 {
-	return mGBufferPixelShaderBlob->GetBufferPointer();
-}
-
-size_t D3D12::ShaderManager::GetGBufferVertexShaderSize() const
-{
-	return mGBufferVertexShaderBlob->GetBufferSize();
-}
-
-size_t D3D12::ShaderManager::GetGBufferPixelShaderSize() const
-{
-	return mGBufferPixelShaderBlob->GetBufferSize();
-}
-
-ID3D12RootSignature* D3D12::ShaderManager::GetGBufferRootSignature() const
-{
-	return mGBufferRootSignature.get();
-}
-
-void D3D12::ShaderManager::BuildGBufferRootSignature(ID3D12Device* device, ID3D12ShaderReflection* vsReflection, ID3D12ShaderReflection* psReflection)
-{
-	//Sorted from most frequent to last frequent
-	std::array<std::string_view, 6> shaderInputs;
-	shaderInputs[GBufferMaterialIndexBinding]   = "cbMaterialIndex";
-	shaderInputs[GBufferObjectIndexBinding]     = "cbObjectIndex";
-	shaderInputs[GBufferPerObjectBufferBinding] = "cbPerObject";
-	shaderInputs[GBufferPerFrameBufferBinding]  = "cbPerFrame";
-	shaderInputs[GBufferMaterialBinding]        = "cbMaterialData";
-	shaderInputs[GBufferTextureBinding]         = "gObjectTexture";
-
-	std::array<D3D12_ROOT_PARAMETER_TYPE, shaderInputs.size()> shaderInputTypes;
-	shaderInputTypes[GBufferMaterialIndexBinding]   = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-	shaderInputTypes[GBufferObjectIndexBinding]     = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
-	shaderInputTypes[GBufferPerObjectBufferBinding] = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-	shaderInputTypes[GBufferPerFrameBufferBinding]  = D3D12_ROOT_PARAMETER_TYPE_CBV;
-	shaderInputTypes[GBufferMaterialBinding]        = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-	shaderInputTypes[GBufferTextureBinding]         = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+	std::vector<wil::com_ptr_t<ID3D12ShaderReflection>> shaderReflections;
+	shaderReflections.reserve(shaderBlobs.size());
 	
+	for(IDxcBlobEncoding* shaderBlob: shaderBlobs)
+	{
+		shaderReflections.emplace_back();
+		CreateReflectionData(shaderBlob, shaderReflections.back().put());
+	}
+
 	D3D12_ROOT_SIGNATURE_FLAGS rootSigFlags = CreateDefaultRootSignatureFlags();
 	std::unordered_map<std::string, D3D12_SHADER_INPUT_BIND_DESC> bindingInfos;
 	std::unordered_map<std::string, D3D12_SHADER_VISIBILITY>      visibilities;
-	CollectBindingInfos(vsReflection, bindingInfos, visibilities, &rootSigFlags);
-	CollectBindingInfos(psReflection, bindingInfos, visibilities, &rootSigFlags);
+	for(const auto& reflection: shaderReflections)
+	{
+		CollectBindingInfos(reflection.get(), bindingInfos, visibilities, &rootSigFlags);
+	}
 
-	CreateRootSignature(device, bindingInfos, visibilities, shaderInputs, "gSamplers", shaderInputTypes, rootSigFlags, mGBufferRootSignature.put());
+	BuildRootSignature(device, bindingInfos, visibilities, shaderBindings, samplerBinding, bindingParameterTypes, rootSigFlags, outRootSignature);
 }
 
-void D3D12::ShaderManager::LoadShaderData(ID3D12Device* device)
-{
-	wil::com_ptr_nothrow<IDxcUtils> dxcUtils;
-	THROW_IF_FAILED(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(dxcUtils.put())));
-
-
-	mGBufferVertexShaderBlob.reset();
-	mGBufferPixelShaderBlob.reset();
-	const std::wstring gbufferShaderDir = Utils::GetMainDirectory() + L"Shaders/D3D12/GBuffer/";
-	
-	THROW_IF_FAILED(dxcUtils->LoadFile((gbufferShaderDir + L"GBufferDrawVS.cso").c_str(), nullptr, mGBufferVertexShaderBlob.put()));
-	THROW_IF_FAILED(dxcUtils->LoadFile((gbufferShaderDir + L"GBufferDrawPS.cso").c_str(), nullptr, mGBufferPixelShaderBlob.put()));
-
-	wil::com_ptr_nothrow<ID3D12ShaderReflection> gbufferVsReflection;
-	CreateReflectionData(dxcUtils.get(), mGBufferVertexShaderBlob.get(), gbufferVsReflection.put());
-
-	wil::com_ptr_nothrow<ID3D12ShaderReflection> gbufferPsReflection;
-	CreateReflectionData(dxcUtils.get(), mGBufferPixelShaderBlob.get(), gbufferPsReflection.put());
-
-
-	BuildGBufferRootSignature(device, gbufferVsReflection.get(), gbufferPsReflection.get());
-}
-
-void D3D12::ShaderManager::CreateReflectionData(IDxcUtils* dxcUtils, IDxcBlobEncoding* pBlob, ID3D12ShaderReflection** outShaderReflection) const
+void D3D12::ShaderManager::CreateReflectionData(IDxcBlobEncoding* pBlob, ID3D12ShaderReflection** outShaderReflection) const
 {
 	BOOL   endodingKnown = FALSE;
 	UINT32 encoding      = 0;
@@ -102,7 +53,7 @@ void D3D12::ShaderManager::CreateReflectionData(IDxcUtils* dxcUtils, IDxcBlobEnc
 	dxcBuffer.Ptr      = pBlob->GetBufferPointer();
 	dxcBuffer.Size     = pBlob->GetBufferSize();
 
-	THROW_IF_FAILED(dxcUtils->CreateReflection(&dxcBuffer, IID_PPV_ARGS(outShaderReflection)));
+	THROW_IF_FAILED(mDxcUtils->CreateReflection(&dxcBuffer, IID_PPV_ARGS(outShaderReflection)));
 }
 
 void D3D12::ShaderManager::CollectBindingInfos(ID3D12ShaderReflection* reflection, std::unordered_map<std::string, D3D12_SHADER_INPUT_BIND_DESC>& outBindingInfos, std::unordered_map<std::string, D3D12_SHADER_VISIBILITY>& outShaderVisibility, D3D12_ROOT_SIGNATURE_FLAGS* rootSignatureFlags) const
@@ -177,7 +128,7 @@ void D3D12::ShaderManager::CollectBindingInfos(ID3D12ShaderReflection* reflectio
 	}
 }
 
-void D3D12::ShaderManager::CreateRootSignature(ID3D12Device* device, const std::unordered_map<std::string, D3D12_SHADER_INPUT_BIND_DESC>& bindingInfos, const std::unordered_map<std::string, D3D12_SHADER_VISIBILITY>& visibilities, std::span<std::string_view> shaderInputNames, std::string_view samplersInputName, std::span<D3D12_ROOT_PARAMETER_TYPE> shaderInputTypes, D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags, ID3D12RootSignature** outRootSignature) const
+void D3D12::ShaderManager::BuildRootSignature(ID3D12Device* device, const std::unordered_map<std::string, D3D12_SHADER_INPUT_BIND_DESC>& bindingInfos, const std::unordered_map<std::string, D3D12_SHADER_VISIBILITY>& visibilities, std::span<std::string_view> shaderInputNames, std::string_view samplersInputName, std::span<D3D12_ROOT_PARAMETER_TYPE> shaderInputTypes, D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags, ID3D12RootSignature** outRootSignature) const
 {
 	assert(shaderInputTypes.size() == shaderInputNames.size());
 
@@ -219,12 +170,12 @@ void D3D12::ShaderManager::CreateRootSignature(ID3D12Device* device, const std::
 	D3D12_SHADER_VISIBILITY      samplersVisibility   = visibilities.at(std::string(samplersInputName));
 	D3D12_SHADER_INPUT_BIND_DESC samplersInputBinding = bindingInfos.at(std::string(samplersInputName));
 
-	std::array<D3D12_FILTER, StaticSamplerCount> samplerFilters = {D3D12_FILTER_MIN_MAG_MIP_LINEAR, D3D12_FILTER_ANISOTROPIC};
+	std::array staticSamplerFilters = {D3D12_FILTER_MIN_MAG_MIP_LINEAR, D3D12_FILTER_ANISOTROPIC};
 
-	std::array<D3D12_STATIC_SAMPLER_DESC, StaticSamplerCount> staticSamplers;
-	for(size_t i = 0; i < samplerFilters.size(); i++)
+	std::array<D3D12_STATIC_SAMPLER_DESC, staticSamplerFilters.size()> staticSamplers;
+	for(size_t i = 0; i < staticSamplerFilters.size(); i++)
 	{
-		staticSamplers[i].Filter           = samplerFilters[i];
+		staticSamplers[i].Filter           = staticSamplerFilters[i];
 		staticSamplers[i].AddressU         = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
 		staticSamplers[i].AddressV         = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
 		staticSamplers[i].AddressW         = D3D12_TEXTURE_ADDRESS_MODE_WRAP;

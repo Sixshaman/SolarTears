@@ -5,12 +5,21 @@
 #include "../D3D12FrameGraph.hpp"
 #include "../D3D12FrameGraphBuilder.hpp"
 #include "../../../Common/FrameGraph/FrameGraphConfig.hpp"
+#include "../../../../Core/Util.hpp"
 #include <array>
 
 D3D12::GBufferPass::GBufferPass(ID3D12Device8* device, const FrameGraphBuilder* frameGraphBuilder, const std::string& passName, uint32_t frame)
 {
+	wil::com_ptr_t<IDxcBlobEncoding> staticVertexShaderBlob;
+	wil::com_ptr_t<IDxcBlobEncoding> rigidVertexShaderBlob;
+	wil::com_ptr_t<IDxcBlobEncoding> pixelShaderBlob;
+	LoadShaders(frameGraphBuilder->GetShaderManager(), staticVertexShaderBlob.put(), rigidVertexShaderBlob.put(), pixelShaderBlob.put());
+
+	CreateRootSignature(frameGraphBuilder->GetShaderManager(), device, rigidVertexShaderBlob.get(), pixelShaderBlob.get());
+
 	//TODO: bundles
-	CreatePipelineState(device, frameGraphBuilder->GetShaderManager());
+	CreatePipelineState(device, staticVertexShaderBlob.get(), pixelShaderBlob.get(), mStaticPipelineState.put());
+	CreatePipelineState(device, rigidVertexShaderBlob.get(),  pixelShaderBlob.get(), mRigidPipelineState.put());
 
 	mColorsRenderTarget = frameGraphBuilder->GetRegisteredSubresourceRtv(passName, ColorBufferImageId, frame);
 
@@ -59,37 +68,79 @@ void D3D12::GBufferPass::RecordExecution(ID3D12GraphicsCommandList6* commandList
 	//TODO: Suspending/resuming passes (in case of rendering parts of the scene with the same pass)
 	commandList->BeginRenderPass((UINT)renderPassRenderTargets.size(), renderPassRenderTargets.data(), nullptr, D3D12_RENDER_PASS_FLAG_NONE);
 
-	commandList->SetGraphicsRootSignature(shaderManager->GetGBufferRootSignature());
-	commandList->SetPipelineState(mPipelineState.get());
-
 	std::array viewports = {mViewport};
 	commandList->RSSetViewports((UINT)viewports.size(), viewports.data());
 
 	std::array scissorRects = {mScissorRect};
 	commandList->RSSetScissorRects((UINT)scissorRects.size(), scissorRects.data());
 
-	scene->DrawObjectsOntoGBuffer(commandList, shaderManager);
+	scene->PrepareDrawBuffers(commandList);
+	commandList->SetGraphicsRootSignature(mRootSignature.get());
+
+	commandList->SetGraphicsRootConstantBufferView((UINT)GBufferRootBindings::PerFrameBuffer, mSceneFrameDataBuffer);
+
+	commandList->SetGraphicsRootDescriptorTable((UINT)GBufferRootBindings::PerObjectBuffers, mSceneObjectsTable);
+	commandList->SetGraphicsRootDescriptorTable((UINT)GBufferRootBindings::Materials,        mSceneMaterialsTable);
+	commandList->SetGraphicsRootDescriptorTable((UINT)GBufferRootBindings::Textures,         mSceneTexturesTable);
+
+	commandList->SetPipelineState(mStaticPipelineState.get());
+	scene->DrawStaticObjectsWithRootConstants(commandList, (UINT)GBufferRootBindings::MaterialIndex);
+
+	commandList->SetPipelineState(mRigidPipelineState.get());
+	scene->DrawRigidObjectsWithRootConstants(commandList, (UINT)GBufferRootBindings::ObjectIndex, (UINT)GBufferRootBindings::MaterialIndex);
 
 	commandList->EndRenderPass();
 }
 
 ID3D12PipelineState* D3D12::GBufferPass::FirstPipeline() const
 {
-	return mPipelineState.get();
+	return mStaticPipelineState.get();
 }
 
 void D3D12::GBufferPass::RevalidateSrvUavDescriptors([[maybe_unused]] D3D12_GPU_DESCRIPTOR_HANDLE prevHeapStart, [[maybe_unused]] D3D12_GPU_DESCRIPTOR_HANDLE newHeapStart)
 {
 }
 
-void D3D12::GBufferPass::CreatePipelineState(ID3D12Device8* device, const ShaderManager* shaderManager)
+void D3D12::GBufferPass::LoadShaders(const ShaderManager* shaderManager, IDxcBlobEncoding** outStaticVertexShader, IDxcBlobEncoding** outRigidVertexShader, IDxcBlobEncoding** outPixelShader)
+{
+	const std::wstring shaderFolder = Utils::GetMainDirectory() + L"Shaders/D3D12/GBuffer/";
+
+	shaderManager->LoadShaderBlob(shaderFolder + L"GBufferDrawStaticVS.cso", outStaticVertexShader);
+	shaderManager->LoadShaderBlob(shaderFolder + L"GBufferDrawRigidVS.cso",  outRigidVertexShader);
+	shaderManager->LoadShaderBlob(shaderFolder + L"GBufferDrawPS.cso",       outPixelShader);
+}
+
+void D3D12::GBufferPass::CreateRootSignature(const ShaderManager* shaderManager, ID3D12Device8* device, IDxcBlobEncoding* vertexShader, IDxcBlobEncoding* pixelShader)
+{
+	//Sorted from most frequent to last frequent
+	std::array<std::string_view, (UINT)GBufferRootBindings::Count> shaderInputs;
+	shaderInputs[(UINT)GBufferRootBindings::MaterialIndex]    = "cbMaterialIndex";
+	shaderInputs[(UINT)GBufferRootBindings::ObjectIndex]      = "cbObjectIndex";
+	shaderInputs[(UINT)GBufferRootBindings::PerObjectBuffers] = "cbPerObject";
+	shaderInputs[(UINT)GBufferRootBindings::PerFrameBuffer]   = "cbPerFrame";
+	shaderInputs[(UINT)GBufferRootBindings::Materials]        = "cbMaterialData";
+	shaderInputs[(UINT)GBufferRootBindings::Textures]         = "gObjectTexture";
+
+	std::array<D3D12_ROOT_PARAMETER_TYPE, shaderInputs.size()> shaderInputTypes;
+	shaderInputTypes[(UINT)GBufferRootBindings::MaterialIndex]    = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+	shaderInputTypes[(UINT)GBufferRootBindings::ObjectIndex]      = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+	shaderInputTypes[(UINT)GBufferRootBindings::PerObjectBuffers] = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+	shaderInputTypes[(UINT)GBufferRootBindings::PerFrameBuffer]   = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	shaderInputTypes[(UINT)GBufferRootBindings::Materials]        = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+	shaderInputTypes[(UINT)GBufferRootBindings::Textures]         = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+	
+	std::array shaderBlobs = {vertexShader, pixelShader};
+	shaderManager->CreateRootSignature(device, shaderBlobs, shaderInputs, "gSamplers", shaderInputTypes, mRootSignature.put());
+}
+
+void D3D12::GBufferPass::CreatePipelineState(ID3D12Device8* device, IDxcBlobEncoding* vertexShader, IDxcBlobEncoding* pixelShader, ID3D12PipelineState** outPipelineState)
 {
 	D3D12Utils::StateSubobjectHelper stateSubobjectHelper;
 
-	stateSubobjectHelper.AddSubobjectGeneric(shaderManager->GetGBufferRootSignature());
+	stateSubobjectHelper.AddSubobjectGeneric(mRootSignature.get());
 
-	stateSubobjectHelper.AddVertexShader(shaderManager->GetGBufferVertexShaderData(), shaderManager->GetGBufferVertexShaderSize());
-	stateSubobjectHelper.AddPixelShader(shaderManager->GetGBufferPixelShaderData(), shaderManager->GetGBufferPixelShaderSize());
+	stateSubobjectHelper.AddVertexShader(vertexShader->GetBufferPointer(), vertexShader->GetBufferSize());
+	stateSubobjectHelper.AddPixelShader(pixelShader->GetBufferPointer(), pixelShader->GetBufferSize());
 
 	stateSubobjectHelper.AddSampleMask(0xffffffff);
 
@@ -144,5 +195,5 @@ void D3D12::GBufferPass::CreatePipelineState(ID3D12Device8* device, const Shader
 	pipelineStateStreamDesc.pPipelineStateSubobjectStream = stateSubobjectHelper.GetStreamPointer();
 	pipelineStateStreamDesc.SizeInBytes                   = stateSubobjectHelper.GetStreamSize();
 
-	THROW_IF_FAILED(device->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(mPipelineState.put())));
+	THROW_IF_FAILED(device->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(outPipelineState)));
 }

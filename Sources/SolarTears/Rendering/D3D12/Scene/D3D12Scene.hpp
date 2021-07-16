@@ -22,7 +22,9 @@ namespace D3D12
 		~RenderableScene();
 
 	public:
-		void DrawObjectsOntoGBuffer(ID3D12GraphicsCommandList* commandList, const ShaderManager* shaderManager, ID3D12PipelineState* staticPipelineState, ID3D12PipelineState* rigidPipelineState) const;
+		void PrepareDrawBuffers(ID3D12GraphicsCommandList* cmdList) const;
+		void DrawStaticObjectsWithRootConstants(ID3D12GraphicsCommandList* cmdList, UINT materialIndexRootBinding) const;
+		void DrawRigidObjectsWithRootConstants(ID3D12GraphicsCommandList* cmdList, UINT objectIndexRootBinding, UINT materialIndexRootBinding) const;
 
 	private:
 		wil::com_ptr_nothrow<ID3D12Resource> mSceneVertexBuffer;
@@ -34,9 +36,6 @@ namespace D3D12
 		D3D12_INDEX_BUFFER_VIEW  mSceneIndexBufferView;
 
 		std::vector<wil::com_ptr_nothrow<ID3D12Resource2>> mSceneTextures;
-		D3D12_GPU_DESCRIPTOR_HANDLE                        mSceneTextureDescriptorsStart;
-		D3D12_GPU_DESCRIPTOR_HANDLE                        mSceneMaterialDescriptorsStart;
-		D3D12_GPU_DESCRIPTOR_HANDLE                        mSceneObjectDescriptorsStart[Utils::InFlightFrameCount];
 
 		wil::com_ptr_nothrow<ID3D12Heap> mHeapForGpuBuffers;
 		wil::com_ptr_nothrow<ID3D12Heap> mHeapForCpuVisibleBuffers;
