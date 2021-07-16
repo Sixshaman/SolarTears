@@ -41,10 +41,8 @@ void D3D12::GBufferPass::OnAdd(FrameGraphBuilder* frameGraphBuilder, const std::
 	frameGraphBuilder->SetPassSubresourceState(passName, ColorBufferImageId, D3D12_RESOURCE_STATE_RENDER_TARGET);
 }
 
-void D3D12::GBufferPass::RecordExecution(ID3D12GraphicsCommandList6* commandList, const RenderableScene* scene, const ShaderManager* shaderManager, const FrameGraphConfig& frameGraphConfig) const
+void D3D12::GBufferPass::RecordExecution(ID3D12GraphicsCommandList6* commandList, const RenderableScene* scene, const ShaderManager* shaderManager, [[maybe_unused]] const FrameGraphConfig& frameGraphConfig) const
 {
-	UNREFERENCED_PARAMETER(frameGraphConfig);
-
 	D3D12_RENDER_PASS_RENDER_TARGET_DESC colorsRtvDesc;
 	colorsRtvDesc.cpuDescriptor                             = mColorsRenderTarget;
 	colorsRtvDesc.BeginningAccess.Type                      = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
@@ -80,10 +78,8 @@ ID3D12PipelineState* D3D12::GBufferPass::FirstPipeline() const
 	return mPipelineState.get();
 }
 
-void D3D12::GBufferPass::RevalidateSrvUavDescriptors(D3D12_GPU_DESCRIPTOR_HANDLE prevHeapStart, D3D12_GPU_DESCRIPTOR_HANDLE newHeapStart)
+void D3D12::GBufferPass::RevalidateSrvUavDescriptors([[maybe_unused]] D3D12_GPU_DESCRIPTOR_HANDLE prevHeapStart, [[maybe_unused]] D3D12_GPU_DESCRIPTOR_HANDLE newHeapStart)
 {
-	UNREFERENCED_PARAMETER(prevHeapStart);
-	UNREFERENCED_PARAMETER(newHeapStart);
 }
 
 void D3D12::GBufferPass::CreatePipelineState(ID3D12Device8* device, const ShaderManager* shaderManager)

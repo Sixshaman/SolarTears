@@ -7,7 +7,7 @@
 #include <cinttypes>
 #include <format>
 
-static inline void SetDebugObjectNameHandle(const VkDevice device, VkObjectType objectType, uint64_t handle, const std::string_view name)
+static inline void SetDebugObjectNameHandle([[maybe_unused]] const VkDevice device, [[maybe_unused]] VkObjectType objectType, [[maybe_unused]] uint64_t handle, [[maybe_unused]] const std::string_view name)
 {
 #ifdef VK_EXT_debug_utils
     VkDebugUtilsObjectNameInfoEXT imageNameInfo;
@@ -18,10 +18,6 @@ static inline void SetDebugObjectNameHandle(const VkDevice device, VkObjectType 
 	imageNameInfo.pObjectName  = name.data();
 
 	ThrowIfFailed(vkSetDebugUtilsObjectNameEXT(device, &imageNameInfo));
-
-#else
-    UNREFERENCED_PARAMETER(image);
-    UNREFERENCED_PARAMETER(name);
 #endif
 }
 
@@ -74,10 +70,8 @@ void Vulkan::VulkanUtils::SetDebugObjectName(const VkDevice device, VkCommandPoo
     SetDebugObjectNameHandle(device, VK_OBJECT_TYPE_COMMAND_POOL, reinterpret_cast<uint64_t>(commandPool), name);
 }
 
-VkBool32 Vulkan::VulkanUtils::DebugReportCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
+VkBool32 Vulkan::VulkanUtils::DebugReportCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, [[maybe_unused]] void* pUserData)
 {
-    UNREFERENCED_PARAMETER(pUserData);
-
     Utils::SystemDebugMessage("DEBUG ");
     switch(messageSeverity)
     {

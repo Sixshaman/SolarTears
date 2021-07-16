@@ -19,18 +19,14 @@ void KeyboardControl::AttachToWindow(Window* window)
 {
 	window->SetKeyCallbackUserPtr(this);
 
-	window->RegisterKeyPressedCallback([](Window* window, ControlCode controlCode, void* userObject)
+	window->RegisterKeyPressedCallback([]([[maybe_unused]] Window* window, ControlCode controlCode, void* userObject)
 	{
-		UNREFERENCED_PARAMETER(window);
-
 		KeyboardControl* that = reinterpret_cast<KeyboardControl*>(userObject);
 		that->mControlState |= (1u << (uint32_t)(controlCode));
 	});
 
-	window->RegisterKeyReleasedCallback([](Window* window, ControlCode controlCode, void* userObject)
+	window->RegisterKeyReleasedCallback([]([[maybe_unused]] Window* window, ControlCode controlCode, void* userObject)
 	{
-		UNREFERENCED_PARAMETER(window);
-
 		KeyboardControl* that = reinterpret_cast<KeyboardControl*>(userObject);
 		that->mControlState &= ~(1u << (uint32_t)(controlCode));
 	});

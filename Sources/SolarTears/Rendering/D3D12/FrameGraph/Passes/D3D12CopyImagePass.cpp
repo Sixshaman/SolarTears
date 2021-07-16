@@ -3,10 +3,8 @@
 #include "../D3D12FrameGraphBuilder.hpp"
 #include <array>
 
-D3D12::CopyImagePass::CopyImagePass(ID3D12Device8* device, const FrameGraphBuilder* frameGraphBuilder, const std::string& currentPassName, uint32_t frame)
+D3D12::CopyImagePass::CopyImagePass([[maybe_unused]] ID3D12Device8* device, const FrameGraphBuilder* frameGraphBuilder, const std::string& currentPassName, uint32_t frame)
 {
-	UNREFERENCED_PARAMETER(device);
-
 	mSrcImageRef = frameGraphBuilder->GetRegisteredResource(currentPassName, SrcImageId, frame);
 	mDstImageRef = frameGraphBuilder->GetRegisteredResource(currentPassName, DstImageId, frame);
 }
@@ -23,11 +21,8 @@ void D3D12::CopyImagePass::OnAdd(FrameGraphBuilder* frameGraphBuilder, const std
 	frameGraphBuilder->SetPassSubresourceState(passName, DstImageId, D3D12_RESOURCE_STATE_COPY_DEST);
 }
 
-void D3D12::CopyImagePass::RecordExecution(ID3D12GraphicsCommandList6* commandList, const RenderableScene* scene, const ShaderManager* shaderManager, const FrameGraphConfig& frameGraphConfig) const
+void D3D12::CopyImagePass::RecordExecution(ID3D12GraphicsCommandList6* commandList, [[maybe_unused]] const RenderableScene* scene, [[maybe_unused]] const ShaderManager* shaderManager, const FrameGraphConfig& frameGraphConfig) const
 {
-	UNREFERENCED_PARAMETER(scene);
-	UNREFERENCED_PARAMETER(shaderManager);
-
 	D3D12_TEXTURE_COPY_LOCATION dstRegion;
 	dstRegion.pResource        = mDstImageRef;
 	dstRegion.SubresourceIndex = 0;
@@ -49,10 +44,8 @@ void D3D12::CopyImagePass::RecordExecution(ID3D12GraphicsCommandList6* commandLi
 	commandList->CopyTextureRegion(&dstRegion, 0, 0, 0, &srcRegion, &srcBox);
 }
 
-void D3D12::CopyImagePass::RevalidateSrvUavDescriptors(D3D12_GPU_DESCRIPTOR_HANDLE prevHeapStart, D3D12_GPU_DESCRIPTOR_HANDLE newHeapStart)
+void D3D12::CopyImagePass::RevalidateSrvUavDescriptors([[maybe_unused]] D3D12_GPU_DESCRIPTOR_HANDLE prevHeapStart, [[maybe_unused]] D3D12_GPU_DESCRIPTOR_HANDLE newHeapStart)
 {
-	UNREFERENCED_PARAMETER(prevHeapStart);
-	UNREFERENCED_PARAMETER(newHeapStart);
 }
 
 ID3D12PipelineState* D3D12::CopyImagePass::FirstPipeline() const

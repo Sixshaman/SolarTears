@@ -25,6 +25,7 @@
     <ClInclude Include="..\3rdParty\SPIRV-Reflect\spirv_reflect.h" />
     <ClInclude Include="Core\Allocators\StackAllocator.hpp" />
     <ClInclude Include="Core\Application.hpp" />
+    <ClInclude Include="Core\DataStructures\CompileTimeChrono.hpp" />
     <ClInclude Include="Core\DataStructures\SmallVector.hpp" />
     <ClInclude Include="Core\DataStructures\Span.hpp" />
     <ClInclude Include="Core\Engine.hpp" />

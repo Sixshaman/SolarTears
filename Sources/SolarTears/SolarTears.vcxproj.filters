@@ -372,6 +372,9 @@
     <ClInclude Include="Rendering\Common\FrameGraph\FrameGraphDescription.hpp">
       <Filter>Rendering\Common\FrameGraph</Filter>
     </ClInclude>
+    <ClInclude Include="Core\DataStructures\CompileTimeChrono.hpp">
+      <Filter>Core\DataStructures</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Platform\Win32\Win32Application.cpp">

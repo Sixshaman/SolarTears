@@ -44,10 +44,8 @@ void Engine::BindToWindow(Window* window)
 		
 	window->SetResizeCallbackUserPtr(this);
 
-	window->RegisterResizeStartedCallback([](Window* window, void* userObject)
+	window->RegisterResizeStartedCallback([]([[maybe_unused]] Window* window, void* userObject)
 	{
-		UNREFERENCED_PARAMETER(window);
-
 		Engine* that  = reinterpret_cast<Engine*>(userObject);
 		that->mPaused = true;
 	});

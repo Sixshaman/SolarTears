@@ -66,10 +66,8 @@ void D3D12::FrameGraph::Traverse(ThreadPool* threadPool, const WorkerCommandList
 				.DependencyLevelSpanIndex = (uint32_t)dependencyLevelSpanIndex,
 			};
 
-			auto executePassJob = [](void* userData, uint32_t userDataSize)
+			auto executePassJob = [](void* userData, [[maybe_unused]] uint32_t userDataSize)
 			{
-				UNREFERENCED_PARAMETER(userDataSize);
-
 				JobData* threadJobData = reinterpret_cast<JobData*>(userData);
 				const FrameGraph* that = threadJobData->ExecuteParams->FrameGraph;
 
@@ -115,10 +113,8 @@ void D3D12::FrameGraph::Traverse(ThreadPool* threadPool, const WorkerCommandList
 	}
 }
 
-void D3D12::FrameGraph::BeginCommandList(ID3D12GraphicsCommandList* commandList, ID3D12CommandAllocator* commandAllocator, uint32_t dependencyLevelSpanIndex) const
+void D3D12::FrameGraph::BeginCommandList(ID3D12GraphicsCommandList* commandList, ID3D12CommandAllocator* commandAllocator, [[maybe_unused]] uint32_t dependencyLevelSpanIndex) const
 {
-	UNREFERENCED_PARAMETER(dependencyLevelSpanIndex);
-
 	//TODO: Reset with the first pipeline statre in the render pass
 	THROW_IF_FAILED(commandAllocator->Reset());
 	THROW_IF_FAILED(commandList->Reset(commandAllocator, nullptr));

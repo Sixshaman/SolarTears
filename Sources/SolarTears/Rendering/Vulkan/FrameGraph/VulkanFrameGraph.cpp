@@ -127,10 +127,8 @@ void Vulkan::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommandBuffers* 
 				.DependencyLevelSpanIndex = (uint32_t)dependencyLevelSpanIndex
 			};
 
-			auto executePassJob = [](void* userData, uint32_t userDataSize)
+			auto executePassJob = [](void* userData, [[maybe_unused]] uint32_t userDataSize)
 			{
-				UNREFERENCED_PARAMETER(userDataSize);
-
 				JobData* threadJobData = reinterpret_cast<JobData*>(userData);
 				const FrameGraph* that = threadJobData->ExecuteParams->FrameGraph;
 

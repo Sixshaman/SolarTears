@@ -34,10 +34,8 @@ void Vulkan::CopyImagePass::OnAdd(FrameGraphBuilder* frameGraphBuilder, const st
 	frameGraphBuilder->SetPassSubresourceAccessFlags(passName, DstImageId, VK_ACCESS_TRANSFER_WRITE_BIT);
 }
 
-void Vulkan::CopyImagePass::RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig) const
+void Vulkan::CopyImagePass::RecordExecution(VkCommandBuffer commandBuffer, [[maybe_unused]] const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig) const
 {
-	UNREFERENCED_PARAMETER(scene);
-
 	VkImageCopy imageCopyInfo;
 	imageCopyInfo.srcOffset.x                   = 0;
 	imageCopyInfo.srcOffset.y                   = 0;

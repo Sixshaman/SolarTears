@@ -302,7 +302,7 @@ void Vulkan::SwapChain::CreateSwapChain(VkPhysicalDevice physicalDevice, VkDevic
 	mSwapchain = newSwapchain;
 }
 
-void Vulkan::SwapChain::InvalidateSurfaceCapabilities(VkPhysicalDevice physicalDevice, const InstanceParameters& instanceParameters, const DeviceParameters& deviceParameters, Window* window)
+void Vulkan::SwapChain::InvalidateSurfaceCapabilities(VkPhysicalDevice physicalDevice, const InstanceParameters& instanceParameters, const DeviceParameters& deviceParameters, [[maybe_unused]] Window* window)
 {	
 	if(instanceParameters.IsSurfaceCapabilities2ExtensionEnabled())
 	{
@@ -327,10 +327,6 @@ void Vulkan::SwapChain::InvalidateSurfaceCapabilities(VkPhysicalDevice physicalD
 			//	exclusiveFullscreenWin32Info.hmonitor = window->NativeDisplay();
 			//	surfaceInfoChain.AppendToChain(exclusiveFullscreenWin32Info);
 			//#endif
-		}
-		else
-		{
-			UNREFERENCED_PARAMETER(window);
 		}
 
 		VkPhysicalDeviceSurfaceInfo2KHR& surfaceInfo = surfaceInfoChain.GetChainHead();

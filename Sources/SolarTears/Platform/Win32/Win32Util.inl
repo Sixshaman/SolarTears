@@ -48,7 +48,7 @@ std::wstring GetMainDirectory()
 
 	while(GetModuleFileName(nullptr, mainDir.data(), (DWORD)mainDir.size()) == mainDir.size())
 	{
-		mainDir.resize((size_t)(mainDir.size() * 1.5f));
+		mainDir.resize((size_t)(mainDir.size() * 1.5));
 	}
 
 	std::vector<wchar_t> drive;

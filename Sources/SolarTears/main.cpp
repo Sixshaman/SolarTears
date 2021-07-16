@@ -4,12 +4,8 @@
 #include <memory>
 
 #ifdef _WIN32
-int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR nCmdLine, int nCmdShow)
+int WinMain(HINSTANCE hInstance, [[maybe_unused]] HINSTANCE hPrevInstance, [[maybe_unused]] LPSTR nCmdLine, [[maybe_unused]] int nCmdShow)
 {
-	UNREFERENCED_PARAMETER(hPrevInstance);
-	UNREFERENCED_PARAMETER(nCmdLine);
-	UNREFERENCED_PARAMETER(nCmdShow);
-
 	Application app(hInstance);
 #else
 int main(int argc, char* argv[])
