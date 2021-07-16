@@ -74,7 +74,7 @@ ID3D12Resource2* D3D12::FrameGraphBuilder::GetRegisteredResource(const std::stri
 	}
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceSrvUav(const std::string_view passName, const std::string_view subresourceId, uint32_t frame) const
+D3D12_GPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceSrvUav(const std::string_view passName, const std::string_view subresourceId, uint32_t frame) const
 {
 	const FrameGraphDescription::RenderPassName passNameStr(passName);
 	const FrameGraphDescription::SubresourceId  subresourceIdStr(subresourceId);
@@ -85,7 +85,7 @@ D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceSr
 	const D3D12_RESOURCE_STATES resourceState = (D3D12_RESOURCE_STATE_UNORDERED_ACCESS | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	assert((subresourceInfo.State & resourceState) && (metadataNode.FirstFrameViewHandle != (uint32_t)(-1)));
 
-	D3D12_CPU_DESCRIPTOR_HANDLE descriptorHandle = GetFrameGraphSrvHeapStart();
+	D3D12_GPU_DESCRIPTOR_HANDLE descriptorHandle = GetFrameGraphSrvHeapStart();
 	if(metadataNode.FirstFrameHandle == GetBackbufferImageSpan().Begin)
 	{
 		uint32_t passPeriod = mRenderPassOwnPeriods.at(std::string(passName));
@@ -198,9 +198,9 @@ void D3D12::FrameGraphBuilder::Build(ID3D12Device8* device, const ShaderManager*
 	ModernFrameGraphBuilder::Build();
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetFrameGraphSrvHeapStart() const
+D3D12_GPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetFrameGraphSrvHeapStart() const
 {
-	return mD3d12GraphToBuild->mSrvUavDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
+	return mD3d12GraphToBuild->mPassDescriptorsStart;
 }
 
 D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetFrameGraphRtvHeapStart() const
@@ -520,6 +520,10 @@ void D3D12::FrameGraphBuilder::AllocateImageViews(const std::vector<uint64_t>& s
 
 void D3D12::FrameGraphBuilder::CreateTextureViews(const std::vector<TextureSubresourceCreateInfo>& textureViewCreateInfos) const
 {
+	//We don't have the descriptor heap yet, and even if we did, it could be recreated any moment (for example, when the scene is rebuilt).
+	//The descriptor data will be stored in non-CPU-visible heap for now and copied to the main heap after.
+	mD3d12GraphToBuild->mPassDescriptorsStart = {.ptr = 0};
+
 	mD3d12GraphToBuild->mSrvUavDescriptorHeap.reset();
 	mD3d12GraphToBuild->mRtvDescriptorHeap.reset();
 	mD3d12GraphToBuild->mDsvDescriptorHeap.reset();

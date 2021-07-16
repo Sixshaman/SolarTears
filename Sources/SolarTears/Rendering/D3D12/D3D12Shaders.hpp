@@ -16,7 +16,7 @@ namespace D3D12
 	class ShaderManager
 	{
 	public:
-		ShaderManager(LoggerQueue* logger, ID3D12Device* device);
+		ShaderManager(LoggerQueue* logger);
 		~ShaderManager();
 
 		void LoadShaderBlob(const std::wstring& path, IDxcBlobEncoding** outBlob) const;

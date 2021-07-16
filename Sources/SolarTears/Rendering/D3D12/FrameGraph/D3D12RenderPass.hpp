@@ -32,9 +32,10 @@ namespace D3D12
 
 		virtual void RecordExecution(ID3D12GraphicsCommandList6* commandList, const RenderableScene* scene, const ShaderManager* shaderManager, const FrameGraphConfig& frameGraphConfig) const = 0;
 
-		//Parameter cpuOnlyHeapStart is the start of the cpu-only heap
-		//Parameter firstGpuDescriptor is the start of this newly allocated place
-		//The function calculates the new GPU descriptor address as newHeapStart + (currentAddress - prevHeapStart).
-		virtual void RevalidateSrvUavDescriptors(D3D12_GPU_DESCRIPTOR_HANDLE prevHeapStart, D3D12_GPU_DESCRIPTOR_HANDLE newHeapStart) = 0;
+		virtual consteval UINT GetPassDescriptorCountNeeded()  = 0;
+		virtual consteval UINT GetSceneDescriptorTypesNeeded() = 0;
+
+		virtual void ValidatePassDescriptors(D3D12_GPU_DESCRIPTOR_HANDLE prevHeapStart, D3D12_GPU_DESCRIPTOR_HANDLE newHeapStart)  = 0;
+		virtual void ValidateSceneDescriptors(D3D12_GPU_DESCRIPTOR_HANDLE prevHeapStart, D3D12_GPU_DESCRIPTOR_HANDLE newHeapStart) = 0;
 	};
 }

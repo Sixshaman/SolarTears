@@ -11,7 +11,6 @@
 
 D3D12::FrameGraph::FrameGraph(FrameGraphConfig&& frameGraphConfig): ModernFrameGraph(std::move(frameGraphConfig))
 {
-	mSrvUavDescriptorCount = 0;
 }
 
 D3D12::FrameGraph::~FrameGraph()

@@ -5,8 +5,9 @@
 #include <cassert>
 #include <array>
 #include <wil/com.h>
+#include "../../Core/DataStructures/CompileTimeChrono.hpp"
 
-D3D12::ShaderManager::ShaderManager(LoggerQueue* logger, ID3D12Device* device): mLogger(logger)
+D3D12::ShaderManager::ShaderManager(LoggerQueue* logger): mLogger(logger)
 {
 	THROW_IF_FAILED(DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(mDxcUtils.put())));
 }
@@ -63,7 +64,7 @@ void D3D12::ShaderManager::CollectBindingInfos(ID3D12ShaderReflection* reflectio
 	D3D12_SHADER_DESC shaderDesc;
 	THROW_IF_FAILED(reflection->GetDesc(&shaderDesc));
 
-	D3D12_SHADER_VERSION_TYPE versionType = (D3D12_SHADER_VERSION_TYPE)((shaderDesc.Version & 0xFFFF0000) >> 16);
+	D3D12_SHADER_VERSION_TYPE versionType = (D3D12_SHADER_VERSION_TYPE)D3D12_SHVER_GET_TYPE(shaderDesc.Version);
 	D3D12_SHADER_VISIBILITY visibility    = D3D12_SHADER_VISIBILITY_ALL;
 	switch(versionType)
 	{
@@ -96,15 +97,16 @@ void D3D12::ShaderManager::CollectBindingInfos(ID3D12ShaderReflection* reflectio
 	case D3D12_SHVER_COMPUTE_SHADER:
 		visibility = D3D12_SHADER_VISIBILITY_ALL;
 		break;
-	case D3D12_SHVER_MESH_SHADER:
-		visibility = D3D12_SHADER_VISIBILITY_MESH;
-		*rootSignatureFlags &= ~D3D12_ROOT_SIGNATURE_FLAG_DENY_MESH_SHADER_ROOT_ACCESS;
-		break;
-	case D3D12_SHVER_AMPLIFICATION_SHADER:
-		visibility = D3D12_SHADER_VISIBILITY_AMPLIFICATION;
-		*rootSignatureFlags &= ~D3D12_ROOT_SIGNATURE_FLAG_DENY_AMPLIFICATION_SHADER_ROOT_ACCESS;
-		break;
+	//case D3D12_SHVER_MESH_SHADER:
+	//	visibility = D3D12_SHADER_VISIBILITY_MESH;
+	//	*rootSignatureFlags &= ~D3D12_ROOT_SIGNATURE_FLAG_DENY_MESH_SHADER_ROOT_ACCESS;
+	//	break;
+	//case D3D12_SHVER_AMPLIFICATION_SHADER:
+	//	visibility = D3D12_SHADER_VISIBILITY_AMPLIFICATION;
+	//	*rootSignatureFlags &= ~D3D12_ROOT_SIGNATURE_FLAG_DENY_AMPLIFICATION_SHADER_ROOT_ACCESS;
+	//	break;
 	default:
+		static_assert(IsDateInFuture("2021-07-25"), "Please check https://github.com/microsoft/DirectX-Headers/pull/15 and if it's on, update submodule and uncomment the code above");
 		visibility = D3D12_SHADER_VISIBILITY_ALL;
 		break;
 	}

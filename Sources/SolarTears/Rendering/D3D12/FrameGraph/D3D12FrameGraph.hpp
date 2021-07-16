@@ -45,11 +45,9 @@ namespace D3D12
 
 		std::vector<D3D12_RESOURCE_BARRIER> mResourceBarriers;
 
-		wil::com_ptr_nothrow<ID3D12DescriptorHeap> mSrvUavDescriptorHeap; //NOT shader-visible
+		D3D12_GPU_DESCRIPTOR_HANDLE                mPassDescriptorsStart;
 		wil::com_ptr_nothrow<ID3D12DescriptorHeap> mRtvDescriptorHeap;
 		wil::com_ptr_nothrow<ID3D12DescriptorHeap> mDsvDescriptorHeap;
-
-		UINT mSrvUavDescriptorCount;
 
 		//Used to track the command buffers that were used to record render passes
 		std::vector<ID3D12CommandList*> mFrameRecordedGraphicsCommandLists;
