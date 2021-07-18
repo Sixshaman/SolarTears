@@ -21,7 +21,7 @@ void D3D12::ShaderManager::LoadShaderBlob(const std::wstring& path, IDxcBlobEnco
 	THROW_IF_FAILED(mDxcUtils->LoadFile(path.c_str(), nullptr, outBlob));
 }
 
-void D3D12::ShaderManager::CreateRootSignature(ID3D12Device* device, const std::span<IDxcBlobEncoding*> shaderBlobs, const std::span<std::string_view> shaderBindings, std::string_view samplerBinding, const std::span<D3D12_ROOT_PARAMETER_TYPE> bindingParameterTypes, ID3D12RootSignature** outRootSignature) const
+void D3D12::ShaderManager::CreateRootSignature(ID3D12Device* device, const std::span<IDxcBlobEncoding*> shaderBlobs, const std::span<std::string_view> shaderBindings, const std::span<D3D12_ROOT_PARAMETER_TYPE> bindingParameterTypes, ID3D12RootSignature** outRootSignature) const
 {
 	std::vector<wil::com_ptr_t<ID3D12ShaderReflection>> shaderReflections;
 	shaderReflections.reserve(shaderBlobs.size());
@@ -35,12 +35,13 @@ void D3D12::ShaderManager::CreateRootSignature(ID3D12Device* device, const std::
 	D3D12_ROOT_SIGNATURE_FLAGS rootSigFlags = CreateDefaultRootSignatureFlags();
 	std::unordered_map<std::string, D3D12_SHADER_INPUT_BIND_DESC> bindingInfos;
 	std::unordered_map<std::string, D3D12_SHADER_VISIBILITY>      visibilities;
+	std::string                                                   samplerBindingName;
 	for(const auto& reflection: shaderReflections)
 	{
-		CollectBindingInfos(reflection.get(), bindingInfos, visibilities, &rootSigFlags);
+		CollectBindingInfos(reflection.get(), bindingInfos, visibilities, samplerBindingName, &rootSigFlags);
 	}
 
-	BuildRootSignature(device, bindingInfos, visibilities, shaderBindings, samplerBinding, bindingParameterTypes, rootSigFlags, outRootSignature);
+	BuildRootSignature(device, bindingInfos, visibilities, shaderBindings, bindingParameterTypes, samplerBindingName, rootSigFlags, outRootSignature);
 }
 
 void D3D12::ShaderManager::CreateReflectionData(IDxcBlobEncoding* pBlob, ID3D12ShaderReflection** outShaderReflection) const
@@ -57,7 +58,7 @@ void D3D12::ShaderManager::CreateReflectionData(IDxcBlobEncoding* pBlob, ID3D12S
 	THROW_IF_FAILED(mDxcUtils->CreateReflection(&dxcBuffer, IID_PPV_ARGS(outShaderReflection)));
 }
 
-void D3D12::ShaderManager::CollectBindingInfos(ID3D12ShaderReflection* reflection, std::unordered_map<std::string, D3D12_SHADER_INPUT_BIND_DESC>& outBindingInfos, std::unordered_map<std::string, D3D12_SHADER_VISIBILITY>& outShaderVisibility, D3D12_ROOT_SIGNATURE_FLAGS* rootSignatureFlags) const
+void D3D12::ShaderManager::CollectBindingInfos(ID3D12ShaderReflection* reflection, std::unordered_map<std::string, D3D12_SHADER_INPUT_BIND_DESC>& outBindingInfos, std::unordered_map<std::string, D3D12_SHADER_VISIBILITY>& outShaderVisibility, std::string& outSamplerName, D3D12_ROOT_SIGNATURE_FLAGS* rootSignatureFlags) const
 {
 	assert(rootSignatureFlags != nullptr);
 
@@ -127,10 +128,15 @@ void D3D12::ShaderManager::CollectBindingInfos(ID3D12ShaderReflection* reflectio
 		{
 			outShaderVisibility[bindingDesc.Name] = visibility;
 		}
+
+		if(bindingDesc.Type == D3D_SIT_SAMPLER)
+		{
+			outSamplerName = bindingDesc.Name;
+		}
 	}
 }
 
-void D3D12::ShaderManager::BuildRootSignature(ID3D12Device* device, const std::unordered_map<std::string, D3D12_SHADER_INPUT_BIND_DESC>& bindingInfos, const std::unordered_map<std::string, D3D12_SHADER_VISIBILITY>& visibilities, std::span<std::string_view> shaderInputNames, std::string_view samplersInputName, std::span<D3D12_ROOT_PARAMETER_TYPE> shaderInputTypes, D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags, ID3D12RootSignature** outRootSignature) const
+void D3D12::ShaderManager::BuildRootSignature(ID3D12Device* device, const std::unordered_map<std::string, D3D12_SHADER_INPUT_BIND_DESC>& bindingInfos, const std::unordered_map<std::string, D3D12_SHADER_VISIBILITY>& visibilities, std::span<std::string_view> shaderInputNames, std::span<D3D12_ROOT_PARAMETER_TYPE> shaderInputTypes, const std::string& samplerBindingName, D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags, ID3D12RootSignature** outRootSignature) const
 {
 	assert(shaderInputTypes.size() == shaderInputNames.size());
 
@@ -169,36 +175,43 @@ void D3D12::ShaderManager::BuildRootSignature(ID3D12Device* device, const std::u
 	}
 
 	//Gather sampler inputs
-	D3D12_SHADER_VISIBILITY      samplersVisibility   = visibilities.at(std::string(samplersInputName));
-	D3D12_SHADER_INPUT_BIND_DESC samplersInputBinding = bindingInfos.at(std::string(samplersInputName));
-
 	std::array staticSamplerFilters = {D3D12_FILTER_MIN_MAG_MIP_LINEAR, D3D12_FILTER_ANISOTROPIC};
-
 	std::array<D3D12_STATIC_SAMPLER_DESC, staticSamplerFilters.size()> staticSamplers;
-	for(size_t i = 0; i < staticSamplerFilters.size(); i++)
-	{
-		staticSamplers[i].Filter           = staticSamplerFilters[i];
-		staticSamplers[i].AddressU         = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-		staticSamplers[i].AddressV         = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-		staticSamplers[i].AddressW         = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-		staticSamplers[i].MipLODBias       = 0.0f;
-		staticSamplers[i].MaxAnisotropy    = 0;
-		staticSamplers[i].ComparisonFunc   = D3D12_COMPARISON_FUNC_NEVER;
-		staticSamplers[i].BorderColor      = D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK;
-		staticSamplers[i].MinLOD           = 0.0f;
-		staticSamplers[i].MaxLOD           = D3D12_FLOAT32_MAX;
-		staticSamplers[i].ShaderRegister   = samplersInputBinding.BindPoint + (UINT)i;
-		staticSamplers[i].RegisterSpace    = samplersInputBinding.Space;
-		staticSamplers[i].ShaderVisibility = samplersVisibility;
-	}
+	
+	D3D12_STATIC_SAMPLER_DESC* staticSamplerDescs = nullptr;
+	UINT                       staticSamplerCount = 0;
 
+	auto samplerBinding = bindingInfos.find(samplerBindingName);
+	if(samplerBinding != bindingInfos.end())
+	{
+		D3D12_SHADER_VISIBILITY samplerVisibility = visibilities.at(samplerBindingName);
+		for(size_t i = 0; i < staticSamplerFilters.size(); i++)
+		{
+			staticSamplers[i].Filter           = staticSamplerFilters[i];
+			staticSamplers[i].AddressU         = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+			staticSamplers[i].AddressV         = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+			staticSamplers[i].AddressW         = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+			staticSamplers[i].MipLODBias       = 0.0f;
+			staticSamplers[i].MaxAnisotropy    = 0;
+			staticSamplers[i].ComparisonFunc   = D3D12_COMPARISON_FUNC_NEVER;
+			staticSamplers[i].BorderColor      = D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK;
+			staticSamplers[i].MinLOD           = 0.0f;
+			staticSamplers[i].MaxLOD           = D3D12_FLOAT32_MAX;
+			staticSamplers[i].ShaderRegister   = samplerBinding->second.BindPoint + (UINT)i;
+			staticSamplers[i].RegisterSpace    = samplerBinding->second.Space;
+			staticSamplers[i].ShaderVisibility = samplerVisibility;
+		}
+
+		staticSamplerDescs = staticSamplers.data();
+		staticSamplerCount = (UINT)staticSamplers.size();
+	}
 
 	D3D12_VERSIONED_ROOT_SIGNATURE_DESC versionedRootSignatureDesc;
 	versionedRootSignatureDesc.Version = D3D_ROOT_SIGNATURE_VERSION_1_1;
 	versionedRootSignatureDesc.Desc_1_1.NumParameters     = (UINT)rootParameters.size();
 	versionedRootSignatureDesc.Desc_1_1.pParameters       = rootParameters.data();
-	versionedRootSignatureDesc.Desc_1_1.NumStaticSamplers = (UINT)staticSamplers.size();
-	versionedRootSignatureDesc.Desc_1_1.pStaticSamplers   = staticSamplers.data();
+	versionedRootSignatureDesc.Desc_1_1.NumStaticSamplers = staticSamplerCount;
+	versionedRootSignatureDesc.Desc_1_1.pStaticSamplers   = staticSamplerDescs;
 	versionedRootSignatureDesc.Desc_1_1.Flags             = rootSignatureFlags;
 
 	wil::com_ptr_nothrow<ID3DBlob> rootSignatureBlob;

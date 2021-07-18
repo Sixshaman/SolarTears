@@ -15,11 +15,6 @@ Vulkan::RenderableScene::RenderableScene(const VkDevice device, const FrameCount
 	mSceneIndexBuffer   = VK_NULL_HANDLE;
 	mSceneUniformBuffer = VK_NULL_HANDLE;
 
-	mDescriptorPool = VK_NULL_HANDLE;
-
-	mGBufferMaterialDescriptorSet = VK_NULL_HANDLE;
-	std::fill_n(mGBufferUniformsDescriptorSets, Utils::InFlightFrameCount, VK_NULL_HANDLE);
-
 	mBufferMemory            = VK_NULL_HANDLE;
 	mTextureMemory           = VK_NULL_HANDLE;
 	mBufferHostVisibleMemory = VK_NULL_HANDLE;
@@ -36,8 +31,6 @@ Vulkan::RenderableScene::~RenderableScene()
 	SafeDestroyObject(vkDestroyBuffer, mDeviceRef, mSceneIndexBuffer);
 	SafeDestroyObject(vkDestroyBuffer, mDeviceRef, mSceneUniformBuffer);
 
-	SafeDestroyObject(vkDestroyDescriptorPool, mDeviceRef, mDescriptorPool);
-
 	for(size_t i = 0; i < mSceneTextureViews.size(); i++)
 	{
 		SafeDestroyObject(vkDestroyImageView, mDeviceRef, mSceneTextureViews[i]);
@@ -53,7 +46,7 @@ Vulkan::RenderableScene::~RenderableScene()
 	SafeDestroyObject(vkFreeMemory, mDeviceRef, mBufferHostVisibleMemory);
 }
 
-void Vulkan::RenderableScene::DrawObjectsOntoGBuffer(VkCommandBuffer commandBuffer, VkPipeline staticPipeline, VkPipeline rigidPipeline) const
+void Vulkan::RenderableScene::PrepareDrawBuffers(VkCommandBuffer commandBuffer) const
 {
 	//TODO: extended dynamic state
 	uint32_t frameResourceIndex = mFrameCounterRef->GetFrameCount() % Utils::InFlightFrameCount;
@@ -63,36 +56,32 @@ void Vulkan::RenderableScene::DrawObjectsOntoGBuffer(VkCommandBuffer commandBuff
 	vkCmdBindVertexBuffers(commandBuffer, 0, (uint32_t)(sceneVertexBuffers.size()), sceneVertexBuffers.data(), vertexBufferOffsets.data());
 
 	vkCmdBindIndexBuffer(commandBuffer, mSceneIndexBuffer, 0, VulkanUtils::FormatForIndexType<RenderableSceneIndex>);
+}
 
-	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, staticPipeline);
-
-	std::array uniformDescriptorSets = {mGBufferUniformsDescriptorSets[frameResourceIndex]};
-	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, UniformDescriptorSetIndex, (uint32_t)uniformDescriptorSets.size(), uniformDescriptorSets.data(), 0, nullptr);
-	
-	std::array materialDescriptorSets = {mGBufferMaterialDescriptorSet};
-	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, MaterialDescriptorSetIndex, (uint32_t)materialDescriptorSets.size(), materialDescriptorSets.data(), 0, nullptr);
-
+void Vulkan::RenderableScene::DrawStaticObjectsWithRootConstants(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, VkShaderStageFlags materialIndexShaderFlags, uint32_t materialIndexOffset) const
+{
 	for(size_t meshIndex = 0; meshIndex < mStaticSceneObjects.size(); meshIndex++)
 	{
 		for(uint32_t subobjectIndex = mStaticSceneObjects[meshIndex].FirstSubobjectIndex; subobjectIndex < mStaticSceneObjects[meshIndex].AfterLastSubobjectIndex; subobjectIndex++)
 		{
 			uint32_t materialIndex = mSceneSubobjects[subobjectIndex].MaterialIndex;
-			vkCmdPushConstants(commandBuffer, pipelineLayout, MaterialIndexShaderFlags, MaterialIndexOffset, sizeof(uint32_t), &materialIndex);
+			vkCmdPushConstants(commandBuffer, pipelineLayout, materialIndexShaderFlags, materialIndexOffset, sizeof(uint32_t), &materialIndex);
 
 			vkCmdDrawIndexed(commandBuffer, mSceneSubobjects[subobjectIndex].IndexCount, 1, mSceneSubobjects[subobjectIndex].FirstIndex, mSceneSubobjects[subobjectIndex].VertexOffset, 0);
 		}
 	}
+}
 
-	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, rigidPipeline);
-
+void Vulkan::RenderableScene::DrawRigidObjectsWithRootConstants(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, VkShaderStageFlags objectIndexShaderFlags, uint32_t objectIndexOffset, VkShaderStageFlags materialIndexShaderFlags, uint32_t materialIndexOffset) const
+{
 	for(size_t meshIndex = 0; meshIndex < mRigidSceneObjects.size(); meshIndex++)
 	{
-		vkCmdPushConstants(commandBuffer, pipelineLayout, ObjectIndexShaderFlags, ObjectIndexOffset, sizeof(uint32_t), &meshIndex);
+		vkCmdPushConstants(commandBuffer, pipelineLayout, objectIndexShaderFlags, objectIndexOffset, sizeof(uint32_t), &meshIndex);
 
 		for(uint32_t subobjectIndex = mRigidSceneObjects[meshIndex].FirstSubobjectIndex; subobjectIndex < mRigidSceneObjects[meshIndex].AfterLastSubobjectIndex; subobjectIndex++)
 		{
 			uint32_t materialIndex = mSceneSubobjects[subobjectIndex].MaterialIndex;
-			vkCmdPushConstants(commandBuffer, pipelineLayout, MaterialIndexShaderFlags, MaterialIndexOffset, sizeof(uint32_t), &materialIndex);
+			vkCmdPushConstants(commandBuffer, pipelineLayout, materialIndexShaderFlags, materialIndexOffset, sizeof(uint32_t), &materialIndex);
 
 			vkCmdDrawIndexed(commandBuffer, mSceneSubobjects[subobjectIndex].IndexCount, 1, mSceneSubobjects[subobjectIndex].FirstIndex, mSceneSubobjects[subobjectIndex].VertexOffset, 0);
 		}

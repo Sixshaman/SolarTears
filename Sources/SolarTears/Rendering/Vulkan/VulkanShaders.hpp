@@ -2,8 +2,7 @@
 
 #include "../../../3rdParty/SPIRV-Reflect/spirv_reflect.h"
 #include <vulkan/vulkan.h>
-#include <unordered_map>
-#include <memory>
+#include <span> 
 
 class LoggerQueue;
 
@@ -11,42 +10,30 @@ namespace Vulkan
 {
 	class ShaderManager
 	{
-		struct DescriptorBindingInfo
-		{
-			uint32_t           Binding;
-			uint32_t           Set;
-			uint32_t           Count;
-			VkShaderStageFlags StageFlags;
-			VkDescriptorType   DescriptorType;
-		};
-
 	public:
-		ShaderManager(LoggerQueue* logger);
+		ShaderManager(LoggerQueue* logger, VkDevice device);
 		~ShaderManager();
 
-	public:
-		const uint32_t* GetGBufferVertexShaderData()   const;
-		const uint32_t* GetGBufferFragmentShaderData() const;
+		spv_reflect::ShaderModule LoadShaderBlob(const std::wstring& path) const;
 
-		size_t GetGBufferVertexShaderSize()   const;
-		size_t GetGBufferFragmentShaderSize() const;
-
-		void GetGBufferDrawDescriptorBindingInfo(const std::string& bindingName, uint32_t* outBinding, uint32_t* outSet, uint32_t* outCount, VkShaderStageFlags* outStageFlags, VkDescriptorType* outDescriptorType) const;
+		void CreatePipelineLayout(VkDevice device, const std::span<spv_reflect::ShaderModule*>& shaderModules, VkPipelineLayout* outPipelineLayout) const;
 
 	private:
-		void LoadShaderData();
-		void FindDescriptorBindings();
+		void CreateSamplers();
 
-		void GatherDescriptorBindings(const spv_reflect::ShaderModule* shaderModule, std::unordered_map<std::string, DescriptorBindingInfo>& descriptorBindingMap, VkShaderStageFlagBits shaderStage) const;
+		uint32_t GetModulesSetCount(const std::span<spv_reflect::ShaderModule*>& shaderModules) const;
+		void GatherSetBindings(const std::span<spv_reflect::ShaderModule*>& shaderModules, std::vector<std::vector<SpvReflectDescriptorBinding*>>& outBindingsForSets, std::vector<std::vector<VkShaderStageFlags>>& outBindingsStageFlags) const;
+		void BuildDescriptorBindingInfos(const std::span<SpvReflectDescriptorBinding*> spvSetBindings, const std::span<VkShaderStageFlags> setBindingStageFlags, const std::span<VkSampler> immutableSamplers, std::vector<VkDescriptorSetLayoutBinding>& outSetBindings, std::vector<VkDescriptorBindingFlags>& outSetFlags) const;
+
+		VkShaderStageFlagBits SpvToVkShaderStage(SpvReflectShaderStageFlagBits spvShaderStage)  const;
+		VkDescriptorType      SpvToVkDescriptorType(SpvReflectDescriptorType spvDescriptorType) const;
 
 	private:
 		LoggerQueue* mLogger;
 
-		std::unordered_map<SpvReflectDescriptorType, VkDescriptorType> mSpvToVkDescriptorTypes;
+		const VkDevice mDeviceRef;
 
-		std::unique_ptr<spv_reflect::ShaderModule> mGBufferVertexShaderModule;
-		std::unique_ptr<spv_reflect::ShaderModule> mGBufferFragmentShaderModule;
-
-		std::unordered_map<std::string, DescriptorBindingInfo> mGBufferDrawBindings;
+		VkSampler mLinearSampler;
+		VkSampler mAnisotropicSampler;
 	};
 }

@@ -15,12 +15,12 @@ layout(location = 0) out vec2 outTexCoord;
 
 //================================================================
 
-layout(set = 1, binding = 0) uniform FrameConstants
+layout(set = 2, binding = 0) uniform FrameConstants
 {
 	mat4 ViewProjMatrix;
 };
 
-layout(set = 1, binding = 1) readonly buffer ObjectConstants
+layout(set = 2, binding = 1) readonly buffer ObjectConstants
 {
 	ObjectData ObjectDatas[];
 };

@@ -18,8 +18,8 @@ D3D12::GBufferPass::GBufferPass(ID3D12Device8* device, const FrameGraphBuilder* 
 	CreateRootSignature(frameGraphBuilder->GetShaderManager(), device, rigidVertexShaderBlob.get(), pixelShaderBlob.get());
 
 	//TODO: bundles
-	CreatePipelineState(device, staticVertexShaderBlob.get(), pixelShaderBlob.get(), mStaticPipelineState.put());
-	CreatePipelineState(device, rigidVertexShaderBlob.get(),  pixelShaderBlob.get(), mRigidPipelineState.put());
+	CreateGBufferPipelineState(device, staticVertexShaderBlob.get(), pixelShaderBlob.get(), mStaticPipelineState.put());
+	CreateGBufferPipelineState(device, rigidVertexShaderBlob.get(),  pixelShaderBlob.get(), mRigidPipelineState.put());
 
 	mColorsRenderTarget = frameGraphBuilder->GetRegisteredSubresourceRtv(passName, ColorBufferImageId, frame);
 
@@ -153,10 +153,10 @@ void D3D12::GBufferPass::CreateRootSignature(const ShaderManager* shaderManager,
 	shaderInputTypes[(UINT)GBufferRootBindings::Textures]         = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 	
 	std::array shaderBlobs = {vertexShader, pixelShader};
-	shaderManager->CreateRootSignature(device, shaderBlobs, shaderInputs, "gSamplers", shaderInputTypes, mRootSignature.put());
+	shaderManager->CreateRootSignature(device, shaderBlobs, shaderInputs, shaderInputTypes, mRootSignature.put());
 }
 
-void D3D12::GBufferPass::CreatePipelineState(ID3D12Device8* device, IDxcBlobEncoding* vertexShader, IDxcBlobEncoding* pixelShader, ID3D12PipelineState** outPipelineState)
+void D3D12::GBufferPass::CreateGBufferPipelineState(ID3D12Device8* device, IDxcBlobEncoding* vertexShader, IDxcBlobEncoding* pixelShader, ID3D12PipelineState** outPipelineState)
 {
 	D3D12Utils::StateSubobjectHelper stateSubobjectHelper;
 
@@ -200,14 +200,14 @@ void D3D12::GBufferPass::CreatePipelineState(ID3D12Device8* device, IDxcBlobEnco
 
 	D3D12_RT_FORMAT_ARRAY renderTargetFormats;
 	renderTargetFormats.NumRenderTargets = 1;
-	renderTargetFormats.RTFormats[0]     = ColorOutputFormat;
-	renderTargetFormats.RTFormats[1]     = DXGI_FORMAT_UNKNOWN;
-	renderTargetFormats.RTFormats[2]     = DXGI_FORMAT_UNKNOWN;
-	renderTargetFormats.RTFormats[3]     = DXGI_FORMAT_UNKNOWN;
-	renderTargetFormats.RTFormats[4]     = DXGI_FORMAT_UNKNOWN;
-	renderTargetFormats.RTFormats[5]     = DXGI_FORMAT_UNKNOWN;
-	renderTargetFormats.RTFormats[6]     = DXGI_FORMAT_UNKNOWN;
-	renderTargetFormats.RTFormats[7]     = DXGI_FORMAT_UNKNOWN;
+	renderTargetFormats.RTFormats[0] = ColorOutputFormat;
+	renderTargetFormats.RTFormats[1] = DXGI_FORMAT_UNKNOWN;
+	renderTargetFormats.RTFormats[2] = DXGI_FORMAT_UNKNOWN;
+	renderTargetFormats.RTFormats[3] = DXGI_FORMAT_UNKNOWN;
+	renderTargetFormats.RTFormats[4] = DXGI_FORMAT_UNKNOWN;
+	renderTargetFormats.RTFormats[5] = DXGI_FORMAT_UNKNOWN;
+	renderTargetFormats.RTFormats[6] = DXGI_FORMAT_UNKNOWN;
+	renderTargetFormats.RTFormats[7] = DXGI_FORMAT_UNKNOWN;
 
 	stateSubobjectHelper.AddSubobjectGeneric(renderTargetFormats);
 	

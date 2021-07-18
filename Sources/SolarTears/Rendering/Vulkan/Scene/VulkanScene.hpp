@@ -20,7 +20,9 @@ namespace Vulkan
 		~RenderableScene();
 
 	public:
-		void DrawObjectsOntoGBuffer(VkCommandBuffer commandBuffer, VkPipeline staticPipeline, VkPipeline rigidPipeline) const;
+		void PrepareDrawBuffers(VkCommandBuffer commandBuffer) const;
+		void DrawStaticObjectsWithRootConstants(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, VkShaderStageFlags materialIndexShaderFlags, uint32_t materialIndexOffset) const;
+		void DrawRigidObjectsWithRootConstants(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, VkShaderStageFlags objectIndexShaderFlags, uint32_t objectIndexOffset, VkShaderStageFlags materialIndexShaderFlags, uint32_t materialIndexOffset) const;
 
 	private:
 		const VkDevice mDeviceRef;
@@ -32,11 +34,6 @@ namespace Vulkan
 
 		std::vector<VkImage>     mSceneTextures;
 		std::vector<VkImageView> mSceneTextureViews;
-
-		VkDescriptorPool mDescriptorPool;
-
-		VkDescriptorSet mGBufferUniformsDescriptorSets[Utils::InFlightFrameCount];
-		VkDescriptorSet mGBufferMaterialDescriptorSet;
 
 		VkDeviceMemory mBufferMemory;
 		VkDeviceMemory mBufferHostVisibleMemory;

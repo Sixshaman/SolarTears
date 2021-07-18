@@ -2,9 +2,9 @@
 #include "../../VulkanFunctions.hpp"
 #include "../../VulkanDeviceParameters.hpp"
 #include "../../VulkanShaders.hpp"
-#include "../../VulkanDescriptorManager.hpp"
 #include "../../Scene/VulkanSceneBuilder.hpp"
 #include "../../../Common/FrameGraph/FrameGraphConfig.hpp"
+#include "../../../../Core/Util.hpp"
 #include "../VulkanFrameGraph.hpp"
 #include "../VulkanFrameGraphBuilder.hpp"
 #include <array>
@@ -16,21 +16,35 @@ Vulkan::GBufferPass::GBufferPass(VkDevice device, const FrameGraphBuilder* frame
 	mFramebuffer = VK_NULL_HANDLE;
 
 	mPipelineLayout = VK_NULL_HANDLE;
-	mPipeline       = VK_NULL_HANDLE;
+	mStaticPipeline = VK_NULL_HANDLE;
+	mRigidPipeline  = VK_NULL_HANDLE;
 
 	//TODO: subpasses (AND SECONDARY COMMAND BUFFERS)
-	CreateRenderPass(frameGraphBuilder, frameGraphBuilder->GetDeviceParameters(), passName);
+	CreateRenderPass(frameGraphBuilder,  frameGraphBuilder->GetDeviceParameters(), passName);
 	CreateFramebuffer(frameGraphBuilder, frameGraphBuilder->GetConfig(), passName, frame);
-	CreatePipelineLayout(frameGraphBuilder->GetDescriptorManager());
-	CreatePipeline(frameGraphBuilder->GetShaderManager(), frameGraphBuilder->GetConfig());
+
+	//Load shaders
+	const std::wstring shaderFolder = Utils::GetMainDirectory() + L"Shaders/\Vulkan/GBuffer/";
+	spv_reflect::ShaderModule staticVertexShader = frameGraphBuilder->GetShaderManager()->LoadShaderBlob(shaderFolder + L"GBufferDrawStatic.vert.spv");
+	spv_reflect::ShaderModule rigidVertexShader  = frameGraphBuilder->GetShaderManager()->LoadShaderBlob(shaderFolder + L"GBufferDrawRigid.vert.spv");
+	spv_reflect::ShaderModule fragmentShader     = frameGraphBuilder->GetShaderManager()->LoadShaderBlob(shaderFolder + L"GBufferDraw.frag.spv");
+
+	std::array pipelineLayoutShaders = {&rigidVertexShader, &fragmentShader};
+	frameGraphBuilder->GetShaderManager()->CreatePipelineLayout(device, pipelineLayoutShaders, &mPipelineLayout);
+
+	//Create pipelines
+	CreateGBufferPipeline(&staticVertexShader, &fragmentShader, frameGraphBuilder->GetConfig(), &mStaticPipeline);
+	CreateGBufferPipeline(&rigidVertexShader,  &fragmentShader, frameGraphBuilder->GetConfig(), &mRigidPipeline);
 }
 
 Vulkan::GBufferPass::~GBufferPass()
 {
-	SafeDestroyObject(vkDestroyPipeline, mDeviceRef, mPipeline);
+	SafeDestroyObject(vkDestroyPipeline, mDeviceRef, mStaticPipeline);
+	SafeDestroyObject(vkDestroyPipeline, mDeviceRef, mRigidPipeline);
+
 	SafeDestroyObject(vkDestroyPipelineLayout, mDeviceRef, mPipelineLayout);
 
-	SafeDestroyObject(vkDestroyRenderPass, mDeviceRef, mRenderPass);
+	SafeDestroyObject(vkDestroyRenderPass,  mDeviceRef, mRenderPass);
 	SafeDestroyObject(vkDestroyFramebuffer, mDeviceRef, mFramebuffer);
 }
 
@@ -79,9 +93,19 @@ void Vulkan::GBufferPass::RecordExecution(VkCommandBuffer commandBuffer, const R
 	//TODO: Secondary command buffers
 	vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipeline);
+	std::array<VkDescriptorSet, 3> descriptorSets;
+	descriptorSets[mSamplerSetNumber]       = mSamplerSet;
+	descriptorSets[mSceneMaterialSetNumber] = mSceneMaterialDataSet;
+	descriptorSets[mSceneObjectSetNumber]   = mSceneObjectDataSet;
 
-	scene->DrawObjectsOntoGBuffer(commandBuffer, mPipelineLayout);
+	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout, 0, (uint32_t)descriptorSets.size(), descriptorSets.data(), 0, nullptr);
+	scene->PrepareDrawBuffers(commandBuffer);
+	
+	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mStaticPipeline);
+	scene->DrawStaticObjectsWithRootConstants(commandBuffer, mPipelineLayout, mMaterialIndexPushConstantStages, mMaterialIndexPushConstantOffset);
+
+	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mRigidPipeline);
+	scene->DrawRigidObjectsWithRootConstants(commandBuffer, mPipelineLayout, mObjectIndexPushConstantStages, mObjectIndexPushConstantOffset, mMaterialIndexPushConstantStages, mMaterialIndexPushConstantOffset);
 
 	vkCmdEndRenderPass(commandBuffer);
 }
@@ -181,37 +205,21 @@ void Vulkan::GBufferPass::CreateFramebuffer(const FrameGraphBuilder* frameGraphB
 	ThrowIfFailed(vkCreateFramebuffer(mDeviceRef, &framebufferCreateInfo, nullptr, &mFramebuffer));
 }
 
-void Vulkan::GBufferPass::CreatePipelineLayout(const DescriptorManager* descriptorManager)
-{
-	std::array descriptorSetLayouts = {descriptorManager->GetGBufferTexturesDescriptorSetLayout(), descriptorManager->GetGBufferUniformsDescriptorSetLayout()};
-
-	VkPipelineLayoutCreateInfo gbufferPipelineLayoutCreateInfo;
-	gbufferPipelineLayoutCreateInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	gbufferPipelineLayoutCreateInfo.pNext                  = nullptr;
-	gbufferPipelineLayoutCreateInfo.flags                  = 0;
-	gbufferPipelineLayoutCreateInfo.setLayoutCount         = (uint32_t)(descriptorSetLayouts.size());
-	gbufferPipelineLayoutCreateInfo.pSetLayouts            = descriptorSetLayouts.data();
-	gbufferPipelineLayoutCreateInfo.pushConstantRangeCount = 0;
-	gbufferPipelineLayoutCreateInfo.pPushConstantRanges    = nullptr;
-
-	ThrowIfFailed(vkCreatePipelineLayout(mDeviceRef, &gbufferPipelineLayoutCreateInfo, nullptr, &mPipelineLayout));
-}
-
-void Vulkan::GBufferPass::CreatePipeline(const ShaderManager* shaderManager, const FrameGraphConfig* frameGraphConfig)
+void Vulkan::GBufferPass::CreateGBufferPipeline(const spv_reflect::ShaderModule* vertexShaderModule, const spv_reflect::ShaderModule* fragmentShaderModule, const FrameGraphConfig* frameGraphConfig, VkPipeline* outPipeline)
 {
 	VkShaderModuleCreateInfo vertexShaderModuleCreateInfo;
 	vertexShaderModuleCreateInfo.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 	vertexShaderModuleCreateInfo.pNext    = nullptr;
 	vertexShaderModuleCreateInfo.flags    = 0;
-	vertexShaderModuleCreateInfo.codeSize = shaderManager->GetGBufferVertexShaderSize();
-	vertexShaderModuleCreateInfo.pCode    = shaderManager->GetGBufferVertexShaderData();
+	vertexShaderModuleCreateInfo.codeSize = vertexShaderModule->GetCodeSize();
+	vertexShaderModuleCreateInfo.pCode    = vertexShaderModule->GetCode();
 
 	VkShaderModuleCreateInfo fragmentShaderModuleCreateInfo;
 	fragmentShaderModuleCreateInfo.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
 	fragmentShaderModuleCreateInfo.pNext    = nullptr;
 	fragmentShaderModuleCreateInfo.flags    = 0;
-	fragmentShaderModuleCreateInfo.codeSize = shaderManager->GetGBufferFragmentShaderSize();
-	fragmentShaderModuleCreateInfo.pCode    = shaderManager->GetGBufferFragmentShaderData();
+	fragmentShaderModuleCreateInfo.codeSize = fragmentShaderModule->GetCodeSize();
+	fragmentShaderModuleCreateInfo.pCode    = fragmentShaderModule->GetCode();
 
 	//TODO: varying subrgroup size
 	std::array<VkPipelineShaderStageCreateInfo, 2> pipelineShaderStageCreateInfos;
@@ -429,7 +437,7 @@ void Vulkan::GBufferPass::CreatePipeline(const ShaderManager* shaderManager, con
 	gbufferPipelineCreateInfo.basePipelineIndex   = 0;
 
 	std::array graphicsPipelineCreateInfos = {gbufferPipelineCreateInfo};
-	ThrowIfFailed(vkCreateGraphicsPipelines(mDeviceRef, VK_NULL_HANDLE, (uint32_t)graphicsPipelineCreateInfos.size(), graphicsPipelineCreateInfos.data(), nullptr, &mPipeline));
+	ThrowIfFailed(vkCreateGraphicsPipelines(mDeviceRef, VK_NULL_HANDLE, (uint32_t)graphicsPipelineCreateInfos.size(), graphicsPipelineCreateInfos.data(), nullptr, outPipeline));
 
 	for(size_t i = 0; i < shaderModules.size(); i++)
 	{

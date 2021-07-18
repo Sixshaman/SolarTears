@@ -8,6 +8,9 @@ struct MaterialData
 	uint NormalMapIndex;
 };
 
+const int LinearSamplerIndex      = 0;
+const int AnisotropicSamplerIndex = 1;
+
 //================================================================
 
 layout(location = 0) in vec2 fragTexCoord;
@@ -16,12 +19,14 @@ layout(location = 0) out vec4 outColor;
 
 //================================================================
 
-layout(set = 0, binding = 0) readonly buffer MaterialConstants
+layout(set = 0, binding = 0) uniform sampler Samplers[];
+
+layout(set = 1, binding = 0) readonly buffer MaterialConstants
 {
 	MaterialData Materials[];
 };
 
-layout(set = 0, binding = 1) uniform sampler2D ObjectTextures[];
+layout(set = 1, binding = 1) uniform texture2D ObjectTextures[];
 
 layout(push_constant) uniform MaterialPushConstants
 {
@@ -34,6 +39,6 @@ void main()
 {
 	MaterialData materialData = Materials[PushConstants.MaterialIndex];
 
-	vec4 texColor = texture(ObjectTextures[materialData.TextureIndex], fragTexCoord);
+	vec4 texColor = texture(sampler2D(ObjectTextures[materialData.TextureIndex], Samplers[LinearSamplerIndex]), fragTexCoord);
 	outColor      = texColor;
 }

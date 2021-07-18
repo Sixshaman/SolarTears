@@ -9,9 +9,7 @@ Vulkan::DescriptorManager::DescriptorManager(const VkDevice device, const Shader
 	mGBufferUniformsDescriptorSetLayout = VK_NULL_HANDLE;
 	mGBufferTexturesDescriptorSetLayout = VK_NULL_HANDLE;
 
-	mLinearSampler = VK_NULL_HANDLE;
 
-	CreateSamplers();
 	CreateDescriptorSetLayouts(shaderManager);
 }
 
@@ -35,29 +33,7 @@ VkDescriptorSetLayout Vulkan::DescriptorManager::GetGBufferTexturesDescriptorSet
 
 void Vulkan::DescriptorManager::CreateSamplers()
 {
-	//TODO: Fragment density map flags
-	//TODO: Cubic filter
-	VkSamplerCreateInfo samplerCreateInfo;
-	samplerCreateInfo.sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-	samplerCreateInfo.pNext                   = nullptr;
-	samplerCreateInfo.flags                   = 0;
-	samplerCreateInfo.magFilter               = VK_FILTER_LINEAR;
-	samplerCreateInfo.minFilter               = VK_FILTER_LINEAR;
-	samplerCreateInfo.mipmapMode              = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-	samplerCreateInfo.addressModeU            = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	samplerCreateInfo.addressModeV            = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	samplerCreateInfo.addressModeW            = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	samplerCreateInfo.mipLodBias              = 0.0f;
-	samplerCreateInfo.anisotropyEnable        = VK_FALSE;
-	samplerCreateInfo.maxAnisotropy           = 0.0f;
-	samplerCreateInfo.compareEnable           = VK_FALSE;
-	samplerCreateInfo.compareOp               = VK_COMPARE_OP_ALWAYS;
-	samplerCreateInfo.minLod                  = 0.0f;
-	samplerCreateInfo.maxLod                  = FLT_MAX;
-	samplerCreateInfo.borderColor             = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
-	samplerCreateInfo.unnormalizedCoordinates = VK_FALSE;
-
-	ThrowIfFailed(vkCreateSampler(mDeviceRef, &samplerCreateInfo, nullptr, &mLinearSampler));
+	
 }
 
 void Vulkan::DescriptorManager::CreateDescriptorSetLayouts(const ShaderManager* shaderManager)

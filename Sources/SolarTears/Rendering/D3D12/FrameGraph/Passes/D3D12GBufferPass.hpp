@@ -45,7 +45,7 @@ namespace D3D12
 	private:
 		void LoadShaders(const ShaderManager* shaderManager, IDxcBlobEncoding** outStaticVertexShader, IDxcBlobEncoding** outRigidVertexShader, IDxcBlobEncoding** outPixelShader);
 		void CreateRootSignature(const ShaderManager* shaderManager, ID3D12Device8* device, IDxcBlobEncoding* rigidVertexShader, IDxcBlobEncoding* pixelShader);
-		void CreatePipelineState(ID3D12Device8* device, IDxcBlobEncoding* vertexShader, IDxcBlobEncoding* pixelShader, ID3D12PipelineState** outPipelineState);
+		void CreateGBufferPipelineState(ID3D12Device8* device, IDxcBlobEncoding* vertexShader, IDxcBlobEncoding* pixelShader, ID3D12PipelineState** outPipelineState);
 
 	private:
 		D3D12_CPU_DESCRIPTOR_HANDLE mColorsRenderTarget;
