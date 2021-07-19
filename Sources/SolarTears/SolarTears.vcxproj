@@ -34,7 +34,10 @@
     <ClInclude Include="Core\Scene\Camera.hpp" />
     <ClInclude Include="Core\Scene\Scene.hpp" />
     <ClInclude Include="Core\Scene\SceneDescription.hpp" />
-    <ClInclude Include="Core\Scene\SceneDescriptionObject.hpp" />
+    <ClInclude Include="Core\Scene\SceneDescription\LocationComponent.hpp" />
+    <ClInclude Include="Core\Scene\SceneDescription\MeshComponent.hpp" />
+    <ClInclude Include="Core\Scene\SceneDescription\SceneDescription.hpp" />
+    <ClInclude Include="Core\Scene\SceneDescription\SceneDescriptionObject.hpp" />
     <ClInclude Include="Core\ThreadPool.hpp" />
     <ClInclude Include="Core\Timer.hpp" />
     <ClInclude Include="Core\Util.hpp" />
@@ -118,7 +121,8 @@
     <ClCompile Include="Core\Scene\Camera.cpp" />
     <ClCompile Include="Core\Scene\Scene.cpp" />
     <ClCompile Include="Core\Scene\SceneDescription.cpp" />
-    <ClCompile Include="Core\Scene\SceneDescriptionObject.cpp" />
+    <ClCompile Include="Core\Scene\SceneDescription\SceneDescription.cpp" />
+    <ClCompile Include="Core\Scene\SceneDescription\SceneDescriptionObject.cpp" />
     <ClCompile Include="Core\ThreadPool.cpp" />
     <ClCompile Include="Core\Timer.cpp" />
     <ClCompile Include="Core\Util.cpp" />
@@ -186,7 +190,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Core\Allocators\StackAllocator.inl" />
-    <None Include="Core\Scene\SceneObjectLocation.hpp" />
     <None Include="Platform\Win32\Win32Util.inl" />
     <CustomBuild Include="Shaders\Vulkan\GBuffer\GBufferDraw.frag">
       <FileType>Document</FileType>

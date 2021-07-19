@@ -112,6 +112,9 @@
     <Filter Include="Rendering\Common\FrameGraph\Passes">
       <UniqueIdentifier>{a634bc32-c40b-449f-bc51-2ba19ac989c2}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Core\Scene\SceneDescription">
+      <UniqueIdentifier>{24412f04-87fe-406b-87ad-2445e12a3836}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Platform\Win32\Win32Application.hpp">
@@ -154,9 +157,6 @@
       <Filter>Core\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Core\Scene\Scene.hpp">
-      <Filter>Core\Scene</Filter>
-    </ClInclude>
-    <ClInclude Include="Core\Scene\SceneDescriptionObject.hpp">
       <Filter>Core\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Core\Scene\Camera.hpp">
@@ -375,6 +375,18 @@
     <ClInclude Include="Core\DataStructures\CompileTimeChrono.hpp">
       <Filter>Core\DataStructures</Filter>
     </ClInclude>
+    <ClInclude Include="Core\Scene\SceneDescription\SceneDescriptionObject.hpp">
+      <Filter>Core\Scene\SceneDescription</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Scene\SceneDescription\SceneDescription.hpp">
+      <Filter>Core\Scene\SceneDescription</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Scene\SceneDescription\MeshComponent.hpp">
+      <Filter>Core\Scene\SceneDescription</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Scene\SceneDescription\LocationComponent.hpp">
+      <Filter>Core\Scene\SceneDescription</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Platform\Win32\Win32Application.cpp">
@@ -411,9 +423,6 @@
       <Filter>Core</Filter>
     </ClCompile>
     <ClCompile Include="Core\Scene\SceneDescription.cpp">
-      <Filter>Core\Scene</Filter>
-    </ClCompile>
-    <ClCompile Include="Core\Scene\SceneDescriptionObject.cpp">
       <Filter>Core\Scene</Filter>
     </ClCompile>
     <ClCompile Include="Core\Scene\Camera.cpp">
@@ -602,6 +611,12 @@
     <ClCompile Include="Rendering\Common\FrameGraph\FrameGraphDescription.cpp">
       <Filter>Rendering\Common\FrameGraph</Filter>
     </ClCompile>
+    <ClCompile Include="Core\Scene\SceneDescription\SceneDescription.cpp">
+      <Filter>Core\Scene\SceneDescription</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Scene\SceneDescription\SceneDescriptionObject.cpp">
+      <Filter>Core\Scene\SceneDescription</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="Platform\Win32\Win32Util.inl">
@@ -609,9 +624,6 @@
     </None>
     <None Include="Core\Allocators\StackAllocator.inl">
       <Filter>Core\Allocators</Filter>
-    </None>
-    <None Include="Core\Scene\SceneObjectLocation.hpp">
-      <Filter>Core\Scene</Filter>
     </None>
     <None Include="Shaders\D3D12\GBuffer\GBufferInclude.hlsli">
       <Filter>Shaders\D3D12\GBuffer</Filter>
