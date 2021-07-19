@@ -51,7 +51,8 @@ void ModernRenderableSceneBuilder::CreateSceneMeshMetadata(std::vector<std::wstr
 	mVertexBufferData.clear();
 	mIndexBufferData.clear();
 
-	mSceneToBuild->mSceneMeshes.clear();
+	mSceneToBuild->mRigidSceneObjects.clear();
+	mSceneToBuild->mStaticSceneObjects.clear();
 	mSceneToBuild->mSceneSubobjects.clear();
 
 	std::unordered_map<std::wstring, size_t> textureVecIndices;

@@ -93,12 +93,7 @@ void Vulkan::GBufferPass::RecordExecution(VkCommandBuffer commandBuffer, const R
 	//TODO: Secondary command buffers
 	vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-	std::array<VkDescriptorSet, 3> descriptorSets;
-	descriptorSets[mSamplerSetNumber]       = mSamplerSet;
-	descriptorSets[mSceneMaterialSetNumber] = mSceneMaterialDataSet;
-	descriptorSets[mSceneObjectSetNumber]   = mSceneObjectDataSet;
-
-	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout, 0, (uint32_t)descriptorSets.size(), descriptorSets.data(), 0, nullptr);
+	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout, 0, (uint32_t)mSceneDescriptorSets.size(), mSceneDescriptorSets.data(), 0, nullptr);
 	scene->PrepareDrawBuffers(commandBuffer);
 	
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mStaticPipeline);

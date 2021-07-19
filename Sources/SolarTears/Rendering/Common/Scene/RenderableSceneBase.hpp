@@ -3,12 +3,13 @@
 #include <DirectXMath.h>
 #include "RenderableSceneMisc.hpp"
 #include "../../../Core/Scene/Scene.hpp"
+#include "../../../Core/Scene/SceneDescription/LocationComponent.hpp"
 #include <span>
 
 struct ObjectDataUpdateInfo
 {
 	RenderableSceneMeshHandle ObjectId;
-	SceneObjectLocation       ObjectLocation;
+	LocationComponent         ObjectLocation;
 };
 
 struct alignas(DirectX::XMMATRIX) FrameDataUpdateInfo
@@ -68,8 +69,11 @@ public:
 	virtual void UpdateSceneObjects(const FrameDataUpdateInfo& frameUpdate, const std::span<ObjectDataUpdateInfo> objectUpdates) = 0;
 
 protected:
-	PerObjectData PackObjectData(const SceneObjectLocation& sceneObjectLocation)  const;
+	PerObjectData PackObjectData(const LocationComponent& sceneObjectLocation)  const;
 	PerFrameData  PackFrameData(DirectX::FXMMATRIX View, DirectX::FXMMATRIX Proj) const;
+
+	size_t  ObjectArrayIndex(const RenderableSceneMeshHandle meshHandle);
+	uint8_t ObjectType(const RenderableSceneMeshHandle meshHandle);
 
 protected:
 	std::vector<SceneObject> mStaticSceneObjects;

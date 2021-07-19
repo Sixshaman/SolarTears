@@ -10,17 +10,17 @@ class ModernRenderableScene: public RenderableSceneBase
 {
 	friend class ModernRenderableSceneBuilder;
 
-	struct ObjectUpdateMetadata
+	struct RigidObjectUpdateMetadata
 	{
-		RenderableSceneMeshHandle MeshHandle;
-		uint32_t                  ObjectDataIndex;
+		uint32_t MeshIndex;
+		uint32_t ObjectDataIndex;
 	};
 
 public:
 	ModernRenderableScene(const FrameCounter* frameCounter, uint64_t constantDataAlignment);
 	~ModernRenderableScene();
 
-	void UpdateSceneObjects(const FrameDataUpdateInfo& frameUpdate, const std::span<ObjectDataUpdateInfo> objectUpdates) override final;
+	void UpdateSceneObjects(const FrameDataUpdateInfo& frameUpdate, const std::span<ObjectDataUpdateInfo> rigidObjectUpdates) override final;
 
 protected:
 	uint64_t CalculatePerMaterialDataOffset(uint32_t materialIndex)                                 const;
@@ -33,10 +33,10 @@ protected:
 
 protected:
 	//Created from outside
-	std::vector<ObjectUpdateMetadata> mPrevFrameMeshUpdates; //Sorted, ping-pongs with mNextFrameMeshUpdates
-	std::vector<ObjectUpdateMetadata> mNextFrameMeshUpdates; //Sorted, ping-pongs with mPrevFrameMeshUpdates
+	std::vector<RigidObjectUpdateMetadata> mPrevFrameRigidMeshUpdates; //Sorted, ping-pongs with mNextFrameMeshUpdates
+	std::vector<RigidObjectUpdateMetadata> mNextFrameRigidMeshUpdates; //Sorted, ping-pongs with mPrevFrameMeshUpdates
 
-	std::vector<RenderableSceneMeshHandle> mCurrFrameMeshUpdates; //Sorted, used immediately each frame for rendering
+	std::vector<uint32_t> mCurrFrameRigidMeshUpdates; //Sorted, used immediately each frame for rendering
 
 	std::vector<PerObjectData> mPrevFrameDataToUpdate;
 	std::vector<PerObjectData> mCurrFrameDataToUpdate;

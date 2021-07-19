@@ -3,6 +3,7 @@
 #include "../VulkanRenderPass.hpp"
 #include "../../../Common/FrameGraph/Passes/GBufferPass.hpp"
 #include "../../../3rdParty/SPIRV-Reflect/spirv_reflect.h"
+#include <span>
 
 namespace Vulkan
 {
@@ -35,13 +36,7 @@ namespace Vulkan
 		VkPipeline       mStaticPipeline;
 		VkPipeline       mRigidPipeline;
 
-		VkDescriptorSet mSamplerSet;
-		VkDescriptorSet mSceneMaterialDataSet;
-		VkDescriptorSet mSceneObjectDataSet;
-
-		uint32_t mSamplerSetNumber;
-		uint32_t mSceneMaterialSetNumber;
-		uint32_t mSceneObjectSetNumber;
+		std::span<VkDescriptorSet> mSceneDescriptorSets;
 
 		uint32_t           mMaterialIndexPushConstantOffset;
 		VkShaderStageFlags mMaterialIndexPushConstantStages;

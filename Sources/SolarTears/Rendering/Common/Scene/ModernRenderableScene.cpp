@@ -15,7 +15,7 @@ ModernRenderableScene::~ModernRenderableScene()
 {
 }
 
-void ModernRenderableScene::UpdateSceneObjects(const FrameDataUpdateInfo& frameUpdate, const std::span<ObjectDataUpdateInfo> objectUpdates)
+void ModernRenderableScene::UpdateSceneObjects(const FrameDataUpdateInfo& frameUpdate, const std::span<ObjectDataUpdateInfo> rigidObjectUpdates)
 {
 	uint32_t prevFrameUpdateIndex = 0;
 	uint32_t currFrameUpdateIndex = 0;
@@ -24,66 +24,66 @@ void ModernRenderableScene::UpdateSceneObjects(const FrameDataUpdateInfo& frameU
 	uint32_t objectUpdateIndex = 0;
 
 	//Merge mPrevFrameMeshUpdates and objectUpdates into updates for the next frame and leftovers, keeping the result sorted
-	while(mPrevFrameMeshUpdates[prevFrameUpdateIndex].MeshHandle != INVALID_SCENE_MESH_HANDLE || objectUpdateIndex < objectUpdates.size())
+	while(mPrevFrameRigidMeshUpdates[prevFrameUpdateIndex].MeshIndex != (uint32_t)(-1) || objectUpdateIndex < rigidObjectUpdates.size())
 	{
-		RenderableSceneMeshHandle updatedObjectPrevFrame = mPrevFrameMeshUpdates[prevFrameUpdateIndex].MeshHandle;
-		RenderableSceneMeshHandle updatedObjectToMerge   = objectUpdates[objectUpdateIndex].ObjectId;
+		uint32_t updatedObjectPrevFrameIndex = mPrevFrameRigidMeshUpdates[prevFrameUpdateIndex].MeshIndex;
+		uint32_t updatedObjectToMergeIndex   = (uint32_t)ObjectArrayIndex(rigidObjectUpdates[objectUpdateIndex].ObjectId);
 
-		if(updatedObjectPrevFrame < updatedObjectToMerge)
+		if(updatedObjectPrevFrameIndex < updatedObjectToMergeIndex)
 		{
-			uint32_t prevDataIndex = mPrevFrameMeshUpdates[objectUpdateIndex].ObjectDataIndex;
+			uint32_t prevDataIndex = mPrevFrameRigidMeshUpdates[objectUpdateIndex].ObjectDataIndex;
 
 			//Schedule 1 update for the current frame
-			mCurrFrameMeshUpdates[currFrameUpdateIndex]  = updatedObjectPrevFrame;
-			mCurrFrameDataToUpdate[currFrameUpdateIndex] = mPrevFrameDataToUpdate[prevDataIndex];
+			mCurrFrameRigidMeshUpdates[currFrameUpdateIndex] = updatedObjectPrevFrameIndex;
+			mCurrFrameDataToUpdate[currFrameUpdateIndex]     = mPrevFrameDataToUpdate[prevDataIndex];
 
 			//The remaining updates of the same object go to the next frame
-			while(mPrevFrameMeshUpdates[++prevFrameUpdateIndex].MeshHandle == updatedObjectPrevFrame)
+			while(mPrevFrameRigidMeshUpdates[++prevFrameUpdateIndex].MeshIndex == updatedObjectPrevFrameIndex)
 			{
-				mNextFrameMeshUpdates[nextFrameUpdateIndex++] =
+				mNextFrameRigidMeshUpdates[nextFrameUpdateIndex++] =
 				{
-					.MeshHandle      = updatedObjectPrevFrame,
+					.MeshIndex       = updatedObjectPrevFrameIndex,
 					.ObjectDataIndex = currFrameUpdateIndex
 				};
 			}
 
 			currFrameUpdateIndex++;
 		}
-		else if(updatedObjectPrevFrame == updatedObjectToMerge)
+		else if(updatedObjectPrevFrameIndex == updatedObjectToMergeIndex)
 		{
 			//Grab 1 update from objectUpdate into the current frame
-			mCurrFrameMeshUpdates[currFrameUpdateIndex]  = updatedObjectToMerge;
-			mCurrFrameDataToUpdate[currFrameUpdateIndex] = PackObjectData(objectUpdates[objectUpdateIndex].ObjectLocation);
+			mCurrFrameRigidMeshUpdates[currFrameUpdateIndex] = updatedObjectToMergeIndex;
+			mCurrFrameDataToUpdate[currFrameUpdateIndex]     = PackObjectData(rigidObjectUpdates[objectUpdateIndex].ObjectLocation);
 
 			//Grab the same update for next (InFlightFrameCount - 1) frames
 			for(int i = 1; i < Utils::InFlightFrameCount; i++)
 			{
-				mNextFrameMeshUpdates[nextFrameUpdateIndex++] = 
+				mNextFrameRigidMeshUpdates[nextFrameUpdateIndex++] =
 				{
-					.MeshHandle      = updatedObjectToMerge,
+					.MeshIndex       = updatedObjectToMergeIndex,
 					.ObjectDataIndex = currFrameUpdateIndex
 				};
 			}
 
 			//The previous updates don't matter anymore, they get rewritten
-			while(mPrevFrameMeshUpdates[++prevFrameUpdateIndex].MeshHandle == updatedObjectPrevFrame);
+			while(mPrevFrameRigidMeshUpdates[++prevFrameUpdateIndex].MeshIndex == updatedObjectPrevFrameIndex);
 
 			//Go to the next object update
 			objectUpdateIndex++;
 			currFrameUpdateIndex++;
 		}
-		else if(updatedObjectPrevFrame > updatedObjectToMerge)
+		else if(updatedObjectPrevFrameIndex > updatedObjectToMergeIndex)
 		{
 			//Grab 1 update from objectUpdate into the current frame
-			mCurrFrameMeshUpdates[currFrameUpdateIndex]  = updatedObjectToMerge;
-			mCurrFrameDataToUpdate[currFrameUpdateIndex] = PackObjectData(objectUpdates[objectUpdateIndex].ObjectLocation);
+			mCurrFrameRigidMeshUpdates[currFrameUpdateIndex] = updatedObjectToMergeIndex;
+			mCurrFrameDataToUpdate[currFrameUpdateIndex]     = PackObjectData(rigidObjectUpdates[objectUpdateIndex].ObjectLocation);
 
 			//Grab the same update for next (InFlightFrameCount - 1) frames
 			for(int i = 1; i < Utils::InFlightFrameCount; i++)
 			{
-				mNextFrameMeshUpdates[nextFrameUpdateIndex++] = 
+				mNextFrameRigidMeshUpdates[nextFrameUpdateIndex++] =
 				{
-					.MeshHandle      = updatedObjectToMerge,
+					.MeshIndex       = updatedObjectToMergeIndex,
 					.ObjectDataIndex = currFrameUpdateIndex
 				};
 			}
@@ -94,8 +94,8 @@ void ModernRenderableScene::UpdateSceneObjects(const FrameDataUpdateInfo& frameU
 		}
 	}
 	
-	mNextFrameMeshUpdates[nextFrameUpdateIndex] = {.MeshHandle = INVALID_SCENE_MESH_HANDLE, .ObjectDataIndex = (uint32_t)(-1)};
-	std::swap(mPrevFrameMeshUpdates, mNextFrameMeshUpdates);
+	mNextFrameRigidMeshUpdates[nextFrameUpdateIndex] = {.MeshIndex = (uint32_t)(-1), .ObjectDataIndex = (uint32_t)(-1)};
+	std::swap(mPrevFrameRigidMeshUpdates, mNextFrameRigidMeshUpdates);
 
 
 	//Do not need to worry about calling vkFlushMemoryMappedRanges, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT will handle this
@@ -108,9 +108,9 @@ void ModernRenderableScene::UpdateSceneObjects(const FrameDataUpdateInfo& frameU
 	
 	for(auto updateIndex = 0; updateIndex < currFrameUpdateIndex; updateIndex++)
 	{
-		uint32_t meshId = mCurrFrameMeshUpdates[updateIndex].Id;
+		uint32_t meshIndex = mCurrFrameRigidMeshUpdates[updateIndex];
 
-		uint64_t objectDataOffset = CalculatePerObjectDataOffset(frameResourceIndex, meshId);
+		uint64_t objectDataOffset = CalculatePerObjectDataOffset(frameResourceIndex, meshIndex);
 		memcpy((std::byte*)mSceneConstantDataBufferPointer + objectDataOffset, &mCurrFrameDataToUpdate[updateIndex], sizeof(PerObjectData));
 	}
 

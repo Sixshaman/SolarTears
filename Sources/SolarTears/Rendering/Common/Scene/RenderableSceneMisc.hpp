@@ -23,7 +23,7 @@ struct RenderableSceneMesh
 
 struct RenderableSceneMeshHandle
 {
-	uint32_t Id;
+	uint64_t Id; //8 bits for object type, 56 bits for the index into the corresponding array
 
 	bool operator==(const RenderableSceneMeshHandle right) const { return Id == right.Id; }
 	bool operator!=(const RenderableSceneMeshHandle right) const { return Id != right.Id; }
@@ -31,4 +31,4 @@ struct RenderableSceneMeshHandle
 	bool operator> (const RenderableSceneMeshHandle right) const { return Id >  right.Id; }
 };
 
-static constexpr RenderableSceneMeshHandle INVALID_SCENE_MESH_HANDLE = {.Id = (uint32_t)(-1)};
+static constexpr RenderableSceneMeshHandle INVALID_SCENE_MESH_HANDLE = {.Id = (uint64_t)(-1)};

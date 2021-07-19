@@ -8,7 +8,7 @@ RenderableSceneBase::~RenderableSceneBase()
 {
 }
 
-RenderableSceneBase::PerObjectData RenderableSceneBase::PackObjectData(const SceneObjectLocation& sceneObjectLocation) const
+RenderableSceneBase::PerObjectData RenderableSceneBase::PackObjectData(const LocationComponent& sceneObjectLocation) const
 {
 	const DirectX::XMVECTOR scale    = DirectX::XMVectorSet(sceneObjectLocation.Scale, sceneObjectLocation.Scale, sceneObjectLocation.Scale, 0.0f);
 	const DirectX::XMVECTOR rotation = DirectX::XMLoadFloat4(&sceneObjectLocation.RotationQuaternion);
@@ -33,4 +33,14 @@ RenderableSceneBase::PerFrameData RenderableSceneBase::PackFrameData(DirectX::FX
 	{
 		.ViewProjMatrix = viewProj
 	};
+}
+
+size_t RenderableSceneBase::ObjectArrayIndex(const RenderableSceneMeshHandle meshHandle)
+{
+	return meshHandle.Id & 0x00ffffffffffffffull;
+}
+
+uint8_t RenderableSceneBase::ObjectType(const RenderableSceneMeshHandle meshHandle)
+{
+	return uint8_t(meshHandle.Id & 0xff00000000000000ull) >> 56;
 }
