@@ -4,7 +4,6 @@
 #include <string>
 #include <unordered_map>
 #include "Camera.hpp"
-#include "SceneObjectLocation.hpp"
 #include "../../Rendering/Common/Scene/RenderableSceneMisc.hpp"
 
 class RenderableSceneBase;
@@ -15,15 +14,11 @@ class Scene
 	friend class SceneDescription;
 
 private:
-	//TODO: Cache-friendliness
 	struct SceneObject
 	{
 		const uint64_t Id;
 
 		RenderableSceneMeshHandle RenderableHandle;
-
-		SceneObjectLocation Location;
-		bool                DirtyFlag;
 	};
 
 public:

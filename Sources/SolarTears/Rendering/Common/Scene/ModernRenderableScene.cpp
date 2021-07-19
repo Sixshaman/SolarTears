@@ -15,7 +15,7 @@ ModernRenderableScene::~ModernRenderableScene()
 {
 }
 
-void ModernRenderableScene::UpdateSceneObjects(const FrameDataUpdateInfo& frameUpdate, const std::span<ObjectDataUpdateInfo> rigidObjectUpdates)
+void ModernRenderableScene::UpdateRigidSceneObjects(const FrameDataUpdateInfo& frameUpdate, const std::span<ObjectDataUpdateInfo> rigidObjectUpdates)
 {
 	uint32_t prevFrameUpdateIndex = 0;
 	uint32_t currFrameUpdateIndex = 0;
@@ -26,6 +26,8 @@ void ModernRenderableScene::UpdateSceneObjects(const FrameDataUpdateInfo& frameU
 	//Merge mPrevFrameMeshUpdates and objectUpdates into updates for the next frame and leftovers, keeping the result sorted
 	while(mPrevFrameRigidMeshUpdates[prevFrameUpdateIndex].MeshIndex != (uint32_t)(-1) || objectUpdateIndex < rigidObjectUpdates.size())
 	{
+		assert(ObjectType(rigidObjectUpdates[objectUpdateIndex].ObjectId) == SceneObjectType::Rigid);
+
 		uint32_t updatedObjectPrevFrameIndex = mPrevFrameRigidMeshUpdates[prevFrameUpdateIndex].MeshIndex;
 		uint32_t updatedObjectToMergeIndex   = (uint32_t)ObjectArrayIndex(rigidObjectUpdates[objectUpdateIndex].ObjectId);
 

@@ -20,7 +20,7 @@ public:
 	ModernRenderableScene(const FrameCounter* frameCounter, uint64_t constantDataAlignment);
 	~ModernRenderableScene();
 
-	void UpdateSceneObjects(const FrameDataUpdateInfo& frameUpdate, const std::span<ObjectDataUpdateInfo> rigidObjectUpdates) override final;
+	void UpdateRigidSceneObjects(const FrameDataUpdateInfo& frameUpdate, const std::span<ObjectDataUpdateInfo> rigidObjectUpdates) override final;
 
 protected:
 	uint64_t CalculatePerMaterialDataOffset(uint32_t materialIndex)                                 const;

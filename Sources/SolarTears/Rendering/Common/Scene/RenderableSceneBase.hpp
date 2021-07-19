@@ -28,6 +28,14 @@ enum class SceneDataType: uint32_t
 	Count
 };
 
+enum class SceneObjectType: uint8_t
+{
+	Static = 0,
+	Rigid,
+
+	Count
+};
+
 class RenderableSceneBase
 {
 protected:
@@ -66,14 +74,14 @@ public:
 	RenderableSceneBase(uint32_t maxDirtyFrames);
 	~RenderableSceneBase();
 
-	virtual void UpdateSceneObjects(const FrameDataUpdateInfo& frameUpdate, const std::span<ObjectDataUpdateInfo> objectUpdates) = 0;
+	virtual void UpdateRigidSceneObjects(const FrameDataUpdateInfo& frameUpdate, const std::span<ObjectDataUpdateInfo> objectUpdates) = 0;
 
 protected:
 	PerObjectData PackObjectData(const LocationComponent& sceneObjectLocation)  const;
 	PerFrameData  PackFrameData(DirectX::FXMMATRIX View, DirectX::FXMMATRIX Proj) const;
 
-	size_t  ObjectArrayIndex(const RenderableSceneMeshHandle meshHandle);
-	uint8_t ObjectType(const RenderableSceneMeshHandle meshHandle);
+	size_t          ObjectArrayIndex(const RenderableSceneMeshHandle meshHandle);
+	SceneObjectType ObjectType(const RenderableSceneMeshHandle meshHandle);
 
 protected:
 	std::vector<SceneObject> mStaticSceneObjects;

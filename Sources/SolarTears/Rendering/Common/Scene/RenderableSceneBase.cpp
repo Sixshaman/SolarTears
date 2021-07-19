@@ -40,7 +40,7 @@ size_t RenderableSceneBase::ObjectArrayIndex(const RenderableSceneMeshHandle mes
 	return meshHandle.Id & 0x00ffffffffffffffull;
 }
 
-uint8_t RenderableSceneBase::ObjectType(const RenderableSceneMeshHandle meshHandle)
+SceneObjectType RenderableSceneBase::ObjectType(const RenderableSceneMeshHandle meshHandle)
 {
-	return uint8_t(meshHandle.Id & 0xff00000000000000ull) >> 56;
+	return (SceneObjectType)((meshHandle.Id & 0xff00000000000000ull) >> 56);
 }

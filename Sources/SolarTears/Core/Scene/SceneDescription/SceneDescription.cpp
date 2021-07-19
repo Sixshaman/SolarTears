@@ -1,4 +1,5 @@
 #include "SceneDescription.hpp"
+#include "MeshComponent.hpp"
 
 SceneDescription::SceneDescription()
 {
@@ -8,9 +9,12 @@ SceneDescription::SceneDescription()
 	mCameraVerticalFov = DirectX::XM_PIDIV2;
 
 	SceneDescriptionObject& cameraObject = mSceneObjects.emplace_back(mSceneObjects.size());
-	cameraObject.SetPosition(DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f));
-	cameraObject.SetRotation(DirectX::XMQuaternionIdentity());
-	cameraObject.SetScale(1.0f);
+	cameraObject.SetLocationComponent(
+	{
+		.Position           = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f),
+		.Scale              = 1.0f,
+		.RotationQuaternion = DirectX::XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f),
+	});
 
 	mCameraObjectIndex = mSceneObjects.size() - 1;
 }
@@ -34,7 +38,7 @@ SceneDescriptionObject& SceneDescription::GetCameraSceneObject()
 
 void SceneDescription::SetCameraPosition(DirectX::XMVECTOR pos)
 {
-	mSceneObjects[mCameraObjectIndex].SetPosition(pos);
+	DirectX::XMStoreFloat3(&mSceneObjects[mCameraObjectIndex].GetLocationComponent()->Position, pos);
 }
 
 void SceneDescription::SetCameraLook(DirectX::XMVECTOR look)
@@ -47,7 +51,7 @@ void SceneDescription::SetCameraLook(DirectX::XMVECTOR look)
 	if(DirectX::XMVector3NearEqual(rotAxis, DirectX::XMVectorZero(), DirectX::XMVectorSplatConstant(1, 16)))
 	{
 		//180 degrees rotation about an arbitrary axis
-		mSceneObjects[mCameraObjectIndex].SetRotation(DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f));
+		mSceneObjects[mCameraObjectIndex].GetLocationComponent()->RotationQuaternion = DirectX::XMFLOAT4(0.0f, 1.0f, 0.0f, 0.0f);
 	}
 	else
 	{
@@ -61,7 +65,7 @@ void SceneDescription::SetCameraLook(DirectX::XMVECTOR look)
 		DirectX::XMVECTOR twiceQuaternion = DirectX::XMVectorSetW(rotAxis, cosAngle);
 
 		DirectX::XMVECTOR midQuaternion = DirectX::XMQuaternionNormalize(DirectX::XMVectorAdd(unitQuaternion, twiceQuaternion));
-		mSceneObjects[mCameraObjectIndex].SetRotation(midQuaternion);
+		DirectX::XMStoreFloat4(&mSceneObjects[mCameraObjectIndex].GetLocationComponent()->RotationQuaternion, midQuaternion);
 	}
 }
 
@@ -104,7 +108,7 @@ void SceneDescription::BuildRenderableComponent(RenderableSceneBuilderBase* rend
 {
 	for(size_t i = 0; i < mSceneObjects.size(); i++)
 	{
-		SceneDescriptionObject::MeshComponent* meshComponent = mSceneObjects[i].GetMeshComponent();
+		MeshComponent* meshComponent = mSceneObjects[i].GetMeshComponent();
 		if(meshComponent != nullptr)
 		{
 			RenderableSceneMesh renderableMesh;
