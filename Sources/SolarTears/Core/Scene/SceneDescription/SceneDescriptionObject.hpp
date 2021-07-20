@@ -3,9 +3,9 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include "../SceneObjectLocation.hpp"
 
 class MeshComponent;
-class LocationComponent;
 
 class SceneDescriptionObject
 {
@@ -21,15 +21,17 @@ public:
 
 	uint64_t GetEntityId() const;
 
-	void SetMeshComponent(const MeshComponent& meshComponent);
-	void SetLocationComponent(const LocationComponent& locationComponent);
+	void SetLocation(const SceneObjectLocation& location);
+	SceneObjectLocation& GetLocation();
+	const SceneObjectLocation& GetLocation() const;
 
-	MeshComponent*     GetMeshComponent()     const;
-	LocationComponent* GetLocationComponent() const;
+	void SetMeshComponent(const MeshComponent& meshComponent);
+	MeshComponent* GetMeshComponent() const;
 
 private:
 	uint64_t mEntityId;
 
-	std::unique_ptr<MeshComponent>     mMeshComponent;
-	std::unique_ptr<LocationComponent> mLocationComponent;
+	SceneObjectLocation mLocation; //All scene objects have a location component
+
+	std::unique_ptr<MeshComponent> mMeshComponent;
 };

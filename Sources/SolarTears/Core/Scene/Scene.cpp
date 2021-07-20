@@ -80,10 +80,9 @@ void Scene::UpdateScene()
 
 void Scene::UpdateRenderableComponent()
 {
-	//TODO: keep only the list of changed objects (no dirty flag)
 	for(size_t i = 0; i < mSceneObjects.size(); i++)
 	{
-		if(mSceneObjects[i].RenderableHandle != INVALID_SCENE_MESH_HANDLE && mSceneObjects[i].DirtyFlag)
+		if(mSceneObjects[i].RenderableHandle != INVALID_SCENE_OBJECT_HANDLE)
 		{
 			mRenderableComponentRef->UpdateSceneMeshData(mSceneObjects[i].RenderableHandle, mSceneObjects[i].Location);
 			mSceneObjects[i].DirtyFlag = false;
@@ -104,5 +103,5 @@ void Scene::UpdateRenderableComponent()
 		.ProjMatrix = mCamera.GetProjMatrix()
 	};
 
-	mRenderableComponentRef->UpdateRigidSceneObjects(frameUpdateInfo, )
+	mRenderableComponentRef->UpdateRigidSceneObjects(frameUpdateInfo, mCurrFrameRenderableUpdates);
 }

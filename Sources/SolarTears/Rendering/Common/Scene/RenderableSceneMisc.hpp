@@ -5,6 +5,19 @@
 #include <vector>
 #include <DirectXMath.h>
 
+struct RenderableSceneObjectHandle
+{
+	uint64_t Id; //8 bits for object type, 56 bits for the index into the corresponding array
+
+	bool operator==(const RenderableSceneObjectHandle right) const { return Id == right.Id; }
+	bool operator!=(const RenderableSceneObjectHandle right) const { return Id != right.Id; }
+	bool operator< (const RenderableSceneObjectHandle right) const { return Id <  right.Id; }
+	bool operator> (const RenderableSceneObjectHandle right) const { return Id >  right.Id; }
+};
+
+static constexpr RenderableSceneObjectHandle INVALID_SCENE_OBJECT_HANDLE = {.Id = (uint64_t)(-1)};
+
+
 struct RenderableSceneVertex
 {
 	DirectX::XMFLOAT3 Position;
@@ -14,21 +27,14 @@ struct RenderableSceneVertex
 
 using RenderableSceneIndex = uint32_t;
 
-struct RenderableSceneMesh
+struct ObjectDataUpdateInfo
 {
-	std::vector<RenderableSceneVertex> Vertices;
-	std::vector<RenderableSceneIndex>  Indices;
-	std::wstring                       TextureFilename;
+	RenderableSceneObjectHandle ObjectId;
+	SceneObjectLocation         NewObjectLocation;
 };
 
-struct RenderableSceneMeshHandle
+struct alignas(DirectX::XMMATRIX) FrameDataUpdateInfo
 {
-	uint64_t Id; //8 bits for object type, 56 bits for the index into the corresponding array
-
-	bool operator==(const RenderableSceneMeshHandle right) const { return Id == right.Id; }
-	bool operator!=(const RenderableSceneMeshHandle right) const { return Id != right.Id; }
-	bool operator< (const RenderableSceneMeshHandle right) const { return Id <  right.Id; }
-	bool operator> (const RenderableSceneMeshHandle right) const { return Id >  right.Id; }
+	DirectX::XMMATRIX ViewMatrix;
+	DirectX::XMMATRIX ProjMatrix;
 };
-
-static constexpr RenderableSceneMeshHandle INVALID_SCENE_MESH_HANDLE = {.Id = (uint64_t)(-1)};

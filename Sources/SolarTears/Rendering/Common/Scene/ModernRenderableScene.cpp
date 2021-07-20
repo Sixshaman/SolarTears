@@ -55,7 +55,7 @@ void ModernRenderableScene::UpdateRigidSceneObjects(const FrameDataUpdateInfo& f
 		{
 			//Grab 1 update from objectUpdate into the current frame
 			mCurrFrameRigidMeshUpdates[currFrameUpdateIndex] = updatedObjectToMergeIndex;
-			mCurrFrameDataToUpdate[currFrameUpdateIndex]     = PackObjectData(rigidObjectUpdates[objectUpdateIndex].ObjectLocation);
+			mCurrFrameDataToUpdate[currFrameUpdateIndex]     = PackObjectData(rigidObjectUpdates[objectUpdateIndex++].ObjectLocation);
 
 			//Grab the same update for next (InFlightFrameCount - 1) frames
 			for(int i = 1; i < Utils::InFlightFrameCount; i++)
@@ -70,15 +70,13 @@ void ModernRenderableScene::UpdateRigidSceneObjects(const FrameDataUpdateInfo& f
 			//The previous updates don't matter anymore, they get rewritten
 			while(mPrevFrameRigidMeshUpdates[++prevFrameUpdateIndex].MeshIndex == updatedObjectPrevFrameIndex);
 
-			//Go to the next object update
-			objectUpdateIndex++;
 			currFrameUpdateIndex++;
 		}
 		else if(updatedObjectPrevFrameIndex > updatedObjectToMergeIndex)
 		{
 			//Grab 1 update from objectUpdate into the current frame
 			mCurrFrameRigidMeshUpdates[currFrameUpdateIndex] = updatedObjectToMergeIndex;
-			mCurrFrameDataToUpdate[currFrameUpdateIndex]     = PackObjectData(rigidObjectUpdates[objectUpdateIndex].ObjectLocation);
+			mCurrFrameDataToUpdate[currFrameUpdateIndex]     = PackObjectData(rigidObjectUpdates[objectUpdateIndex++].ObjectLocation);
 
 			//Grab the same update for next (InFlightFrameCount - 1) frames
 			for(int i = 1; i < Utils::InFlightFrameCount; i++)
@@ -90,8 +88,6 @@ void ModernRenderableScene::UpdateRigidSceneObjects(const FrameDataUpdateInfo& f
 				};
 			}
 
-			//Go to the next object update
-			objectUpdateIndex++;
 			currFrameUpdateIndex++;
 		}
 	}

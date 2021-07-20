@@ -31,7 +31,7 @@ public:
 private:
 	std::vector<SceneDescriptionObject> mSceneObjects;
 
-	std::unordered_map<uint64_t, RenderableSceneMeshHandle> mSceneEntityMeshes;
+	std::unordered_map<uint64_t, RenderableSceneObjectHandle> mSceneEntityMeshes;
 
 	RenderableSceneBase* mRenderableSceneRef;
 

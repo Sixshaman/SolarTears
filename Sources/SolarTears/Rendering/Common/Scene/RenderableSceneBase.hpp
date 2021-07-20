@@ -3,41 +3,13 @@
 #include <DirectXMath.h>
 #include "RenderableSceneMisc.hpp"
 #include "../../../Core/Scene/Scene.hpp"
-#include "../../../Core/Scene/SceneDescription/LocationComponent.hpp"
+#include "../../../Core/Scene/SceneObjectLocation.hpp"
 #include <span>
-
-struct ObjectDataUpdateInfo
-{
-	RenderableSceneMeshHandle ObjectId;
-	LocationComponent         ObjectLocation;
-};
-
-struct alignas(DirectX::XMMATRIX) FrameDataUpdateInfo
-{
-	DirectX::XMMATRIX ViewMatrix;
-	DirectX::XMMATRIX ProjMatrix;
-};
-
-enum class SceneDataType: uint32_t
-{
-	ObjectData = 0x01,
-	FrameData,
-	MaterialData,
-	TextureData,
-
-	Count
-};
-
-enum class SceneObjectType: uint8_t
-{
-	Static = 0,
-	Rigid,
-
-	Count
-};
 
 class RenderableSceneBase
 {
+	friend class RenderableSceneBuilderBase;
+
 protected:
 	struct PerObjectData
 	{
@@ -70,6 +42,24 @@ protected:
 		uint32_t AfterLastSubobjectIndex;
 	};
 
+	enum class SceneDataType: uint32_t
+	{
+		ObjectData = 0x01,
+		FrameData,
+		MaterialData,
+		TextureData,
+
+		Count
+	};
+
+	enum class SceneObjectType: uint8_t
+	{
+		Static = 0,
+		Rigid,
+
+		Count
+	};
+
 public:
 	RenderableSceneBase(uint32_t maxDirtyFrames);
 	~RenderableSceneBase();
@@ -77,11 +67,11 @@ public:
 	virtual void UpdateRigidSceneObjects(const FrameDataUpdateInfo& frameUpdate, const std::span<ObjectDataUpdateInfo> objectUpdates) = 0;
 
 protected:
-	PerObjectData PackObjectData(const LocationComponent& sceneObjectLocation)  const;
+	PerObjectData PackObjectData(const SceneObjectLocation& sceneObjectLocation)  const;
 	PerFrameData  PackFrameData(DirectX::FXMMATRIX View, DirectX::FXMMATRIX Proj) const;
 
-	size_t          ObjectArrayIndex(const RenderableSceneMeshHandle meshHandle);
-	SceneObjectType ObjectType(const RenderableSceneMeshHandle meshHandle);
+	size_t          ObjectArrayIndex(const RenderableSceneObjectHandle meshHandle);
+	SceneObjectType ObjectType(const RenderableSceneObjectHandle meshHandle);
 
 protected:
 	std::vector<SceneObject> mStaticSceneObjects;

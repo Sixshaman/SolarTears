@@ -38,7 +38,7 @@ SceneDescriptionObject& SceneDescription::GetCameraSceneObject()
 
 void SceneDescription::SetCameraPosition(DirectX::XMVECTOR pos)
 {
-	DirectX::XMStoreFloat3(&mSceneObjects[mCameraObjectIndex].GetLocationComponent()->Position, pos);
+	DirectX::XMStoreFloat3(&mSceneObjects[mCameraObjectIndex].GetLocation()->Position, pos);
 }
 
 void SceneDescription::SetCameraLook(DirectX::XMVECTOR look)
@@ -51,7 +51,7 @@ void SceneDescription::SetCameraLook(DirectX::XMVECTOR look)
 	if(DirectX::XMVector3NearEqual(rotAxis, DirectX::XMVectorZero(), DirectX::XMVectorSplatConstant(1, 16)))
 	{
 		//180 degrees rotation about an arbitrary axis
-		mSceneObjects[mCameraObjectIndex].GetLocationComponent()->RotationQuaternion = DirectX::XMFLOAT4(0.0f, 1.0f, 0.0f, 0.0f);
+		mSceneObjects[mCameraObjectIndex].GetLocation()->RotationQuaternion = DirectX::XMFLOAT4(0.0f, 1.0f, 0.0f, 0.0f);
 	}
 	else
 	{
@@ -65,7 +65,7 @@ void SceneDescription::SetCameraLook(DirectX::XMVECTOR look)
 		DirectX::XMVECTOR twiceQuaternion = DirectX::XMVectorSetW(rotAxis, cosAngle);
 
 		DirectX::XMVECTOR midQuaternion = DirectX::XMQuaternionNormalize(DirectX::XMVectorAdd(unitQuaternion, twiceQuaternion));
-		DirectX::XMStoreFloat4(&mSceneObjects[mCameraObjectIndex].GetLocationComponent()->RotationQuaternion, midQuaternion);
+		DirectX::XMStoreFloat4(&mSceneObjects[mCameraObjectIndex].GetLocation()->RotationQuaternion, midQuaternion);
 	}
 }
 
@@ -85,7 +85,10 @@ void SceneDescription::BuildScene(Scene* scene)
 
 	for(size_t i = 0; i < mSceneObjects.size(); i++)
 	{
-		Scene::SceneObject sceneObject = {.Id = mSceneObjects[i].GetEntityId()};
+		Scene::SceneObject sceneObject = 
+		{
+			.Id = mSceneObjects[i].GetEntityId()
+		};
 
 		DirectX::XMStoreFloat3(&sceneObject.Location.Position,           mSceneObjects[i].GetPosition());
 		DirectX::XMStoreFloat4(&sceneObject.Location.RotationQuaternion, mSceneObjects[i].GetRotation());

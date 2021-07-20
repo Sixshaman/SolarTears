@@ -4,22 +4,14 @@
 #include <string>
 #include <unordered_map>
 #include "Camera.hpp"
-#include "../../Rendering/Common/Scene/RenderableSceneMisc.hpp"
+#include "SceneObject.hpp"
+#include "../../Rendering/Common/Scene/RenderableSceneBase.hpp"
 
-class RenderableSceneBase;
 class Inputter;
 
 class Scene
 {
 	friend class SceneDescription;
-
-private:
-	struct SceneObject
-	{
-		const uint64_t Id;
-
-		RenderableSceneMeshHandle RenderableHandle;
-	};
 
 public:
 	Scene();
@@ -38,4 +30,6 @@ private:
 	size_t mCameraSceneObjectIndex;
 
 	RenderableSceneBase* mRenderableComponentRef;
+
+	std::vector<ObjectDataUpdateInfo> mCurrFrameRenderableUpdates;
 };

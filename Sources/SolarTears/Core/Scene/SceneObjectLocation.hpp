@@ -2,7 +2,7 @@
 
 #include <DirectXMath.h>
 
-struct LocationComponent
+struct SceneObjectLocation
 {
 	DirectX::XMFLOAT3 Position;
 	float             Scale;

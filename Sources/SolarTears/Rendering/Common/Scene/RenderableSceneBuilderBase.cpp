@@ -8,13 +8,26 @@ RenderableSceneBuilderBase::~RenderableSceneBuilderBase()
 {
 }
 
-RenderableSceneMeshHandle RenderableSceneBuilderBase::AddSceneMesh(const RenderableSceneMesh& sceneMesh)
+RenderableSceneObjectHandle RenderableSceneBuilderBase::AddStaticSceneMesh(const RenderableSceneStaticMeshDescription& sceneMesh)
 {
-	mSceneMeshes.push_back(sceneMesh);
+	mSceneStaticMeshes.push_back(sceneMesh);
 	mSceneTextures.insert(sceneMesh.TextureFilename);
 
-	RenderableSceneMeshHandle outHandle;
-	outHandle.Id = (uint32_t)(mSceneMeshes.size() - 1);
+	return PackObjectInfo(RenderableSceneBase::SceneObjectType::Static, mSceneStaticMeshes.size() - 1);
+}
 
-	return outHandle;
+RenderableSceneObjectHandle RenderableSceneBuilderBase::AddRigidSceneMesh(const RenderableSceneRigidMeshDescription& sceneMesh)
+{
+	mSceneRigidMeshes.push_back(sceneMesh);
+	mSceneTextures.insert(sceneMesh.TextureFilename);
+
+	return PackObjectInfo(RenderableSceneBase::SceneObjectType::Rigid, mSceneRigidMeshes.size() - 1);
+}
+
+RenderableSceneObjectHandle RenderableSceneBuilderBase::PackObjectInfo(RenderableSceneBase::SceneObjectType objectType, uint32_t objectArrayIndex)
+{
+	return RenderableSceneObjectHandle
+	{
+		.Id = ((uint64_t)objectType << 56) | objectArrayIndex
+	};
 }
