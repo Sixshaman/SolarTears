@@ -384,8 +384,14 @@
     <ClInclude Include="Core\Scene\SceneDescription\MeshComponent.hpp">
       <Filter>Core\Scene\SceneDescription</Filter>
     </ClInclude>
-    <ClInclude Include="Core\Scene\SceneDescription\LocationComponent.hpp">
-      <Filter>Core\Scene\SceneDescription</Filter>
+    <ClInclude Include="Core\Scene\SceneObjectLocation.hpp">
+      <Filter>Core\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Scene\SceneObject.hpp">
+      <Filter>Core\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Common\Scene\RenderableSceneBuilderMisc.hpp">
+      <Filter>Rendering\Common\Scene</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

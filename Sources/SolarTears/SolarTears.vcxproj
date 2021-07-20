@@ -34,10 +34,11 @@
     <ClInclude Include="Core\Scene\Camera.hpp" />
     <ClInclude Include="Core\Scene\Scene.hpp" />
     <ClInclude Include="Core\Scene\SceneDescription.hpp" />
-    <ClInclude Include="Core\Scene\SceneDescription\LocationComponent.hpp" />
     <ClInclude Include="Core\Scene\SceneDescription\MeshComponent.hpp" />
     <ClInclude Include="Core\Scene\SceneDescription\SceneDescription.hpp" />
     <ClInclude Include="Core\Scene\SceneDescription\SceneDescriptionObject.hpp" />
+    <ClInclude Include="Core\Scene\SceneObject.hpp" />
+    <ClInclude Include="Core\Scene\SceneObjectLocation.hpp" />
     <ClInclude Include="Core\ThreadPool.hpp" />
     <ClInclude Include="Core\Timer.hpp" />
     <ClInclude Include="Core\Util.hpp" />
@@ -70,6 +71,7 @@
     <ClInclude Include="Rendering\Common\Scene\ModernRenderableSceneBuilder.hpp" />
     <ClInclude Include="Rendering\Common\Scene\RenderableSceneBase.hpp" />
     <ClInclude Include="Rendering\Common\Scene\RenderableSceneBuilderBase.hpp" />
+    <ClInclude Include="Rendering\Common\Scene\RenderableSceneBuilderMisc.hpp" />
     <ClInclude Include="Rendering\Common\Scene\RenderableSceneMisc.hpp" />
     <ClInclude Include="Rendering\D3D12\D3D12DeviceFeatures.hpp" />
     <ClInclude Include="Rendering\D3D12\D3D12DeviceQueues.hpp" />
