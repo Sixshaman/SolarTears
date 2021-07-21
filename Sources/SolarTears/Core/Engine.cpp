@@ -1,7 +1,7 @@
 #include "Engine.hpp"
 #include "FrameCounter.hpp"
 #include "FPSCounter.hpp"
-#include "Scene/SceneDescription.hpp"
+#include "Scene/SceneDescription/SceneDescription.hpp"
 #include "Scene/Scene.hpp"
 #include "../Input/Inputter.hpp"
 #include "../Rendering/Common/FrameGraph/FrameGraphConfig.hpp"
@@ -93,11 +93,14 @@ void Engine::CreateScene()
 	SceneDescription sceneDesc;
 
 	SceneDescriptionObject& sceneObject = sceneDesc.CreateEmptySceneObject();
-	sceneObject.SetPosition(DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f));
-	sceneObject.SetRotation(DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f));
-	sceneObject.SetScale(1.0f);
+	sceneObject.SetLocation(SceneObjectLocation
+	{
+		.Position           = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f),
+		.Scale              = 1.0f,
+		.RotationQuaternion = DirectX::XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f)
+	});
 
-	SceneDescriptionObject::MeshComponent meshComponent;
+	SceneObjectMeshComponent meshComponent;
 
 	DirectX::XMFLOAT3 objectPositions[] =
 	{
@@ -125,7 +128,7 @@ void Engine::CreateScene()
 
 	for(size_t i = 0; i < 4; i++)
 	{
-		SceneDescriptionObject::SceneObjectVertex vertex;
+		SceneObjectVertex vertex;
 		vertex.Position = objectPositions[i];
 		vertex.Normal   = objectNormals[i];
 		vertex.Texcoord = objectTexcoords[i];
@@ -141,6 +144,7 @@ void Engine::CreateScene()
 
 	meshComponent.TextureFilename = L"../Assets/Textures/Test1.dds";
 	sceneObject.SetMeshComponent(meshComponent);
+	sceneObject.SetStatic(true);
 
 	mRenderingSystem->InitScene(&sceneDesc);
 

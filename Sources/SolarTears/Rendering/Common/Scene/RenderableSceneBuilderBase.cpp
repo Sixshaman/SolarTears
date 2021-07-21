@@ -11,7 +11,7 @@ RenderableSceneBuilderBase::~RenderableSceneBuilderBase()
 RenderableSceneObjectHandle RenderableSceneBuilderBase::AddStaticSceneMesh(const RenderableSceneStaticMeshDescription& sceneMesh)
 {
 	mSceneStaticMeshes.push_back(sceneMesh);
-	mSceneTextures.insert(sceneMesh.TextureFilename);
+	mSceneTextures.insert(sceneMesh.MeshDataDescription.TextureFilename);
 
 	return PackObjectInfo(RenderableSceneBase::SceneObjectType::Static, mSceneStaticMeshes.size() - 1);
 }
@@ -19,7 +19,7 @@ RenderableSceneObjectHandle RenderableSceneBuilderBase::AddStaticSceneMesh(const
 RenderableSceneObjectHandle RenderableSceneBuilderBase::AddRigidSceneMesh(const RenderableSceneRigidMeshDescription& sceneMesh)
 {
 	mSceneRigidMeshes.push_back(sceneMesh);
-	mSceneTextures.insert(sceneMesh.TextureFilename);
+	mSceneTextures.insert(sceneMesh.MeshDataDescription.TextureFilename);
 
 	return PackObjectInfo(RenderableSceneBase::SceneObjectType::Rigid, mSceneRigidMeshes.size() - 1);
 }

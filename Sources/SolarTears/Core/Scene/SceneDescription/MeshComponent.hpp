@@ -11,7 +11,7 @@ struct SceneObjectVertex
 	DirectX::XMFLOAT2 Texcoord;
 };
 
-struct MeshComponent
+struct SceneObjectMeshComponent
 {
 	std::vector<SceneObjectVertex> Vertices;
 	std::vector<uint32_t>          Indices;

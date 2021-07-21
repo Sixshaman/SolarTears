@@ -9,7 +9,7 @@ SceneDescription::SceneDescription()
 	mCameraVerticalFov = DirectX::XM_PIDIV2;
 
 	SceneDescriptionObject& cameraObject = mSceneObjects.emplace_back(mSceneObjects.size());
-	cameraObject.SetLocationComponent(
+	cameraObject.SetLocation(
 	{
 		.Position           = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f),
 		.Scale              = 1.0f,
@@ -38,7 +38,7 @@ SceneDescriptionObject& SceneDescription::GetCameraSceneObject()
 
 void SceneDescription::SetCameraPosition(DirectX::XMVECTOR pos)
 {
-	DirectX::XMStoreFloat3(&mSceneObjects[mCameraObjectIndex].GetLocation()->Position, pos);
+	DirectX::XMStoreFloat3(&mSceneObjects[mCameraObjectIndex].GetLocation().Position, pos);
 }
 
 void SceneDescription::SetCameraLook(DirectX::XMVECTOR look)
@@ -51,7 +51,7 @@ void SceneDescription::SetCameraLook(DirectX::XMVECTOR look)
 	if(DirectX::XMVector3NearEqual(rotAxis, DirectX::XMVectorZero(), DirectX::XMVectorSplatConstant(1, 16)))
 	{
 		//180 degrees rotation about an arbitrary axis
-		mSceneObjects[mCameraObjectIndex].GetLocation()->RotationQuaternion = DirectX::XMFLOAT4(0.0f, 1.0f, 0.0f, 0.0f);
+		mSceneObjects[mCameraObjectIndex].GetLocation().RotationQuaternion = DirectX::XMFLOAT4(0.0f, 1.0f, 0.0f, 0.0f);
 	}
 	else
 	{
@@ -65,7 +65,7 @@ void SceneDescription::SetCameraLook(DirectX::XMVECTOR look)
 		DirectX::XMVECTOR twiceQuaternion = DirectX::XMVectorSetW(rotAxis, cosAngle);
 
 		DirectX::XMVECTOR midQuaternion = DirectX::XMQuaternionNormalize(DirectX::XMVectorAdd(unitQuaternion, twiceQuaternion));
-		DirectX::XMStoreFloat4(&mSceneObjects[mCameraObjectIndex].GetLocation()->RotationQuaternion, midQuaternion);
+		DirectX::XMStoreFloat4(&mSceneObjects[mCameraObjectIndex].GetLocation().RotationQuaternion, midQuaternion);
 	}
 }
 
@@ -85,20 +85,21 @@ void SceneDescription::BuildScene(Scene* scene)
 
 	for(size_t i = 0; i < mSceneObjects.size(); i++)
 	{
-		Scene::SceneObject sceneObject = 
-		{
-			.Id = mSceneObjects[i].GetEntityId()
-		};
-
-		DirectX::XMStoreFloat3(&sceneObject.Location.Position,           mSceneObjects[i].GetPosition());
-		DirectX::XMStoreFloat4(&sceneObject.Location.RotationQuaternion, mSceneObjects[i].GetRotation());
-		sceneObject.Location.Scale = mSceneObjects[i].GetScale();
+		auto renderableIt = mSceneEntityMeshes.find(mSceneObjects[i].GetEntityId());
 		
-		sceneObject.RenderableHandle = mSceneEntityMeshes[mSceneObjects[i].GetEntityId()];
+		RenderableSceneObjectHandle renderableHandle = INVALID_SCENE_OBJECT_HANDLE;
+		if(renderableIt != mSceneEntityMeshes.end())
+		{
+			renderableHandle = renderableIt->second;
+		}
 
-		sceneObject.DirtyFlag = true;
+		scene->mSceneObjects.emplace_back(SceneObject
+		{
+			.Id       = mSceneObjects[i].GetEntityId(),
+			.Location = mSceneObjects[i].GetLocation(),
 
-		scene->mSceneObjects.emplace_back(sceneObject);
+			.RenderableHandle = renderableHandle
+		});
 	}
 
 	//TODO: more camera control
@@ -111,29 +112,59 @@ void SceneDescription::BuildRenderableComponent(RenderableSceneBuilderBase* rend
 {
 	for(size_t i = 0; i < mSceneObjects.size(); i++)
 	{
-		MeshComponent* meshComponent = mSceneObjects[i].GetMeshComponent();
+		SceneObjectMeshComponent* meshComponent = mSceneObjects[i].GetMeshComponent();
 		if(meshComponent != nullptr)
 		{
-			RenderableSceneMesh renderableMesh;
-			
-			renderableMesh.Vertices.resize(meshComponent->Vertices.size());
-			for(size_t ver = 0; ver < meshComponent->Vertices.size(); ver++)
+			RenderableSceneMeshData renderableMeshData;
+			renderableMeshData.Vertices.resize(meshComponent->Vertices.size());
+			renderableMeshData.Indices.assign(meshComponent->Indices.begin(), meshComponent->Indices.end());
+			renderableMeshData.TextureFilename = meshComponent->TextureFilename;
+
+			if(mSceneObjects[i].IsStatic())
 			{
-				renderableMesh.Vertices[ver].Position = meshComponent->Vertices[ver].Position;
-				renderableMesh.Vertices[ver].Normal   = meshComponent->Vertices[ver].Normal;
-				renderableMesh.Vertices[ver].Texcoord = meshComponent->Vertices[ver].Texcoord;
-			}
+				//Bake the location into the object info
+				DirectX::XMVECTOR scale       = DirectX::XMVectorSet(mSceneObjects[i].GetLocation().Scale, mSceneObjects[i].GetLocation().Scale, mSceneObjects[i].GetLocation().Scale, 0.0f);
+				DirectX::XMVECTOR translation = DirectX::XMLoadFloat3(&mSceneObjects[i].GetLocation().Position);
+				DirectX::XMVECTOR rotation    = DirectX::XMLoadFloat4(&mSceneObjects[i].GetLocation().RotationQuaternion);
 
-			renderableMesh.Indices.resize(meshComponent->Indices.size());
-			for(size_t ind = 0; ind < meshComponent->Indices.size(); ind++)
+				DirectX::XMMATRIX meshTransform = DirectX::XMMatrixAffineTransformation(scale, DirectX::XMVectorZero(), rotation, translation);
+				for(size_t ver = 0; ver < meshComponent->Vertices.size(); ver++)
+				{
+					DirectX::XMVECTOR position = DirectX::XMLoadFloat3(&meshComponent->Vertices[ver].Position);
+					position = DirectX::XMVector3TransformCoord(position, meshTransform);
+					DirectX::XMStoreFloat3(&renderableMeshData.Vertices[ver].Position, position);
+
+					DirectX::XMVECTOR normal = DirectX::XMLoadFloat3(&meshComponent->Vertices[ver].Normal);
+					normal = DirectX::XMVector3TransformNormal(normal, meshTransform);
+					DirectX::XMStoreFloat3(&renderableMeshData.Vertices[ver].Normal, normal);
+
+					renderableMeshData.Vertices[ver].Texcoord = meshComponent->Vertices[ver].Texcoord;
+				}
+
+
+				RenderableSceneStaticMeshDescription meshDescription;
+				meshDescription.MeshDataDescription = std::move(renderableMeshData);
+
+				RenderableSceneObjectHandle meshHandle = renderableSceneBuilder->AddStaticSceneMesh(meshDescription);
+				mSceneEntityMeshes[mSceneObjects[i].GetEntityId()] = meshHandle;
+			}
+			else
 			{
-				renderableMesh.Indices[ind] = meshComponent->Indices[ind];
+				for (size_t ver = 0; ver < meshComponent->Vertices.size(); ver++)
+				{
+					renderableMeshData.Vertices[ver].Position = meshComponent->Vertices[ver].Position;
+					renderableMeshData.Vertices[ver].Normal   = meshComponent->Vertices[ver].Normal;
+					renderableMeshData.Vertices[ver].Texcoord = meshComponent->Vertices[ver].Texcoord;
+				}
+
+
+				RenderableSceneRigidMeshDescription meshDescription;
+				meshDescription.MeshDataDescription = std::move(renderableMeshData);
+				meshDescription.InitialLocation     = mSceneObjects[i].GetLocation();
+
+				RenderableSceneObjectHandle meshHandle = renderableSceneBuilder->AddRigidSceneMesh(meshDescription);
+				mSceneEntityMeshes[mSceneObjects[i].GetEntityId()] = meshHandle;
 			}
-
-			renderableMesh.TextureFilename = meshComponent->TextureFilename;
-
-			RenderableSceneMeshHandle meshHandle = renderableSceneBuilder->AddSceneMesh(renderableMesh);
-			mSceneEntityMeshes[mSceneObjects[i].GetEntityId()] = meshHandle;
 		}
 	}
 }

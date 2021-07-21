@@ -1,6 +1,11 @@
 #include "SceneDescriptionObject.hpp"
 #include "MeshComponent.hpp"
 
+static enum class SceneObjectFlags: uint64_t
+{
+	Static = 0x1, //The object never moves
+};
+
 SceneDescriptionObject::SceneDescriptionObject(uint64_t entityId): mEntityId(entityId)
 {
 }
@@ -45,12 +50,22 @@ const SceneObjectLocation& SceneDescriptionObject::GetLocation() const
 	return mLocation;
 }
 
-void SceneDescriptionObject::SetMeshComponent(const MeshComponent& meshComponent)
+void SceneDescriptionObject::SetMeshComponent(const SceneObjectMeshComponent& meshComponent)
 {
-	mMeshComponent = std::make_unique<MeshComponent>(meshComponent);
+	mMeshComponent = std::make_unique<SceneObjectMeshComponent>(meshComponent);
 }
 
-MeshComponent* SceneDescriptionObject::GetMeshComponent() const
+SceneObjectMeshComponent* SceneDescriptionObject::GetMeshComponent() const
 {
 	return mMeshComponent.get();
+}
+
+bool SceneDescriptionObject::IsStatic() const
+{
+	return mFlags & (uint64_t)SceneObjectFlags::Static;
+}
+
+void SceneDescriptionObject::SetStatic(bool isStatic)
+{
+	mFlags ^= (-(uint64_t)isStatic ^ mFlags) & (uint64_t)SceneObjectFlags::Static;
 }
