@@ -15,5 +15,5 @@ struct SceneObjectMeshComponent
 {
 	std::vector<SceneObjectVertex> Vertices;
 	std::vector<uint32_t>          Indices;
-	std::wstring                   TextureFilename;
+	std::string                    MaterialName;
 };

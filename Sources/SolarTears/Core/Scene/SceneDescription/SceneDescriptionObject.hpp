@@ -5,6 +5,7 @@
 #include <memory>
 #include "../SceneObjectLocation.hpp"
 #include "MeshComponent.hpp"
+#include "CameraComponent.hpp"
 
 class SceneDescriptionObject
 {
@@ -27,6 +28,9 @@ public:
 	void SetMeshComponent(const SceneObjectMeshComponent& meshComponent);
 	SceneObjectMeshComponent* GetMeshComponent() const;
 
+	void SetCameraComponent(const SceneObjectCameraComponent& cameraComponent);
+	SceneObjectCameraComponent* GetCameraComponent() const;
+
 	bool IsStatic() const;
 	void SetStatic(bool isStatic);
 
@@ -36,5 +40,6 @@ private:
 
 	SceneObjectLocation mLocation; //All scene objects have a location component
 
-	std::unique_ptr<SceneObjectMeshComponent> mMeshComponent;
+	std::unique_ptr<SceneObjectMeshComponent>   mMeshComponent;
+	std::unique_ptr<SceneObjectCameraComponent> mCameraComponent;
 };

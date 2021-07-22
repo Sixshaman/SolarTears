@@ -91,6 +91,10 @@ void Engine::CreateScene()
 	mScene = std::make_unique<Scene>();
 
 	SceneDescription sceneDesc;
+	sceneDesc.RenderingAssets().AddMaterial("TestMaterial", SceneMaterialAsset
+	{
+		.TextureFilename = L"../Assets/Textures/Test1.dds"
+	});
 
 	SceneDescriptionObject& sceneObject = sceneDesc.CreateEmptySceneObject();
 	sceneObject.SetLocation(SceneObjectLocation
@@ -142,7 +146,7 @@ void Engine::CreateScene()
 		0, 2, 3
 	};
 
-	meshComponent.TextureFilename = L"../Assets/Textures/Test1.dds";
+	meshComponent.MaterialName = "TestMaterial";
 	sceneObject.SetMeshComponent(meshComponent);
 	sceneObject.SetStatic(true);
 

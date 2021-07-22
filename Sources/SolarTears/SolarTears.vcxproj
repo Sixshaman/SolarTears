@@ -34,7 +34,11 @@
     <ClInclude Include="Core\Scene\Camera.hpp" />
     <ClInclude Include="Core\Scene\Scene.hpp" />
     <ClInclude Include="Core\Scene\SceneDescription.hpp" />
+    <ClInclude Include="Core\Scene\SceneDescription\AssetDatabase\RenderingAssetDatabase.hpp" />
+    <ClInclude Include="Core\Scene\SceneDescription\AssetDatabase\SceneMaterialAsset.hpp" />
+    <ClInclude Include="Core\Scene\SceneDescription\CameraComponent.hpp" />
     <ClInclude Include="Core\Scene\SceneDescription\MeshComponent.hpp" />
+    <ClInclude Include="Core\Scene\SceneDescription\QuaternionUtils.hpp" />
     <ClInclude Include="Core\Scene\SceneDescription\SceneDescription.hpp" />
     <ClInclude Include="Core\Scene\SceneDescription\SceneDescriptionObject.hpp" />
     <ClInclude Include="Core\Scene\SceneObject.hpp" />
@@ -123,6 +127,8 @@
     <ClCompile Include="Core\Scene\Camera.cpp" />
     <ClCompile Include="Core\Scene\Scene.cpp" />
     <ClCompile Include="Core\Scene\SceneDescription.cpp" />
+    <ClCompile Include="Core\Scene\SceneDescription\AssetDatabase\RenderingAssetDatabase.cpp" />
+    <ClCompile Include="Core\Scene\SceneDescription\QuaternionUtils.cpp" />
     <ClCompile Include="Core\Scene\SceneDescription\SceneDescription.cpp" />
     <ClCompile Include="Core\Scene\SceneDescription\SceneDescriptionObject.cpp" />
     <ClCompile Include="Core\ThreadPool.cpp" />

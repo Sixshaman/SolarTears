@@ -13,6 +13,13 @@ class Scene
 {
 	friend class SceneDescription;
 
+	enum class SpecialSceneObjects: uint32_t
+	{
+		Camera = 0,
+
+		Count
+	};
+
 public:
 	Scene();
 	~Scene();
@@ -27,9 +34,7 @@ private:
 	std::vector<SceneObject> mSceneObjects;
 
 	Camera mCamera;
-	size_t mCameraSceneObjectIndex;
 
-	RenderableSceneBase* mRenderableComponentRef;
-
+	RenderableSceneBase*              mRenderableComponentRef;
 	std::vector<ObjectDataUpdateInfo> mCurrFrameRenderableUpdates;
 };

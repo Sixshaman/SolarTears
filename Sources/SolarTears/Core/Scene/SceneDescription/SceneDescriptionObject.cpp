@@ -60,6 +60,16 @@ SceneObjectMeshComponent* SceneDescriptionObject::GetMeshComponent() const
 	return mMeshComponent.get();
 }
 
+void SceneDescriptionObject::SetCameraComponent(const SceneObjectCameraComponent& cameraComponent)
+{
+	mCameraComponent = std::make_unique<SceneObjectCameraComponent>(cameraComponent);
+}
+
+SceneObjectCameraComponent* SceneDescriptionObject::GetCameraComponent() const
+{
+	return mCameraComponent.get();
+}
+
 bool SceneDescriptionObject::IsStatic() const
 {
 	return mFlags & (uint64_t)SceneObjectFlags::Static;

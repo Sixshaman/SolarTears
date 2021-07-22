@@ -115,6 +115,12 @@
     <Filter Include="Core\Scene\SceneDescription">
       <UniqueIdentifier>{24412f04-87fe-406b-87ad-2445e12a3836}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Core\Scene\SceneDescription\AssetDatabase">
+      <UniqueIdentifier>{db9a3ece-03b9-4068-a864-bd1945f49b6e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Core\Math">
+      <UniqueIdentifier>{be52efd4-3cc6-44e1-a4d6-2a2b25f04ab9}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Platform\Win32\Win32Application.hpp">
@@ -393,6 +399,18 @@
     <ClInclude Include="Rendering\Common\Scene\RenderableSceneBuilderMisc.hpp">
       <Filter>Rendering\Common\Scene</Filter>
     </ClInclude>
+    <ClInclude Include="Core\Scene\SceneDescription\AssetDatabase\SceneMaterialAsset.hpp">
+      <Filter>Core\Scene\SceneDescription\AssetDatabase</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Scene\SceneDescription\AssetDatabase\RenderingAssetDatabase.hpp">
+      <Filter>Core\Scene\SceneDescription\AssetDatabase</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Scene\SceneDescription\CameraComponent.hpp">
+      <Filter>Core\Scene\SceneDescription</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Scene\SceneDescription\QuaternionUtils.hpp">
+      <Filter>Core\Math</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Platform\Win32\Win32Application.cpp">
@@ -622,6 +640,12 @@
     </ClCompile>
     <ClCompile Include="Core\Scene\SceneDescription\SceneDescriptionObject.cpp">
       <Filter>Core\Scene\SceneDescription</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Scene\SceneDescription\AssetDatabase\RenderingAssetDatabase.cpp">
+      <Filter>Core\Scene\SceneDescription\AssetDatabase</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Scene\SceneDescription\QuaternionUtils.cpp">
+      <Filter>Core\Math</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

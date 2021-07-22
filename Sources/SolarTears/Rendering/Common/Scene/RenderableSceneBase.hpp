@@ -50,7 +50,7 @@ protected:
 
 	enum class SceneDataType: uint32_t
 	{
-		ObjectData = 0x01,
+		ObjectData = 0x00,
 		FrameData,
 		MaterialData,
 		TextureData,
