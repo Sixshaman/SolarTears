@@ -21,7 +21,7 @@ protected:
 		DirectX::XMFLOAT4X4 ViewProjMatrix;
 	};
 
-	struct SceneSubobject
+	struct SceneSubmesh
 	{
 		uint32_t IndexCount;
 		uint32_t FirstIndex;
@@ -35,11 +35,17 @@ protected:
 		uint32_t NormalMapIndex;
 	};
 
-	struct SceneObject
+	struct StaticSceneObject
+	{
+		uint32_t FirstSubmeshIndex;
+		uint32_t AfterLastSubmeshIndex;
+	};
+
+	struct RigidSceneObject
 	{
 		uint32_t PerObjectDataIndex;
-		uint32_t FirstSubobjectIndex;
-		uint32_t AfterLastSubobjectIndex;
+		uint32_t FirstSubmeshIndex;
+		uint32_t AfterLastSubmeshIndex;
 	};
 
 	enum class SceneDataType: uint32_t
@@ -70,14 +76,14 @@ protected:
 	PerObjectData PackObjectData(const SceneObjectLocation& sceneObjectLocation)  const;
 	PerFrameData  PackFrameData(DirectX::FXMMATRIX View, DirectX::FXMMATRIX Proj) const;
 
-	size_t          ObjectArrayIndex(const RenderableSceneObjectHandle meshHandle);
-	SceneObjectType ObjectType(const RenderableSceneObjectHandle meshHandle);
+	size_t          ObjectArrayIndex(const RenderableSceneObjectHandle meshHandle) const;
+	SceneObjectType ObjectType(const RenderableSceneObjectHandle meshHandle) const;
 
 protected:
-	std::vector<SceneObject> mStaticSceneObjects;
-	std::vector<SceneObject> mRigidSceneObjects;
+	std::vector<StaticSceneObject> mStaticSceneObjects;
+	std::vector<RigidSceneObject>  mRigidSceneObjects;
 
 	std::vector<SceneMaterial> mSceneMaterials;
 
-	std::vector<SceneSubobject> mSceneSubobjects;
+	std::vector<SceneSubmesh> mSceneSubmeshes;
 };

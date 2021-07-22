@@ -53,7 +53,7 @@ void ModernRenderableSceneBuilder::CreateSceneMeshMetadata(std::vector<std::wstr
 
 	mSceneToBuild->mRigidSceneObjects.clear();
 	mSceneToBuild->mStaticSceneObjects.clear();
-	mSceneToBuild->mSceneSubobjects.clear();
+	mSceneToBuild->mSceneSubmeshes.clear();
 
 	std::unordered_map<std::wstring, size_t> textureVecIndices;
 	for(auto it = mSceneTextures.begin(); it != mSceneTextures.end(); ++it)
@@ -63,28 +63,29 @@ void ModernRenderableSceneBuilder::CreateSceneMeshMetadata(std::vector<std::wstr
 	}
 
 	//Create scene subobjects
-	for(size_t i = 0; i < mSceneMeshes.size(); i++)
+	for(size_t i = 0; i < mSceneStaticMeshes.size(); i++)
 	{
+		ModernRenderableScene::SceneSubmesh submesh;
+		submesh.FirstIndex    = (uint32_t)mIndexBufferData.size();
+		submesh.IndexCount    = (uint32_t)mSceneStaticMeshes[i].MeshDataDescription.Indices.size();
+		submesh.VertexOffset  = (int32_t)mVertexBufferData.size();
+		submesh.MaterialIndex = (uint32_t)materialIndices[mSceneStaticMeshes[i].MeshDataDescription.TextureFilename];
+
+		mVertexBufferData.insert(mVertexBufferData.end(), mSceneStaticMeshes[i].MeshDataDescription.Vertices.begin(), mSceneStaticMeshes[i].MeshDataDescription.Vertices.end());
+		mIndexBufferData.insert(mIndexBufferData.end(),   mSceneStaticMeshes[i].MeshDataDescription.Indices.begin(),  mSceneStaticMeshes[i].MeshDataDescription.Indices.end());
+
+		mSceneStaticMeshes[i].MeshDataDescription.Vertices.clear();
+		mSceneStaticMeshes[i].MeshDataDescription.Indices.clear();
+
+		mSceneToBuild->mSceneSubmeshes.push_back(submesh);
+
+
 		//Need to change this in case of multiple subobjects for mesh
-		ModernRenderableScene::MeshSubobjectRange subobjectRange;
-		subobjectRange.FirstSubobjectIndex     = (uint32_t)i;
-		subobjectRange.AfterLastSubobjectIndex = (uint32_t)(i + 1);
-
-		mSceneToBuild->mSceneMeshes.push_back(subobjectRange);
-
-		ModernRenderableScene::SceneSubobject subobject;
-		subobject.FirstIndex                = (uint32_t)mIndexBufferData.size();
-		subobject.IndexCount                = (uint32_t)mSceneMeshes[i].Indices.size();
-		subobject.VertexOffset              = (int32_t)mVertexBufferData.size();
-		subobject.TextureDescriptorSetIndex = (uint32_t)textureVecIndices[mSceneMeshes[i].TextureFilename];
-
-		mVertexBufferData.insert(mVertexBufferData.end(), mSceneMeshes[i].Vertices.begin(), mSceneMeshes[i].Vertices.end());
-		mIndexBufferData.insert(mIndexBufferData.end(), mSceneMeshes[i].Indices.begin(), mSceneMeshes[i].Indices.end());
-
-		mSceneMeshes[i].Vertices.clear();
-		mSceneMeshes[i].Indices.clear();
-
-		mSceneToBuild->mSceneSubobjects.push_back(subobject);
+		mSceneToBuild->mStaticSceneObjects.push_back(ModernRenderableScene::StaticSceneObject
+		{
+			.FirstSubmeshIndex     = (uint32_t)i,
+			.AfterLastSubmeshIndex = (uint32_t)(i + 1)
+		});
 	}
 
 	mSceneToBuild->mScenePerObjectData.resize(mSceneToBuild->mSceneMeshes.size());

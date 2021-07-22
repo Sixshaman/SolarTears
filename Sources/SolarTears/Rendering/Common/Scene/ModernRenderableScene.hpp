@@ -41,6 +41,7 @@ protected:
 	std::vector<PerObjectData> mPrevFrameDataToUpdate;
 	std::vector<PerObjectData> mCurrFrameDataToUpdate;
 
+
 	void* mSceneConstantDataBufferPointer; //Constant buffer is persistently mapped
 
 	uint32_t mObjectChunkDataSize;
