@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-struct SceneObjectCameraComponent
+struct SceneCameraComponent
 {
 	float    VerticalFov;
 	uint32_t ViewportWidth;

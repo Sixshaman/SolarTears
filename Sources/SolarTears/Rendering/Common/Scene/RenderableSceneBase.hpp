@@ -67,7 +67,7 @@ protected:
 	};
 
 public:
-	RenderableSceneBase(uint32_t maxDirtyFrames);
+	RenderableSceneBase();
 	~RenderableSceneBase();
 
 	virtual void UpdateRigidSceneObjects(const FrameDataUpdateInfo& frameUpdate, const std::span<ObjectDataUpdateInfo> objectUpdates) = 0;

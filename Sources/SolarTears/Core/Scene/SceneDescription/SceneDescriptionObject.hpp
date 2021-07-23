@@ -4,8 +4,6 @@
 #include <string>
 #include <memory>
 #include "../SceneObjectLocation.hpp"
-#include "MeshComponent.hpp"
-#include "CameraComponent.hpp"
 
 class SceneDescriptionObject
 {
@@ -25,15 +23,13 @@ public:
 	SceneObjectLocation& GetLocation();
 	const SceneObjectLocation& GetLocation() const;
 
-	bool IsStatic() const;
-	void SetStatic(bool isStatic);
+	std::string GetMeshComponentName() const;
+	void SetMeshComponentName(const std::string& meshComponentName);
 
 private:
 	uint64_t mEntityId;
-	uint64_t mFlags;
 
-	SceneObjectLocation mLocation; //All scene objects have a location component
+	SceneObjectLocation mLocation; //All scene objects have a location
 
-	uint32_t mMeshComponentIndex;
-	uint32_t mCameraComponentIndex;
+	std::string mMeshComponentName;
 };

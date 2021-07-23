@@ -121,17 +121,14 @@ void Vulkan::Renderer::ResizeWindowBuffers(Window* window)
 	InitializeSwapchainImages();
 }
 
-void Vulkan::Renderer::InitScene(SceneDescription* sceneDescription)
+void Vulkan::Renderer::InitScene(const RenderableSceneDescription& sceneDescription)
 {
 	ThrowIfFailed(vkDeviceWaitIdle(mDevice));
 
 	mScene = std::make_unique<RenderableScene>(mDevice, mFrameCounterRef, mDeviceParameters);
-	sceneDescription->BindRenderableComponent(mScene.get());
-
 	RenderableSceneBuilder sceneBuilder(mScene.get(), mMemoryAllocator.get(), mDeviceQueues.get(), mCommandBuffers.get(), &mDeviceParameters);
-	sceneDescription->BuildRenderableComponent(&sceneBuilder);
 
-	sceneBuilder.BakeSceneFirstPart();
+	sceneBuilder.BakeSceneFirstPart(sceneDescription);
 	sceneBuilder.BakeSceneSecondPart();
 
 	SceneDescriptorCreator sceneDescriptorCreator(mScene.get());
@@ -146,7 +143,7 @@ void Vulkan::Renderer::InitFrameGraph(FrameGraphConfig&& frameGraphConfig, Frame
 	frameGraphBuilder.Build(&mInstanceParameters, &mDeviceParameters, mDescriptorManager.get(), mMemoryAllocator.get(), mShaderManager.get(), mDeviceQueues.get(), mCommandBuffers.get());
 }
 
-void Vulkan::Renderer::RenderScene()
+void Vulkan::Renderer::Render()
 {
 	const uint32_t currentFrameResourceIndex = mFrameCounterRef->GetFrameCount() % Utils::InFlightFrameCount;
 	const uint32_t currentSwapchainIndex     = currentFrameResourceIndex;

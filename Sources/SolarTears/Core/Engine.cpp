@@ -78,7 +78,7 @@ void Engine::Update()
 		mScene->ProcessControls(mInputSystem.get(), mTimer->GetDeltaTime());
 
 		mScene->UpdateScene();
-		mRenderingSystem->RenderScene();
+		mRenderingSystem->Render();
 
 		mFrameCounter->IncrementFrame();
 		mFPSCounter->LogFPS(mFrameCounter.get(), mTimer.get(), mLoggerQueue.get());
@@ -91,20 +91,12 @@ void Engine::CreateScene()
 	mScene = std::make_unique<Scene>();
 
 	SceneDescription sceneDesc;
-	sceneDesc.RenderingAssets().AddMaterial("TestMaterial", SceneMaterialAsset
+	sceneDesc.GetRenderableComponent().AddMaterial("TestMaterial", RenderableSceneMaterialData
 	{
 		.TextureFilename = L"../Assets/Textures/Test1.dds"
 	});
 
-	SceneDescriptionObject& sceneObject = sceneDesc.CreateEmptySceneObject();
-	sceneObject.SetLocation(SceneObjectLocation
-	{
-		.Position           = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f),
-		.Scale              = 1.0f,
-		.RotationQuaternion = DirectX::XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f)
-	});
-
-	SceneObjectMeshComponent meshComponent;
+	RenderableSceneGeometryData meshGeometry;
 
 	DirectX::XMFLOAT3 objectPositions[] =
 	{
@@ -132,25 +124,38 @@ void Engine::CreateScene()
 
 	for(size_t i = 0; i < 4; i++)
 	{
-		SceneObjectVertex vertex;
+		RenderableSceneVertex vertex;
 		vertex.Position = objectPositions[i];
 		vertex.Normal   = objectNormals[i];
 		vertex.Texcoord = objectTexcoords[i];
 
-		meshComponent.Vertices.push_back(vertex);
+		meshGeometry.Vertices.push_back(vertex);
 	}
 
-	meshComponent.Indices =
+	meshGeometry.Indices =
 	{
 		0, 1, 2,
 		0, 2, 3
 	};
 
-	meshComponent.MaterialName = "TestMaterial";
-	sceneObject.SetMeshComponent(meshComponent);
-	sceneObject.SetStatic(true);
+	sceneDesc.GetRenderableComponent().AddGeometry("Square", std::move(meshGeometry));
+	sceneDesc.GetRenderableComponent().AddStaticMesh("TestMesh", RenderableSceneMeshData
+	{
+		.GeometryName = "Square",
+		.MaterialName = "TestMaterial"
+	});
 
-	mRenderingSystem->InitScene(&sceneDesc);
+	SceneDescriptionObject& sceneObject = sceneDesc.CreateEmptySceneObject();
+	sceneObject.SetLocation(SceneObjectLocation
+	{
+		.Position           = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f),
+		.Scale              = 1.0f,
+		.RotationQuaternion = DirectX::XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f)
+	});
+
+	sceneObject.SetMeshComponentName("TestMesh");
+
+	mRenderingSystem->InitScene(sceneDesc.GetRenderableComponent());
 
 	sceneDesc.BuildScene(mScene.get());
 }

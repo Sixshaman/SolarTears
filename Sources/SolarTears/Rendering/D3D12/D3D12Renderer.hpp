@@ -32,10 +32,10 @@ namespace D3D12
 		void AttachToWindow(Window* window)      override;
 		void ResizeWindowBuffers(Window* window) override;
 
-		void InitScene(SceneDescription* sceneDescription) override;
-		void RenderScene()                                 override;
-
+		void InitScene(const RenderableSceneDescription& sceneDescription)                                      override;
 		void InitFrameGraph(FrameGraphConfig&& frameGraphConfig, FrameGraphDescription&& frameGraphDescription) override;
+
+		void Render() override;
 
 	private:
 		void CreateFactory();

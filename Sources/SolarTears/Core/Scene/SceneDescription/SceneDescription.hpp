@@ -3,10 +3,10 @@
 #include <vector>
 #include <string>
 #include <unordered_map>
-#include "CameraComponent.hpp"
+#include "../Scene.hpp"
 #include "SceneDescriptionObject.hpp"
-#include "AssetDatabase/RenderingAssetDatabase.hpp"
-#include "../../../Rendering/Common/Scene/RenderableSceneBuilderBase.hpp"
+#include "SpecialObjects/SceneCamera.hpp"
+#include "../../../Rendering/Common/Scene/RenderableSceneDescription.hpp"
 
 class SceneDescription
 {
@@ -21,16 +21,15 @@ public:
 	void BuildScene(Scene* scene);
 
 public:
-	void BindRenderableComponent(RenderableSceneBase* renderableScene);
-	void BuildRenderableComponent(RenderableSceneBuilderBase* renderableSceneBuilder);
-
-	RenderingAssetDatabase& RenderingAssets();
+	RenderableSceneDescription& GetRenderableComponent();
 
 private:
-	RenderingAssetDatabase mRenderingAssetDatabase;
-
+	//Scene description objects
 	std::vector<SceneDescriptionObject> mSceneObjects;
 
-	RenderableSceneBase*                                      mRenderableSceneRef;
-	std::unordered_map<uint64_t, RenderableSceneObjectHandle> mRenderableObjectMap;
+	//Special object description
+	SceneCameraComponent mSceneCameraComponent;
+
+	//Scene description systems
+	RenderableSceneDescription mRenderableComponentDescription;
 };

@@ -6,7 +6,7 @@ DirectX::XMVECTOR XM_CALLCONV Utils::QuaternionBetweenTwoVectorsNormalized(Direc
 	if(DirectX::XMVector3NearEqual(a, DirectX::XMVectorNegate(b), DirectX::XMVectorSplatConstant(1, 16)))
 	{
 		//180 degree rotation about an arbitrary axis
-		return DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, -1.0f);
+		return DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 	}
 	else
 	{

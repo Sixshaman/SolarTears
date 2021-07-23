@@ -2,7 +2,7 @@
 #include "ModernRenderableScene.hpp"
 #include "../RenderingUtils.hpp"
 
-ModernRenderableSceneBuilder::ModernRenderableSceneBuilder(ModernRenderableScene* sceneToBuild): RenderableSceneBuilderBase(sceneToBuild), mSceneToBuild(sceneToBuild)
+ModernRenderableSceneBuilder::ModernRenderableSceneBuilder(ModernRenderableScene* sceneToBuild): mSceneToBuild(sceneToBuild)
 {
 	mVertexBufferGpuMemoryOffset   = 0;
 	mIndexBufferGpuMemoryOffset    = 0;
@@ -13,7 +13,7 @@ ModernRenderableSceneBuilder::~ModernRenderableSceneBuilder()
 {
 }
 
-void ModernRenderableSceneBuilder::BakeSceneFirstPart()
+void ModernRenderableSceneBuilder::BakeSceneFirstPart(const RenderableSceneDescription& sceneDescription)
 {
 	//Create scene subobjects
 	std::vector<std::wstring> sceneTexturesVec;

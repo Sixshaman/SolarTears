@@ -1,18 +1,16 @@
 #include "SceneDescription.hpp"
-#include "MeshComponent.hpp"
 
 SceneDescription::SceneDescription()
 {
 	mSceneObjects.resize((uint32_t)Scene::SpecialSceneObjects::Count);
 
-	SceneDescriptionObject& cameraObject = mSceneObjects[(uint32_t)Scene::SpecialSceneObjects::Camera];
-	cameraObject.SetCameraComponent(SceneObjectCameraComponent
+	mSceneCameraComponent = SceneCameraComponent
 	{
 		.VerticalFov = DirectX::XM_PIDIV2,
 
 		.ViewportWidth  = 256,
 		.ViewportHeight = 256
-	});
+	};
 }
 
 SceneDescription::~SceneDescription()
@@ -32,8 +30,8 @@ SceneDescriptionObject& SceneDescription::GetCameraSceneObject()
 
 void SceneDescription::BuildScene(Scene* scene)
 {
+	//Fill scene objects
 	scene->mSceneObjects.reserve(mSceneObjects.size());
-
 	for(size_t i = 0; i < mSceneObjects.size(); i++)
 	{
 		auto renderableIt = mRenderableObjectMap.find(mSceneObjects[i].GetEntityId());
@@ -54,21 +52,26 @@ void SceneDescription::BuildScene(Scene* scene)
 	}
 
 	//TODO: more camera control
-	SceneObjectCameraComponent* cameraComponent = GetCameraSceneObject().GetCameraComponent();
-	scene->mCamera.SetProjectionParameters(cameraComponent->VerticalFov, (float)cameraComponent->ViewportWidth / (float)cameraComponent->ViewportHeight, 0.01f, 100.0f);
+	scene->mCamera.SetProjectionParameters(mSceneCameraComponent.VerticalFov, (float)mSceneCameraComponent.ViewportWidth / (float)mSceneCameraComponent.ViewportHeight, 0.01f, 100.0f);
 
+	//Set scene components
 	scene->mRenderableComponentRef = mRenderableSceneRef;
+}
+
+RenderableSceneDescription& SceneDescription::GetRenderableComponent()
+{
+	return mRenderableComponentDescription;
 }
 
 void SceneDescription::BuildRenderableComponent(RenderableSceneBuilderBase* renderableSceneBuilder)
 {
 	for(size_t i = 0; i < mSceneObjects.size(); i++)
 	{
-		SceneObjectMeshComponent* meshComponent = mSceneObjects[i].GetMeshComponent();
-		if(meshComponent != nullptr)
+		std::string meshComponentName = mSceneObjects[i].GetMeshComponentName();
+		if(meshComponentName != "")
 		{
 			RenderableSceneMeshData renderableMeshData;
-			renderableMeshData.Vertices.resize(meshComponent->Vertices.size());
+			renderableMeshData.Vertices.resize( ->Vertices.size());
 			renderableMeshData.Indices.assign(meshComponent->Indices.begin(), meshComponent->Indices.end());
 			renderableMeshData.MaterialName = meshComponent->MaterialName;
 
@@ -119,14 +122,4 @@ void SceneDescription::BuildRenderableComponent(RenderableSceneBuilderBase* rend
 			}
 		}
 	}
-}
-
-void SceneDescription::BindRenderableComponent(RenderableSceneBase* renderableScene)
-{
-	mRenderableSceneRef = renderableScene;
-}
-
-RenderingAssetDatabase& SceneDescription::RenderingAssets()
-{
-	return mRenderingAssetDatabase;
 }

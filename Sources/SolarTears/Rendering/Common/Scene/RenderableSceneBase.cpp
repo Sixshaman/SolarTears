@@ -1,6 +1,6 @@
 #include "RenderableSceneBase.hpp"
 
-RenderableSceneBase::RenderableSceneBase(uint32_t maxDirtyFrames)
+RenderableSceneBase::RenderableSceneBase()
 {
 }
 

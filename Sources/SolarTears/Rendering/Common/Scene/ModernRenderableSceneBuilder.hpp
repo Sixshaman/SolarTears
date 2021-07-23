@@ -1,16 +1,16 @@
 #pragma once
 
-#include "RenderableSceneBuilderBase.hpp"
+#include "RenderableSceneDescription.hpp"
 
 class ModernRenderableScene;
 
-class ModernRenderableSceneBuilder: public RenderableSceneBuilderBase
+class ModernRenderableSceneBuilder
 {
 public:
 	ModernRenderableSceneBuilder(ModernRenderableScene* sceneToBuild);
 	~ModernRenderableSceneBuilder();
 
-	void BakeSceneFirstPart();
+	void BakeSceneFirstPart(const RenderableSceneDescription& sceneDescription);
 	void BakeSceneSecondPart();
 
 protected:

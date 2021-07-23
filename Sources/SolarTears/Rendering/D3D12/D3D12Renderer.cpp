@@ -57,35 +57,19 @@ void D3D12::Renderer::ResizeWindowBuffers(Window* window)
 	mSwapChain->Resize(mDeviceQueues.get(), window);
 }
 
-void D3D12::Renderer::InitScene(SceneDescription* sceneDescription)
+void D3D12::Renderer::InitScene(const RenderableSceneDescription& sceneDescription)
 {
 	mDeviceQueues->AllQueuesWaitStrong();
 
 	mScene = std::make_unique<D3D12::RenderableScene>(mFrameCounterRef);
-	sceneDescription->BindRenderableComponent(mScene.get());
-
 	D3D12::RenderableSceneBuilder sceneBuilder(mDevice.get(), mScene.get(), mMemoryAllocator.get(), mDeviceQueues.get(), mWorkerCommandLists.get());
-	sceneDescription->BuildRenderableComponent(&sceneBuilder);
 
-	sceneBuilder.BakeSceneFirstPart();
+	sceneBuilder.BakeSceneFirstPart(sceneDescription);
 	sceneBuilder.BakeSceneSecondPart();
 
 	SceneDescriptorCreator      sceneDescriptorCreator(mScene.get());
 	FrameGraphDescriptorCreator frameGraphDescriptorCreator(mFrameGraph.get());
 	mDescriptorManager->ValidateDescriptorHeaps(mDevice.get(), &sceneDescriptorCreator, &frameGraphDescriptorCreator, SrvDescriptorManager::FLAG_FRAME_GRAPH_UNCHANGED);
-}
-
-void D3D12::Renderer::RenderScene()
-{
-	const uint32_t currentFrameResourceIndex = mFrameCounterRef->GetFrameCount() % Utils::InFlightFrameCount;
-
-	mDeviceQueues->GraphicsQueueCpuWait(mFrameGraphicsFenceValues[currentFrameResourceIndex]);
-
-	mFrameGraph->Traverse(mThreadPoolRef, mWorkerCommandLists.get(), mScene.get(), mShaderManager.get(), mDescriptorManager.get(), mDeviceQueues.get(), currentFrameResourceIndex, mSwapChain->GetCurrentImageIndex());
-
-	mFrameGraphicsFenceValues[currentFrameResourceIndex] = mDeviceQueues->GraphicsFenceSignal();
-
-	mSwapChain->Present();
 }
 
 void D3D12::Renderer::InitFrameGraph(FrameGraphConfig&& frameGraphConfig, FrameGraphDescription&& frameGraphDescription)
@@ -98,6 +82,19 @@ void D3D12::Renderer::InitFrameGraph(FrameGraphConfig&& frameGraphConfig, FrameG
 	SceneDescriptorCreator      sceneDescriptorCreator(mScene.get());
 	FrameGraphDescriptorCreator frameGraphDescriptorCreator(mFrameGraph.get());
 	mDescriptorManager->ValidateDescriptorHeaps(mDevice.get(), &sceneDescriptorCreator, &frameGraphDescriptorCreator, SrvDescriptorManager::FLAG_SCENE_UNCHANGED);
+}
+
+void D3D12::Renderer::Render()
+{
+	const uint32_t currentFrameResourceIndex = mFrameCounterRef->GetFrameCount() % Utils::InFlightFrameCount;
+
+	mDeviceQueues->GraphicsQueueCpuWait(mFrameGraphicsFenceValues[currentFrameResourceIndex]);
+
+	mFrameGraph->Traverse(mThreadPoolRef, mWorkerCommandLists.get(), mScene.get(), mShaderManager.get(), mDescriptorManager.get(), mDeviceQueues.get(), currentFrameResourceIndex, mSwapChain->GetCurrentImageIndex());
+
+	mFrameGraphicsFenceValues[currentFrameResourceIndex] = mDeviceQueues->GraphicsFenceSignal();
+
+	mSwapChain->Present();
 }
 
 void D3D12::Renderer::CreateFactory()

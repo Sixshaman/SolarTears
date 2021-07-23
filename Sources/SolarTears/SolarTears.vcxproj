@@ -34,12 +34,9 @@
     <ClInclude Include="Core\Math\QuaternionUtils.hpp" />
     <ClInclude Include="Core\Scene\Camera.hpp" />
     <ClInclude Include="Core\Scene\Scene.hpp" />
-    <ClInclude Include="Core\Scene\SceneDescription\AssetDatabase\RenderingAssetDatabase.hpp" />
-    <ClInclude Include="Core\Scene\SceneDescription\AssetDatabase\SceneMaterialAsset.hpp" />
-    <ClInclude Include="Core\Scene\SceneDescription\CameraComponent.hpp" />
-    <ClInclude Include="Core\Scene\SceneDescription\MeshComponent.hpp" />
     <ClInclude Include="Core\Scene\SceneDescription\SceneDescription.hpp" />
     <ClInclude Include="Core\Scene\SceneDescription\SceneDescriptionObject.hpp" />
+    <ClInclude Include="Core\Scene\SceneDescription\SpecialObjects\SceneCamera.hpp" />
     <ClInclude Include="Core\Scene\SceneObject.hpp" />
     <ClInclude Include="Core\Scene\SceneObjectLocation.hpp" />
     <ClInclude Include="Core\ThreadPool.hpp" />
@@ -73,8 +70,8 @@
     <ClInclude Include="Rendering\Common\Scene\ModernRenderableScene.hpp" />
     <ClInclude Include="Rendering\Common\Scene\ModernRenderableSceneBuilder.hpp" />
     <ClInclude Include="Rendering\Common\Scene\RenderableSceneBase.hpp" />
-    <ClInclude Include="Rendering\Common\Scene\RenderableSceneBuilderBase.hpp" />
-    <ClInclude Include="Rendering\Common\Scene\RenderableSceneBuilderMisc.hpp" />
+    <ClInclude Include="Rendering\Common\Scene\RenderableSceneDescription.hpp" />
+    <ClInclude Include="Rendering\Common\Scene\RenderableSceneDescriptionMisc.hpp" />
     <ClInclude Include="Rendering\Common\Scene\RenderableSceneMisc.hpp" />
     <ClInclude Include="Rendering\D3D12\D3D12DeviceFeatures.hpp" />
     <ClInclude Include="Rendering\D3D12\D3D12DeviceQueues.hpp" />
@@ -126,7 +123,6 @@
     <ClCompile Include="Core\Math\QuaternionUtils.cpp" />
     <ClCompile Include="Core\Scene\Camera.cpp" />
     <ClCompile Include="Core\Scene\Scene.cpp" />
-    <ClCompile Include="Core\Scene\SceneDescription\AssetDatabase\RenderingAssetDatabase.cpp" />
     <ClCompile Include="Core\Scene\SceneDescription\SceneDescription.cpp" />
     <ClCompile Include="Core\Scene\SceneDescription\SceneDescriptionObject.cpp" />
     <ClCompile Include="Core\Scene\SceneObjectLocation.cpp" />
@@ -155,7 +151,7 @@
     <ClCompile Include="Rendering\Common\Scene\ModernRenderableScene.cpp" />
     <ClCompile Include="Rendering\Common\Scene\ModernRenderableSceneBuilder.cpp" />
     <ClCompile Include="Rendering\Common\Scene\RenderableSceneBase.cpp" />
-    <ClCompile Include="Rendering\Common\Scene\RenderableSceneBuilderBase.cpp" />
+    <ClCompile Include="Rendering\Common\Scene\RenderableSceneDescription.cpp" />
     <ClCompile Include="Rendering\D3D12\D3D12SrvDescriptorManager.cpp" />
     <ClCompile Include="Rendering\D3D12\D3D12DeviceFeatures.cpp" />
     <ClCompile Include="Rendering\D3D12\D3D12DeviceQueues.cpp" />
@@ -408,6 +404,9 @@ if not exist "$(SolutionDir)..\Utils\DXC\Debug\bin\dxil.dll" "$(SolutionDir)..\U
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <TreatWarningAsError>true</TreatWarningAsError>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <OmitFramePointers>true</OmitFramePointers>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

@@ -115,11 +115,11 @@
     <Filter Include="Core\Scene\SceneDescription">
       <UniqueIdentifier>{24412f04-87fe-406b-87ad-2445e12a3836}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Core\Scene\SceneDescription\AssetDatabase">
-      <UniqueIdentifier>{db9a3ece-03b9-4068-a864-bd1945f49b6e}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Core\Math">
       <UniqueIdentifier>{be52efd4-3cc6-44e1-a4d6-2a2b25f04ab9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Core\Scene\SceneDescription\SpecialObjects">
+      <UniqueIdentifier>{68f506e9-f58d-43b3-9b50-cecc714059ff}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -327,9 +327,6 @@
     <ClInclude Include="Rendering\Common\FrameGraph\FrameGraphConfig.hpp">
       <Filter>Rendering\Common\FrameGraph</Filter>
     </ClInclude>
-    <ClInclude Include="Rendering\Common\Scene\RenderableSceneBuilderBase.hpp">
-      <Filter>Rendering\Common\Scene</Filter>
-    </ClInclude>
     <ClInclude Include="Rendering\Common\Scene\RenderableSceneMisc.hpp">
       <Filter>Rendering\Common\Scene</Filter>
     </ClInclude>
@@ -384,29 +381,23 @@
     <ClInclude Include="Core\Scene\SceneDescription\SceneDescription.hpp">
       <Filter>Core\Scene\SceneDescription</Filter>
     </ClInclude>
-    <ClInclude Include="Core\Scene\SceneDescription\MeshComponent.hpp">
-      <Filter>Core\Scene\SceneDescription</Filter>
-    </ClInclude>
     <ClInclude Include="Core\Scene\SceneObjectLocation.hpp">
       <Filter>Core\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Core\Scene\SceneObject.hpp">
       <Filter>Core\Scene</Filter>
     </ClInclude>
-    <ClInclude Include="Rendering\Common\Scene\RenderableSceneBuilderMisc.hpp">
-      <Filter>Rendering\Common\Scene</Filter>
-    </ClInclude>
-    <ClInclude Include="Core\Scene\SceneDescription\AssetDatabase\SceneMaterialAsset.hpp">
-      <Filter>Core\Scene\SceneDescription\AssetDatabase</Filter>
-    </ClInclude>
-    <ClInclude Include="Core\Scene\SceneDescription\AssetDatabase\RenderingAssetDatabase.hpp">
-      <Filter>Core\Scene\SceneDescription\AssetDatabase</Filter>
-    </ClInclude>
-    <ClInclude Include="Core\Scene\SceneDescription\CameraComponent.hpp">
-      <Filter>Core\Scene\SceneDescription</Filter>
-    </ClInclude>
     <ClInclude Include="Core\Math\QuaternionUtils.hpp">
       <Filter>Core\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Scene\SceneDescription\SpecialObjects\SceneCamera.hpp">
+      <Filter>Core\Scene\SceneDescription\SpecialObjects</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Common\Scene\RenderableSceneDescription.hpp">
+      <Filter>Rendering\Common\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Common\Scene\RenderableSceneDescriptionMisc.hpp">
+      <Filter>Rendering\Common\Scene</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -593,9 +584,6 @@
     <ClCompile Include="Rendering\Common\FrameGraph\FrameGraphConfig.cpp">
       <Filter>Rendering\Common\FrameGraph</Filter>
     </ClCompile>
-    <ClCompile Include="Rendering\Common\Scene\RenderableSceneBuilderBase.cpp">
-      <Filter>Rendering\Common\Scene</Filter>
-    </ClCompile>
     <ClCompile Include="Rendering\Common\Scene\RenderableSceneBase.cpp">
       <Filter>Rendering\Common\Scene</Filter>
     </ClCompile>
@@ -635,14 +623,14 @@
     <ClCompile Include="Core\Scene\SceneDescription\SceneDescriptionObject.cpp">
       <Filter>Core\Scene\SceneDescription</Filter>
     </ClCompile>
-    <ClCompile Include="Core\Scene\SceneDescription\AssetDatabase\RenderingAssetDatabase.cpp">
-      <Filter>Core\Scene\SceneDescription\AssetDatabase</Filter>
-    </ClCompile>
     <ClCompile Include="Core\Scene\SceneObjectLocation.cpp">
       <Filter>Core\Scene</Filter>
     </ClCompile>
     <ClCompile Include="Core\Math\QuaternionUtils.cpp">
       <Filter>Core\Math</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Common\Scene\RenderableSceneDescription.cpp">
+      <Filter>Rendering\Common\Scene</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
