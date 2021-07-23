@@ -15,20 +15,14 @@ public:
 	~SceneDescription();
 
 	SceneDescriptionObject& CreateEmptySceneObject();
-
 	SceneDescriptionObject& GetCameraSceneObject();
 
 public:
 	void BuildScene(Scene* scene);
 
 public:
-	void SetCameraPosition(DirectX::XMVECTOR pos);
-	void SetCameraLook(DirectX::XMVECTOR lookNrm);
-
-	void SetCameraViewportParameters(float vFov, uint32_t viewportWidth, uint32_t viewportHeight);
-	
-	void BuildRenderableComponent(RenderableSceneBuilderBase* renderableSceneBuilder);
 	void BindRenderableComponent(RenderableSceneBase* renderableScene);
+	void BuildRenderableComponent(RenderableSceneBuilderBase* renderableSceneBuilder);
 
 	RenderingAssetDatabase& RenderingAssets();
 

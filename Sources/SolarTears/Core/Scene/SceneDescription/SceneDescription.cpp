@@ -6,13 +6,6 @@ SceneDescription::SceneDescription()
 	mSceneObjects.resize((uint32_t)Scene::SpecialSceneObjects::Count);
 
 	SceneDescriptionObject& cameraObject = mSceneObjects[(uint32_t)Scene::SpecialSceneObjects::Camera];
-	cameraObject.SetLocation(SceneObjectLocation
-	{
-		.Position           = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f),
-		.Scale              = 1.0f,
-		.RotationQuaternion = DirectX::XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f),
-	});
-
 	cameraObject.SetCameraComponent(SceneObjectCameraComponent
 	{
 		.VerticalFov = DirectX::XM_PIDIV2,
@@ -34,27 +27,7 @@ SceneDescriptionObject& SceneDescription::CreateEmptySceneObject()
 
 SceneDescriptionObject& SceneDescription::GetCameraSceneObject()
 {
-	return mSceneObjects[mCameraObjectIndex];
-}
-
-void SceneDescription::SetCameraPosition(DirectX::XMVECTOR pos)
-{
-	DirectX::XMStoreFloat3(&mSceneObjects[mCameraObjectIndex].GetLocation().Position, pos);
-}
-
-void SceneDescription::SetCameraLook(DirectX::XMVECTOR lookNrm)
-{
-	DirectX::XMVECTOR defaultLook = DirectX::XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f);
-
-#error "Not implemented"
-}
-
-void SceneDescription::SetCameraViewportParameters(float vFov, uint32_t viewportWidth, uint32_t viewportHeight)
-{
-	mCameraVerticalFov = vFov;
-
-	mCameraViewportWidth = viewportWidth;
-	mCameraViewportHeight = viewportHeight;
+	return mSceneObjects[(uint32_t)Scene::SpecialSceneObjects::Camera];
 }
 
 void SceneDescription::BuildScene(Scene* scene)
@@ -81,7 +54,8 @@ void SceneDescription::BuildScene(Scene* scene)
 	}
 
 	//TODO: more camera control
-	scene->mCamera.SetProjectionParameters(mCameraVerticalFov, (float)mCameraViewportWidth / (float)mCameraViewportHeight, 0.01f, 100.0f);
+	SceneObjectCameraComponent* cameraComponent = GetCameraSceneObject().GetCameraComponent();
+	scene->mCamera.SetProjectionParameters(cameraComponent->VerticalFov, (float)cameraComponent->ViewportWidth / (float)cameraComponent->ViewportHeight, 0.01f, 100.0f);
 
 	scene->mRenderableComponentRef = mRenderableSceneRef;
 }
@@ -96,7 +70,7 @@ void SceneDescription::BuildRenderableComponent(RenderableSceneBuilderBase* rend
 			RenderableSceneMeshData renderableMeshData;
 			renderableMeshData.Vertices.resize(meshComponent->Vertices.size());
 			renderableMeshData.Indices.assign(meshComponent->Indices.begin(), meshComponent->Indices.end());
-			renderableMeshData.TextureFilename = meshComponent->TextureFilename;
+			renderableMeshData.MaterialName = meshComponent->MaterialName;
 
 			if(mSceneObjects[i].IsStatic())
 			{

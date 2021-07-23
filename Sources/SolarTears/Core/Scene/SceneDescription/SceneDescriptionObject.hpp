@@ -16,20 +16,14 @@ public:
 	SceneDescriptionObject(const SceneDescriptionObject&)            = delete;
 	SceneDescriptionObject& operator=(const SceneDescriptionObject&) = delete;
 
-	SceneDescriptionObject(SceneDescriptionObject&& right)      noexcept;
-	SceneDescriptionObject& operator=(SceneDescriptionObject&&) noexcept;
+	SceneDescriptionObject(SceneDescriptionObject&& right)      = default;
+	SceneDescriptionObject& operator=(SceneDescriptionObject&&) = default;
 
 	uint64_t GetEntityId() const;
 
 	void SetLocation(const SceneObjectLocation& location);
 	SceneObjectLocation& GetLocation();
 	const SceneObjectLocation& GetLocation() const;
-
-	void SetMeshComponent(const SceneObjectMeshComponent& meshComponent);
-	SceneObjectMeshComponent* GetMeshComponent() const;
-
-	void SetCameraComponent(const SceneObjectCameraComponent& cameraComponent);
-	SceneObjectCameraComponent* GetCameraComponent() const;
 
 	bool IsStatic() const;
 	void SetStatic(bool isStatic);
@@ -40,6 +34,6 @@ private:
 
 	SceneObjectLocation mLocation; //All scene objects have a location component
 
-	std::unique_ptr<SceneObjectMeshComponent>   mMeshComponent;
-	std::unique_ptr<SceneObjectCameraComponent> mCameraComponent;
+	uint32_t mMeshComponentIndex;
+	uint32_t mCameraComponentIndex;
 };

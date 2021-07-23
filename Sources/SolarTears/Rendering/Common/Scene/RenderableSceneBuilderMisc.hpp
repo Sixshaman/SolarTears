@@ -2,11 +2,16 @@
 
 #include "RenderableSceneMisc.hpp"
 
+struct RenderableSceneMaterialData
+{
+	std::wstring TextureFilename;
+};
+
 struct RenderableSceneMeshData
 {
 	std::vector<RenderableSceneVertex> Vertices;
 	std::vector<RenderableSceneIndex>  Indices;
-	std::wstring                       TextureFilename;
+	std::string                        MaterialName;
 };
 
 struct RenderableSceneStaticMeshDescription

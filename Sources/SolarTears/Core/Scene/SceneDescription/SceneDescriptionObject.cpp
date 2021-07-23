@@ -8,26 +8,21 @@ static enum class SceneObjectFlags: uint64_t
 
 SceneDescriptionObject::SceneDescriptionObject(uint64_t entityId): mEntityId(entityId)
 {
+	SetStatic(true);
+
+	mLocation = SceneObjectLocation
+	{
+		.Position = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f),
+		.Scale = 1.0f,
+		.RotationQuaternion = DirectX::XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f),
+	};
+
+	mMeshComponentIndex   = (uint32_t)(-1);
+	mCameraComponentIndex = (uint32_t)(-1);
 }
 
 SceneDescriptionObject::~SceneDescriptionObject()
 {
-}
-
-SceneDescriptionObject::SceneDescriptionObject(SceneDescriptionObject&& right) noexcept
-{
-	*this = std::move(right);
-}
-
-SceneDescriptionObject& SceneDescriptionObject::operator=(SceneDescriptionObject&& right) noexcept
-{
-	mEntityId = right.mEntityId;
-
-	mLocation = std::move(right.mLocation);
-
-	mMeshComponent = std::move(right.mMeshComponent);
-
-	return *this;
 }
 
 uint64_t SceneDescriptionObject::GetEntityId() const
@@ -48,26 +43,6 @@ SceneObjectLocation& SceneDescriptionObject::GetLocation()
 const SceneObjectLocation& SceneDescriptionObject::GetLocation() const
 {
 	return mLocation;
-}
-
-void SceneDescriptionObject::SetMeshComponent(const SceneObjectMeshComponent& meshComponent)
-{
-	mMeshComponent = std::make_unique<SceneObjectMeshComponent>(meshComponent);
-}
-
-SceneObjectMeshComponent* SceneDescriptionObject::GetMeshComponent() const
-{
-	return mMeshComponent.get();
-}
-
-void SceneDescriptionObject::SetCameraComponent(const SceneObjectCameraComponent& cameraComponent)
-{
-	mCameraComponent = std::make_unique<SceneObjectCameraComponent>(cameraComponent);
-}
-
-SceneObjectCameraComponent* SceneDescriptionObject::GetCameraComponent() const
-{
-	return mCameraComponent.get();
 }
 
 bool SceneDescriptionObject::IsStatic() const

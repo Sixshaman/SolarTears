@@ -159,9 +159,6 @@
     <ClInclude Include="Core\Timer.hpp">
       <Filter>Core</Filter>
     </ClInclude>
-    <ClInclude Include="Core\Scene\SceneDescription.hpp">
-      <Filter>Core\Scene</Filter>
-    </ClInclude>
     <ClInclude Include="Core\Scene\Scene.hpp">
       <Filter>Core\Scene</Filter>
     </ClInclude>
@@ -408,7 +405,7 @@
     <ClInclude Include="Core\Scene\SceneDescription\CameraComponent.hpp">
       <Filter>Core\Scene\SceneDescription</Filter>
     </ClInclude>
-    <ClInclude Include="Core\Scene\SceneDescription\QuaternionUtils.hpp">
+    <ClInclude Include="Core\Math\QuaternionUtils.hpp">
       <Filter>Core\Math</Filter>
     </ClInclude>
   </ItemGroup>
@@ -445,9 +442,6 @@
     </ClCompile>
     <ClCompile Include="Core\Timer.cpp">
       <Filter>Core</Filter>
-    </ClCompile>
-    <ClCompile Include="Core\Scene\SceneDescription.cpp">
-      <Filter>Core\Scene</Filter>
     </ClCompile>
     <ClCompile Include="Core\Scene\Camera.cpp">
       <Filter>Core\Scene</Filter>
@@ -644,7 +638,10 @@
     <ClCompile Include="Core\Scene\SceneDescription\AssetDatabase\RenderingAssetDatabase.cpp">
       <Filter>Core\Scene\SceneDescription\AssetDatabase</Filter>
     </ClCompile>
-    <ClCompile Include="Core\Scene\SceneDescription\QuaternionUtils.cpp">
+    <ClCompile Include="Core\Scene\SceneObjectLocation.cpp">
+      <Filter>Core\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Math\QuaternionUtils.cpp">
       <Filter>Core\Math</Filter>
     </ClCompile>
   </ItemGroup>
