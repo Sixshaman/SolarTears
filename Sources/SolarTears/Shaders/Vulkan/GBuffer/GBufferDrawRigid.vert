@@ -1,9 +1,6 @@
 #version 450
 
-struct ObjectData
-{
-	mat4 ModelMatrix;
-};
+#extension GL_EXT_nonuniform_qualifier: require
 
 //================================================================
 
@@ -15,15 +12,15 @@ layout(location = 0) out vec2 outTexCoord;
 
 //================================================================
 
-layout(set = 2, binding = 0) uniform FrameConstants
+layout(set = 3, binding = 0) uniform FrameConstants
 {
 	mat4 ViewProjMatrix;
 };
 
-layout(set = 2, binding = 1) readonly buffer ObjectConstants
+layout(set = 3, binding = 1) uniform ObjectConstants
 {
-	ObjectData ObjectDatas[];
-};
+	mat4 ModelMatrix;
+} ObjectDatas[];
 
 layout(push_constant) uniform ObjectPushConstants
 {

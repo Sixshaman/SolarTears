@@ -21,12 +21,12 @@ layout(location = 0) out vec4 outColor;
 
 layout(set = 0, binding = 0) uniform sampler Samplers[];
 
-layout(set = 1, binding = 0) readonly buffer MaterialConstants
+layout(set = 1, binding = 0) uniform MaterialConstants
 {
-	MaterialData Materials[];
-};
+	MaterialData Material;
+} Materials[];
 
-layout(set = 1, binding = 1) uniform texture2D ObjectTextures[];
+layout(set = 2, binding = 0) uniform texture2D ObjectTextures[];
 
 layout(push_constant) uniform MaterialPushConstants
 {
@@ -37,7 +37,7 @@ layout(push_constant) uniform MaterialPushConstants
 
 void main()
 {
-	MaterialData materialData = Materials[PushConstants.MaterialIndex];
+	MaterialData materialData = Materials[PushConstants.MaterialIndex].Material;
 
 	vec4 texColor = texture(sampler2D(ObjectTextures[materialData.TextureIndex], Samplers[LinearSamplerIndex]), fragTexCoord);
 	outColor      = texColor;

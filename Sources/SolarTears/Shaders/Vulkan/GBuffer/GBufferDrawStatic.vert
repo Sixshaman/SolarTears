@@ -1,10 +1,5 @@
 #version 450
 
-struct ObjectData
-{
-	mat4 ModelMatrix;
-};
-
 //================================================================
 
 layout(location = 0) in vec3 inPosition;
@@ -15,7 +10,7 @@ layout(location = 0) out vec2 outTexCoord;
 
 //================================================================
 
-layout(set = 2, binding = 0) uniform FrameConstants
+layout(set = 3, binding = 0) uniform FrameConstants
 {
 	mat4 ViewProjMatrix;
 };
