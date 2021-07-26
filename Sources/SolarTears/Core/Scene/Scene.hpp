@@ -5,9 +5,10 @@
 #include <unordered_map>
 #include "Camera.hpp"
 #include "SceneObject.hpp"
-#include "../../Rendering/Common/Scene/RenderableSceneBase.hpp"
+#include "../../Rendering/Common/Scene/RenderableSceneMisc.hpp"
 
 class Inputter;
+class RenderableSceneBase;
 
 class Scene
 {

@@ -4,18 +4,10 @@
 #include <string>
 #include <vector>
 #include <DirectXMath.h>
+#include "RenderableSceneObjectHandle.hpp"
+#include "../../../Core/Scene/SceneObjectLocation.hpp"
 
-struct RenderableSceneObjectHandle
-{
-	uint64_t Id; //8 bits for object type, 56 bits for the index into the corresponding array
-
-	bool operator==(const RenderableSceneObjectHandle right) const { return Id == right.Id; }
-	bool operator!=(const RenderableSceneObjectHandle right) const { return Id != right.Id; }
-	bool operator< (const RenderableSceneObjectHandle right) const { return Id <  right.Id; }
-	bool operator> (const RenderableSceneObjectHandle right) const { return Id >  right.Id; }
-};
-
-static constexpr RenderableSceneObjectHandle INVALID_SCENE_OBJECT_HANDLE = {.Id = (uint64_t)(-1)};
+using RenderableSceneObjectHandle = RenderableSceneObjectHandleGeneral<uint32_t>;
 
 
 struct RenderableSceneVertex
@@ -26,6 +18,7 @@ struct RenderableSceneVertex
 };
 
 using RenderableSceneIndex = uint32_t;
+
 
 struct ObjectDataUpdateInfo
 {

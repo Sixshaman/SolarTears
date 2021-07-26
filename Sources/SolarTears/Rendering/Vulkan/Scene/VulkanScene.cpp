@@ -4,7 +4,6 @@
 #include "../VulkanFunctions.hpp"
 #include "../VulkanShaders.hpp"
 #include "../../../../3rdParty/SPIRV-Reflect/spirv_reflect.h"
-#include "../../../Core/Scene/SceneDescription.hpp"
 #include "../../Common/Scene/RenderableSceneMisc.hpp"
 #include "../../Common/RenderingUtils.hpp"
 #include <array>
@@ -58,32 +57,38 @@ void Vulkan::RenderableScene::PrepareDrawBuffers(VkCommandBuffer commandBuffer) 
 	vkCmdBindIndexBuffer(commandBuffer, mSceneIndexBuffer, 0, VulkanUtils::FormatForIndexType<RenderableSceneIndex>);
 }
 
-void Vulkan::RenderableScene::DrawStaticObjectsWithRootConstants(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, VkShaderStageFlags materialIndexShaderFlags, uint32_t materialIndexOffset) const
+void Vulkan::RenderableScene::DrawBakedPositionObjectsWithPushConstants(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, VkShaderStageFlags materialIndexShaderFlags, uint32_t materialIndexOffset) const
 {
-	for(size_t meshIndex = 0; meshIndex < mStaticSceneObjects.size(); meshIndex++)
+	for(uint32_t meshIndex = mStaticMeshSpan.Begin; meshIndex < mStaticMeshSpan.End; meshIndex++)
 	{
-		for(uint32_t subobjectIndex = mStaticSceneObjects[meshIndex].FirstSubobjectIndex; subobjectIndex < mStaticSceneObjects[meshIndex].AfterLastSubobjectIndex; subobjectIndex++)
+		for(uint32_t submeshIndex = mSceneMeshes[meshIndex].FirstSubmeshIndex; submeshIndex < mSceneMeshes[meshIndex].AfterLastSubmeshIndex; submeshIndex++)
 		{
-			uint32_t materialIndex = mSceneSubobjects[subobjectIndex].MaterialIndex;
-			vkCmdPushConstants(commandBuffer, pipelineLayout, materialIndexShaderFlags, materialIndexOffset, sizeof(uint32_t), &materialIndex);
+			std::array materialPushConstants = {mSceneSubmeshes[submeshIndex].MaterialIndex};
+			vkCmdPushConstants(commandBuffer, pipelineLayout, materialIndexShaderFlags, materialIndexOffset, materialPushConstants.size() * sizeof(decltype(materialPushConstants)::value_type), materialPushConstants.data());
 
-			vkCmdDrawIndexed(commandBuffer, mSceneSubobjects[subobjectIndex].IndexCount, 1, mSceneSubobjects[subobjectIndex].FirstIndex, mSceneSubobjects[subobjectIndex].VertexOffset, 0);
+			vkCmdDrawIndexed(commandBuffer, mSceneSubmeshes[submeshIndex].IndexCount, mSceneMeshes[meshIndex].InstanceCount, mSceneSubmeshes[submeshIndex].FirstIndex, mSceneSubmeshes[submeshIndex].VertexOffset, 0);
 		}
 	}
 }
 
-void Vulkan::RenderableScene::DrawRigidObjectsWithRootConstants(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, VkShaderStageFlags objectIndexShaderFlags, uint32_t objectIndexOffset, VkShaderStageFlags materialIndexShaderFlags, uint32_t materialIndexOffset) const
+void Vulkan::RenderableScene::DrawBufferedPositionObjectsWithPushConstants(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, VkShaderStageFlags objectIndexShaderFlags, uint32_t objectIndexOffset, VkShaderStageFlags materialIndexShaderFlags, uint32_t materialIndexOffset) const
 {
-	for(size_t meshIndex = 0; meshIndex < mRigidSceneObjects.size(); meshIndex++)
+	//The spans should follow each other
+	assert(mStaticInstancedMeshSpan.End == mRigidMeshSpan.Begin);
+
+	const uint32_t firstMeshIndex     = mStaticInstancedMeshSpan.Begin;
+	const uint32_t afterLastMeshIndex = mRigidMeshSpan.End;
+	for(uint32_t meshIndex = firstMeshIndex; meshIndex < afterLastMeshIndex; meshIndex++)
 	{
-		vkCmdPushConstants(commandBuffer, pipelineLayout, objectIndexShaderFlags, objectIndexOffset, sizeof(uint32_t), &meshIndex);
+		std::array objectPushConstants = {meshIndex - firstMeshIndex};
+		vkCmdPushConstants(commandBuffer, pipelineLayout, objectIndexShaderFlags, objectIndexOffset, objectPushConstants.size() * sizeof(decltype(objectPushConstants)::value_type), objectPushConstants.data());
 
-		for(uint32_t subobjectIndex = mRigidSceneObjects[meshIndex].FirstSubobjectIndex; subobjectIndex < mRigidSceneObjects[meshIndex].AfterLastSubobjectIndex; subobjectIndex++)
+		for(uint32_t submeshIndex = mSceneMeshes[meshIndex].FirstSubmeshIndex; submeshIndex < mSceneMeshes[meshIndex].AfterLastSubmeshIndex; submeshIndex++)
 		{
-			uint32_t materialIndex = mSceneSubobjects[subobjectIndex].MaterialIndex;
-			vkCmdPushConstants(commandBuffer, pipelineLayout, materialIndexShaderFlags, materialIndexOffset, sizeof(uint32_t), &materialIndex);
+			std::array materialPushConstants = {mSceneSubmeshes[submeshIndex].MaterialIndex};
+			vkCmdPushConstants(commandBuffer, pipelineLayout, materialIndexShaderFlags, materialIndexOffset, materialPushConstants.size() * sizeof(decltype(materialPushConstants)::value_type), materialPushConstants.data());
 
-			vkCmdDrawIndexed(commandBuffer, mSceneSubobjects[subobjectIndex].IndexCount, 1, mSceneSubobjects[subobjectIndex].FirstIndex, mSceneSubobjects[subobjectIndex].VertexOffset, 0);
+			vkCmdDrawIndexed(commandBuffer, mSceneSubmeshes[submeshIndex].IndexCount, mSceneMeshes[meshIndex].InstanceCount, mSceneSubmeshes[submeshIndex].FirstIndex, mSceneSubmeshes[submeshIndex].VertexOffset, 0);
 		}
 	}
 }

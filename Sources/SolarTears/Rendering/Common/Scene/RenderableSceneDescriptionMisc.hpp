@@ -13,7 +13,7 @@ struct RenderableSceneGeometryData
 	std::vector<RenderableSceneIndex>  Indices;
 };
 
-struct RenderableSceneMeshData
+struct RenderableSceneSubmeshData
 {
 	std::string GeometryName;
 	std::string MaterialName;

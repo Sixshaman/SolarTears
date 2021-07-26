@@ -399,6 +399,9 @@
     <ClInclude Include="Rendering\Common\Scene\RenderableSceneDescriptionMisc.hpp">
       <Filter>Rendering\Common\Scene</Filter>
     </ClInclude>
+    <ClInclude Include="Rendering\Common\Scene\RenderableSceneObjectHandle.hpp">
+      <Filter>Rendering\Common\Scene</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Platform\Win32\Win32Application.cpp">

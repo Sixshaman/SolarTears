@@ -1,7 +1,6 @@
 #include "D3D12Scene.hpp"
 #include "../D3D12Utils.hpp"
 #include "../../Common/RenderingUtils.hpp"
-#include "../../../Core/Scene/SceneDescription.hpp"
 #include "../../Common/Scene/RenderableSceneMisc.hpp"
 #include "../D3D12Shaders.hpp"
 #include <array>
@@ -28,32 +27,38 @@ void D3D12::RenderableScene::PrepareDrawBuffers(ID3D12GraphicsCommandList* cmdLi
 	cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
 
-void D3D12::RenderableScene::DrawStaticObjectsWithRootConstants(ID3D12GraphicsCommandList* cmdList, UINT materialIndexRootBinding) const
+void D3D12::RenderableScene::DrawBakedPositionObjectsWithRootConstants(ID3D12GraphicsCommandList* cmdList, UINT materialIndexRootBinding) const
 {
-	for(size_t meshIndex = 0; meshIndex < mStaticSceneObjects.size(); meshIndex++)
+	for(uint32_t meshIndex = mStaticMeshSpan.Begin; meshIndex < mStaticMeshSpan.End; meshIndex++)
 	{
-		for(uint32_t subobjectIndex = mStaticSceneObjects[meshIndex].FirstSubobjectIndex; subobjectIndex < mStaticSceneObjects[meshIndex].AfterLastSubobjectIndex; subobjectIndex++)
+		for(uint32_t submeshIndex = mSceneMeshes[meshIndex].FirstSubmeshIndex; submeshIndex < mSceneMeshes[meshIndex].AfterLastSubmeshIndex; submeshIndex++)
 		{
-			uint32_t materialIndex = mSceneSubobjects[subobjectIndex].MaterialIndex;
+			uint32_t materialIndex = mSceneSubmeshes[submeshIndex].MaterialIndex;
 			cmdList->SetGraphicsRoot32BitConstant(materialIndexRootBinding, materialIndex, 0);
 
-			cmdList->DrawIndexedInstanced(mSceneSubobjects[subobjectIndex].IndexCount, 1, mSceneSubobjects[subobjectIndex].FirstIndex, mSceneSubobjects[subobjectIndex].VertexOffset, 0);
+			cmdList->DrawIndexedInstanced(mSceneSubmeshes[submeshIndex].IndexCount, mSceneMeshes[meshIndex].InstanceCount, mSceneSubmeshes[submeshIndex].FirstIndex, mSceneSubmeshes[submeshIndex].VertexOffset, 0);
 		}
 	}
 }
 
-void D3D12::RenderableScene::DrawRigidObjectsWithRootConstants(ID3D12GraphicsCommandList* cmdList, UINT objectIndexRootBinding, UINT materialIndexRootBinding) const
+void D3D12::RenderableScene::DrawBufferedPositionObjectsWithRootConstants(ID3D12GraphicsCommandList* cmdList, UINT objectIndexRootBinding, UINT materialIndexRootBinding) const
 {
-	for(size_t meshIndex = 0; meshIndex < mRigidSceneObjects.size(); meshIndex++)
-	{
-		cmdList->SetGraphicsRoot32BitConstant(objectIndexRootBinding, meshIndex, 0);
+	//The spans should follow each other
+	assert(mStaticInstancedMeshSpan.End == mRigidMeshSpan.Begin);
 
-		for(uint32_t subobjectIndex = mRigidSceneObjects[meshIndex].FirstSubobjectIndex; subobjectIndex < mRigidSceneObjects[meshIndex].AfterLastSubobjectIndex; subobjectIndex++)
+	const uint32_t firstMeshIndex     = mStaticInstancedMeshSpan.Begin;
+	const uint32_t afterLastMeshIndex = mRigidMeshSpan.End;
+	for(uint32_t meshIndex = firstMeshIndex; meshIndex < afterLastMeshIndex; meshIndex++)
+	{
+		uint32_t objectIndex = meshIndex - firstMeshIndex;
+		cmdList->SetGraphicsRoot32BitConstant(objectIndexRootBinding, objectIndex, 0);
+
+		for(uint32_t submeshIndex = mSceneMeshes[meshIndex].FirstSubmeshIndex; submeshIndex < mSceneMeshes[meshIndex].AfterLastSubmeshIndex; submeshIndex++)
 		{
-			uint32_t materialIndex = mSceneSubobjects[subobjectIndex].MaterialIndex;
+			uint32_t materialIndex = mSceneSubmeshes[submeshIndex].MaterialIndex;
 			cmdList->SetGraphicsRoot32BitConstant(materialIndexRootBinding, materialIndex, 0);
 
-			cmdList->DrawIndexedInstanced(mSceneSubobjects[subobjectIndex].IndexCount, 1, mSceneSubobjects[subobjectIndex].FirstIndex, mSceneSubobjects[subobjectIndex].VertexOffset, 0);
+			cmdList->DrawIndexedInstanced(mSceneSubmeshes[submeshIndex].IndexCount, mSceneMeshes[meshIndex].InstanceCount, mSceneSubmeshes[submeshIndex].FirstIndex, mSceneSubmeshes[submeshIndex].VertexOffset, 0);
 		}
 	}
 }

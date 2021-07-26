@@ -4,6 +4,7 @@
 #include "RenderableSceneMisc.hpp"
 #include "../../../Core/Scene/Scene.hpp"
 #include "../../../Core/Scene/SceneObjectLocation.hpp"
+#include "../../../Core/DataStructures/Span.hpp"
 #include <span>
 
 class RenderableSceneBase
@@ -35,15 +36,10 @@ protected:
 		uint32_t NormalMapIndex;
 	};
 
-	struct StaticSceneObject
-	{
-		uint32_t FirstSubmeshIndex;
-		uint32_t AfterLastSubmeshIndex;
-	};
-
-	struct RigidSceneObject
+	struct SceneMesh
 	{
 		uint32_t PerObjectDataIndex;
+		uint32_t InstanceCount;
 		uint32_t FirstSubmeshIndex;
 		uint32_t AfterLastSubmeshIndex;
 	};
@@ -58,14 +54,6 @@ protected:
 		Count
 	};
 
-	enum class SceneObjectType: uint8_t
-	{
-		Static = 0,
-		Rigid,
-
-		Count
-	};
-
 public:
 	RenderableSceneBase();
 	~RenderableSceneBase();
@@ -76,14 +64,13 @@ protected:
 	PerObjectData PackObjectData(const SceneObjectLocation& sceneObjectLocation)  const;
 	PerFrameData  PackFrameData(DirectX::FXMMATRIX View, DirectX::FXMMATRIX Proj) const;
 
-	size_t          ObjectArrayIndex(const RenderableSceneObjectHandle meshHandle) const;
-	SceneObjectType ObjectType(const RenderableSceneObjectHandle meshHandle) const;
-
 protected:
-	std::vector<StaticSceneObject> mStaticSceneObjects;
-	std::vector<RigidSceneObject>  mRigidSceneObjects;
+	std::vector<SceneMesh>    mSceneMeshes;
+	std::vector<SceneSubmesh> mSceneSubmeshes;
+
+	Span<uint32_t> mStaticMeshSpan;          //Meshes that never move and have the positional data baked into vertices
+	Span<uint32_t> mStaticInstancedMeshSpan; //Meshes that never move and have the positional data potentially stored in fast immutable memory
+	Span<uint32_t> mRigidMeshSpan;           //Meshes that move and have the positional data stored in CPU-visible memory
 
 	std::vector<SceneMaterial> mSceneMaterials;
-
-	std::vector<SceneSubmesh> mSceneSubmeshes;
 };

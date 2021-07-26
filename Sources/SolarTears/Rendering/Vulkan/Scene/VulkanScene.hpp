@@ -21,8 +21,8 @@ namespace Vulkan
 
 	public:
 		void PrepareDrawBuffers(VkCommandBuffer commandBuffer) const;
-		void DrawStaticObjectsWithRootConstants(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, VkShaderStageFlags materialIndexShaderFlags, uint32_t materialIndexOffset) const;
-		void DrawRigidObjectsWithRootConstants(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, VkShaderStageFlags objectIndexShaderFlags, uint32_t objectIndexOffset, VkShaderStageFlags materialIndexShaderFlags, uint32_t materialIndexOffset) const;
+		void DrawBakedPositionObjectsWithPushConstants(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, VkShaderStageFlags materialIndexShaderFlags, uint32_t materialIndexOffset) const;
+		void DrawBufferedPositionObjectsWithPushConstants(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, VkShaderStageFlags objectIndexShaderFlags, uint32_t objectIndexOffset, VkShaderStageFlags materialIndexShaderFlags, uint32_t materialIndexOffset) const;
 
 	private:
 		const VkDevice mDeviceRef;

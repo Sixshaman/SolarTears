@@ -34,13 +34,3 @@ RenderableSceneBase::PerFrameData RenderableSceneBase::PackFrameData(DirectX::FX
 		.ViewProjMatrix = viewProj
 	};
 }
-
-size_t RenderableSceneBase::ObjectArrayIndex(const RenderableSceneObjectHandle meshHandle) const
-{
-	return meshHandle.Id & 0x00ffffffffffffffull;
-}
-
-RenderableSceneBase::SceneObjectType RenderableSceneBase::ObjectType(const RenderableSceneObjectHandle meshHandle) const
-{
-	return (SceneObjectType)((meshHandle.Id & 0xff00000000000000ull) >> 56);
-}

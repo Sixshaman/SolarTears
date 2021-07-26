@@ -23,8 +23,8 @@ namespace D3D12
 
 	public:
 		void PrepareDrawBuffers(ID3D12GraphicsCommandList* cmdList) const;
-		void DrawStaticObjectsWithRootConstants(ID3D12GraphicsCommandList* cmdList, UINT materialIndexRootBinding) const;
-		void DrawRigidObjectsWithRootConstants(ID3D12GraphicsCommandList* cmdList, UINT objectIndexRootBinding, UINT materialIndexRootBinding) const;
+		void DrawBakedPositionObjectsWithRootConstants(ID3D12GraphicsCommandList* cmdList, UINT materialIndexRootBinding) const;
+		void DrawBufferedPositionObjectsWithRootConstants(ID3D12GraphicsCommandList* cmdList, UINT objectIndexRootBinding, UINT materialIndexRootBinding) const;
 
 	private:
 		wil::com_ptr_nothrow<ID3D12Resource> mSceneVertexBuffer;

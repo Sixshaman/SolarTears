@@ -73,6 +73,7 @@
     <ClInclude Include="Rendering\Common\Scene\RenderableSceneDescription.hpp" />
     <ClInclude Include="Rendering\Common\Scene\RenderableSceneDescriptionMisc.hpp" />
     <ClInclude Include="Rendering\Common\Scene\RenderableSceneMisc.hpp" />
+    <ClInclude Include="Rendering\Common\Scene\RenderableSceneObjectHandle.hpp" />
     <ClInclude Include="Rendering\D3D12\D3D12DeviceFeatures.hpp" />
     <ClInclude Include="Rendering\D3D12\D3D12DeviceQueues.hpp" />
     <ClInclude Include="Rendering\D3D12\D3D12Memory.hpp" />

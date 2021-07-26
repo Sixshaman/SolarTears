@@ -23,9 +23,9 @@ public:
 	void UpdateRigidSceneObjects(const FrameDataUpdateInfo& frameUpdate, const std::span<ObjectDataUpdateInfo> rigidObjectUpdates) override final;
 
 protected:
-	uint64_t CalculatePerMaterialDataOffset(uint32_t materialIndex)                                 const;
-	uint64_t CalculatePerObjectDataOffset(uint32_t currentFrameResourceIndex, uint32_t objectIndex) const;
-	uint64_t CalculatePerFrameDataOffset(uint32_t currentFrameResourceIndex)                        const;
+	uint64_t CalculateMaterialDataOffset(uint32_t materialIndex)                                           const;
+	uint64_t CalculateRigidObjectDataOffset(uint32_t currentFrameResourceIndex, uint32_t rigidObjectIndex) const;
+	uint64_t CalculateFrameDataOffset(uint32_t currentFrameResourceIndex)                                  const;
 
 protected:
 	//Created from inside
