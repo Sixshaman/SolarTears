@@ -402,6 +402,9 @@
     <ClInclude Include="Rendering\Common\Scene\RenderableSceneObjectHandle.hpp">
       <Filter>Rendering\Common\Scene</Filter>
     </ClInclude>
+    <ClInclude Include="Rendering\Common\Scene\BaseRenderableSceneBuilder.hpp">
+      <Filter>Rendering\Common\Scene</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Platform\Win32\Win32Application.cpp">
@@ -633,6 +636,9 @@
       <Filter>Core\Math</Filter>
     </ClCompile>
     <ClCompile Include="Rendering\Common\Scene\RenderableSceneDescription.cpp">
+      <Filter>Rendering\Common\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Common\Scene\BaseRenderableSceneBuilder.cpp">
       <Filter>Rendering\Common\Scene</Filter>
     </ClCompile>
   </ItemGroup>

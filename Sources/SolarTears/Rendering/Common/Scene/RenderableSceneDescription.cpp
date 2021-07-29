@@ -20,27 +20,27 @@ void RenderableSceneDescription::AddGeometry(const std::string& name, Renderable
 	mSceneGeometries[name] = std::move(geometry);
 }
 
-void RenderableSceneDescription::AddStaticMesh(const std::string& name, RenderableSceneMeshData&& mesh)
+void RenderableSceneDescription::AddMesh(const std::string& name)
 {
-	assert(!mSceneStaticMeshes.contains(name));
-	assert(!mSceneRigidMeshes.contains(name));
-	assert(mSceneMaterials.contains(mesh.MaterialName));
-	assert(mSceneGeometries.contains(mesh.GeometryName));
-
-	mSceneStaticMeshes[name] = std::move(mesh);
+	assert(!mSceneMeshes.contains(name));
+	mSceneMeshes[name] = RenderableSceneMeshData
+	{
+		.Submeshes = {},
+		.MeshFlags = 0
+	};
 }
 
-void RenderableSceneDescription::AddRigidMesh(const std::string& name, RenderableSceneMeshData&& mesh)
+void RenderableSceneDescription::AddSubmesh(const std::string& meshName, RenderableSceneSubmeshData&& submesh)
 {
-	assert(!mSceneStaticMeshes.contains(name));
-	assert(!mSceneRigidMeshes.contains(name));
-	assert(mSceneMaterials.contains(mesh.MaterialName));
-	assert(mSceneGeometries.contains(mesh.GeometryName));
+	mSceneMeshes.at(meshName).Submeshes.push_back(std::move(submesh));
+}
 
-	mSceneRigidMeshes[name] = std::move(mesh);
+void RenderableSceneDescription::MarkMeshAsNonStatic(const std::string& name)
+{
+	mSceneMeshes.at(name).MeshFlags |= (uint32_t)(RenderableSceneMeshFlags::NonStatic);
 }
 
 bool RenderableSceneDescription::IsMeshStatic(const std::string& meshName)
 {
-	return mSceneStaticMeshes.contains(meshName);
+	return !(mSceneMeshes.at(meshName).MeshFlags & (uint32_t)RenderableSceneMeshFlags::NonStatic);
 }

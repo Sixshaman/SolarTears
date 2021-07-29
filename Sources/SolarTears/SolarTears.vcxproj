@@ -67,6 +67,7 @@
     <ClInclude Include="Rendering\Common\FrameGraph\Passes\GBufferPass.hpp" />
     <ClInclude Include="Rendering\Common\Renderer.hpp" />
     <ClInclude Include="Rendering\Common\RenderingUtils.hpp" />
+    <ClInclude Include="Rendering\Common\Scene\BaseRenderableSceneBuilder.hpp" />
     <ClInclude Include="Rendering\Common\Scene\ModernRenderableScene.hpp" />
     <ClInclude Include="Rendering\Common\Scene\ModernRenderableSceneBuilder.hpp" />
     <ClInclude Include="Rendering\Common\Scene\RenderableSceneBase.hpp" />
@@ -149,6 +150,7 @@
     <ClCompile Include="Rendering\Common\FrameGraph\Passes\GBufferPass.cpp" />
     <ClCompile Include="Rendering\Common\Renderer.cpp" />
     <ClCompile Include="Rendering\Common\RenderingUtils.cpp" />
+    <ClCompile Include="Rendering\Common\Scene\BaseRenderableSceneBuilder.cpp" />
     <ClCompile Include="Rendering\Common\Scene\ModernRenderableScene.cpp" />
     <ClCompile Include="Rendering\Common\Scene\ModernRenderableSceneBuilder.cpp" />
     <ClCompile Include="Rendering\Common\Scene\RenderableSceneBase.cpp" />
