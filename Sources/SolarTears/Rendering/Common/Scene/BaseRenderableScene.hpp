@@ -7,9 +7,9 @@
 #include "../../../Core/DataStructures/Span.hpp"
 #include <span>
 
-class RenderableSceneBase
+class BaseRenderableScene
 {
-	friend class RenderableSceneBuilderBase;
+	friend class BaseRenderableSceneBuilder;
 
 protected:
 	struct PerObjectData
@@ -55,8 +55,8 @@ protected:
 	};
 
 public:
-	RenderableSceneBase();
-	~RenderableSceneBase();
+	BaseRenderableScene();
+	~BaseRenderableScene();
 
 	virtual void UpdateRigidSceneObjects(const FrameDataUpdateInfo& frameUpdate, const std::span<ObjectDataUpdateInfo> objectUpdates) = 0;
 

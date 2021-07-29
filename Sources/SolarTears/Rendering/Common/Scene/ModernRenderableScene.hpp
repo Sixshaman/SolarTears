@@ -1,12 +1,12 @@
 #pragma once
 
-#include "RenderableSceneBase.hpp"
+#include "BaseRenderableScene.hpp"
 #include <span>
 
 class FrameCounter;
 
 //Class for scene functions common to Vulkan and D3D12
-class ModernRenderableScene: public RenderableSceneBase
+class ModernRenderableScene: public BaseRenderableScene
 {
 	friend class ModernRenderableSceneBuilder;
 

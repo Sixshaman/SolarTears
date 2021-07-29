@@ -48,10 +48,11 @@ void D3D12::RenderableScene::DrawBufferedPositionObjectsWithRootConstants(ID3D12
 
 	const uint32_t firstMeshIndex     = mStaticInstancedMeshSpan.Begin;
 	const uint32_t afterLastMeshIndex = mRigidMeshSpan.End;
+
+	uint32_t objectDataIndex = 0;
 	for(uint32_t meshIndex = firstMeshIndex; meshIndex < afterLastMeshIndex; meshIndex++)
 	{
-		uint32_t objectIndex = meshIndex - firstMeshIndex;
-		cmdList->SetGraphicsRoot32BitConstant(objectIndexRootBinding, objectIndex, 0);
+		cmdList->SetGraphicsRoot32BitConstant(objectIndexRootBinding, objectDataIndex, 0);
 
 		for(uint32_t submeshIndex = mSceneMeshes[meshIndex].FirstSubmeshIndex; submeshIndex < mSceneMeshes[meshIndex].AfterLastSubmeshIndex; submeshIndex++)
 		{
@@ -60,5 +61,7 @@ void D3D12::RenderableScene::DrawBufferedPositionObjectsWithRootConstants(ID3D12
 
 			cmdList->DrawIndexedInstanced(mSceneSubmeshes[submeshIndex].IndexCount, mSceneMeshes[meshIndex].InstanceCount, mSceneSubmeshes[submeshIndex].FirstIndex, mSceneSubmeshes[submeshIndex].VertexOffset, 0);
 		}
+
+		objectDataIndex += mSceneMeshes[meshIndex].InstanceCount;
 	}
 }

@@ -1,14 +1,14 @@
-#include "RenderableSceneBase.hpp"
+#include "BaseRenderableScene.hpp"
 
-RenderableSceneBase::RenderableSceneBase()
+BaseRenderableScene::BaseRenderableScene()
 {
 }
 
-RenderableSceneBase::~RenderableSceneBase()
+BaseRenderableScene::~BaseRenderableScene()
 {
 }
 
-RenderableSceneBase::PerObjectData RenderableSceneBase::PackObjectData(const SceneObjectLocation& sceneObjectLocation) const
+BaseRenderableScene::PerObjectData BaseRenderableScene::PackObjectData(const SceneObjectLocation& sceneObjectLocation) const
 {
 	const DirectX::XMVECTOR scale    = DirectX::XMVectorSet(sceneObjectLocation.Scale, sceneObjectLocation.Scale, sceneObjectLocation.Scale, 0.0f);
 	const DirectX::XMVECTOR rotation = DirectX::XMLoadFloat4(&sceneObjectLocation.RotationQuaternion);
@@ -18,18 +18,18 @@ RenderableSceneBase::PerObjectData RenderableSceneBase::PackObjectData(const Sce
 	DirectX::XMFLOAT4X4 objectMatrix;
 	DirectX::XMStoreFloat4x4(&objectMatrix, DirectX::XMMatrixAffineTransformation(scale, zeroVec, rotation, position));
 
-	return RenderableSceneBase::PerObjectData
+	return BaseRenderableScene::PerObjectData
 	{
 		.WorldMatrix = objectMatrix
 	};
 }
 
-RenderableSceneBase::PerFrameData RenderableSceneBase::PackFrameData(DirectX::FXMMATRIX View, DirectX::FXMMATRIX Proj) const
+BaseRenderableScene::PerFrameData BaseRenderableScene::PackFrameData(DirectX::FXMMATRIX View, DirectX::FXMMATRIX Proj) const
 {
 	DirectX::XMFLOAT4X4 viewProj;
 	DirectX::XMStoreFloat4x4(&viewProj, DirectX::XMMatrixMultiply(View, Proj));
 
-	return RenderableSceneBase::PerFrameData
+	return BaseRenderableScene::PerFrameData
 	{
 		.ViewProjMatrix = viewProj
 	};

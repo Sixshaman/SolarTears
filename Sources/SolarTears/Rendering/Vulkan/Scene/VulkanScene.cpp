@@ -78,9 +78,11 @@ void Vulkan::RenderableScene::DrawBufferedPositionObjectsWithPushConstants(VkCom
 
 	const uint32_t firstMeshIndex     = mStaticInstancedMeshSpan.Begin;
 	const uint32_t afterLastMeshIndex = mRigidMeshSpan.End;
+
+	uint32_t objectDataIndex = 0;
 	for(uint32_t meshIndex = firstMeshIndex; meshIndex < afterLastMeshIndex; meshIndex++)
 	{
-		std::array objectPushConstants = {meshIndex - firstMeshIndex};
+		std::array objectPushConstants = {objectDataIndex};
 		vkCmdPushConstants(commandBuffer, pipelineLayout, objectIndexShaderFlags, objectIndexOffset, objectPushConstants.size() * sizeof(decltype(objectPushConstants)::value_type), objectPushConstants.data());
 
 		for(uint32_t submeshIndex = mSceneMeshes[meshIndex].FirstSubmeshIndex; submeshIndex < mSceneMeshes[meshIndex].AfterLastSubmeshIndex; submeshIndex++)
@@ -90,5 +92,7 @@ void Vulkan::RenderableScene::DrawBufferedPositionObjectsWithPushConstants(VkCom
 
 			vkCmdDrawIndexed(commandBuffer, mSceneSubmeshes[submeshIndex].IndexCount, mSceneMeshes[meshIndex].InstanceCount, mSceneSubmeshes[submeshIndex].FirstIndex, mSceneSubmeshes[submeshIndex].VertexOffset, 0);
 		}
+
+		objectDataIndex += mSceneMeshes[meshIndex].InstanceCount;
 	}
 }

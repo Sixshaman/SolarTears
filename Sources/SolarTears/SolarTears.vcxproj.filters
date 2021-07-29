@@ -330,9 +330,6 @@
     <ClInclude Include="Rendering\Common\Scene\RenderableSceneMisc.hpp">
       <Filter>Rendering\Common\Scene</Filter>
     </ClInclude>
-    <ClInclude Include="Rendering\Common\Scene\RenderableSceneBase.hpp">
-      <Filter>Rendering\Common\Scene</Filter>
-    </ClInclude>
     <ClInclude Include="Rendering\Common\Scene\ModernRenderableScene.hpp">
       <Filter>Rendering\Common\Scene</Filter>
     </ClInclude>
@@ -403,6 +400,9 @@
       <Filter>Rendering\Common\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Rendering\Common\Scene\BaseRenderableSceneBuilder.hpp">
+      <Filter>Rendering\Common\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Common\Scene\BaseRenderableScene.hpp">
       <Filter>Rendering\Common\Scene</Filter>
     </ClInclude>
   </ItemGroup>
@@ -590,9 +590,6 @@
     <ClCompile Include="Rendering\Common\FrameGraph\FrameGraphConfig.cpp">
       <Filter>Rendering\Common\FrameGraph</Filter>
     </ClCompile>
-    <ClCompile Include="Rendering\Common\Scene\RenderableSceneBase.cpp">
-      <Filter>Rendering\Common\Scene</Filter>
-    </ClCompile>
     <ClCompile Include="Rendering\Common\Scene\ModernRenderableScene.cpp">
       <Filter>Rendering\Common\Scene</Filter>
     </ClCompile>
@@ -639,6 +636,9 @@
       <Filter>Rendering\Common\Scene</Filter>
     </ClCompile>
     <ClCompile Include="Rendering\Common\Scene\BaseRenderableSceneBuilder.cpp">
+      <Filter>Rendering\Common\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Common\Scene\BaseRenderableScene.cpp">
       <Filter>Rendering\Common\Scene</Filter>
     </ClCompile>
   </ItemGroup>
