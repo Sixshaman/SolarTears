@@ -20,6 +20,13 @@ struct RenderableSceneVertex
 using RenderableSceneIndex = uint32_t;
 
 
+struct RenderableSceneMaterial
+{
+	uint32_t TextureIndex;
+	uint32_t NormalMapIndex;
+};
+
+
 struct ObjectDataUpdateInfo
 {
 	RenderableSceneObjectHandle ObjectId;

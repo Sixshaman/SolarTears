@@ -10,6 +10,7 @@ enum class RenderableSceneMeshFlags: uint32_t
 struct RenderableSceneMaterialData
 {
 	std::wstring TextureFilename;
+	std::wstring NormalMapFilename;
 };
 
 struct RenderableSceneGeometryData

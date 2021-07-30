@@ -30,12 +30,6 @@ protected:
 		uint32_t MaterialIndex;
 	};
 
-	struct SceneMaterial
-	{
-		uint32_t TextureIndex;
-		uint32_t NormalMapIndex;
-	};
-
 	struct SceneMesh
 	{
 		uint32_t PerObjectDataIndex;
@@ -71,6 +65,4 @@ protected:
 	Span<uint32_t> mStaticMeshSpan;          //Meshes that never move and have the positional data baked into vertices
 	Span<uint32_t> mStaticInstancedMeshSpan; //Meshes that never move and have the positional data potentially stored in fast immutable memory
 	Span<uint32_t> mRigidMeshSpan;           //Meshes that move and have the positional data stored in CPU-visible memory
-
-	std::vector<SceneMaterial> mSceneMaterials;
 };

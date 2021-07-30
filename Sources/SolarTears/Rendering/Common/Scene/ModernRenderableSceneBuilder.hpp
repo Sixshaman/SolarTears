@@ -45,9 +45,7 @@ private:
 protected:
 	ModernRenderableScene* mSceneToBuild;
 
-	std::vector<std::byte>             mTextureData;
-	std::vector<RenderableSceneVertex> mVertexBufferData;
-	std::vector<RenderableSceneIndex>  mIndexBufferData;
+	std::vector<std::byte> mTextureData;
 
 	uint64_t mVertexBufferGpuMemoryOffset;
 	uint64_t mIndexBufferGpuMemoryOffset;

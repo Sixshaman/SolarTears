@@ -33,6 +33,14 @@ private:
 	uint32_t FillStaticMeshLists(const std::vector<const RenderableSceneMeshData*>& staticSingleMeshes, std::vector<std::span<const RenderableSceneMeshData>>& staticInstanceSpans, uint32_t perObjectDataOffset, std::vector<std::string_view>& inoutSubmeshGeometryNames, std::vector<std::string_view>& inoutSubmeshMaterialNamesFlat, std::vector<std::span<std::string_view>>& inoutSubmeshMaterialNamesPerInstance);
 	uint32_t FillRigidMeshLists(const std::vector<const RenderableSceneMeshData*>& rigidSingleMeshes, std::vector<std::span<const RenderableSceneMeshData>>& rigidInstanceSpans, uint32_t perObjectDataOffset, std::vector<std::string_view>& inoutSubmeshGeometryNames, std::vector<std::string_view>& inoutSubmeshMaterialNamesFlat, std::vector<std::span<std::string_view>>& inoutSubmeshMaterialNamesPerInstance);
 
+	//Step 5 of filling scene data structures
+	//Loads vertex and index buffer data from geometries
+	//Pre-sorting all meshes are by geometry in previous steps achieves coherence
+	void AssignSubmeshGeometries(const std::unordered_map<std::string, RenderableSceneGeometryData>& descriptionGeometries, const std::vector<std::string_view>& submeshGeometryNames);
+
+	//Step 6 of filling scene data structures
+	void AssignSubmeshMaterials(const std::unordered_map<std::string, RenderableSceneMaterialData>& descriptionMaterials, std::vector<std::span<std::string_view>>& submeshMaterialNamesPerInstance);
+
 private:
 	//Compares the geometry of two meshes. The submeshes have to be sorted by geometry name
 	bool SameGeometry(const RenderableSceneMeshData& left, const RenderableSceneMeshData& right) const;
@@ -45,4 +53,11 @@ private:
 
 private:
 	BaseRenderableScene* mSceneToBuild;
+
+	std::vector<RenderableSceneVertex> mVertexBufferData;
+	std::vector<RenderableSceneIndex>  mIndexBufferData;
+
+	std::vector<RenderableSceneMaterial> mMaterialData;
+
+	std::vector<std::wstring> mTexturesToLoad;
 };

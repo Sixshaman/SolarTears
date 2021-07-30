@@ -40,6 +40,12 @@ void BaseRenderableSceneBuilder::Build(const RenderableSceneDescription& sceneDe
 	perObjectDataOffset += FillStaticMeshLists(staticSingleMeshes, staticInstanceSpans, perObjectDataOffset, submeshGeometryNames, submeshMaterialNamesFlat, submeshMaterialNamesPerInstance);
 	perObjectDataOffset += FillRigidMeshLists(rigidSingleMeshes,   rigidInstanceSpans,  perObjectDataOffset, submeshGeometryNames, submeshMaterialNamesFlat, submeshMaterialNamesPerInstance);
 
+	mSceneToBuild->mSceneSubmeshes.resize(submeshGeometryNames.size());
+	
+
+	//After this step we'll have vertex and index buffers ready to be uploaded to GPU
+	AssignSubmeshGeometries(sceneDescription.mSceneGeometries, submeshGeometryNames);
+
 
 	//To be continued...
 }
@@ -247,6 +253,130 @@ uint32_t BaseRenderableSceneBuilder::FillRigidMeshLists(const std::vector<const 
 	instanceCount += AllocateInstancedMeshesStorage(rigidInstanceSpans, objectDataOffset, inoutSubmeshGeometryNames, inoutSubmeshMaterialNamesFlat, inoutSubmeshMaterialNamesPerInstance);
 
 	return instanceCount;
+}
+
+void BaseRenderableSceneBuilder::AssignSubmeshGeometries(const std::unordered_map<std::string, RenderableSceneGeometryData>& descriptionGeometries, const std::vector<std::string_view>& submeshGeometryNames)
+{
+	mVertexBufferData.clear();
+	mIndexBufferData.clear();
+
+	struct GeometrySubmeshRange
+	{
+		uint32_t IndexCount;
+		uint32_t FirstIndex;
+		uint32_t VertexOffset;
+	};
+
+	std::unordered_map<std::string_view, GeometrySubmeshRange> geometryRanges;
+	for(size_t submeshIndex = 0; submeshIndex < mSceneToBuild->mSceneSubmeshes.size(); submeshIndex++)
+	{
+		std::string_view geometryName = submeshGeometryNames[submeshIndex];
+		BaseRenderableScene::SceneSubmesh& submesh = mSceneToBuild->mSceneSubmeshes[submeshIndex];
+
+		auto geometryRangeIt = geometryRanges.find(geometryName);
+		if(geometryRangeIt != geometryRanges.end())
+		{
+			submesh.IndexCount   = geometryRangeIt->second.IndexCount;
+			submesh.FirstIndex   = geometryRangeIt->second.FirstIndex;
+			submesh.VertexOffset = geometryRangeIt->second.VertexOffset;
+		}
+		else
+		{
+			//Damn! Even though C++20 has heterogeneous lookup for unordered maps, it doesn't provide default hashes for string_view
+			//I don't want to boilerplate the code with definitions, so I have to construct std::string here
+			const RenderableSceneGeometryData& geometryData = descriptionGeometries.at(std::string(geometryName));
+
+			GeometrySubmeshRange geometryRange = 
+			{
+				.IndexCount   = (uint32_t)geometryData.Indices.size(),
+				.FirstIndex   = (uint32_t)mIndexBufferData.size(),
+				.VertexOffset = (uint32_t)mVertexBufferData.size()
+			};
+
+			mVertexBufferData.insert(mVertexBufferData.end(), geometryData.Vertices.begin(), geometryData.Vertices.end());
+			mIndexBufferData.insert(mIndexBufferData.end(), geometryData.Indices.begin(), geometryData.Indices.end());
+
+			submesh.IndexCount   = geometryRange.IndexCount;
+			submesh.FirstIndex   = geometryRange.FirstIndex;
+			submesh.VertexOffset = geometryRange.VertexOffset;
+
+			geometryRanges[geometryName] = geometryRange;
+		}
+	}
+}
+
+void BaseRenderableSceneBuilder::AssignSubmeshMaterials(const std::unordered_map<std::string, RenderableSceneMaterialData>& descriptionMaterials, std::vector<std::span<std::string_view>>& submeshMaterialNamesPerInstance)
+{
+	mMaterialData.clear();
+
+	std::unordered_map<std::string_view,  uint32_t> materialIndices;
+	std::unordered_map<std::wstring_view, uint32_t> textureIndices;
+
+	for(uint32_t meshIndex = mSceneToBuild->mStaticMeshSpan.Begin; meshIndex < mSceneToBuild->mStaticMeshSpan.End; meshIndex++)
+	{
+		const BaseRenderableScene::SceneMesh& mesh = mSceneToBuild->mSceneMeshes[meshIndex];
+		for(uint32_t submeshIndex = mesh.FirstSubmeshIndex; submeshIndex < mesh.AfterLastSubmeshIndex; submeshIndex++)
+		{
+			if(mesh.InstanceCount == 1)
+			{
+				std::string_view materialName = submeshMaterialNamesPerInstance[submeshIndex][0];
+				
+				//...HERE... Logic is similar to the else branch, but not quite the same
+			}
+			else
+			{
+				//The materials for instanced data are duplicated to acquire them with instance id. This means all instance materials are gonna be appended to mMaterialData
+				mSceneToBuild->mSceneSubmeshes[submeshIndex].MaterialIndex = mMaterialData.size();
+
+				for(uint32_t instanceIndex = 0; instanceIndex < mesh.InstanceCount; instanceIndex++)
+				{
+					std::string_view materialName = submeshMaterialNamesPerInstance[submeshIndex][instanceIndex];
+					
+					auto materialIndexIt = materialIndices.find(materialName);
+					if(materialIndexIt != materialIndices.end())
+					{
+						mMaterialData.push_back(mMaterialData[materialIndexIt->second]);
+					}
+					else
+					{
+						const RenderableSceneMaterialData& materialData = descriptionMaterials.at(std::string(materialName));
+						
+						RenderableSceneMaterial material;
+
+						auto textureIndexIt = textureIndices.find(materialData.TextureFilename);
+						if(textureIndexIt != textureIndices.end())
+						{
+							material.TextureIndex = textureIndexIt->second;
+						}
+						else
+						{
+							mTexturesToLoad.push_back(materialData.TextureFilename);
+
+							textureIndices[materialData.TextureFilename] = (uint32_t)(mTexturesToLoad.size() - 1);
+							material.TextureIndex                        = (uint32_t)(mTexturesToLoad.size() - 1);
+						}
+
+						auto normalMapIndexIt = textureIndices.find(materialData.NormalMapFilename);
+						if(normalMapIndexIt != textureIndices.end())
+						{
+							material.NormalMapIndex = textureIndexIt->second;
+						}
+						else
+						{
+							mTexturesToLoad.push_back(materialData.TextureFilename);
+
+							textureIndices[materialData.TextureFilename] = (uint32_t)(mTexturesToLoad.size() - 1);
+							material.NormalMapIndex                      = (uint32_t)(mTexturesToLoad.size() - 1);
+						}
+
+						mMaterialData.push_back(std::move(material));
+
+						materialIndices[materialName] = (uint32_t)(mMaterialData.size() - 1);
+					}
+				}
+			}
+		}
+	}
 }
 
 bool BaseRenderableSceneBuilder::SameGeometry(const RenderableSceneMeshData& left, const RenderableSceneMeshData& right) const
