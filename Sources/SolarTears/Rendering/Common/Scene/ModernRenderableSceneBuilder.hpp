@@ -1,17 +1,18 @@
 #pragma once
 
 #include "RenderableSceneDescription.hpp"
+#include "BaseRenderableSceneBuilder.hpp"
 
 class ModernRenderableScene;
 
-class ModernRenderableSceneBuilder
+class ModernRenderableSceneBuilder: public BaseRenderableSceneBuilder
 {
 public:
 	ModernRenderableSceneBuilder(ModernRenderableScene* sceneToBuild);
 	~ModernRenderableSceneBuilder();
 
-	void BakeSceneFirstPart(const RenderableSceneDescription& sceneDescription);
-	void BakeSceneSecondPart();
+protected:
+	void Bake() override;
 
 protected:
 	virtual void AllocateTextureMetadataArrays(size_t textureCount)                                                                                                              = 0;
@@ -35,7 +36,7 @@ protected:
 	virtual void WaitForInitializationCommands() const = 0;
 
 private:
-	void CreateSceneMeshMetadata(std::vector<std::wstring>& sceneTexturesVec);
+	void CreateSceneMeshMetadata();
 
 	size_t PreCreateBuffers(size_t intermediateBufferSize);
 	size_t PreCreateTextures(const std::vector<std::wstring>& sceneTextures, size_t intermediateBufferSize);
@@ -43,7 +44,7 @@ private:
 	void FillIntermediateBufferData();
 
 protected:
-	ModernRenderableScene* mSceneToBuild;
+	ModernRenderableScene* mModernSceneToBuild;
 
 	std::vector<std::byte> mTextureData;
 

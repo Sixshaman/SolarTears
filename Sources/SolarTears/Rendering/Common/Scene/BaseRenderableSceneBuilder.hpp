@@ -8,25 +8,41 @@ class BaseRenderableScene;
 
 class BaseRenderableSceneBuilder
 {
+	struct NamedSceneMeshData
+	{
+		std::string_view        MeshName;
+		RenderableSceneMeshData MeshData;
+	};
+
 public:
 	BaseRenderableSceneBuilder(BaseRenderableScene* sceneToBuild);
 	~BaseRenderableSceneBuilder();
 
-	void Build(const RenderableSceneDescription& sceneDescription);
+	void Build(const RenderableSceneDescription& sceneDescription, const std::unordered_map<std::string_view, SceneObjectLocation>& sceneMeshInitialLocations);
+
+protected:
+	//Transfers the raw buffer data to GPU, loads textures, allocates per-object constant data, etc.
+	virtual void Bake() = 0;
 
 private:
 	//Step 1 of filling scene data structures
 	//Creates a list of meshes where all submeshes are sorted by geometry name
-	void BuildMeshListWithSubmeshesSorted(const std::unordered_map<std::string, RenderableSceneMeshData>& descriptionMeshes, std::vector<RenderableSceneMeshData>& outSceneMeshes) const;
+	void BuildMeshListWithSubmeshesSorted(const std::unordered_map<std::string, RenderableSceneMeshData>& descriptionMeshes, std::vector<NamedSceneMeshData>& outNamedSceneMeshes) const;
 
 	//Step 2 of filling scene data structures
 	//Sorts the meshes in such a way that instances of the same object (same geometry, maybe different materials) are next to each other
 	//Assumes all submeshes in each mesh are sorted by geometries (step 1)
-	void SortMeshesBySubmeshGeometry(std::vector<RenderableSceneMeshData>& inoutSceneMeshes) const;
+	void SortMeshesBySubmeshGeometry(std::vector<NamedSceneMeshData>& inoutNamedSceneMeshes) const;
+
+	void ObtainLocationsFromNames(const std::vector<NamedSceneMeshData>& namedSceneMeshes, const std::unordered_map<std::string_view, SceneObjectLocation>& initialLocations, std::vector<RenderableSceneMeshData>& outSceneMeshes, std::vector<SceneObjectLocation>& outInitialLocations);
+
+	void DetectInstanceSpans(std::vector<RenderableSceneMeshData>& sceneMeshes, std::vector<std::span<const RenderableSceneMeshData>>& outSortedInstanceSpans);
 
 	//Step 3 of filling scene data structures
 	//Splits a single mesh list onto 2 groups: static and rigid, with instance spans marked
 	void SplitMeshList(const std::vector<RenderableSceneMeshData>& sceneMeshes, std::vector<const RenderableSceneMeshData*>& outStaticSingleMeshes, std::vector<const RenderableSceneMeshData*>& outRigidSingleMeshes, std::vector<std::span<const RenderableSceneMeshData>>& outStaticInstanceSpans, std::vector<std::span<const RenderableSceneMeshData>>& outRigidInstanceSpans) const;
+
+	void FillMeshLists(std::vector<std::span<const RenderableSceneMeshData>>& sortedInstanceSpans, std::vector<std::string_view>& inoutSubmeshGeometryNames, std::vector<std::string_view>& inoutSubmeshMaterialNamesFlat, std::vector<std::span<std::string_view>>& inoutSubmeshMaterialNamesPerInstance);
 
 	//Step 4 of filling scene data structures
 	//Allocates the actual submesh and mesh lists. Both functions returns the total instance count written
@@ -51,7 +67,7 @@ private:
 	//Allocates scene storage for instanced meshes. Returns the total instance count
 	uint32_t AllocateInstancedMeshesStorage(const std::vector<std::span<const RenderableSceneMeshData>>& meshInstanceSpans, uint32_t objectDataOffset, std::vector<std::string_view>& inoutSubmeshGeometryNames, std::vector<std::string_view>& inoutSubmeshMaterialNamesFlat, std::vector<std::span<std::string_view>>& inoutSubmeshMaterialNamesPerInstance);
 
-private:
+protected:
 	BaseRenderableScene* mSceneToBuild;
 
 	std::vector<RenderableSceneVertex> mVertexBufferData;

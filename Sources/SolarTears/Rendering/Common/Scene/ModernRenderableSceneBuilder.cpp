@@ -2,7 +2,7 @@
 #include "ModernRenderableScene.hpp"
 #include "../RenderingUtils.hpp"
 
-ModernRenderableSceneBuilder::ModernRenderableSceneBuilder(ModernRenderableScene* sceneToBuild): mSceneToBuild(sceneToBuild)
+ModernRenderableSceneBuilder::ModernRenderableSceneBuilder(ModernRenderableScene* sceneToBuild): BaseRenderableSceneBuilder(sceneToBuild), mModernSceneToBuild(sceneToBuild)
 {
 	mVertexBufferGpuMemoryOffset   = 0;
 	mIndexBufferGpuMemoryOffset    = 0;
@@ -10,6 +10,10 @@ ModernRenderableSceneBuilder::ModernRenderableSceneBuilder(ModernRenderableScene
 }
 
 ModernRenderableSceneBuilder::~ModernRenderableSceneBuilder()
+{
+}
+
+void ModernRenderableSceneBuilder::Bake()
 {
 }
 
@@ -46,52 +50,16 @@ void ModernRenderableSceneBuilder::BakeSceneSecondPart()
 	WaitForInitializationCommands();
 }
 
-void ModernRenderableSceneBuilder::CreateSceneMeshMetadata(std::vector<std::wstring>& sceneTexturesVec)
+void ModernRenderableSceneBuilder::CreateSceneMeshMetadata()
 {
-	mVertexBufferData.clear();
-	mIndexBufferData.clear();
-
-	mSceneToBuild->mRigidSceneObjects.clear();
-	mSceneToBuild->mStaticSceneObjects.clear();
-	mSceneToBuild->mSceneSubmeshes.clear();
-
-	std::unordered_map<std::wstring, size_t> textureVecIndices;
-	for(auto it = mSceneTextures.begin(); it != mSceneTextures.end(); ++it)
-	{
-		sceneTexturesVec.push_back(*it);
-		textureVecIndices[*it] = sceneTexturesVec.size() - 1;
-	}
-
-	//Create scene subobjects
-	for(size_t i = 0; i < mSceneStaticMeshes.size(); i++)
-	{
-		ModernRenderableScene::SceneSubmesh submesh;
-		submesh.FirstIndex    = (uint32_t)mIndexBufferData.size();
-		submesh.IndexCount    = (uint32_t)mSceneStaticMeshes[i].MeshDataDescription.Indices.size();
-		submesh.VertexOffset  = (int32_t)mVertexBufferData.size();
-		submesh.MaterialIndex = (uint32_t)materialIndices[mSceneStaticMeshes[i].MeshDataDescription.TextureFilename];
-
-		mVertexBufferData.insert(mVertexBufferData.end(), mSceneStaticMeshes[i].MeshDataDescription.Vertices.begin(), mSceneStaticMeshes[i].MeshDataDescription.Vertices.end());
-		mIndexBufferData.insert(mIndexBufferData.end(),   mSceneStaticMeshes[i].MeshDataDescription.Indices.begin(),  mSceneStaticMeshes[i].MeshDataDescription.Indices.end());
-
-		mSceneStaticMeshes[i].MeshDataDescription.Vertices.clear();
-		mSceneStaticMeshes[i].MeshDataDescription.Indices.clear();
-
-		mSceneToBuild->mSceneSubmeshes.push_back(submesh);
+	
 
 
-		//Need to change this in case of multiple subobjects for mesh
-		mSceneToBuild->mStaticSceneObjects.push_back(ModernRenderableScene::StaticSceneObject
-		{
-			.FirstSubmeshIndex     = (uint32_t)i,
-			.AfterLastSubmeshIndex = (uint32_t)(i + 1)
-		});
-	}
 
-	mSceneToBuild->mScenePerObjectData.resize(mSceneToBuild->mSceneMeshes.size());
-	mSceneToBuild->mScheduledSceneUpdates.resize(mSceneToBuild->mSceneMeshes.size() + 1); //1 for each subobject and 1 for frame data
-	mSceneToBuild->mObjectDataScheduledUpdateIndices.resize(mSceneToBuild->mSceneSubobjects.size(), (uint32_t)(-1));
-	mSceneToBuild->mFrameDataScheduledUpdateIndex = (uint32_t)(-1);
+	mModernSceneToBuild->mScenePerObjectData.resize(mSceneToBuild->mSceneMeshes.size());
+	mModernSceneToBuild->mScheduledSceneUpdates.resize(mSceneToBuild->mSceneMeshes.size() + 1); //1 for each subobject and 1 for frame data
+
+
 }
 
 size_t ModernRenderableSceneBuilder::PreCreateBuffers(size_t currentIntermediateBufferSize)

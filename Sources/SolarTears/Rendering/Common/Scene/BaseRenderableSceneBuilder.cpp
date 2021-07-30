@@ -10,15 +10,21 @@ BaseRenderableSceneBuilder::~BaseRenderableSceneBuilder()
 {
 }
 
-void BaseRenderableSceneBuilder::Build(const RenderableSceneDescription& sceneDescription)
+void BaseRenderableSceneBuilder::Build(const RenderableSceneDescription& sceneDescription, const std::unordered_map<std::string_view, SceneObjectLocation>& sceneMeshInitialLocations)
 {
 	//After this step we'll have a flat list of meshes, and each mesh will have its submeshes sorted.
-	std::vector<RenderableSceneMeshData> sceneMeshes;
-	BuildMeshListWithSubmeshesSorted(sceneDescription.mSceneMeshes, sceneMeshes);
-
+	std::vector<NamedSceneMeshData> namedSceneMeshes;
+	BuildMeshListWithSubmeshesSorted(sceneDescription.mSceneMeshes, namedSceneMeshes);
 
 	//After this step we'll have a sorted flat list of meshes
-	SortMeshesBySubmeshGeometry(sceneMeshes);
+	SortMeshesBySubmeshGeometry(namedSceneMeshes);
+
+	//After this step we'll have a list of meshes and a list of locations
+	std::vector<RenderableSceneMeshData> sceneMeshes;
+	std::vector<SceneObjectLocation>     meshInitialLocations;
+	ObtainLocationsFromNames(namedSceneMeshes, sceneMeshInitialLocations, sceneMeshes, meshInitialLocations);
+
+	namedSceneMeshes.clear(); //Don't need it anymore
 
 
 	//After this step we'll have lists of meshes of each type, with instances grouped
@@ -43,16 +49,24 @@ void BaseRenderableSceneBuilder::Build(const RenderableSceneDescription& sceneDe
 	mSceneToBuild->mSceneSubmeshes.resize(submeshGeometryNames.size());
 	
 
+	
+
+
 	//After this step we'll have vertex and index buffers ready to be uploaded to GPU
 	AssignSubmeshGeometries(sceneDescription.mSceneGeometries, submeshGeometryNames);
 
 
-	//To be continued...
+	//After this step we'll have material data initialized and texture list prepared to be loaded
+	AssignSubmeshMaterials(sceneDescription.mSceneMaterials, submeshMaterialNamesPerInstance);
+
+
+	//Finalize scene loading
+	Bake();
 }
 
-void BaseRenderableSceneBuilder::BuildMeshListWithSubmeshesSorted(const std::unordered_map<std::string, RenderableSceneMeshData>& descriptionMeshes, std::vector<RenderableSceneMeshData>& outSceneMeshes) const
+void BaseRenderableSceneBuilder::BuildMeshListWithSubmeshesSorted(const std::unordered_map<std::string, RenderableSceneMeshData>& descriptionMeshes, std::vector<NamedSceneMeshData>& outNamedSceneMeshes) const
 {
-	outSceneMeshes.clear();
+	outNamedSceneMeshes.clear();
 	for(const auto& mesh: descriptionMeshes)
 	{
 		if(mesh.second.Submeshes.size() == 0)
@@ -60,31 +74,36 @@ void BaseRenderableSceneBuilder::BuildMeshListWithSubmeshesSorted(const std::uno
 			continue;
 		}
 
-		outSceneMeshes.push_back(mesh.second);
-		std::sort(outSceneMeshes.back().Submeshes.begin(), outSceneMeshes.back().Submeshes.end(), [](const RenderableSceneSubmeshData& left, const RenderableSceneSubmeshData& right)
+		outNamedSceneMeshes.push_back(NamedSceneMeshData
+		{
+			.MeshName = mesh.first,
+			.MeshData = mesh.second
+		});
+
+		std::sort(outNamedSceneMeshes.back().MeshData.Submeshes.begin(), outNamedSceneMeshes.back().MeshData.Submeshes.end(), [](const RenderableSceneSubmeshData& left, const RenderableSceneSubmeshData& right)
 		{
 			return left.GeometryName < right.GeometryName;
 		});
 	}
 }
 
-void BaseRenderableSceneBuilder::SortMeshesBySubmeshGeometry(std::vector<RenderableSceneMeshData>& inoutSceneMeshes) const
+void BaseRenderableSceneBuilder::SortMeshesBySubmeshGeometry(std::vector<NamedSceneMeshData>& inoutSceneMeshes) const
 {
 	//First, sort the meshes by submesh count, to ensure that two meshes with geometries {"a", "b", "c"} won't be divided with a mesh with geometry {"a", "b"}
 	//Sort from the highest to lowest, this is gonna be be handy later
-	std::sort(inoutSceneMeshes.begin(), inoutSceneMeshes.end(), [](const RenderableSceneMeshData& left, const RenderableSceneMeshData& right)
+	std::sort(inoutSceneMeshes.begin(), inoutSceneMeshes.end(), [](const NamedSceneMeshData& left, const NamedSceneMeshData& right)
 	{
-		return left.Submeshes.size() > right.Submeshes.size();
+		return left.MeshData.Submeshes.size() > right.MeshData.Submeshes.size();
 	});
 
 	//Second, find all the ranges with equal amount of submeshes, to later sort each range
-	std::vector<std::span<RenderableSceneMeshData>> meshRanges;
+	std::vector<std::span<NamedSceneMeshData>> meshRanges;
 
 	size_t currentSubmeshCount = 0;
 	auto currentRangeStart = inoutSceneMeshes.begin();
 	for(auto meshIt = inoutSceneMeshes.begin(); meshIt != inoutSceneMeshes.end(); ++meshIt)
 	{
-		if(meshIt->Submeshes.size() != currentSubmeshCount)
+		if(meshIt->MeshData.Submeshes.size() != currentSubmeshCount)
 		{
 			if(std::distance(currentRangeStart, meshIt) > 1) //No point to sort single-element ranges
 			{
@@ -92,7 +111,7 @@ void BaseRenderableSceneBuilder::SortMeshesBySubmeshGeometry(std::vector<Rendera
 			}
 
 			currentRangeStart   = meshIt;
-			currentSubmeshCount = meshIt->Submeshes.size();
+			currentSubmeshCount = meshIt->MeshData.Submeshes.size();
 		}
 	}
 
@@ -104,9 +123,9 @@ void BaseRenderableSceneBuilder::SortMeshesBySubmeshGeometry(std::vector<Rendera
 	//Third, sort each range by 0th geometry name
 	for(auto meshRange: meshRanges)
 	{
-		std::sort(meshRange.begin(), meshRange.end(), [](const RenderableSceneMeshData& left, const RenderableSceneMeshData& right)
+		std::sort(meshRange.begin(), meshRange.end(), [](const NamedSceneMeshData& left, const NamedSceneMeshData& right)
 		{
-			return left.Submeshes[0].GeometryName < left.Submeshes[0].GeometryName;
+			return left.MeshData.Submeshes[0].GeometryName < right.MeshData.Submeshes[0].GeometryName;
 		});
 	}
 
@@ -124,13 +143,13 @@ void BaseRenderableSceneBuilder::SortMeshesBySubmeshGeometry(std::vector<Rendera
 		for(auto meshIt = inoutSceneMeshes.begin(); meshIt != inoutSceneMeshes.end(); ++meshIt)
 		{
 			//Meshes are sorted, all further meshes won't have groupSubmeshCount submeshes
-			if(meshIt->Submeshes.size() < geometrySortIndex + 1)
+			if(meshIt->MeshData.Submeshes.size() < geometrySortIndex + 1)
 			{
 				currentRangeEnd = meshIt;
 				break;
 			}
 
-			if(meshIt->Submeshes.size() != currentSubmeshCount || meshIt->Submeshes[geometrySortIndex].GeometryName != currentGeometryName)
+			if(meshIt->MeshData.Submeshes.size() != currentSubmeshCount || meshIt->MeshData.Submeshes[geometrySortIndex].GeometryName != currentGeometryName)
 			{
 				if(std::distance(currentRangeStart, meshIt) > 1) //No point to sort single-element ranges
 				{
@@ -138,8 +157,8 @@ void BaseRenderableSceneBuilder::SortMeshesBySubmeshGeometry(std::vector<Rendera
 				}
 
 				currentRangeStart   = meshIt;
-				currentSubmeshCount = meshIt->Submeshes.size();
-				currentGeometryName = meshIt->Submeshes[geometrySortIndex].GeometryName;
+				currentSubmeshCount = meshIt->MeshData.Submeshes.size();
+				currentGeometryName = meshIt->MeshData.Submeshes[geometrySortIndex].GeometryName;
 			}
 		}
 
@@ -151,14 +170,66 @@ void BaseRenderableSceneBuilder::SortMeshesBySubmeshGeometry(std::vector<Rendera
 		//Sort each range by ith geometry name
 		for(auto meshRange: meshRanges)
 		{
-			std::sort(meshRange.begin(), meshRange.end(), [geometrySortIndex](const RenderableSceneMeshData& left, const RenderableSceneMeshData& right)
+			std::sort(meshRange.begin(), meshRange.end(), [geometrySortIndex](const NamedSceneMeshData& left, const NamedSceneMeshData& right)
 			{
-				return left.Submeshes[geometrySortIndex].GeometryName < left.Submeshes[geometrySortIndex].GeometryName;
+				return left.MeshData.Submeshes[geometrySortIndex].GeometryName < right.MeshData.Submeshes[geometrySortIndex].GeometryName;
 			});
 		}
 
 		geometrySortIndex++;
 	}
+}
+
+void BaseRenderableSceneBuilder::ObtainLocationsFromNames(const std::vector<NamedSceneMeshData>& namedSceneMeshes, const std::unordered_map<std::string_view, SceneObjectLocation>& initialLocations, std::vector<RenderableSceneMeshData>& outSceneMeshes, std::vector<SceneObjectLocation>& outInitialLocations)
+{
+	outSceneMeshes.clear();
+
+	outSceneMeshes.reserve(namedSceneMeshes.size());
+	outInitialLocations.reserve(namedSceneMeshes.size());
+
+	for(const NamedSceneMeshData& namedMesh: namedSceneMeshes)
+	{
+		outSceneMeshes.push_back(namedMesh.MeshData);
+		outInitialLocations.push_back(initialLocations.at(namedMesh.MeshName));
+	}
+}
+
+void BaseRenderableSceneBuilder::DetectInstanceSpans(std::vector<RenderableSceneMeshData>& sceneMeshes, std::vector<std::span<const RenderableSceneMeshData>>& outInstanceSpans)
+{
+	outInstanceSpans.clear();
+
+	auto meshIt = sceneMeshes.begin();
+	while(meshIt != sceneMeshes.end())
+	{
+		bool thisMeshStatic = !(meshIt->MeshFlags & (uint32_t)RenderableSceneMeshFlags::NonStatic);
+
+		auto nextMeshIt = meshIt + 1;
+		while (nextMeshIt != sceneMeshes.end())
+		{
+			bool nextMeshStatic = !(meshIt->MeshFlags & (uint32_t)RenderableSceneMeshFlags::NonStatic);
+			if (!SameGeometry(*meshIt, *nextMeshIt) || thisMeshStatic != nextMeshStatic)
+			{
+				break;
+			}
+
+			++nextMeshIt;
+		}
+
+		outInstanceSpans.push_back({meshIt, nextMeshIt});
+		meshIt = nextMeshIt;
+	}
+
+	//Sort instance spans by size
+	std::sort(outInstanceSpans.begin(), outInstanceSpans.end(), [](std::span<const RenderableSceneMeshData> left, std::span<const RenderableSceneMeshData> right)
+	{
+		return left.size() < right.size();
+	});
+
+	//Sort instance spans to static/non-static
+	std::stable_sort(outInstanceSpans.begin(), outInstanceSpans.end(), [](std::span<const RenderableSceneMeshData> left, std::span<const RenderableSceneMeshData> right)
+	{
+		return (left.front().MeshFlags & (uint32_t)RenderableSceneMeshFlags::NonStatic) < (right.front().MeshFlags & (uint32_t)RenderableSceneMeshFlags::NonStatic);
+	});
 }
 
 void BaseRenderableSceneBuilder::SplitMeshList(const std::vector<RenderableSceneMeshData>& sceneMeshes, std::vector<const RenderableSceneMeshData*>& outStaticSingleMeshes, std::vector<const RenderableSceneMeshData*>& outRigidSingleMeshes, std::vector<std::span<const RenderableSceneMeshData>>& outStaticInstanceSpans, std::vector<std::span<const RenderableSceneMeshData>>& outRigidInstanceSpans) const
@@ -214,6 +285,76 @@ void BaseRenderableSceneBuilder::SplitMeshList(const std::vector<RenderableScene
 	}
 }
 
+
+
+
+
+
+
+
+
+
+void BaseRenderableSceneBuilder::FillMeshLists(std::vector<std::span<const RenderableSceneMeshData>>& sortedInstanceSpans, std::vector<std::string_view>& inoutSubmeshGeometryNames, std::vector<std::string_view>& inoutSubmeshMaterialNamesFlat, std::vector<std::span<std::string_view>>& inoutSubmeshMaterialNamesPerInstance)
+{
+	mSceneToBuild->mStaticMeshSpan.Begin = (uint32_t)mSceneToBuild->mSceneMeshes.size();
+
+	uint32_t objectDataOffset = 0;
+	auto meshSpanIt = sortedInstanceSpans.begin();
+
+	//Go through all static non-instanced meshes first
+	while(meshSpanIt != sortedInstanceSpans.end() && meshSpanIt->size() == 1 && !(meshSpanIt->front().MeshFlags & (uint32_t)RenderableSceneMeshFlags::NonStatic))
+	{
+		const RenderableSceneMeshData& mesh = meshSpanIt->front();
+
+		mSceneToBuild->mSceneMeshes.push_back(BaseRenderableScene::SceneMesh
+		{
+			.PerObjectDataIndex    = (uint32_t)(-1), //For static non-instanced meshes this index doesn't matter
+			.InstanceCount         = 1, //This is a single-instance mesh
+			.FirstSubmeshIndex     = (uint32_t)mSceneToBuild->mSceneSubmeshes.size(),
+			.AfterLastSubmeshIndex = (uint32_t)(mSceneToBuild->mSceneSubmeshes.size() + mesh.Submeshes.size())
+		});
+
+		for(const auto& submeshData: mesh.Submeshes)
+		{
+			inoutSubmeshGeometryNames.push_back(submeshData.GeometryName);
+
+			inoutSubmeshMaterialNamesFlat.push_back(submeshData.MaterialName);
+			inoutSubmeshMaterialNamesPerInstance.push_back({inoutSubmeshMaterialNamesFlat.end() - 1, inoutSubmeshMaterialNamesFlat.end()}); //Since it's a single-instance mesh, the material span is gonna be a single-element span
+		}
+	}
+
+	//Then through all static instanced meshes
+	while(meshSpanIt != sortedInstanceSpans.end() && meshSpanIt->size() != 1 && !(meshSpanIt->front().MeshFlags & (uint32_t)RenderableSceneMeshFlags::NonStatic))
+	{
+		const auto& meshSpan = *meshSpanIt;
+
+		const auto& representativeMesh = meshSpan.front();
+		const uint32_t instanceCount = (uint32_t)meshSpan.size();
+
+		mSceneToBuild->mSceneMeshes.push_back(BaseRenderableScene::SceneMesh
+		{
+			.PerObjectDataIndex    = objectDataOffset,
+			.InstanceCount         = instanceCount,
+			.FirstSubmeshIndex     = (uint32_t)mSceneToBuild->mSceneSubmeshes.size(),
+			.AfterLastSubmeshIndex = (uint32_t)(mSceneToBuild->mSceneSubmeshes.size() + representativeMesh.Submeshes.size())
+		});
+
+		for(size_t submeshIndex = 0; submeshIndex < representativeMesh.Submeshes.size(); submeshIndex++)
+		{
+			inoutSubmeshGeometryNames.push_back(representativeMesh.Submeshes[submeshIndex].GeometryName);
+			
+			for(size_t instanceIndex = 0; instanceIndex < meshSpan.size(); instanceIndex++)
+			{
+				inoutSubmeshMaterialNamesFlat.push_back(meshSpan[instanceIndex].Submeshes[submeshIndex].MaterialName);
+			}
+
+			inoutSubmeshMaterialNamesPerInstance.push_back({inoutSubmeshMaterialNamesFlat.end() - instanceCount, inoutSubmeshMaterialNamesFlat.end()});
+		}
+
+		objectDataOffset += instanceCount; //For instanced meshes the object data is acquired as per-object data index + instance id
+	}
+}
+
 uint32_t BaseRenderableSceneBuilder::FillStaticMeshLists(const std::vector<const RenderableSceneMeshData*>& staticSingleMeshes, std::vector<std::span<const RenderableSceneMeshData>>& staticInstanceSpans, uint32_t perObjectDataOffset, std::vector<std::string_view>& inoutSubmeshGeometryNames, std::vector<std::string_view>& inoutSubmeshMaterialNamesFlat, std::vector<std::span<std::string_view>>& inoutSubmeshMaterialNamesPerInstance)
 {
 	uint32_t instanceCount = 0;
@@ -260,6 +401,52 @@ void BaseRenderableSceneBuilder::AssignSubmeshGeometries(const std::unordered_ma
 	mVertexBufferData.clear();
 	mIndexBufferData.clear();
 
+	//For static non-instanced meshes the positional data is baked directly into geometry
+	for(uint32_t meshIndex = mSceneToBuild->mStaticMeshSpan.Begin; meshIndex < mSceneToBuild->mStaticMeshSpan.End; meshIndex++)
+	{
+		const BaseRenderableScene::SceneMesh& sceneMesh = mSceneToBuild->mSceneMeshes[meshIndex];
+		
+		const SceneObjectLocation& meshLocation = sceneMeshLocations[meshIndex];
+		DirectX::XMVECTOR meshPosition = DirectX::XMLoadFloat3(&meshLocation.Position);
+		DirectX::XMVECTOR meshRotation = DirectX::XMLoadFloat4(&meshLocation.RotationQuaternion);
+		DirectX::XMVECTOR meshScale    = DirectX::XMVectorSet(meshLocation.Scale, meshLocation.Scale, meshLocation.Scale, 1.0f);
+		
+		DirectX::XMMATRIX meshMatrix = DirectX::XMMatrixAffineTransformation(meshScale, DirectX::XMVectorZero(), meshRotation, meshPosition);
+		for(uint32_t submeshIndex = sceneMesh.FirstSubmeshIndex; submeshIndex < sceneMesh.AfterLastSubmeshIndex; submeshIndex++)
+		{
+			//Damn! Even though C++20 has heterogeneous lookup for unordered maps, it doesn't provide default hashes for string_view
+			//I don't want to boilerplate the code with definitions, so I'll just construct std::string here
+			const RenderableSceneGeometryData& geometryData = descriptionGeometries.at(std::string(submeshGeometryNames[submeshIndex]));
+
+			BaseRenderableScene::SceneSubmesh& submesh = mSceneToBuild->mSceneSubmeshes[submeshIndex];
+			submesh.IndexCount   = (uint32_t)geometryData.Indices.size();
+			submesh.FirstIndex   = (uint32_t)mIndexBufferData.size();
+			submesh.VertexOffset = (uint32_t)mVertexBufferData.size();
+
+			mVertexBufferData.reserve(mVertexBufferData.size() + geometryData.Vertices.size());
+			for(size_t vertexIndex = 0; vertexIndex < geometryData.Vertices.size(); vertexIndex++)
+			{
+				const RenderableSceneVertex& vertex = geometryData.Vertices[vertexIndex];
+
+				DirectX::XMVECTOR position            = DirectX::XMLoadFloat3(&vertex.Position);
+				DirectX::XMVECTOR transformedPosition = DirectX::XMVector3TransformCoord(position, meshMatrix);
+
+				DirectX::XMVECTOR normal            = DirectX::XMLoadFloat3(&vertex.Normal);
+				DirectX::XMVECTOR transformedNormal = DirectX::XMVector3Normalize(DirectX::XMVector3TransformNormal(normal, meshMatrix));
+
+				RenderableSceneVertex transformedVertex;
+				DirectX::XMStoreFloat3(&transformedVertex.Position, transformedPosition);
+				DirectX::XMStoreFloat3(&transformedVertex.Normal,   transformedNormal);
+				transformedVertex.Texcoord = vertex.Texcoord;
+
+				mVertexBufferData.push_back(std::move(transformedVertex));
+			}
+
+			mIndexBufferData.insert(mIndexBufferData.end(), geometryData.Indices.begin(), geometryData.Indices.end());
+		}
+	}
+
+
 	struct GeometrySubmeshRange
 	{
 		uint32_t IndexCount;
@@ -267,40 +454,47 @@ void BaseRenderableSceneBuilder::AssignSubmeshGeometries(const std::unordered_ma
 		uint32_t VertexOffset;
 	};
 
+	assert(mSceneToBuild->mStaticInstancedMeshSpan.End == mSceneToBuild->mRigidMeshSpan.Begin);
+
+	uint32_t nonBakedMeshBegin = mSceneToBuild->mStaticInstancedMeshSpan.Begin;
+	uint32_t nonBakedMeshEnd   = mSceneToBuild->mRigidMeshSpan.End;
+
 	std::unordered_map<std::string_view, GeometrySubmeshRange> geometryRanges;
-	for(size_t submeshIndex = 0; submeshIndex < mSceneToBuild->mSceneSubmeshes.size(); submeshIndex++)
+	for (uint32_t meshIndex = nonBakedMeshBegin; meshIndex < nonBakedMeshEnd; meshIndex++)
 	{
-		std::string_view geometryName = submeshGeometryNames[submeshIndex];
-		BaseRenderableScene::SceneSubmesh& submesh = mSceneToBuild->mSceneSubmeshes[submeshIndex];
-
-		auto geometryRangeIt = geometryRanges.find(geometryName);
-		if(geometryRangeIt != geometryRanges.end())
+		const BaseRenderableScene::SceneMesh& sceneMesh = mSceneToBuild->mSceneMeshes[meshIndex];
+		for(uint32_t submeshIndex = sceneMesh.FirstSubmeshIndex; submeshIndex < sceneMesh.AfterLastSubmeshIndex; submeshIndex++)
 		{
-			submesh.IndexCount   = geometryRangeIt->second.IndexCount;
-			submesh.FirstIndex   = geometryRangeIt->second.FirstIndex;
-			submesh.VertexOffset = geometryRangeIt->second.VertexOffset;
-		}
-		else
-		{
-			//Damn! Even though C++20 has heterogeneous lookup for unordered maps, it doesn't provide default hashes for string_view
-			//I don't want to boilerplate the code with definitions, so I have to construct std::string here
-			const RenderableSceneGeometryData& geometryData = descriptionGeometries.at(std::string(geometryName));
+			std::string_view geometryName = submeshGeometryNames[submeshIndex];
+			BaseRenderableScene::SceneSubmesh& submesh = mSceneToBuild->mSceneSubmeshes[submeshIndex];
 
-			GeometrySubmeshRange geometryRange = 
+			auto geometryRangeIt = geometryRanges.find(geometryName);
+			if(geometryRangeIt != geometryRanges.end())
 			{
-				.IndexCount   = (uint32_t)geometryData.Indices.size(),
-				.FirstIndex   = (uint32_t)mIndexBufferData.size(),
-				.VertexOffset = (uint32_t)mVertexBufferData.size()
-			};
+				submesh.IndexCount   = geometryRangeIt->second.IndexCount;
+				submesh.FirstIndex   = geometryRangeIt->second.FirstIndex;
+				submesh.VertexOffset = geometryRangeIt->second.VertexOffset;
+			}
+			else
+			{
+				const RenderableSceneGeometryData& geometryData = descriptionGeometries.at(std::string(geometryName));
 
-			mVertexBufferData.insert(mVertexBufferData.end(), geometryData.Vertices.begin(), geometryData.Vertices.end());
-			mIndexBufferData.insert(mIndexBufferData.end(), geometryData.Indices.begin(), geometryData.Indices.end());
+				GeometrySubmeshRange geometryRange = 
+				{
+					.IndexCount   = (uint32_t)geometryData.Indices.size(),
+					.FirstIndex   = (uint32_t)mIndexBufferData.size(),
+					.VertexOffset = (uint32_t)mVertexBufferData.size()
+				};
 
-			submesh.IndexCount   = geometryRange.IndexCount;
-			submesh.FirstIndex   = geometryRange.FirstIndex;
-			submesh.VertexOffset = geometryRange.VertexOffset;
+				mVertexBufferData.insert(mVertexBufferData.end(), geometryData.Vertices.begin(), geometryData.Vertices.end());
+				mIndexBufferData.insert(mIndexBufferData.end(), geometryData.Indices.begin(), geometryData.Indices.end());
 
-			geometryRanges[geometryName] = geometryRange;
+				submesh.IndexCount   = geometryRange.IndexCount;
+				submesh.FirstIndex   = geometryRange.FirstIndex;
+				submesh.VertexOffset = geometryRange.VertexOffset;
+
+				geometryRanges[geometryName] = geometryRange;
+			}
 		}
 	}
 }
@@ -317,62 +511,62 @@ void BaseRenderableSceneBuilder::AssignSubmeshMaterials(const std::unordered_map
 		const BaseRenderableScene::SceneMesh& mesh = mSceneToBuild->mSceneMeshes[meshIndex];
 		for(uint32_t submeshIndex = mesh.FirstSubmeshIndex; submeshIndex < mesh.AfterLastSubmeshIndex; submeshIndex++)
 		{
-			if(mesh.InstanceCount == 1)
+			for(uint32_t instanceIndex = 0; instanceIndex < mesh.InstanceCount; instanceIndex++)
 			{
-				std::string_view materialName = submeshMaterialNamesPerInstance[submeshIndex][0];
-				
-				//...HERE... Logic is similar to the else branch, but not quite the same
-			}
-			else
-			{
-				//The materials for instanced data are duplicated to acquire them with instance id. This means all instance materials are gonna be appended to mMaterialData
-				mSceneToBuild->mSceneSubmeshes[submeshIndex].MaterialIndex = mMaterialData.size();
+				std::string_view materialName = submeshMaterialNamesPerInstance[submeshIndex][instanceIndex];
 
-				for(uint32_t instanceIndex = 0; instanceIndex < mesh.InstanceCount; instanceIndex++)
+				auto materialIndexIt = materialIndices.find(materialName);
+				if(materialIndexIt != materialIndices.end())
 				{
-					std::string_view materialName = submeshMaterialNamesPerInstance[submeshIndex][instanceIndex];
-					
-					auto materialIndexIt = materialIndices.find(materialName);
-					if(materialIndexIt != materialIndices.end())
+					if(mesh.InstanceCount == 1)
 					{
-						mMaterialData.push_back(mMaterialData[materialIndexIt->second]);
+						mSceneToBuild->mSceneSubmeshes[submeshIndex].MaterialIndex = materialIndexIt->second;
 					}
 					else
 					{
-						const RenderableSceneMaterialData& materialData = descriptionMaterials.at(std::string(materialName));
-						
-						RenderableSceneMaterial material;
+						//The materials for instanced data are duplicated to acquire them with instance id
+						mMaterialData.push_back(mMaterialData[materialIndexIt->second]);
 
-						auto textureIndexIt = textureIndices.find(materialData.TextureFilename);
-						if(textureIndexIt != textureIndices.end())
-						{
-							material.TextureIndex = textureIndexIt->second;
-						}
-						else
-						{
-							mTexturesToLoad.push_back(materialData.TextureFilename);
-
-							textureIndices[materialData.TextureFilename] = (uint32_t)(mTexturesToLoad.size() - 1);
-							material.TextureIndex                        = (uint32_t)(mTexturesToLoad.size() - 1);
-						}
-
-						auto normalMapIndexIt = textureIndices.find(materialData.NormalMapFilename);
-						if(normalMapIndexIt != textureIndices.end())
-						{
-							material.NormalMapIndex = textureIndexIt->second;
-						}
-						else
-						{
-							mTexturesToLoad.push_back(materialData.TextureFilename);
-
-							textureIndices[materialData.TextureFilename] = (uint32_t)(mTexturesToLoad.size() - 1);
-							material.NormalMapIndex                      = (uint32_t)(mTexturesToLoad.size() - 1);
-						}
-
-						mMaterialData.push_back(std::move(material));
-
-						materialIndices[materialName] = (uint32_t)(mMaterialData.size() - 1);
+						mSceneToBuild->mSceneSubmeshes[submeshIndex].MaterialIndex = (uint32_t)(mMaterialData.size() - 1);
 					}
+				}
+				else
+				{
+					//Add a new material
+					const RenderableSceneMaterialData& materialData = descriptionMaterials.at(std::string(materialName));
+						
+					RenderableSceneMaterial material;
+
+					auto textureIndexIt = textureIndices.find(materialData.TextureFilename);
+					if(textureIndexIt != textureIndices.end())
+					{
+						material.TextureIndex = textureIndexIt->second;
+					}
+					else
+					{
+						mTexturesToLoad.push_back(materialData.TextureFilename);
+
+						textureIndices[materialData.TextureFilename] = (uint32_t)(mTexturesToLoad.size() - 1);
+						material.TextureIndex                        = (uint32_t)(mTexturesToLoad.size() - 1);
+					}
+
+					auto normalMapIndexIt = textureIndices.find(materialData.NormalMapFilename);
+					if(normalMapIndexIt != textureIndices.end())
+					{
+						material.NormalMapIndex = textureIndexIt->second;
+					}
+					else
+					{
+						mTexturesToLoad.push_back(materialData.NormalMapFilename);
+
+						textureIndices[materialData.NormalMapFilename] = (uint32_t)(mTexturesToLoad.size() - 1);
+						material.NormalMapIndex                        = (uint32_t)(mTexturesToLoad.size() - 1);
+					}
+
+					mMaterialData.push_back(std::move(material));
+
+					mSceneToBuild->mSceneSubmeshes[submeshIndex].MaterialIndex = (uint32_t)(mMaterialData.size() - 1);
+					materialIndices[materialName]                              = (uint32_t)(mMaterialData.size() - 1);
 				}
 			}
 		}
