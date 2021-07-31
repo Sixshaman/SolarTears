@@ -40,20 +40,24 @@ private:
 
 	//Step 4 of filling scene data structures
 	//Groups the mesh instances together 
-	void DetectInstanceSpans(std::vector<RenderableSceneMeshData>& sceneMeshes, std::vector<std::span<const RenderableSceneMeshData>>& outInstanceSpans) const;
+	void DetectInstanceSpans(const std::vector<RenderableSceneMeshData>& sceneMeshes, const std::vector<SceneObjectLocation>& meshInitialLocations, std::vector<std::span<const RenderableSceneMeshData>>& outInstanceSpans, std::vector<std::span<const SceneObjectLocation>>& outLocationSpans) const;
 
 	//Step 5 of filling scene data structures
-	//Allocates the memory for scene mesh and submesh data and generates the lists of geometries and materials per submesh
-	void FillMeshLists(std::vector<std::span<const RenderableSceneMeshData>>& sortedInstanceSpans, std::vector<std::string_view>& inoutSubmeshGeometryNames, std::vector<std::string_view>& inoutSubmeshMaterialNamesFlat, std::vector<std::span<std::string_view>>& inoutSubmeshMaterialNamesPerInstance);
+	//Allocates the memory for scene mesh and submesh data in sorted order (static meshes, static instanced meshes, rigid meshes)
+	void FillMeshLists(std::vector<std::span<const RenderableSceneMeshData>>& instanceSpans, std::vector<uint32_t>& outSceneMeshToInstanceSpanIndices);
 
 	//Step 6 of filling scene data structures
 	//Loads vertex and index buffer data from geometries and initializes initial positional data
 	//Pre-sorting all meshes are by geometry in previous steps achieves coherence
-	void AssignSubmeshGeometries(const std::unordered_map<std::string, RenderableSceneGeometryData>& descriptionGeometries, const std::vector<std::string_view>& submeshGeometryNames, const std::vector<SceneObjectLocation>& meshInitialLocations);
+	void AssignSubmeshGeometries(const std::unordered_map<std::string, RenderableSceneGeometryData>& descriptionGeometries, const std::vector<std::span<const RenderableSceneMeshData>>& meshInstanceSpans, const std::vector<std::span<const SceneObjectLocation>>& initialLocationSpans, const std::vector<uint32_t>& sceneMeshToInstanceSpanIndices);
 
 	//Step 7 of filling scene data structures
 	//Initializes materials for scene submeshes
-	void AssignSubmeshMaterials(const std::unordered_map<std::string, RenderableSceneMaterialData>& descriptionMaterials, const std::vector<std::span<std::string_view>>& submeshMaterialNamesPerInstance);
+	void AssignSubmeshMaterials(const std::unordered_map<std::string, RenderableSceneMaterialData>& descriptionMaterials, const std::vector<std::span<const RenderableSceneMeshData>>& meshInstanceSpans, const std::vector<uint32_t>& sceneMeshToInstanceSpanIndices);
+
+	//Step 8 of filling scene data structures
+	//Initializes initial object data
+	void FillInitialObjectData(const std::vector<std::span<const SceneObjectLocation>>& initialLocationSpans, const std::vector<uint32_t>& sceneMeshToInstanceSpanIndices);
 
 private:
 	//Compares the geometry of two meshes. The submeshes have to be sorted by geometry name
