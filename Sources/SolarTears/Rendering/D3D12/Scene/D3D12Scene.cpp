@@ -11,9 +11,9 @@ D3D12::RenderableScene::RenderableScene(const FrameCounter* frameCounter): Moder
 
 D3D12::RenderableScene::~RenderableScene()
 {
-	if(mSceneConstantBuffer)
+	if(mSceneDynamicConstantBuffer)
 	{
-		mSceneConstantBuffer->Unmap(0, nullptr);
+		mSceneDynamicConstantBuffer->Unmap(0, nullptr);
 	}
 }
 

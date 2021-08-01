@@ -139,7 +139,8 @@ void Engine::CreateScene()
 	};
 
 	sceneDesc.GetRenderableComponent().AddGeometry("Square", std::move(meshGeometry));
-	sceneDesc.GetRenderableComponent().AddStaticMesh("TestMesh", RenderableSceneMeshData
+	sceneDesc.GetRenderableComponent().AddMesh("TestMesh");
+	sceneDesc.GetRenderableComponent().AddSubmesh("TestMesh", RenderableSceneSubmeshData
 	{
 		.GeometryName = "Square",
 		.MaterialName = "TestMaterial"

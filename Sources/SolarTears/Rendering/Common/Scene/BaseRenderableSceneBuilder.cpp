@@ -6,6 +6,11 @@
 
 BaseRenderableSceneBuilder::BaseRenderableSceneBuilder(BaseRenderableScene* sceneToBuild): mSceneToBuild(sceneToBuild)
 {
+	mInitialCameraLocation   = SceneObjectLocation();
+	mInitialCameraProjMatrix = DirectX::XMFLOAT4X4(1.0f, 0.0f, 0.0f, 0.0f,
+		                                           0.0f, 1.0f, 0.0f, 0.0f,
+		                                           0.0f, 0.0f, 1.0f, 0.0f,
+		                                           0.0f, 0.0f, 0.0f, 1.0f);
 }
 
 BaseRenderableSceneBuilder::~BaseRenderableSceneBuilder()
