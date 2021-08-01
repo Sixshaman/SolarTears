@@ -162,9 +162,6 @@
     <ClInclude Include="Core\Scene\Scene.hpp">
       <Filter>Core\Scene</Filter>
     </ClInclude>
-    <ClInclude Include="Core\Scene\Camera.hpp">
-      <Filter>Core\Scene</Filter>
-    </ClInclude>
     <ClInclude Include="Core\DataStructures\SmallVector.hpp">
       <Filter>Core\DataStructures</Filter>
     </ClInclude>
@@ -405,6 +402,9 @@
     <ClInclude Include="Rendering\Common\Scene\BaseRenderableScene.hpp">
       <Filter>Rendering\Common\Scene</Filter>
     </ClInclude>
+    <ClInclude Include="Core\Scene\PinholeCamera.hpp">
+      <Filter>Core\Scene</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Platform\Win32\Win32Application.cpp">
@@ -439,9 +439,6 @@
     </ClCompile>
     <ClCompile Include="Core\Timer.cpp">
       <Filter>Core</Filter>
-    </ClCompile>
-    <ClCompile Include="Core\Scene\Camera.cpp">
-      <Filter>Core\Scene</Filter>
     </ClCompile>
     <ClCompile Include="Core\Scene\Scene.cpp">
       <Filter>Core\Scene</Filter>
@@ -640,6 +637,9 @@
     </ClCompile>
     <ClCompile Include="Rendering\Common\Scene\BaseRenderableScene.cpp">
       <Filter>Rendering\Common\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Core\Scene\PinholeCamera.cpp">
+      <Filter>Core\Scene</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

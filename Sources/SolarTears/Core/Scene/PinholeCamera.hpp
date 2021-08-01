@@ -3,11 +3,11 @@
 #include <DirectXMath.h>
 #include <DirectXCollision.h>
 
-class Camera //Detached fron any positional data
+class PinholeCamera //Detached fron any positional data
 {
 public:
-	Camera();
-	~Camera();
+	PinholeCamera();
+	~PinholeCamera();
 
 	float GetNearZ()       const; 
 	float GetFarZ()        const;
@@ -20,10 +20,8 @@ public:
 
 	void SetProjectionParameters(float fovY, float viewportAspect, float nz, float farz);
 
-	DirectX::XMMATRIX GetProjMatrix() const;
-	void RecalcProjMatrix();
-
-	DirectX::BoundingFrustum GetFrustum() const;
+	const DirectX::XMFLOAT4X4& GetProjMatrix() const;
+	DirectX::BoundingFrustum   GetFrustum()    const;
 
 private:
 	float mNearZ;			 
@@ -33,5 +31,5 @@ private:
 	float mNearPlaneWidth;
 	float mNearPlaneHeight;
 
-	DirectX::XMFLOAT4X4 mProj;
+	DirectX::XMFLOAT4X4 mProjMatrix;
 };

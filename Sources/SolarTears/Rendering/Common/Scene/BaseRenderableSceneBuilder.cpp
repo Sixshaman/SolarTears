@@ -12,7 +12,7 @@ BaseRenderableSceneBuilder::~BaseRenderableSceneBuilder()
 {
 }
 
-void BaseRenderableSceneBuilder::Build(const RenderableSceneDescription& sceneDescription, const std::unordered_map<std::string_view, SceneObjectLocation>& sceneMeshInitialLocations)
+void BaseRenderableSceneBuilder::Build(const RenderableSceneDescription& sceneDescription, const std::unordered_map<std::string_view, SceneObjectLocation>& sceneMeshInitialLocations, const SceneObjectLocation& cameraInitialLocation, const PinholeCamera& cameraInfo)
 {
 	//After this step we'll have a flat list of meshes, and each mesh will have its submeshes sorted.
 	std::vector<NamedSceneMeshData> namedSceneMeshes;
@@ -44,7 +44,7 @@ void BaseRenderableSceneBuilder::Build(const RenderableSceneDescription& sceneDe
 	AssignSubmeshMaterials(sceneDescription.mSceneMaterials, instanceSpans, sceneMeshToInstanceSpanIndices);
 
 	//After this step we'll have object data initialized
-	FillInitialObjectData(locationSpans, sceneMeshToInstanceSpanIndices);
+	FillInitialObjectData(locationSpans, sceneMeshToInstanceSpanIndices, cameraInitialLocation, cameraInfo);
 
 	//Finalize scene loading
 	Bake();
@@ -176,7 +176,16 @@ void BaseRenderableSceneBuilder::ObtainLocationsFromNames(const std::vector<Name
 	for(const NamedSceneMeshData& namedMesh: namedSceneMeshes)
 	{
 		outSceneMeshes.push_back(namedMesh.MeshData);
-		outInitialLocations.push_back(initialLocations.at(namedMesh.MeshName));
+
+		auto initialLocationIt = initialLocations.find(namedMesh.MeshName);
+		if(initialLocationIt != initialLocations.end())
+		{
+			outInitialLocations.push_back(initialLocationIt->second);
+		}
+		else
+		{
+			outInitialLocations.push_back(SceneObjectLocation());
+		}	
 	}
 }
 
@@ -276,13 +285,11 @@ void BaseRenderableSceneBuilder::FillMeshLists(std::vector<std::span<const Rende
 	}
 
 
-	uint32_t totalMeshCount       = std::accumulate(meshCountsPerType.begin(),       meshCountsPerType.end(),       0);
-	uint32_t totalSubmeshCount    = std::accumulate(submeshCountsPerType.begin(),    submeshCountsPerType.end(),    0);
-	uint32_t totalObjectDataCount = std::accumulate(objectDataCountsPerType.begin(), objectDataCountsPerType.end(), 0);
+	uint32_t totalMeshCount    = std::accumulate(meshCountsPerType.begin(),    meshCountsPerType.end(),    0);
+	uint32_t totalSubmeshCount = std::accumulate(submeshCountsPerType.begin(), submeshCountsPerType.end(), 0);
 
 	mSceneToBuild->mSceneMeshes.resize(totalMeshCount);
 	mSceneToBuild->mSceneSubmeshes.resize(totalSubmeshCount);
-	mInitialObjectData.resize(totalSubmeshCount);
 
 	outSceneMeshToInstanceSpanIndices.resize(totalMeshCount);
 
@@ -294,6 +301,12 @@ void BaseRenderableSceneBuilder::FillMeshLists(std::vector<std::span<const Rende
 
 	mSceneToBuild->mRigidMeshSpan.Begin = mSceneToBuild->mStaticInstancedMeshSpan.End;
 	mSceneToBuild->mRigidMeshSpan.End   = mSceneToBuild->mRigidMeshSpan.Begin + meshCountsPerType[rigidIndex] + meshCountsPerType[rigidInstancedIndex];
+
+	uint32_t totalStaticInstancedObjectDataCount = objectDataCountsPerType[staticInstancedIndex];
+	uint32_t totalRigidObjectDataCount           = objectDataCountsPerType[rigidIndex] + objectDataCountsPerType[rigidInstancedIndex];
+
+	mInitialStaticInstancedObjectData.resize(totalStaticInstancedObjectDataCount);
+	mInitialRigidObjectData.resize(totalRigidObjectDataCount);
 
 
 	//Counting sort the meshes and submeshes, initializing the data
@@ -556,24 +569,43 @@ void BaseRenderableSceneBuilder::AssignSubmeshMaterials(const std::unordered_map
 	}
 }
 
-void BaseRenderableSceneBuilder::FillInitialObjectData(const std::vector<std::span<const SceneObjectLocation>>& initialLocationSpans, const std::vector<uint32_t>& sceneMeshToInstanceSpanIndices)
+void BaseRenderableSceneBuilder::FillInitialObjectData(const std::vector<std::span<const SceneObjectLocation>>& initialLocationSpans, const std::vector<uint32_t>& sceneMeshToInstanceSpanIndices, const SceneObjectLocation& cameraInitialLocation, const PinholeCamera& cameraInfo)
 {
-	for(uint32_t meshIndex = 0; meshIndex < (uint32_t)mSceneToBuild->mSceneMeshes.size(); meshIndex++)
+	//The object data views/descriptors will go for static meshes first and for rigid meshes next
+	uint32_t objectDataOffset = 0;
+	
+	for(uint32_t meshIndex = mSceneToBuild->mStaticInstancedMeshSpan.Begin; meshIndex < mSceneToBuild->mStaticInstancedMeshSpan.End; meshIndex++)
 	{
 		const BaseRenderableScene::SceneMesh& sceneMesh = mSceneToBuild->mSceneMeshes[meshIndex];
 
-		uint32_t perObjectIndexBegin = sceneMesh.PerObjectDataIndex;
-		if(perObjectIndexBegin != (uint32_t)(-1))
+		size_t instanceSpanIndex = sceneMeshToInstanceSpanIndices[meshIndex];
+		const std::span<const SceneObjectLocation> locationSpan = initialLocationSpans[instanceSpanIndex];
+	
+		size_t perObjectIndexBegin = (size_t)sceneMesh.PerObjectDataIndex - objectDataOffset;
+		for(uint32_t instanceIndex = 0; instanceIndex < sceneMesh.InstanceCount; instanceIndex++)
 		{
-			size_t instanceSpanIndex = sceneMeshToInstanceSpanIndices[meshIndex];
-			const std::span<const SceneObjectLocation> locationSpan = initialLocationSpans[instanceSpanIndex];
-
-			for(uint32_t instanceIndex = 0; instanceIndex < sceneMesh.InstanceCount; instanceIndex++)
-			{
-				mInitialObjectData[perObjectIndexBegin + instanceIndex] = locationSpan[instanceIndex];
-			}
+			mInitialStaticInstancedObjectData[perObjectIndexBegin + instanceIndex] = locationSpan[instanceIndex];
 		}
 	}
+
+	objectDataOffset += (uint32_t)mInitialStaticInstancedObjectData.size();
+
+	for(uint32_t meshIndex = mSceneToBuild->mRigidMeshSpan.Begin; meshIndex < mSceneToBuild->mRigidMeshSpan.End; meshIndex++)
+	{
+		const BaseRenderableScene::SceneMesh& sceneMesh = mSceneToBuild->mSceneMeshes[meshIndex];
+
+		size_t instanceSpanIndex = sceneMeshToInstanceSpanIndices[meshIndex];
+		const std::span<const SceneObjectLocation> locationSpan = initialLocationSpans[instanceSpanIndex];
+
+		size_t perObjectIndexBegin = (size_t)sceneMesh.PerObjectDataIndex - objectDataOffset;
+		for(uint32_t instanceIndex = 0; instanceIndex < sceneMesh.InstanceCount; instanceIndex++)
+		{
+			mInitialRigidObjectData[perObjectIndexBegin + instanceIndex] = locationSpan[instanceIndex];
+		}
+	}
+
+	mInitialCameraLocation   = cameraInitialLocation;
+	mInitialCameraProjMatrix = cameraInfo.GetProjMatrix();
 }
 
 bool BaseRenderableSceneBuilder::SameGeometry(const RenderableSceneMeshData& left, const RenderableSceneMeshData& right) const

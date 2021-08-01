@@ -12,8 +12,8 @@ class ModernRenderableScene: public BaseRenderableScene
 
 	struct RigidObjectUpdateMetadata
 	{
-		uint32_t MeshIndex;
-		uint32_t ObjectDataIndex;
+		uint32_t MeshHandleIndex; //Unique for each instance of the mesh (NOT the index into mSceneMeshes)
+		uint32_t ObjectDataIndex; //Index into mCurrFrameDataToUpdate
 	};
 
 public:
@@ -24,26 +24,33 @@ public:
 
 protected:
 	uint64_t CalculateMaterialDataOffset(uint32_t materialIndex)                                           const;
+	uint64_t CalculateStaticObjectDataOffset(uint32_t staticObjectIndex)                                   const;
 	uint64_t CalculateRigidObjectDataOffset(uint32_t currentFrameResourceIndex, uint32_t rigidObjectIndex) const;
 	uint64_t CalculateFrameDataOffset(uint32_t currentFrameResourceIndex)                                  const;
 
 protected:
-	//Created from inside
 	const FrameCounter* mFrameCounterRef;
 
 protected:
-	//Created from outside
-	std::vector<RigidObjectUpdateMetadata> mPrevFrameRigidMeshUpdates; //Sorted, ping-pongs with mNextFrameMeshUpdates
-	std::vector<RigidObjectUpdateMetadata> mNextFrameRigidMeshUpdates; //Sorted, ping-pongs with mPrevFrameMeshUpdates
+	//Leftover updates to updates all dirty data for frames in flight. Sorted by mesh indices, ping-pong with each other
+	std::vector<RigidObjectUpdateMetadata> mPrevFrameRigidMeshUpdates;
+	std::vector<RigidObjectUpdateMetadata> mNextFrameRigidMeshUpdates;
 
-	std::vector<uint32_t> mCurrFrameRigidMeshUpdates; //Sorted, used immediately each frame for rendering
+	//The rigid object data indices to update in the current frame, sorted. Used immediately each frame for rendering after updating
+	std::vector<uint32_t> mCurrFrameRigidMeshUpdateIndices;
 
+	//The object data that is gonna be uploaded to GPU. The elements in mCurrFrameDataToUpdate correspond to elements in mCurrFrameRigidMeshUpdateIndices
 	std::vector<PerObjectData> mPrevFrameDataToUpdate;
 	std::vector<PerObjectData> mCurrFrameDataToUpdate;
 
+	//Persistently mapped pointer into host-visible constant buffer data
+	void* mSceneConstantDataBufferPointer;
 
-	void* mSceneConstantDataBufferPointer; //Constant buffer is persistently mapped
+	//GPU-local constant buffer data offsets
+	uint64_t mMaterialDataOffset;
+	uint64_t mStaticObjectDataOffset;
 
+	//Single-object constant buffer sizes, with respect to alignment
 	uint32_t mObjectChunkDataSize;
 	uint32_t mFrameChunkDataSize;
 	uint32_t mMaterialChunkDataSize;

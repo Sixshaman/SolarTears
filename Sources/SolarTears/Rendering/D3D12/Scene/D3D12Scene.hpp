@@ -30,7 +30,8 @@ namespace D3D12
 		wil::com_ptr_nothrow<ID3D12Resource> mSceneVertexBuffer;
 		wil::com_ptr_nothrow<ID3D12Resource> mSceneIndexBuffer;
 
-		wil::com_ptr_nothrow<ID3D12Resource> mSceneConstantBuffer; //Common buffer for all constant buffer data
+		wil::com_ptr_nothrow<ID3D12Resource> mSceneStaticConstantBuffer;  //Common buffer for all static constant buffer data (GPU-local)
+		wil::com_ptr_nothrow<ID3D12Resource> mSceneDynamicConstantBuffer; //Common buffer for all dynamic constant buffer data (CPU-visible)
 
 		D3D12_VERTEX_BUFFER_VIEW mSceneVertexBufferView;
 		D3D12_INDEX_BUFFER_VIEW  mSceneIndexBufferView;

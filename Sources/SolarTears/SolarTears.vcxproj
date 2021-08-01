@@ -32,7 +32,7 @@
     <ClInclude Include="Core\FPSCounter.hpp" />
     <ClInclude Include="Core\FrameCounter.hpp" />
     <ClInclude Include="Core\Math\QuaternionUtils.hpp" />
-    <ClInclude Include="Core\Scene\Camera.hpp" />
+    <ClInclude Include="Core\Scene\PinholeCamera.hpp" />
     <ClInclude Include="Core\Scene\Scene.hpp" />
     <ClInclude Include="Core\Scene\SceneDescription\SceneDescription.hpp" />
     <ClInclude Include="Core\Scene\SceneDescription\SceneDescriptionObject.hpp" />
@@ -123,7 +123,7 @@
     <ClCompile Include="Core\FPSCounter.cpp" />
     <ClCompile Include="Core\FrameCounter.cpp" />
     <ClCompile Include="Core\Math\QuaternionUtils.cpp" />
-    <ClCompile Include="Core\Scene\Camera.cpp" />
+    <ClCompile Include="Core\Scene\PinholeCamera.cpp" />
     <ClCompile Include="Core\Scene\Scene.cpp" />
     <ClCompile Include="Core\Scene\SceneDescription\SceneDescription.cpp" />
     <ClCompile Include="Core\Scene\SceneDescription\SceneDescriptionObject.cpp" />

@@ -5,6 +5,7 @@
 #include <string_view>
 
 class BaseRenderableScene;
+class PinholeCamera;
 
 class BaseRenderableSceneBuilder
 {
@@ -18,7 +19,7 @@ public:
 	BaseRenderableSceneBuilder(BaseRenderableScene* sceneToBuild);
 	~BaseRenderableSceneBuilder();
 
-	void Build(const RenderableSceneDescription& sceneDescription, const std::unordered_map<std::string_view, SceneObjectLocation>& sceneMeshInitialLocations);
+	void Build(const RenderableSceneDescription& sceneDescription, const std::unordered_map<std::string_view, SceneObjectLocation>& sceneMeshInitialLocations, const SceneObjectLocation& cameraInitialLocation, const PinholeCamera& cameraInfo);
 
 protected:
 	//Transfers the raw buffer data to GPU, loads textures, allocates per-object constant data, etc.
@@ -57,7 +58,7 @@ private:
 
 	//Step 8 of filling scene data structures
 	//Initializes initial object data
-	void FillInitialObjectData(const std::vector<std::span<const SceneObjectLocation>>& initialLocationSpans, const std::vector<uint32_t>& sceneMeshToInstanceSpanIndices);
+	void FillInitialObjectData(const std::vector<std::span<const SceneObjectLocation>>& initialLocationSpans, const std::vector<uint32_t>& sceneMeshToInstanceSpanIndices, const SceneObjectLocation& cameraInitialLocation, const PinholeCamera& cameraInfo);
 
 private:
 	//Compares the geometry of two meshes. The submeshes have to be sorted by geometry name
@@ -70,7 +71,11 @@ protected:
 	std::vector<RenderableSceneIndex>  mIndexBufferData;
 
 	std::vector<RenderableSceneMaterial> mMaterialData;
-	std::vector<SceneObjectLocation>     mInitialObjectData;
+	std::vector<SceneObjectLocation>     mInitialStaticInstancedObjectData;
+	std::vector<SceneObjectLocation>     mInitialRigidObjectData;
+
+	SceneObjectLocation mInitialCameraLocation;
+	DirectX::XMFLOAT4X4 mInitialCameraProjMatrix;
 
 	std::vector<std::wstring> mTexturesToLoad;
 };

@@ -55,8 +55,8 @@ public:
 	virtual void UpdateRigidSceneObjects(const FrameDataUpdateInfo& frameUpdate, const std::span<ObjectDataUpdateInfo> objectUpdates) = 0;
 
 protected:
-	PerObjectData PackObjectData(const SceneObjectLocation& sceneObjectLocation)  const;
-	PerFrameData  PackFrameData(DirectX::FXMMATRIX View, DirectX::FXMMATRIX Proj) const;
+	PerObjectData PackObjectData(const SceneObjectLocation& sceneObjectLocation)                          const;
+	PerFrameData  PackFrameData(const SceneObjectLocation& cameraLocation, DirectX::FXMMATRIX ProjMatrix) const;
 
 protected:
 	std::vector<SceneMesh>    mSceneMeshes;

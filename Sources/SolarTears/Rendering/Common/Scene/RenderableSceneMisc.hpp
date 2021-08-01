@@ -33,8 +33,8 @@ struct ObjectDataUpdateInfo
 	SceneObjectLocation         NewObjectLocation;
 };
 
-struct alignas(DirectX::XMMATRIX) FrameDataUpdateInfo
+struct FrameDataUpdateInfo
 {
-	DirectX::XMMATRIX ViewMatrix;
-	DirectX::XMMATRIX ProjMatrix;
+	SceneObjectLocation CameraLocation;
+	DirectX::XMFLOAT4X4 ProjMatrix;
 };

@@ -96,12 +96,11 @@ void Scene::UpdateRenderableComponent()
 	DirectX::XMVECTOR cameraScale          = DirectX::XMVectorSplatOne();
 	DirectX::XMMATRIX invViewMatrix = DirectX::XMMatrixAffineTransformation(cameraScale, cameraRotationOrigin, cameraRotation, cameraPosition);
 
-	mCamera.RecalcProjMatrix();
 	FrameDataUpdateInfo frameUpdateInfo =
 	{
-		.ViewMatrix = DirectX::XMMatrixInverse(nullptr, invViewMatrix),
-		.ProjMatrix = mCamera.GetProjMatrix()
+		.CameraLocation = DirectX::XMMatrixInverse(nullptr, invViewMatrix),
+		.CameraObject   = &mCamera
 	};
 
-	mRenderableComponentRef->UpdateRigidSceneObjects(frameUpdateInfo, mCurrFrameRenderableUpdates);
+	mRenderableComponentRef->UpdateRigidSceneObjects(mSceneObjects[mCameraSceneObjectIndex].Location, mCamera, mCurrFrameRenderableUpdates);
 }

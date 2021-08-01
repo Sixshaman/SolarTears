@@ -2,11 +2,12 @@
 #include "ModernRenderableScene.hpp"
 #include "../RenderingUtils.hpp"
 
-ModernRenderableSceneBuilder::ModernRenderableSceneBuilder(ModernRenderableScene* sceneToBuild): BaseRenderableSceneBuilder(sceneToBuild), mModernSceneToBuild(sceneToBuild)
+ModernRenderableSceneBuilder::ModernRenderableSceneBuilder(ModernRenderableScene* sceneToBuild, size_t texturePlacementAlignment): BaseRenderableSceneBuilder(sceneToBuild), mModernSceneToBuild(sceneToBuild), mTexturePlacementAlignment(texturePlacementAlignment)
 {
-	mVertexBufferGpuMemoryOffset   = 0;
-	mIndexBufferGpuMemoryOffset    = 0;
-	mConstantBufferGpuMemoryOffset = 0;
+	mVertexBufferGpuMemoryOffset          = 0;
+	mIndexBufferGpuMemoryOffset           = 0;
+	mStaticConstantBufferGpuMemoryOffset  = 0;
+	mDynamicConstantBufferGpuMemoryOffset = 0;
 }
 
 ModernRenderableSceneBuilder::~ModernRenderableSceneBuilder()
@@ -15,24 +16,19 @@ ModernRenderableSceneBuilder::~ModernRenderableSceneBuilder()
 
 void ModernRenderableSceneBuilder::Bake()
 {
-}
-
-void ModernRenderableSceneBuilder::BakeSceneFirstPart(const RenderableSceneDescription& sceneDescription)
-{
-	//Create scene subobjects
-	std::vector<std::wstring> sceneTexturesVec;
-	CreateSceneMeshMetadata(sceneTexturesVec);
-
 	size_t intermediateBufferSize = 0;
 
 	//Create buffers for model and uniform data
-	intermediateBufferSize = PreCreateBuffers(intermediateBufferSize);
+	PreCreateGeometryBuffers(&intermediateBufferSize);
+
+	//Create buffers for constant data
+	PreCreateConstantDataBuffers(&intermediateBufferSize);
 
 	//Load texture images
-	intermediateBufferSize = PreCreateTextures(sceneTexturesVec, intermediateBufferSize);
+	PreCreateTextures(&intermediateBufferSize);
 
 	FinishBufferCreation();
-	mSceneToBuild->mSceneConstantDataBufferPointer = MapConstantBuffer();
+	mModernSceneToBuild->mSceneConstantDataBufferPointer = MapDynamicConstantBuffer();
 
 	FinishTextureCreation();
 
@@ -41,30 +37,20 @@ void ModernRenderableSceneBuilder::BakeSceneFirstPart(const RenderableSceneDescr
 
 	//Fill intermediate buffers
 	FillIntermediateBufferData();
-}
 
-void ModernRenderableSceneBuilder::BakeSceneSecondPart()
-{
+	//Initialize everything needed to update dynamic constant buffers
+	InitializeDynamicConstantData();
+
+
 	WriteInitializationCommands();
 	SubmitInitializationCommands();
 	WaitForInitializationCommands();
 }
 
-void ModernRenderableSceneBuilder::CreateSceneMeshMetadata()
+void ModernRenderableSceneBuilder::PreCreateGeometryBuffers(size_t* inoutIntermediateBufferSize)
 {
-	
-
-
-
-	mModernSceneToBuild->mScenePerObjectData.resize(mSceneToBuild->mSceneMeshes.size());
-	mModernSceneToBuild->mScheduledSceneUpdates.resize(mSceneToBuild->mSceneMeshes.size() + 1); //1 for each subobject and 1 for frame data
-
-
-}
-
-size_t ModernRenderableSceneBuilder::PreCreateBuffers(size_t currentIntermediateBufferSize)
-{
-	size_t intermediateBufferSize = currentIntermediateBufferSize;
+	assert(inoutIntermediateBufferSize != nullptr);
+	size_t intermediateBufferSize = *inoutIntermediateBufferSize;
 
 
 	const size_t vertexDataSize = mVertexBufferData.size() * sizeof(RenderableSceneVertex);
@@ -81,47 +67,122 @@ size_t ModernRenderableSceneBuilder::PreCreateBuffers(size_t currentIntermediate
 	intermediateBufferSize            += indexDataSize;
 
 
-	const size_t constantPerObjectDataSize = mSceneToBuild->mScenePerObjectData.size() * mSceneToBuild->mGBufferObjectChunkDataSize * Utils::InFlightFrameCount;
-	const size_t constantPerFrameDataSize  = mSceneToBuild->mGBufferFrameChunkDataSize * Utils::InFlightFrameCount;
-	PreCreateConstantBuffer(constantPerObjectDataSize + constantPerFrameDataSize);
-
-	mSceneToBuild->mSceneDataConstantObjectBufferOffset = 0;
-	mSceneToBuild->mSceneDataConstantFrameBufferOffset  = mSceneToBuild->mSceneDataConstantObjectBufferOffset + constantPerObjectDataSize;
-
-
-	return intermediateBufferSize;
+	*inoutIntermediateBufferSize = intermediateBufferSize;
 }
 
-size_t ModernRenderableSceneBuilder::PreCreateTextures(const std::vector<std::wstring>& sceneTextures, size_t intermediateBufferSize)
+void ModernRenderableSceneBuilder::PreCreateConstantDataBuffers(size_t* inoutIntermediateBufferSize)
 {
+	assert(inoutIntermediateBufferSize != nullptr);
+	size_t intermediateBufferSize = *inoutIntermediateBufferSize;
+
+
+	const size_t staticConstantDataSize = mMaterialData.size() * mModernSceneToBuild->mMaterialChunkDataSize + mInitialStaticInstancedObjectData.size() * mModernSceneToBuild->mObjectChunkDataSize;
+	PreCreateStaticConstantBuffer(staticConstantDataSize);
+
+	mIntermediateBufferStaticConstantDataOffset = intermediateBufferSize;
+	intermediateBufferSize                     += staticConstantDataSize;
+
+	mModernSceneToBuild->mMaterialDataOffset     = 0;
+	mModernSceneToBuild->mStaticObjectDataOffset = mMaterialData.size() * mModernSceneToBuild->mMaterialChunkDataSize;
+
+
+	const size_t constantPerObjectDataSize = mInitialRigidObjectData.size() * mModernSceneToBuild->mObjectChunkDataSize * Utils::InFlightFrameCount;
+	const size_t constantPerFrameDataSize  = mModernSceneToBuild->mFrameChunkDataSize * Utils::InFlightFrameCount;
+	PreCreateDynamicConstantBuffer(constantPerObjectDataSize + constantPerFrameDataSize);
+
+
+	mStaticConstantData.resize(staticConstantDataSize);
+
+	std::byte* staticConstantDataPointer = mStaticConstantData.data() + mModernSceneToBuild->mMaterialDataOffset;
+	for(uint32_t materialIndex = 0; materialIndex < (uint32_t)mMaterialData.size(); materialIndex++)
+	{
+		memcpy(staticConstantDataPointer, &mMaterialData[materialIndex], sizeof(RenderableSceneMaterial));
+		staticConstantDataPointer += mModernSceneToBuild->mMaterialChunkDataSize;
+	}
+
+	staticConstantDataPointer = mStaticConstantData.data() + mModernSceneToBuild->mStaticObjectDataOffset;
+	for(uint32_t staticObjectIndex = 0; staticObjectIndex < (uint32_t)mInitialStaticInstancedObjectData.size(); staticObjectIndex++)
+	{
+		const BaseRenderableScene::PerObjectData perObjectData = mModernSceneToBuild->PackObjectData(mInitialStaticInstancedObjectData[staticObjectIndex]);
+
+		memcpy(staticConstantDataPointer, &perObjectData, sizeof(BaseRenderableScene::PerObjectData));
+		staticConstantDataPointer += mModernSceneToBuild->mObjectChunkDataSize;
+	}
+
+	*inoutIntermediateBufferSize = intermediateBufferSize;
+}
+
+void ModernRenderableSceneBuilder::PreCreateTextures(size_t* inoutIntermediateBufferSize)
+{
+	assert(inoutIntermediateBufferSize != nullptr);
+	size_t intermediateBufferSize = *inoutIntermediateBufferSize;
+
 	mIntermediateBufferTextureDataOffset = Utils::AlignMemory(intermediateBufferSize, mTexturePlacementAlignment);
-	size_t currentIntermediateBufferSize = mIntermediateBufferTextureDataOffset;
+	intermediateBufferSize = mIntermediateBufferTextureDataOffset;
 
 	mTextureData.clear();
 
-	AllocateTextureMetadataArrays(sceneTextures.size());
-	for(size_t i = 0; i < sceneTextures.size(); i++)
+	AllocateTextureMetadataArrays(mTexturesToLoad.size());
+	for(size_t textureIndex = 0; textureIndex < mTexturesToLoad.size(); textureIndex++)
 	{
 		std::vector<std::byte> textureData;
-		LoadTextureFromFile(sceneTextures[i], currentIntermediateBufferSize, i, textureData);
+		LoadTextureFromFile(mTexturesToLoad[textureIndex], intermediateBufferSize, textureIndex, textureData);
 
 		mTextureData.insert(mTextureData.end(), textureData.begin(), textureData.end());
-		currentIntermediateBufferSize += textureData.size();
+		intermediateBufferSize += textureData.size();
 	}
 
-	return currentIntermediateBufferSize;
+	*inoutIntermediateBufferSize = intermediateBufferSize;
 }
 
 void ModernRenderableSceneBuilder::FillIntermediateBufferData()
 {
-	const uint64_t textureDataSize = mTextureData.size()      * sizeof(uint8_t);
-	const uint64_t vertexDataSize  = mVertexBufferData.size() * sizeof(RenderableSceneVertex);
-	const uint64_t indexDataSize   = mIndexBufferData.size()  * sizeof(RenderableSceneIndex);
+	const uint64_t vertexDataSize         = mVertexBufferData.size()   * sizeof(RenderableSceneVertex);
+	const uint64_t indexDataSize          = mIndexBufferData.size()    * sizeof(RenderableSceneIndex);
+	const uint64_t staticConstantDataSize = mStaticConstantData.size() * sizeof(std::byte);
+	const uint64_t textureDataSize        = mTextureData.size()        * sizeof(std::byte);
 
 	std::byte* bufferDataBytes = MapIntermediateBuffer();
-	memcpy(bufferDataBytes + mIntermediateBufferVertexDataOffset,  mVertexBufferData.data(), vertexDataSize);
-	memcpy(bufferDataBytes + mIntermediateBufferIndexDataOffset,   mIndexBufferData.data(),  indexDataSize);
-	memcpy(bufferDataBytes + mIntermediateBufferTextureDataOffset, mTextureData.data(),      textureDataSize);
+	memcpy(bufferDataBytes + mIntermediateBufferVertexDataOffset,         mVertexBufferData.data(),   vertexDataSize);
+	memcpy(bufferDataBytes + mIntermediateBufferIndexDataOffset,          mIndexBufferData.data(),    indexDataSize);
+	memcpy(bufferDataBytes + mIntermediateBufferStaticConstantDataOffset, mStaticConstantData.data(), staticConstantDataSize);
+	memcpy(bufferDataBytes + mIntermediateBufferTextureDataOffset,        mTextureData.data(),        textureDataSize);
 
 	UnmapIntermediateBuffer();
+}
+
+void ModernRenderableSceneBuilder::InitializeDynamicConstantData()
+{
+	//Prepare update data
+	mModernSceneToBuild->mPrevFrameRigidMeshUpdates.resize(mInitialRigidObjectData.size() * Utils::InFlightFrameCount + 1); //1 for each potential update and terminating (-1)
+	mModernSceneToBuild->mNextFrameRigidMeshUpdates.resize(mInitialRigidObjectData.size() * Utils::InFlightFrameCount + 1); //1 for each potential update and terminating (-1)
+
+	mModernSceneToBuild->mCurrFrameRigidMeshUpdateIndices.resize(mInitialRigidObjectData.size()); //1 for each potential update
+
+	mModernSceneToBuild->mPrevFrameDataToUpdate.resize(mInitialRigidObjectData.size()); //1 for each potential update
+	mModernSceneToBuild->mCurrFrameDataToUpdate.resize(mInitialRigidObjectData.size()); //1 for each potential update
+
+	mModernSceneToBuild->mPrevFrameRigidMeshUpdates[0] =
+	{
+		.MeshHandleIndex = (uint32_t)(-1),
+		.ObjectDataIndex = (uint32_t)(-1)
+	};
+
+	const FrameDataUpdateInfo initialFrameUpdate = 
+	{
+		.CameraLocation = mInitialCameraLocation,
+		.ProjMatrix     = mInitialCameraProjMatrix
+	};
+
+	std::vector<ObjectDataUpdateInfo> rigidObjectUpdates(mInitialRigidObjectData.size());
+	for(size_t rigidUpdateIndex = 0; rigidUpdateIndex < mInitialRigidObjectData.size(); rigidUpdateIndex++)
+	{
+		rigidObjectUpdates[rigidUpdateIndex] = ObjectDataUpdateInfo
+		{
+			.ObjectId          = RenderableSceneObjectHandle(rigidUpdateIndex, SceneObjectType::Rigid),
+			.NewObjectLocation = mInitialRigidObjectData[rigidUpdateIndex],
+		};
+	}
+
+	mModernSceneToBuild->UpdateRigidSceneObjects(initialFrameUpdate, rigidObjectUpdates);
 }
