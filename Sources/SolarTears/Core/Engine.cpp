@@ -156,9 +156,15 @@ void Engine::CreateScene()
 
 	sceneObject.SetMeshComponentName("TestMesh");
 
-	mRenderingSystem->InitScene(sceneDesc.GetRenderableComponent());
 
-	sceneDesc.BuildScene(mScene.get());
+	//Build/bake the scene
+	std::unordered_map<std::string_view, SceneObjectLocation> renderableObjectLocations;
+	sceneDesc.GetRenderableObjectLocations(renderableObjectLocations);
+
+	std::unordered_map<std::string_view, RenderableSceneObjectHandle> meshHandles;
+	BaseRenderableScene* renderableScene = mRenderingSystem->InitScene(sceneDesc.GetRenderableComponent(), renderableObjectLocations, meshHandles);
+
+	sceneDesc.BuildScene(mScene.get(), renderableScene, meshHandles);
 }
 
 void Engine::CreateFrameGraph(Window* window)

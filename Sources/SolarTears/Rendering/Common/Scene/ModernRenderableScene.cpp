@@ -18,7 +18,18 @@ ModernRenderableScene::~ModernRenderableScene()
 {
 }
 
-void ModernRenderableScene::UpdateRigidSceneObjects(const FrameDataUpdateInfo& frameUpdate, const std::span<ObjectDataUpdateInfo> rigidObjectUpdates)
+void ModernRenderableScene::UpdateFrameData(const FrameDataUpdateInfo& frameUpdate)
+{
+	uint32_t frameResourceIndex = mFrameCounterRef->GetFrameCount() % Utils::InFlightFrameCount;
+
+	DirectX::XMMATRIX projMatrix = DirectX::XMLoadFloat4x4(&frameUpdate.ProjMatrix);
+	PerFrameData perFrameData = PackFrameData(frameUpdate.CameraLocation, projMatrix);
+
+	uint64_t frameDataOffset = CalculateFrameDataOffset(frameResourceIndex);
+	memcpy((std::byte*)mSceneConstantDataBufferPointer + frameDataOffset, &perFrameData, sizeof(PerFrameData));
+}
+
+void ModernRenderableScene::UpdateRigidSceneObjects(const std::span<ObjectDataUpdateInfo> rigidObjectUpdates)
 {
 	uint32_t prevFrameUpdateIndex = 0;
 	uint32_t currFrameUpdateIndex = 0;
@@ -98,16 +109,8 @@ void ModernRenderableScene::UpdateRigidSceneObjects(const FrameDataUpdateInfo& f
 	mNextFrameRigidMeshUpdates[nextFrameUpdateIndex] = {.MeshHandleIndex = (uint32_t)(-1), .ObjectDataIndex = (uint32_t)(-1)};
 	std::swap(mPrevFrameRigidMeshUpdates, mNextFrameRigidMeshUpdates);
 
-
-	//Do not need to worry about calling vkFlushMemoryMappedRanges, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT will handle this
 	uint32_t frameResourceIndex = mFrameCounterRef->GetFrameCount() % Utils::InFlightFrameCount;
 
-	DirectX::XMMATRIX projMatrix = DirectX::XMLoadFloat4x4(&frameUpdate.ProjMatrix);
-	PerFrameData perFrameData = PackFrameData(frameUpdate.CameraLocation, projMatrix);
-
-	uint64_t frameDataOffset = CalculateFrameDataOffset(frameResourceIndex);
-	memcpy((std::byte*)mSceneConstantDataBufferPointer + frameDataOffset, &perFrameData, sizeof(PerFrameData));
-	
 	for(auto updateIndex = 0; updateIndex < currFrameUpdateIndex; updateIndex++)
 	{
 		uint32_t meshIndex = mCurrFrameRigidMeshUpdateIndices[updateIndex];

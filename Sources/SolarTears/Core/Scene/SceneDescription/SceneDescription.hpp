@@ -18,10 +18,11 @@ public:
 	SceneDescriptionObject& GetCameraSceneObject();
 
 public:
-	void BuildScene(Scene* scene);
+	void BuildScene(Scene* scene, BaseRenderableScene* renderableComponent, const std::unordered_map<std::string_view, RenderableSceneObjectHandle>& meshHandles);
 
 public:
 	RenderableSceneDescription& GetRenderableComponent();
+	void GetRenderableObjectLocations(std::unordered_map<std::string_view, SceneObjectLocation>& outLocations);
 
 private:
 	//Scene description objects

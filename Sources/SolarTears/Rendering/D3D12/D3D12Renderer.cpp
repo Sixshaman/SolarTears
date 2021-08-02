@@ -57,18 +57,20 @@ void D3D12::Renderer::ResizeWindowBuffers(Window* window)
 	mSwapChain->Resize(mDeviceQueues.get(), window);
 }
 
-void D3D12::Renderer::InitScene(const RenderableSceneDescription& sceneDescription)
+BaseRenderableScene* D3D12::Renderer::InitScene(const RenderableSceneDescription& sceneDescription, const std::unordered_map<std::string_view, SceneObjectLocation>& sceneMeshInitialLocations, std::unordered_map<std::string_view, RenderableSceneObjectHandle>& outObjectHandles)
 {
 	mDeviceQueues->AllQueuesWaitStrong();
 
 	mScene = std::make_unique<D3D12::RenderableScene>(mFrameCounterRef);
 	D3D12::RenderableSceneBuilder sceneBuilder(mDevice.get(), mScene.get(), mMemoryAllocator.get(), mDeviceQueues.get(), mWorkerCommandLists.get());
 
-	sceneBuilder.Build(sceneDescription);
+	sceneBuilder.Build(sceneDescription, sceneMeshInitialLocations, outObjectHandles);
 
 	SceneDescriptorCreator      sceneDescriptorCreator(mScene.get());
 	FrameGraphDescriptorCreator frameGraphDescriptorCreator(mFrameGraph.get());
 	mDescriptorManager->ValidateDescriptorHeaps(mDevice.get(), &sceneDescriptorCreator, &frameGraphDescriptorCreator, SrvDescriptorManager::FLAG_FRAME_GRAPH_UNCHANGED);
+
+	return mScene.get();
 }
 
 void D3D12::Renderer::InitFrameGraph(FrameGraphConfig&& frameGraphConfig, FrameGraphDescription&& frameGraphDescription)

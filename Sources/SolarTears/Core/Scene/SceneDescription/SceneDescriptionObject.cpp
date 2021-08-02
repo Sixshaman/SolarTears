@@ -34,7 +34,7 @@ const SceneObjectLocation& SceneDescriptionObject::GetLocation() const
 	return mLocation;
 }
 
-std::string SceneDescriptionObject::GetMeshComponentName() const
+const std::string& SceneDescriptionObject::GetMeshComponentName() const
 {
 	return mMeshComponentName;
 }

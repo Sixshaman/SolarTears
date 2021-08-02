@@ -32,8 +32,8 @@ namespace Vulkan
 		void AttachToWindow(Window* window)      override;
 		void ResizeWindowBuffers(Window* window) override;
 
-		void InitScene(const RenderableSceneDescription& sceneDescription)                                      override;
-		void InitFrameGraph(FrameGraphConfig&& frameGraphConfig, FrameGraphDescription&& frameGraphDescription) override;
+		BaseRenderableScene* InitScene(const RenderableSceneDescription& sceneDescription, const std::unordered_map<std::string_view, SceneObjectLocation>& sceneMeshInitialLocations, std::unordered_map<std::string_view, RenderableSceneObjectHandle>& outObjectHandles) override;
+		void                 InitFrameGraph(FrameGraphConfig&& frameGraphConfig, FrameGraphDescription&& frameGraphDescription)                                                                                                                                             override;
 
 		void Render() override;
 

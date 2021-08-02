@@ -23,7 +23,7 @@ public:
 	SceneObjectLocation& GetLocation();
 	const SceneObjectLocation& GetLocation() const;
 
-	std::string GetMeshComponentName() const;
+	const std::string& GetMeshComponentName() const;
 	void SetMeshComponentName(const std::string& meshComponentName);
 
 private:

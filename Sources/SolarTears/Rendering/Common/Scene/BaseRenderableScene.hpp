@@ -52,7 +52,8 @@ public:
 	BaseRenderableScene();
 	~BaseRenderableScene();
 
-	virtual void UpdateRigidSceneObjects(const FrameDataUpdateInfo& frameUpdate, const std::span<ObjectDataUpdateInfo> objectUpdates) = 0;
+	virtual void UpdateFrameData(const FrameDataUpdateInfo& frameUpdate)                      = 0;
+	virtual void UpdateRigidSceneObjects(const std::span<ObjectDataUpdateInfo> objectUpdates) = 0;
 
 protected:
 	PerObjectData PackObjectData(const SceneObjectLocation& sceneObjectLocation)                          const;

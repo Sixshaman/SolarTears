@@ -80,13 +80,8 @@ void Scene::UpdateScene()
 
 void Scene::UpdateRenderableComponent()
 {
-	for(size_t i = 0; i < mSceneObjects.size(); i++)
-	{
-		if(mSceneObjects[i].RenderableHandle != INVALID_SCENE_OBJECT_HANDLE)
-		{
-			mRenderableComponentRef->UpdateSceneMeshData(mSceneObjects[i].RenderableHandle, mSceneObjects[i].Location);
-		}
-	}
+	//No objects move currently
+	std::span currentFrameMovedObjects = {mCurrFrameRenderableUpdates.begin(), mCurrFrameRenderableUpdates.begin()};
 
 	FrameDataUpdateInfo frameUpdateInfo =
 	{
@@ -94,5 +89,6 @@ void Scene::UpdateRenderableComponent()
 		.ProjMatrix     = mCamera.GetProjMatrix()
 	};
 
-	mRenderableComponentRef->UpdateRigidSceneObjects(frameUpdateInfo, mCurrFrameRenderableUpdates);
+	mRenderableComponentRef->UpdateFrameData(frameUpdateInfo);
+	mRenderableComponentRef->UpdateRigidSceneObjects(currentFrameMovedObjects);
 }

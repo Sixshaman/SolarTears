@@ -2,7 +2,7 @@
 
 #include "../../Core/Window.hpp"
 #include "../../Logging/LoggerQueue.hpp"
-#include "Scene/RenderableSceneDescription.hpp"
+#include "Scene/BaseRenderableSceneBuilder.hpp"
 
 /*	
 	My manifesto:
@@ -18,6 +18,7 @@
 
 class FrameGraphConfig;
 class FrameGraphDescription;
+class BaseRenderableScene;
 
 class Renderer
 {
@@ -28,8 +29,8 @@ public:
 	virtual void AttachToWindow(Window* window)      = 0;
 	virtual void ResizeWindowBuffers(Window* window) = 0;
 
-	virtual void InitScene(const RenderableSceneDescription& sceneDescription)                                      = 0;
-	virtual void InitFrameGraph(FrameGraphConfig&& frameGraphConfig, FrameGraphDescription&& frameGraphDescription) = 0;
+	virtual BaseRenderableScene* InitScene(const RenderableSceneDescription& sceneDescription, const std::unordered_map<std::string_view, SceneObjectLocation>& sceneMeshInitialLocations, std::unordered_map<std::string_view, RenderableSceneObjectHandle>& outObjectHandles) = 0;
+	virtual void InitFrameGraph(FrameGraphConfig&& frameGraphConfig, FrameGraphDescription&& frameGraphDescription)                                                                                                                                                             = 0;
 
 	virtual void Render() = 0;
 

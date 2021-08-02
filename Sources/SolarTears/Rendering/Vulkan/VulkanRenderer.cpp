@@ -121,18 +121,19 @@ void Vulkan::Renderer::ResizeWindowBuffers(Window* window)
 	InitializeSwapchainImages();
 }
 
-void Vulkan::Renderer::InitScene(const RenderableSceneDescription& sceneDescription)
+BaseRenderableScene* Vulkan::Renderer::InitScene(const RenderableSceneDescription& sceneDescription, const std::unordered_map<std::string_view, SceneObjectLocation>& sceneMeshInitialLocations, std::unordered_map<std::string_view, RenderableSceneObjectHandle>& outObjectHandles)
 {
 	ThrowIfFailed(vkDeviceWaitIdle(mDevice));
 
 	mScene = std::make_unique<RenderableScene>(mDevice, mFrameCounterRef, mDeviceParameters);
 	RenderableSceneBuilder sceneBuilder(mScene.get(), mMemoryAllocator.get(), mDeviceQueues.get(), mCommandBuffers.get(), &mDeviceParameters);
 
-	sceneBuilder.BakeSceneFirstPart(sceneDescription);
-	sceneBuilder.BakeSceneSecondPart();
+	sceneBuilder.Build(sceneDescription, sceneMeshInitialLocations, outObjectHandles);
 
 	SceneDescriptorCreator sceneDescriptorCreator(mScene.get());
 	sceneDescriptorCreator.RecreateSceneDescriptors(mDescriptorManager.get(), mShaderManager.get());
+
+	return mScene.get();
 }
 
 void Vulkan::Renderer::InitFrameGraph(FrameGraphConfig&& frameGraphConfig, FrameGraphDescription&& frameGraphDescription)
