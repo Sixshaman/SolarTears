@@ -26,24 +26,16 @@ void BaseRenderableSceneBuilder::Build(const RenderableSceneDescription& sceneDe
 	//After this step we'll have a sorted flat list of meshes
 	SortMeshesBySubmeshGeometry(namedSceneMeshes);
 
-	//After this step we'll have a list of meshes and a list of locations
-	std::vector<RenderableSceneMeshData> sceneMeshes;
-	std::vector<SceneObjectLocation>     meshInitialLocations;
-	ObtainLocationsFromNames(namedSceneMeshes, sceneMeshInitialLocations, sceneMeshes, meshInitialLocations);
-
-	namedSceneMeshes.clear(); //Don't need it anymore
-
 	//After this step we'll have instance groups formed
-	std::vector<std::span<const RenderableSceneMeshData>> instanceSpans;
-	std::vector<std::span<const SceneObjectLocation>>     locationSpans;
-	DetectInstanceSpans(sceneMeshes, meshInitialLocations, instanceSpans, locationSpans);
+	std::vector<std::span<const NamedSceneMeshData>> instanceSpans;
+	DetectInstanceSpans(namedSceneMeshes, instanceSpans);
 
 	//After this step we'll have scene mesh buffers created, with info on geometry and materials for submeshes
-	std::vector<uint32_t> sceneMeshToInstanceSpanIndices;
-	FillMeshLists(instanceSpans, sceneMeshToInstanceSpanIndices);
+	std::unordered_map<std::string_view, SceneMeshAssignedData> assignedMeshData;
+	FillMeshLists(instanceSpans, assignedMeshData);
 	
 	//After this step we'll have vertex and index buffers ready to be uploaded to GPU
-	AssignSubmeshGeometries(sceneDescription.mSceneGeometries, instanceSpans, locationSpans, sceneMeshToInstanceSpanIndices);
+	AssignSubmeshGeometries(sceneDescription.mSceneGeometries, instanceSpans, sceneMeshInitialLocations, assignedMeshData);
 
 	//After this step we'll have material data initialized and texture list prepared to be loaded
 	AssignSubmeshMaterials(sceneDescription.mSceneMaterials, instanceSpans, sceneMeshToInstanceSpanIndices);
@@ -171,63 +163,37 @@ void BaseRenderableSceneBuilder::SortMeshesBySubmeshGeometry(std::vector<NamedSc
 	}
 }
 
-void BaseRenderableSceneBuilder::ObtainLocationsFromNames(const std::vector<NamedSceneMeshData>& namedSceneMeshes, const std::unordered_map<std::string_view, SceneObjectLocation>& initialLocations, std::vector<RenderableSceneMeshData>& outSceneMeshes, std::vector<SceneObjectLocation>& outInitialLocations) const
-{
-	outSceneMeshes.clear();
-
-	outSceneMeshes.reserve(namedSceneMeshes.size());
-	outInitialLocations.reserve(namedSceneMeshes.size());
-
-	for(const NamedSceneMeshData& namedMesh: namedSceneMeshes)
-	{
-		outSceneMeshes.push_back(namedMesh.MeshData);
-
-		auto initialLocationIt = initialLocations.find(namedMesh.MeshName);
-		if(initialLocationIt != initialLocations.end())
-		{
-			outInitialLocations.push_back(initialLocationIt->second);
-		}
-		else
-		{
-			outInitialLocations.push_back(SceneObjectLocation());
-		}	
-	}
-}
-
-void BaseRenderableSceneBuilder::DetectInstanceSpans(const std::vector<RenderableSceneMeshData>& sceneMeshes, const std::vector<SceneObjectLocation>& meshInitialLocations, std::vector<std::span<const RenderableSceneMeshData>>& outInstanceSpans, std::vector<std::span<const SceneObjectLocation>>& outLocationSpans) const
+void BaseRenderableSceneBuilder::DetectInstanceSpans(const std::vector<NamedSceneMeshData>& sceneMeshes, std::vector<std::span<const NamedSceneMeshData>>& outInstanceSpans) const
 {
 	outInstanceSpans.clear();
-	outLocationSpans.clear();
 
-	size_t meshIndex = 0;
-	while(meshIndex != sceneMeshes.size())
+	auto meshIt = sceneMeshes.begin();
+	while(meshIt != sceneMeshes.end())
 	{
-		const RenderableSceneMeshData& mesh = sceneMeshes[meshIndex];
+		const RenderableSceneMeshData& meshData = meshIt->MeshData;
 
-		bool thisMeshStatic = !(mesh.MeshFlags & (uint32_t)RenderableSceneMeshFlags::NonStatic);
+		bool thisMeshStatic = !(meshData.MeshFlags & (uint32_t)RenderableSceneMeshFlags::NonStatic);
 
-		size_t nextMeshIndex = meshIndex + 1;
-		while(nextMeshIndex != sceneMeshes.size())
+		auto nextMeshIt = meshIt + 1;
+		while(nextMeshIt != sceneMeshes.end())
 		{
-			const RenderableSceneMeshData& nextMesh = sceneMeshes[nextMeshIndex];
+			const RenderableSceneMeshData& nextMeshData = nextMeshIt->MeshData;
 
-			bool nextMeshStatic = !(nextMesh.MeshFlags & (uint32_t)RenderableSceneMeshFlags::NonStatic);
-			if (!SameGeometry(mesh, nextMesh) || thisMeshStatic != nextMeshStatic)
+			bool nextMeshStatic = !(nextMeshData.MeshFlags & (uint32_t)RenderableSceneMeshFlags::NonStatic);
+			if(!SameGeometry(meshData, nextMeshData) || thisMeshStatic != nextMeshStatic)
 			{
 				break;
 			}
 
-			nextMeshIndex++;
+			++nextMeshIt;
 		}
 
-		outInstanceSpans.push_back({sceneMeshes.begin()          + meshIndex, sceneMeshes.begin()          + nextMeshIndex});
-		outLocationSpans.push_back({meshInitialLocations.begin() + meshIndex, meshInitialLocations.begin() + nextMeshIndex});
-
-		meshIndex = nextMeshIndex;
+		outInstanceSpans.push_back({meshIt, nextMeshIt});
+		meshIt = nextMeshIt;
 	}
 }
 
-void BaseRenderableSceneBuilder::FillMeshLists(std::vector<std::span<const RenderableSceneMeshData>>& instanceSpans, std::vector<uint32_t>& outSceneMeshToInstanceSpanIndices)
+void BaseRenderableSceneBuilder::FillMeshLists(std::vector<std::span<const NamedSceneMeshData>>& instanceSpans, std::unordered_map<std::string_view, SceneMeshAssignedData>& outAssignedMeshes)
 {
 	mSceneToBuild->mSceneMeshes.clear();
 	mSceneToBuild->mSceneSubmeshes.clear();
@@ -246,9 +212,9 @@ void BaseRenderableSceneBuilder::FillMeshLists(std::vector<std::span<const Rende
 	std::fill(submeshCountsPerType.begin(),    submeshCountsPerType.end(),    0);
 	std::fill(objectDataCountsPerType.begin(), objectDataCountsPerType.end(), 0);
 
-	for(std::span<const RenderableSceneMeshData> instanceSpan: instanceSpans)
+	for(std::span<const NamedSceneMeshData> instanceSpan: instanceSpans)
 	{
-		const RenderableSceneMeshData& representativeMesh = instanceSpan.front();
+		const RenderableSceneMeshData& representativeMesh = instanceSpan.front().MeshData;
 
 		bool isSpanNonStatic = representativeMesh.MeshFlags & (uint32_t)RenderableSceneMeshFlags::NonStatic;
 		uint32_t instanceCount = (uint32_t)instanceSpan.size();
@@ -296,8 +262,6 @@ void BaseRenderableSceneBuilder::FillMeshLists(std::vector<std::span<const Rende
 	mSceneToBuild->mSceneMeshes.resize(totalMeshCount);
 	mSceneToBuild->mSceneSubmeshes.resize(totalSubmeshCount);
 
-	outSceneMeshToInstanceSpanIndices.resize(totalMeshCount);
-
 	mSceneToBuild->mStaticMeshSpan.Begin = 0;
 	mSceneToBuild->mStaticMeshSpan.End   = mSceneToBuild->mStaticMeshSpan.Begin + meshCountsPerType[staticIndex];
 
@@ -327,8 +291,8 @@ void BaseRenderableSceneBuilder::FillMeshLists(std::vector<std::span<const Rende
 	objectDataIndicesPerType[staticIndex] = (uint32_t)(-1);
 	for(uint32_t instanceSpanIndex = 0; instanceSpanIndex < instanceSpans.size(); instanceSpanIndex++)
 	{
-		const std::span<const RenderableSceneMeshData> instanceSpan = instanceSpans[instanceSpanIndex];
-		const RenderableSceneMeshData& representativeMesh = instanceSpan.front();
+		const std::span<const NamedSceneMeshData> instanceSpan = instanceSpans[instanceSpanIndex];
+		const RenderableSceneMeshData& representativeMesh = instanceSpan.front().MeshData;
 
 		bool isSpanNonStatic = representativeMesh.MeshFlags & (uint32_t)RenderableSceneMeshFlags::NonStatic;
 
@@ -367,7 +331,15 @@ void BaseRenderableSceneBuilder::FillMeshLists(std::vector<std::span<const Rende
 			.AfterLastSubmeshIndex = submeshIndicesPerType[typeIndex] + submeshCount
 		};
 
-		outSceneMeshToInstanceSpanIndices[meshIndicesPerType[typeIndex]] = instanceSpanIndex;
+		for(uint32_t instanceIndex = 0; instanceIndex < (uint32_t)instanceSpan.size(); instanceIndex++)
+		{
+			const NamedSceneMeshData& namedMeshData = instanceSpan[instanceIndex];
+			outAssignedMeshes[namedMeshData.MeshName] = SceneMeshAssignedData
+			{
+				.MeshIndex     = meshIndicesPerType[typeIndex],
+				.InstanceIndex = instanceIndex
+			};
+		}
 
 		meshIndicesPerType[typeIndex]    += 1;
 		submeshIndicesPerType[typeIndex] += submeshCount;
@@ -379,7 +351,7 @@ void BaseRenderableSceneBuilder::FillMeshLists(std::vector<std::span<const Rende
 	}
 }
 
-void BaseRenderableSceneBuilder::AssignSubmeshGeometries(const std::unordered_map<std::string, RenderableSceneGeometryData>& descriptionGeometries, const std::vector<std::span<const RenderableSceneMeshData>>& meshInstanceSpans, const std::vector<std::span<const SceneObjectLocation>>& initialLocationSpans, const std::vector<uint32_t>& sceneMeshToInstanceSpanIndices)
+void BaseRenderableSceneBuilder::AssignSubmeshGeometries(const std::unordered_map<std::string, RenderableSceneGeometryData>& descriptionGeometries, const std::vector<std::span<const NamedSceneMeshData>>& meshInstanceSpans, const std::unordered_map<std::string_view, SceneObjectLocation>& sceneMeshInitialLocations, const std::vector<uint32_t>& sceneMeshToInstanceSpanIndices)
 {
 	mVertexBufferData.clear();
 	mIndexBufferData.clear();
@@ -390,14 +362,13 @@ void BaseRenderableSceneBuilder::AssignSubmeshGeometries(const std::unordered_ma
 		size_t instanceSpanIndex = sceneMeshToInstanceSpanIndices[meshIndex];
 		const BaseRenderableScene::SceneMesh& sceneMesh = mSceneToBuild->mSceneMeshes[meshIndex];
 
-		const std::span<const SceneObjectLocation>     locationSpan = initialLocationSpans[instanceSpanIndex];
-		const std::span<const RenderableSceneMeshData> instanceSpan = meshInstanceSpans[instanceSpanIndex];
-		assert(locationSpan.size() == 1);
+		const std::span<const NamedSceneMeshData> instanceSpan = meshInstanceSpans[instanceSpanIndex];
+		assert(instanceSpan.size() == 1);
 
 		uint32_t submeshCount = sceneMesh.AfterLastSubmeshIndex - sceneMesh.FirstSubmeshIndex;
-		const RenderableSceneMeshData& representativeMesh = instanceSpan.front();
+		const NamedSceneMeshData& representativeMesh = instanceSpan.front();
 
-		const SceneObjectLocation& meshLocation = locationSpan.front();
+		const SceneObjectLocation& meshLocation = sceneMeshInitialLocations.at(representativeMesh.MeshName);
 		DirectX::XMVECTOR meshPosition = DirectX::XMLoadFloat3(&meshLocation.Position);
 		DirectX::XMVECTOR meshRotation = DirectX::XMLoadFloat4(&meshLocation.RotationQuaternion);
 		DirectX::XMVECTOR meshScale    = DirectX::XMVectorSet(meshLocation.Scale, meshLocation.Scale, meshLocation.Scale, 1.0f);
@@ -405,7 +376,7 @@ void BaseRenderableSceneBuilder::AssignSubmeshGeometries(const std::unordered_ma
 		DirectX::XMMATRIX meshMatrix = DirectX::XMMatrixAffineTransformation(meshScale, DirectX::XMVectorZero(), meshRotation, meshPosition);
 		for(uint32_t submeshIndex = 0; submeshIndex < submeshCount; submeshIndex++)
 		{
-			const RenderableSceneGeometryData& geometryData = descriptionGeometries.at(representativeMesh.Submeshes[submeshIndex].GeometryName);
+			const RenderableSceneGeometryData& geometryData = descriptionGeometries.at(representativeMesh.MeshData.Submeshes[submeshIndex].GeometryName);
 
 			BaseRenderableScene::SceneSubmesh& submesh = mSceneToBuild->mSceneSubmeshes[sceneMesh.FirstSubmeshIndex + submeshIndex];
 			submesh.IndexCount   = (uint32_t)geometryData.Indices.size();
@@ -454,15 +425,15 @@ void BaseRenderableSceneBuilder::AssignSubmeshGeometries(const std::unordered_ma
 		size_t instanceSpanIndex = sceneMeshToInstanceSpanIndices[meshIndex];
 		const BaseRenderableScene::SceneMesh& sceneMesh = mSceneToBuild->mSceneMeshes[meshIndex];
 
-		const std::span<const RenderableSceneMeshData> instanceSpan = meshInstanceSpans[instanceSpanIndex];
+		const std::span<const NamedSceneMeshData> instanceSpan = meshInstanceSpans[instanceSpanIndex];
 		uint32_t submeshCount = sceneMesh.AfterLastSubmeshIndex - sceneMesh.FirstSubmeshIndex;
 
-		const RenderableSceneMeshData& representativeMesh = instanceSpan.front();
+		const RenderableSceneMeshData& representativeMeshData = instanceSpan.front().MeshData;
 		for(uint32_t submeshIndex = 0; submeshIndex < submeshCount; submeshIndex++)
 		{
 			BaseRenderableScene::SceneSubmesh& submesh = mSceneToBuild->mSceneSubmeshes[sceneMesh.FirstSubmeshIndex + submeshIndex];
 
-			auto geometryRangeIt = geometryRanges.find(representativeMesh.Submeshes[submeshIndex].GeometryName);
+			auto geometryRangeIt = geometryRanges.find(representativeMeshData.Submeshes[submeshIndex].GeometryName);
 			if(geometryRangeIt != geometryRanges.end())
 			{
 				submesh.IndexCount   = geometryRangeIt->second.IndexCount;
@@ -471,7 +442,7 @@ void BaseRenderableSceneBuilder::AssignSubmeshGeometries(const std::unordered_ma
 			}
 			else
 			{
-				const RenderableSceneGeometryData& geometryData = descriptionGeometries.at(representativeMesh.Submeshes[submeshIndex].GeometryName);
+				const RenderableSceneGeometryData& geometryData = descriptionGeometries.at(representativeMeshData.Submeshes[submeshIndex].GeometryName);
 
 				GeometrySubmeshRange geometryRange = 
 				{
@@ -487,13 +458,13 @@ void BaseRenderableSceneBuilder::AssignSubmeshGeometries(const std::unordered_ma
 				submesh.FirstIndex   = geometryRange.FirstIndex;
 				submesh.VertexOffset = geometryRange.VertexOffset;
 
-				geometryRanges[representativeMesh.Submeshes[submeshIndex].GeometryName] = geometryRange;
+				geometryRanges[representativeMeshData.Submeshes[submeshIndex].GeometryName] = geometryRange;
 			}
 		}
 	}
 }
 
-void BaseRenderableSceneBuilder::AssignSubmeshMaterials(const std::unordered_map<std::string, RenderableSceneMaterialData>& descriptionMaterials, const std::vector<std::span<const RenderableSceneMeshData>>& meshInstanceSpans, const std::vector<uint32_t>& sceneMeshToInstanceSpanIndices)
+void BaseRenderableSceneBuilder::AssignSubmeshMaterials(const std::unordered_map<std::string, RenderableSceneMaterialData>& descriptionMaterials, const std::vector<std::span<const NamedSceneMeshData>>& meshInstanceSpans, const std::vector<uint32_t>& sceneMeshToInstanceSpanIndices)
 {
 	mMaterialData.clear();
 	mTexturesToLoad.clear();
@@ -507,11 +478,11 @@ void BaseRenderableSceneBuilder::AssignSubmeshMaterials(const std::unordered_map
 		const BaseRenderableScene::SceneMesh& sceneMesh = mSceneToBuild->mSceneMeshes[meshIndex];
 
 		uint32_t submeshCount = sceneMesh.AfterLastSubmeshIndex - sceneMesh.FirstSubmeshIndex;
-		const std::span<const RenderableSceneMeshData> instanceSpan = meshInstanceSpans[instanceSpanIndex];
+		const std::span<const NamedSceneMeshData> instanceSpan = meshInstanceSpans[instanceSpanIndex];
 
 		for(uint32_t instanceIndex = 0; instanceIndex < sceneMesh.InstanceCount; instanceIndex++)
 		{
-			const RenderableSceneMeshData& meshInstance = instanceSpan[instanceIndex];
+			const RenderableSceneMeshData& meshInstance = instanceSpan[instanceIndex].MeshData;
 			for(uint32_t submeshIndex = 0; submeshIndex < submeshCount; submeshIndex++)
 			{
 				uint32_t sceneSubmeshIndex = sceneMesh.FirstSubmeshIndex + submeshIndex;
@@ -574,7 +545,7 @@ void BaseRenderableSceneBuilder::AssignSubmeshMaterials(const std::unordered_map
 	}
 }
 
-void BaseRenderableSceneBuilder::FillInitialObjectData(const std::vector<std::span<const SceneObjectLocation>>& initialLocationSpans, const std::vector<uint32_t>& sceneMeshToInstanceSpanIndices, const SceneObjectLocation& cameraInitialLocation, const PinholeCamera& cameraInfo)
+void BaseRenderableSceneBuilder::FillInitialObjectData(const std::unordered_map<std::string_view, SceneObjectLocation>& sceneMeshInitialLocations, const std::vector<uint32_t>& sceneMeshToInstanceSpanIndices, const SceneObjectLocation& cameraInitialLocation, const PinholeCamera& cameraInfo)
 {
 	//The object data views/descriptors will go for static meshes first and for rigid meshes next
 	uint32_t objectDataOffset = 0;
@@ -589,6 +560,7 @@ void BaseRenderableSceneBuilder::FillInitialObjectData(const std::vector<std::sp
 		size_t perObjectIndexBegin = (size_t)sceneMesh.PerObjectDataIndex - objectDataOffset;
 		for(uint32_t instanceIndex = 0; instanceIndex < sceneMesh.InstanceCount; instanceIndex++)
 		{
+			const SceneObjectLocation& meshInitialLocation = sceneMeshInitialLocations[meshName]
 			mInitialStaticInstancedObjectData[perObjectIndexBegin + instanceIndex] = locationSpan[instanceIndex];
 		}
 	}

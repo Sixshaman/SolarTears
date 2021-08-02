@@ -15,6 +15,12 @@ class BaseRenderableSceneBuilder
 		RenderableSceneMeshData MeshData;
 	};
 
+	struct SceneMeshAssignedData
+	{
+		uint32_t MeshIndex;
+		uint32_t InstanceIndex;
+	};
+
 public:
 	BaseRenderableSceneBuilder(BaseRenderableScene* sceneToBuild);
 	~BaseRenderableSceneBuilder();
@@ -35,30 +41,26 @@ private:
 	//Assumes all submeshes in each mesh are sorted by geometries (step 1)
 	void SortMeshesBySubmeshGeometry(std::vector<NamedSceneMeshData>& inoutNamedSceneMeshes) const;
 
-	//Step 3 of filling scene data structures
-	//Creates a list of mesh infos and a list of mesh initial locations
-	void ObtainLocationsFromNames(const std::vector<NamedSceneMeshData>& namedSceneMeshes, const std::unordered_map<std::string_view, SceneObjectLocation>& initialLocations, std::vector<RenderableSceneMeshData>& outSceneMeshes, std::vector<SceneObjectLocation>& outInitialLocations) const;
-
 	//Step 4 of filling scene data structures
 	//Groups the mesh instances together 
-	void DetectInstanceSpans(const std::vector<RenderableSceneMeshData>& sceneMeshes, const std::vector<SceneObjectLocation>& meshInitialLocations, std::vector<std::span<const RenderableSceneMeshData>>& outInstanceSpans, std::vector<std::span<const SceneObjectLocation>>& outLocationSpans) const;
+	void DetectInstanceSpans(const std::vector<NamedSceneMeshData>& sceneMeshes, std::vector<std::span<const NamedSceneMeshData>>& outInstanceSpans) const;
 
 	//Step 5 of filling scene data structures
 	//Allocates the memory for scene mesh and submesh data in sorted order (static meshes, static instanced meshes, rigid meshes)
-	void FillMeshLists(std::vector<std::span<const RenderableSceneMeshData>>& instanceSpans, std::vector<uint32_t>& outSceneMeshToInstanceSpanIndices);
+	void FillMeshLists(std::vector<std::span<const NamedSceneMeshData>>& instanceSpans, std::unordered_map<std::string_view, SceneMeshAssignedData>& outAssignedMeshIndices);
 
 	//Step 6 of filling scene data structures
 	//Loads vertex and index buffer data from geometries and initializes initial positional data
 	//Pre-sorting all meshes are by geometry in previous steps achieves coherence
-	void AssignSubmeshGeometries(const std::unordered_map<std::string, RenderableSceneGeometryData>& descriptionGeometries, const std::vector<std::span<const RenderableSceneMeshData>>& meshInstanceSpans, const std::vector<std::span<const SceneObjectLocation>>& initialLocationSpans, const std::vector<uint32_t>& sceneMeshToInstanceSpanIndices);
+	void AssignSubmeshGeometries(const std::unordered_map<std::string, RenderableSceneGeometryData>& descriptionGeometries, const std::vector<std::span<const NamedSceneMeshData>>& meshInstanceSpans, const std::unordered_map<std::string_view, SceneObjectLocation>& sceneMeshInitialLocations, const std::vector<uint32_t>& sceneMeshToInstanceSpanIndices);
 
 	//Step 7 of filling scene data structures
 	//Initializes materials for scene submeshes
-	void AssignSubmeshMaterials(const std::unordered_map<std::string, RenderableSceneMaterialData>& descriptionMaterials, const std::vector<std::span<const RenderableSceneMeshData>>& meshInstanceSpans, const std::vector<uint32_t>& sceneMeshToInstanceSpanIndices);
+	void AssignSubmeshMaterials(const std::unordered_map<std::string, RenderableSceneMaterialData>& descriptionMaterials, const std::vector<std::span<const NamedSceneMeshData>>& meshInstanceSpans, const std::vector<uint32_t>& sceneMeshToInstanceSpanIndices);
 
 	//Step 8 of filling scene data structures
 	//Initializes initial object data
-	void FillInitialObjectData(const std::vector<std::span<const SceneObjectLocation>>& initialLocationSpans, const std::vector<uint32_t>& sceneMeshToInstanceSpanIndices, const SceneObjectLocation& cameraInitialLocation, const PinholeCamera& cameraInfo);
+	void FillInitialObjectData(const std::unordered_map<std::string_view, SceneObjectLocation>& sceneMeshInitialLocations, const std::vector<uint32_t>& sceneMeshToInstanceSpanIndices, const SceneObjectLocation& cameraInitialLocation, const PinholeCamera& cameraInfo);
 
 private:
 	//Compares the geometry of two meshes. The submeshes have to be sorted by geometry name
