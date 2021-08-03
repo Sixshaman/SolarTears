@@ -667,6 +667,9 @@
     <None Include="Rendering\Vulkan\FrameGraph\VulkanFrameGraphBuilder.inl">
       <Filter>Rendering\Vulkan\FrameGraph</Filter>
     </None>
+    <None Include="Rendering\D3D12\Scene\D3D12Scene.inl">
+      <Filter>Rendering\D3D12\Scene</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="Shaders\Vulkan\GBuffer\GBufferDraw.frag">

@@ -4,6 +4,10 @@
 
 D3D12::SceneDescriptorCreator::SceneDescriptorCreator(RenderableScene* renderableScene): mSceneToMakeDescriptors(renderableScene)
 {
+	mTextureTableRequestState      = DescriptorRequestState::NotRequested;
+	mObjectDataTableRequestState   = DescriptorRequestState::NotRequested;
+	mFrameDataTableRequestState    = DescriptorRequestState::NotRequested;
+	mMaterialDataTableRequestState = DescriptorRequestState::NotRequested;
 }
 
 D3D12::SceneDescriptorCreator::~SceneDescriptorCreator()

@@ -77,6 +77,16 @@ void D3D12::GBufferPass::RecordExecution(ID3D12GraphicsCommandList6* commandList
 	scene->PrepareDrawBuffers(commandList);
 	commandList->SetGraphicsRootSignature(mRootSignature.get());
 
+	constexpr auto perSubmeshFunction = [](ID3D12GraphicsCommandList* commandList, uint32_t materialIndex)
+	{
+		commandList->SetGraphicsRoot32BitConstant((UINT)GBufferRootBindings::MaterialIndex, materialIndex, 0);
+	};
+
+	constexpr auto perMeshFunction = [](ID3D12GraphicsCommandList* commandList, uint32_t objectDataIndex)
+	{
+		commandList->SetGraphicsRoot32BitConstant((UINT)GBufferRootBindings::ObjectIndex, objectDataIndex, 0);
+	};
+
 	commandList->SetGraphicsRootConstantBufferView((UINT)GBufferRootBindings::PerFrameBuffer, mSceneFrameDataBuffer);
 
 	commandList->SetGraphicsRootDescriptorTable((UINT)GBufferRootBindings::PerObjectBuffers, mSceneObjectsTable);
@@ -84,10 +94,10 @@ void D3D12::GBufferPass::RecordExecution(ID3D12GraphicsCommandList6* commandList
 	commandList->SetGraphicsRootDescriptorTable((UINT)GBufferRootBindings::Textures,         mSceneTexturesTable);
 
 	commandList->SetPipelineState(mStaticPipelineState.get());
-	scene->DrawStaticObjectsWithRootConstants(commandList, (UINT)GBufferRootBindings::MaterialIndex);
+	scene->DrawObjectsWithBakedData(commandList, perSubmeshFunction);
 
 	commandList->SetPipelineState(mRigidPipelineState.get());
-	scene->DrawRigidObjectsWithRootConstants(commandList, (UINT)GBufferRootBindings::ObjectIndex, (UINT)GBufferRootBindings::MaterialIndex);
+	scene->DrawObjectsWithNonBakedData(commandList, perMeshFunction, perSubmeshFunction);
 
 	commandList->EndRenderPass();
 }

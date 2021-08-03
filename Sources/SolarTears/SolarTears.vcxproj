@@ -208,6 +208,7 @@
     </CustomBuild>
     <None Include="Rendering\D3D12\D3D12Utils.inl" />
     <None Include="Rendering\D3D12\FrameGraph\D3D12FrameGraphBuilder.inl" />
+    <None Include="Rendering\D3D12\Scene\D3D12Scene.inl" />
     <None Include="Rendering\Vulkan\FrameGraph\VulkanFrameGraphBuilder.inl" />
     <None Include="Rendering\Vulkan\Scene\VulkanSceneBuilder.inl" />
     <None Include="Shaders\D3D12\CommonHeader.hlsli" />

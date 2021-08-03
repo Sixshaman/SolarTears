@@ -23,8 +23,12 @@ namespace D3D12
 
 	public:
 		void PrepareDrawBuffers(ID3D12GraphicsCommandList* cmdList) const;
-		void DrawBakedPositionObjectsWithRootConstants(ID3D12GraphicsCommandList* cmdList, UINT materialIndexRootBinding) const;
-		void DrawBufferedPositionObjectsWithRootConstants(ID3D12GraphicsCommandList* cmdList, UINT objectIndexRootBinding, UINT materialIndexRootBinding) const;
+
+		template<typename SubmeshCallback>
+		inline void DrawObjectsWithBakedData(ID3D12GraphicsCommandList* cmdList, SubmeshCallback submeshCallback) const;
+
+		template<typename MeshCallback, typename SubmeshCallback>
+		inline void DrawObjectsWithNonBakedData(ID3D12GraphicsCommandList* cmdList, MeshCallback meshCallback, SubmeshCallback submeshCallback) const;
 
 	private:
 		wil::com_ptr_nothrow<ID3D12Resource> mSceneVertexBuffer;
@@ -42,4 +46,6 @@ namespace D3D12
 		wil::com_ptr_nothrow<ID3D12Heap> mHeapForCpuVisibleBuffers;
 		wil::com_ptr_nothrow<ID3D12Heap> mHeapForTextures;
 	};
+
+	#include "D3D12Scene.inl"
 }
