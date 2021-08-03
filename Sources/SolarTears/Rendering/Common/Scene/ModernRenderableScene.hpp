@@ -29,6 +29,11 @@ protected:
 	uint64_t CalculateRigidObjectDataOffset(uint32_t currentFrameResourceIndex, uint32_t rigidObjectIndex) const;
 	uint64_t CalculateFrameDataOffset(uint32_t currentFrameResourceIndex)                                  const;
 
+	uint64_t GetBaseMaterialDataOffset()                                      const;
+	uint64_t GetBaseStaticObjectDataOffset()                                  const;
+	uint64_t GetBaseRigidObjectDataOffset(uint32_t currentFrameResourceIndex) const;
+	uint64_t GetBaseFrameDataOffset(uint32_t currentFrameResourceIndex)       const;
+
 protected:
 	const FrameCounter* mFrameCounterRef;
 
@@ -48,8 +53,8 @@ protected:
 	void* mSceneConstantDataBufferPointer;
 
 	//GPU-local constant buffer data offsets
-	uint64_t mMaterialDataOffset;
-	uint64_t mStaticObjectDataOffset;
+	uint64_t mMaterialDataSize;
+	uint64_t mStaticObjectDataSize;
 
 	//Single-object constant buffer sizes, with respect to alignment
 	uint32_t mObjectChunkDataSize;

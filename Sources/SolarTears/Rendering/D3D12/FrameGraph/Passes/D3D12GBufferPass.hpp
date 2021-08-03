@@ -54,8 +54,6 @@ namespace D3D12
 		D3D12_GPU_DESCRIPTOR_HANDLE mSceneMaterialsTable;
 		D3D12_GPU_DESCRIPTOR_HANDLE mSceneTexturesTable;
 
-		D3D12_GPU_VIRTUAL_ADDRESS mSceneFrameDataBuffer;
-
 		D3D12_VIEWPORT mViewport;
 		D3D12_RECT     mScissorRect;
 

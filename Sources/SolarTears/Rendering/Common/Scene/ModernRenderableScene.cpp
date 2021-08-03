@@ -6,8 +6,8 @@ ModernRenderableScene::ModernRenderableScene(const FrameCounter* frameCounter, u
 {
 	mSceneConstantDataBufferPointer = nullptr;
 
-	mMaterialDataOffset     = 0;
-	mStaticObjectDataOffset = 0;
+	mMaterialDataSize     = 0;
+	mStaticObjectDataSize = 0;
 
 	mObjectChunkDataSize   = (uint32_t)Utils::AlignMemory(sizeof(BaseRenderableScene::PerObjectData), constantDataAlignment);
 	mFrameChunkDataSize    = (uint32_t)Utils::AlignMemory(sizeof(BaseRenderableScene::PerFrameData),  constantDataAlignment);
@@ -124,24 +124,46 @@ void ModernRenderableScene::UpdateRigidSceneObjects(const std::span<ObjectDataUp
 
 uint64_t ModernRenderableScene::CalculateRigidObjectDataOffset(uint32_t currentFrameResourceIndex, uint32_t objectIndex) const
 {
-	//For each frame the object data starts immediately after the frame data
-	return CalculateFrameDataOffset(currentFrameResourceIndex) + mFrameChunkDataSize + (uint64_t)objectIndex * mObjectChunkDataSize;
+	return GetBaseRigidObjectDataOffset(currentFrameResourceIndex) + (uint64_t)objectIndex * mObjectChunkDataSize;
 }
 
 uint64_t ModernRenderableScene::CalculateFrameDataOffset(uint32_t currentFrameResourceIndex) const
 {
-	//For each frame the frame data is in the beginning
-	//Since mCurrFrameRigidMeshUpdates is allocated once and never shrinks, its size is equal to the total rigid object count
-	uint64_t wholeFrameResourceSize = (uint64_t)mCurrFrameRigidMeshUpdateIndices.size() * mObjectChunkDataSize + mFrameChunkDataSize;
-	return currentFrameResourceIndex * wholeFrameResourceSize;
+	return GetBaseFrameDataOffset(currentFrameResourceIndex);
 }
 
 uint64_t ModernRenderableScene::CalculateMaterialDataOffset(uint32_t materialIndex) const
 {
-	return mMaterialDataOffset + (uint64_t)materialIndex * mMaterialChunkDataSize;
+	return GetBaseMaterialDataOffset() + (uint64_t)materialIndex * mMaterialChunkDataSize;
 }
 
 uint64_t ModernRenderableScene::CalculateStaticObjectDataOffset(uint32_t staticObjectIndex) const
 {
-	return mStaticObjectDataOffset + (uint64_t)staticObjectIndex * mObjectChunkDataSize;
+	return GetBaseStaticObjectDataOffset() + (uint64_t)staticObjectIndex * mObjectChunkDataSize;
+}
+
+uint64_t ModernRenderableScene::GetBaseMaterialDataOffset() const
+{
+	//Materials are at the beginning of the static buffer
+	return 0;
+}
+
+uint64_t ModernRenderableScene::GetBaseStaticObjectDataOffset() const
+{
+	//Static objects are right after materials in the static buffer
+	return mMaterialDataSize;
+}
+
+uint64_t ModernRenderableScene::GetBaseRigidObjectDataOffset(uint32_t currentFrameResourceIndex) const
+{
+	//For each frame the object data starts immediately after the frame data
+	return CalculateFrameDataOffset(currentFrameResourceIndex) + mFrameChunkDataSize;
+}
+
+uint64_t ModernRenderableScene::GetBaseFrameDataOffset(uint32_t currentFrameResourceIndex) const
+{
+	//For each frame the frame data is in the beginning of the dynamic buffer
+	//Since mCurrFrameRigidMeshUpdates is allocated once and never shrinks, its size is equal to the total rigid object count
+	uint64_t wholeFrameResourceSize = (uint64_t)mCurrFrameRigidMeshUpdateIndices.size() * mObjectChunkDataSize + mFrameChunkDataSize;
+	return currentFrameResourceIndex * wholeFrameResourceSize;
 }

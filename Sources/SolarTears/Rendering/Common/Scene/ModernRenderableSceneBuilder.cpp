@@ -82,8 +82,8 @@ void ModernRenderableSceneBuilder::PreCreateConstantDataBuffers(size_t* inoutInt
 	mIntermediateBufferStaticConstantDataOffset = intermediateBufferSize;
 	intermediateBufferSize                     += staticConstantDataSize;
 
-	mModernSceneToBuild->mMaterialDataOffset     = 0;
-	mModernSceneToBuild->mStaticObjectDataOffset = mMaterialData.size() * mModernSceneToBuild->mMaterialChunkDataSize;
+	mModernSceneToBuild->mMaterialDataSize     = mMaterialData.size() * mModernSceneToBuild->mMaterialChunkDataSize;
+	mModernSceneToBuild->mStaticObjectDataSize = mStaticConstantData.size() * mModernSceneToBuild->mObjectChunkDataSize;
 
 
 	const size_t constantPerObjectDataSize = mInitialRigidObjectData.size() * mModernSceneToBuild->mObjectChunkDataSize * Utils::InFlightFrameCount;
@@ -93,14 +93,14 @@ void ModernRenderableSceneBuilder::PreCreateConstantDataBuffers(size_t* inoutInt
 
 	mStaticConstantData.resize(staticConstantDataSize);
 
-	std::byte* staticConstantDataPointer = mStaticConstantData.data() + mModernSceneToBuild->mMaterialDataOffset;
+	std::byte* staticConstantDataPointer = mStaticConstantData.data() + mModernSceneToBuild->GetBaseMaterialDataOffset();
 	for(uint32_t materialIndex = 0; materialIndex < (uint32_t)mMaterialData.size(); materialIndex++)
 	{
 		memcpy(staticConstantDataPointer, &mMaterialData[materialIndex], sizeof(RenderableSceneMaterial));
 		staticConstantDataPointer += mModernSceneToBuild->mMaterialChunkDataSize;
 	}
 
-	staticConstantDataPointer = mStaticConstantData.data() + mModernSceneToBuild->mStaticObjectDataOffset;
+	staticConstantDataPointer = mStaticConstantData.data() + mModernSceneToBuild->GetBaseStaticObjectDataOffset();
 	for(uint32_t staticObjectIndex = 0; staticObjectIndex < (uint32_t)mInitialStaticInstancedObjectData.size(); staticObjectIndex++)
 	{
 		const BaseRenderableScene::PerObjectData perObjectData = mModernSceneToBuild->PackObjectData(mInitialStaticInstancedObjectData[staticObjectIndex]);
@@ -168,12 +168,6 @@ void ModernRenderableSceneBuilder::InitializeDynamicConstantData()
 		.ObjectDataIndex = (uint32_t)(-1)
 	};
 
-	const FrameDataUpdateInfo initialFrameUpdate = 
-	{
-		.CameraLocation = mInitialCameraLocation,
-		.ProjMatrix     = mInitialCameraProjMatrix
-	};
-
 	std::vector<ObjectDataUpdateInfo> rigidObjectUpdates(mInitialRigidObjectData.size());
 	for(size_t rigidUpdateIndex = 0; rigidUpdateIndex < mInitialRigidObjectData.size(); rigidUpdateIndex++)
 	{
@@ -184,5 +178,5 @@ void ModernRenderableSceneBuilder::InitializeDynamicConstantData()
 		};
 	}
 
-	mModernSceneToBuild->UpdateRigidSceneObjects(initialFrameUpdate, rigidObjectUpdates);
+	mModernSceneToBuild->UpdateRigidSceneObjects(rigidObjectUpdates);
 }
