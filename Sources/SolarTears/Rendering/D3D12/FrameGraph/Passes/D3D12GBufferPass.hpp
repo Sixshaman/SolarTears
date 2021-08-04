@@ -50,7 +50,8 @@ namespace D3D12
 	private:
 		D3D12_CPU_DESCRIPTOR_HANDLE mColorsRenderTarget;
 
-		D3D12_GPU_DESCRIPTOR_HANDLE mSceneObjectsTable;
+		D3D12_GPU_DESCRIPTOR_HANDLE mSceneStaticObjectsTable;
+		D3D12_GPU_DESCRIPTOR_HANDLE mSceneRigidObjectsTable;
 		D3D12_GPU_DESCRIPTOR_HANDLE mSceneMaterialsTable;
 		D3D12_GPU_DESCRIPTOR_HANDLE mSceneTexturesTable;
 

@@ -20,13 +20,15 @@ namespace D3D12
 	public:
 		//Request the creation of the descriprors for the data type
 		void RequestTexturesDescriptorTable();
-		void RequestObjectDataDescriptorTable();
+		void RequestStaticObjectDataDescriptorTable();
+		void RequestDynamicObjectDataDescriptorTable();
 		void RequestFrameDataDescriptorTable();
 		void RequestMaterialDataDescriptorTable();
 
 		//Get the initialized descriptor table start for the data type
 		D3D12_GPU_DESCRIPTOR_HANDLE GetTextureDescriptorTableStart()      const;
-		D3D12_GPU_DESCRIPTOR_HANDLE GetObjectDataDescriptorTableStart()   const;
+		D3D12_GPU_DESCRIPTOR_HANDLE GetStaticObjectDataDescriptorTableStart()   const;
+		D3D12_GPU_DESCRIPTOR_HANDLE GetDynamicObjectDataDescriptorTableStart()   const;
 		D3D12_GPU_DESCRIPTOR_HANDLE GetFrameDataDescriptorTableStart()    const;
 		D3D12_GPU_DESCRIPTOR_HANDLE GetMaterialDataDescriptorTableStart() const;
 
@@ -41,12 +43,14 @@ namespace D3D12
 		RenderableScene* mSceneToMakeDescriptors;
 
 		DescriptorRequestState mTextureTableRequestState;
-		DescriptorRequestState mObjectDataTableRequestState;
+		DescriptorRequestState mStaticObjectDataTableRequestState;
+		DescriptorRequestState mDynamicObjectDataTableRequestState;
 		DescriptorRequestState mFrameDataTableRequestState;
 		DescriptorRequestState mMaterialDataTableRequestState;
 
 		D3D12_GPU_DESCRIPTOR_HANDLE mTextureDescriptorTableStart;
-		D3D12_GPU_DESCRIPTOR_HANDLE mObjectDataDescriptorTableStart;
+		D3D12_GPU_DESCRIPTOR_HANDLE mStaticObjectDataDescriptorTableStart;
+		D3D12_GPU_DESCRIPTOR_HANDLE mDynamicObjectDataDescriptorTableStart;
 		D3D12_GPU_DESCRIPTOR_HANDLE mFrameDataDescriptorTableStart;
 		D3D12_GPU_DESCRIPTOR_HANDLE mMaterialDataDescriptorTableStart;
 	};

@@ -4,10 +4,11 @@
 
 D3D12::SceneDescriptorCreator::SceneDescriptorCreator(RenderableScene* renderableScene): mSceneToMakeDescriptors(renderableScene)
 {
-	mTextureTableRequestState      = DescriptorRequestState::NotRequested;
-	mObjectDataTableRequestState   = DescriptorRequestState::NotRequested;
-	mFrameDataTableRequestState    = DescriptorRequestState::NotRequested;
-	mMaterialDataTableRequestState = DescriptorRequestState::NotRequested;
+	mTextureTableRequestState           = DescriptorRequestState::NotRequested;
+	mStaticObjectDataTableRequestState  = DescriptorRequestState::NotRequested;
+	mDynamicObjectDataTableRequestState = DescriptorRequestState::NotRequested;
+	mFrameDataTableRequestState         = DescriptorRequestState::NotRequested;
+	mMaterialDataTableRequestState      = DescriptorRequestState::NotRequested;
 }
 
 D3D12::SceneDescriptorCreator::~SceneDescriptorCreator()
@@ -19,9 +20,14 @@ void D3D12::SceneDescriptorCreator::RequestTexturesDescriptorTable()
 	mTextureTableRequestState = DescriptorRequestState::NotYetCreated;
 }
 
-void D3D12::SceneDescriptorCreator::RequestObjectDataDescriptorTable()
+void D3D12::SceneDescriptorCreator::RequestStaticObjectDataDescriptorTable()
 {
-	mObjectDataTableRequestState = DescriptorRequestState::NotYetCreated;
+	mStaticObjectDataTableRequestState = DescriptorRequestState::NotYetCreated;
+}
+
+void D3D12::SceneDescriptorCreator::RequestDynamicObjectDataDescriptorTable()
+{
+	mDynamicObjectDataTableRequestState = DescriptorRequestState::NotYetCreated;
 }
 
 void D3D12::SceneDescriptorCreator::RequestFrameDataDescriptorTable()

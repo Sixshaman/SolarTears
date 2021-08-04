@@ -25,10 +25,16 @@ namespace D3D12
 		void PrepareDrawBuffers(ID3D12GraphicsCommandList* cmdList) const;
 
 		template<typename SubmeshCallback>
-		inline void DrawObjectsWithBakedData(ID3D12GraphicsCommandList* cmdList, SubmeshCallback submeshCallback) const;
+		inline void DrawStaticObjects(ID3D12GraphicsCommandList* cmdList, SubmeshCallback submeshCallback) const;
 
 		template<typename MeshCallback, typename SubmeshCallback>
-		inline void DrawObjectsWithNonBakedData(ID3D12GraphicsCommandList* cmdList, MeshCallback meshCallback, SubmeshCallback submeshCallback) const;
+		inline void DrawStaticInstancedObjects(ID3D12GraphicsCommandList* cmdList, MeshCallback meshCallback, SubmeshCallback submeshCallback) const;
+
+		template<typename MeshCallback, typename SubmeshCallback>
+		inline void DrawRigidObjects(ID3D12GraphicsCommandList* cmdList, MeshCallback meshCallback, SubmeshCallback submeshCallback) const;
+
+		D3D12_GPU_VIRTUAL_ADDRESS GetCurrentFrameFrameData()  const;
+		D3D12_GPU_VIRTUAL_ADDRESS GetCurrentFrameObjectData() const;
 
 	private:
 		wil::com_ptr_nothrow<ID3D12Resource> mSceneVertexBuffer;
