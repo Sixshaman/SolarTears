@@ -1,7 +1,7 @@
 #include "D3D12GBufferPass.hpp"
 #include "../../D3D12DeviceFeatures.hpp"
 #include "../../D3D12Shaders.hpp"
-#include "../../Scene/D3D12SceneDescriptorCreator.hpp"
+#include "../../D3D12DescriptorCreator.hpp"
 #include "../D3D12FrameGraph.hpp"
 #include "../D3D12FrameGraphBuilder.hpp"
 #include "../../../Common/FrameGraph/FrameGraphConfig.hpp"
@@ -122,20 +122,20 @@ void D3D12::GBufferPass::ValidatePassDescriptors([[maybe_unused]] D3D12_GPU_DESC
 	//No specific pass descriptors for this pass
 }
 
-void D3D12::GBufferPass::RequestSceneDescriptors(SceneDescriptorCreator* sceneDescriptorCreator)
+void D3D12::GBufferPass::RequestSceneDescriptors(DescriptorCreator* descriptorCreator)
 {
-	sceneDescriptorCreator->RequestTexturesDescriptorTable();
-	sceneDescriptorCreator->RequestMaterialDataDescriptorTable();
-	sceneDescriptorCreator->RequestStaticObjectDataDescriptorTable();
-	sceneDescriptorCreator->RequestDynamicObjectDataDescriptorTable();
+	descriptorCreator->RequestTexturesDescriptorTable();
+	descriptorCreator->RequestMaterialDataDescriptorTable();
+	descriptorCreator->RequestStaticObjectDataDescriptorTable();
+	descriptorCreator->RequestDynamicObjectDataDescriptorTable();
 }
 
-void D3D12::GBufferPass::ValidateSceneDescriptors(const SceneDescriptorCreator* sceneDescriptorCreator)
+void D3D12::GBufferPass::ValidateSceneDescriptors(const DescriptorCreator* descriptorCreator)
 {
-	mSceneTexturesTable      = sceneDescriptorCreator->GetTextureDescriptorTableStart();
-	mSceneMaterialsTable     = sceneDescriptorCreator->GetMaterialDataDescriptorTableStart();
-	mSceneStaticObjectsTable = sceneDescriptorCreator->GetStaticObjectDataDescriptorTableStart();
-	mSceneRigidObjectsTable  = sceneDescriptorCreator->GetDynamicObjectDataDescriptorTableStart();
+	mSceneTexturesTable      = descriptorCreator->GetTextureDescriptorTableStart();
+	mSceneMaterialsTable     = descriptorCreator->GetMaterialDataDescriptorTableStart();
+	mSceneStaticObjectsTable = descriptorCreator->GetStaticObjectDataDescriptorTableStart();
+	mSceneRigidObjectsTable  = descriptorCreator->GetDynamicObjectDataDescriptorTableStart();
 }
 
 void D3D12::GBufferPass::LoadShaders(const ShaderManager* shaderManager, IDxcBlobEncoding** outStaticVertexShader, IDxcBlobEncoding** outRigidVertexShader, IDxcBlobEncoding** outPixelShader)

@@ -6,8 +6,7 @@
 #include "D3D12SrvDescriptorManager.hpp"
 #include "Scene/D3D12Scene.hpp"
 #include "Scene/D3D12SceneBuilder.hpp"
-#include "Scene/D3D12SceneDescriptorCreator.hpp"
-#include "FrameGraph/D3D12FrameGraphDescriptorCreator.hpp"
+#include "D3D12DescriptorCreator.hpp"
 #include "FrameGraph/D3D12FrameGraphBuilder.hpp"
 #include "../../Core/ThreadPool.hpp"
 #include "../Common/RenderingUtils.hpp"
@@ -135,17 +134,12 @@ void D3D12::Renderer::CreateDevice(IDXGIAdapter4* adapter)
 
 void D3D12::Renderer::RecreateSceneAndFrameGraphDescriptors(D3D12_GPU_DESCRIPTOR_HANDLE prevFrameGraphDescriptorStart)
 {
-	//Create descriptor creators
-	SceneDescriptorCreator sceneDescriptorCreator(mScene.get());
-	FrameGraphDescriptorCreator frameGraphDescriptorCreator(mFrameGraph.get());
-	mFrameGraph->RequestSceneDescriptors(sceneDescriptorCreator);
+	DescriptorCreator descriptorCreator(mFrameGraph.get(), mScene.get());
+	UINT descriptorCountNeeded = descriptorCreator.GetDescriptorCountNeeded();
 
 	//Recreate descriptor heaps if needed
-	mDescriptorManager->ValidateDescriptorHeaps(mDevice.get(), sceneDescriptorCreator.GetDescriptorCountNeeded(), frameGraphDescriptorCreator.GetSrvUavDescriptorCountNeeded());
-	
-	//Recreate the descriptors
-	sceneDescriptorCreator.RecreateDescriptors(mDevice.get(), mDescriptorManager->GetSceneCpuDescriptorStart(), mDescriptorManager->GetSceneGpuDescriptorStart());
-	frameGraphDescriptorCreator.RecreateSrvUavDescriptors(mDevice.get(), mDescriptorManager->GetFrameGraphCpuDescriptorStart(), mDescriptorManager->GetFrameGraphGpuDescriptorStart(), prevFrameGraphDescriptorStart);
-	
-	mFrameGraph->ValidateSceneDescriptors(sceneDescriptorCreator); //Let the passes that need it obtain the descriptors of the scene data
+	mDescriptorManager->ValidateDescriptorHeaps(mDevice.get(), descriptorCountNeeded);
+
+	ID3D12DescriptorHeap* descriptorHeap = mDescriptorManager->GetDescriptorHeap();
+	descriptorCreator.RecreateDescriptors(mDevice.get(), descriptorHeap->GetCPUDescriptorHandleForHeapStart(), descriptorHeap->GetGPUDescriptorHandleForHeapStart(), prevFrameGraphDescriptorStart);
 }

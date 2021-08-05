@@ -55,12 +55,12 @@ void D3D12::CopyImagePass::ValidatePassDescriptors([[maybe_unused]] D3D12_GPU_DE
 	//No specific pass descriptors for this pass
 }
 
-void D3D12::CopyImagePass::RequestSceneDescriptors([[maybe_unused]] SceneDescriptorCreator* sceneDescriptorCreator)
+void D3D12::CopyImagePass::RequestSceneDescriptors([[maybe_unused]] DescriptorCreator* sceneDescriptorCreator)
 {
 	//No specific scene descriptors for this pass
 }
 
-void D3D12::CopyImagePass::ValidateSceneDescriptors([[maybe_unused]] const SceneDescriptorCreator* sceneDescriptorCreator)
+void D3D12::CopyImagePass::ValidateSceneDescriptors([[maybe_unused]] const DescriptorCreator* sceneDescriptorCreator)
 {
 	//No specific scene descriptors for this pass
 }

@@ -18,7 +18,7 @@ namespace D3D12
 
 	class FrameGraph: public ModernFrameGraph
 	{
-		friend class FrameGraphDescriptorCreator;
+		friend class DescriptorCreator;
 		friend class FrameGraphBuilder;
 
 	public:

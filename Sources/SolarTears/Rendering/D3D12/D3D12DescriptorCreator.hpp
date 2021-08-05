@@ -1,10 +1,14 @@
 #pragma once
 
-#include "D3D12Scene.hpp"
+#include <d3d12.h>
+#include "FrameGraph/D3D12FrameGraph.hpp"
+#include "Scene/D3D12Scene.hpp"
 
 namespace D3D12
 {
-	class SceneDescriptorCreator
+	class SrvDescriptorManager;
+
+	class DescriptorCreator
 	{
 		enum class DescriptorRequestState: uint8_t
 		{
@@ -14,10 +18,11 @@ namespace D3D12
 		};
 
 	public:
-		SceneDescriptorCreator(RenderableScene* renderableScene);
-		~SceneDescriptorCreator();
+		DescriptorCreator(FrameGraph* frameGraph, RenderableScene* renderableScene);
+		~DescriptorCreator();
 
-	public:
+		UINT GetDescriptorCountNeeded();
+
 		//Request the creation of the descriprors for the data type
 		void RequestTexturesDescriptorTable();
 		void RequestStaticObjectDataDescriptorTable();
@@ -32,16 +37,24 @@ namespace D3D12
 		D3D12_GPU_DESCRIPTOR_HANDLE GetFrameDataDescriptorTableStart(uint32_t frameIndex)         const;
 		D3D12_GPU_DESCRIPTOR_HANDLE GetDynamicObjectDataDescriptorTableStart(uint32_t frameIndex) const;
 
-		//Gets the necessary descriptor count needed for all requested descriptors
-		UINT64 GetDescriptorCountNeeded() const;
-
 		//Assumes the descriptor heap is big enough
-		//We could've copy descriptors in case of descriptor heap reallocation (without recreating them from scratch), but copying descriptors from shader-visible heaps is prohibitively slow
-		void RecreateDescriptors(ID3D12Device* device, D3D12_CPU_DESCRIPTOR_HANDLE startDescriptorCpu, D3D12_GPU_DESCRIPTOR_HANDLE startDescriptorGpu);
+		//For the cases when there's need to recreate all descriptors (frame graph recreation, scene descriptor heap reallocation)
+		void RecreateDescriptors(ID3D12Device* device, D3D12_CPU_DESCRIPTOR_HANDLE startDescriptorCpu, D3D12_GPU_DESCRIPTOR_HANDLE startDescriptorGpu, D3D12_GPU_DESCRIPTOR_HANDLE oldFrameGraphDescriptorStartGpu);
 
 	private:
+		void RequestDescriptors();
+
+		void RecreateSceneDescriptors(ID3D12Device* device, D3D12_CPU_DESCRIPTOR_HANDLE startDescriptorCpu, D3D12_GPU_DESCRIPTOR_HANDLE startDescriptorGpu, UINT descriptorSize);
+		void RevalidatePassDescriptors(ID3D12Device* device, D3D12_CPU_DESCRIPTOR_HANDLE startDescriptorCpu, D3D12_GPU_DESCRIPTOR_HANDLE startDescriptorGpu, D3D12_GPU_DESCRIPTOR_HANDLE prevDescriptorStartGpu);
+
+	private:
+		FrameGraph*      mFrameGraphToCreateDescriptors;
 		RenderableScene* mSceneToMakeDescriptors;
 
+		UINT mSceneDescriptorsCount;
+		UINT mPassDescriptorsCount;
+
+		//Requested scene descriptors
 		DescriptorRequestState mTextureTableRequestState;
 		DescriptorRequestState mStaticObjectDataTableRequestState;
 		DescriptorRequestState mDynamicObjectDataTableRequestState;

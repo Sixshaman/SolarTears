@@ -15,7 +15,7 @@ namespace D3D12
 	class RenderableScene: public ModernRenderableScene
 	{
 		friend class RenderableSceneBuilder;
-		friend class SceneDescriptorCreator;
+		friend class DescriptorCreator;
 
 	public:
 		RenderableScene(const FrameCounter* frameCounter);

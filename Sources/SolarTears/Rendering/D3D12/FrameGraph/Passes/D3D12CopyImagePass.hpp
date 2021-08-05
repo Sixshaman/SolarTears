@@ -22,8 +22,8 @@ namespace D3D12
 		virtual UINT GetPassDescriptorCountNeeded()                                                                               override;
 		virtual void ValidatePassDescriptors(D3D12_GPU_DESCRIPTOR_HANDLE prevHeapStart, D3D12_GPU_DESCRIPTOR_HANDLE newHeapStart) override;
 
-		virtual void RequestSceneDescriptors(SceneDescriptorCreator* sceneDescriptorCreator)        override;
-		virtual void ValidateSceneDescriptors(const SceneDescriptorCreator* sceneDescriptorCreator) override;
+		virtual void RequestSceneDescriptors(DescriptorCreator* sceneDescriptorCreator)        override;
+		virtual void ValidateSceneDescriptors(const DescriptorCreator* sceneDescriptorCreator) override;
 
 	public:
 		static void OnAdd(FrameGraphBuilder* frameGraphBuilder, const std::string& passName);

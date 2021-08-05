@@ -243,12 +243,6 @@
     <ClInclude Include="Rendering\D3D12\D3D12SrvDescriptorManager.hpp">
       <Filter>Rendering\D3D12</Filter>
     </ClInclude>
-    <ClInclude Include="Rendering\D3D12\Scene\D3D12SceneDescriptorCreator.hpp">
-      <Filter>Rendering\D3D12\Scene</Filter>
-    </ClInclude>
-    <ClInclude Include="Rendering\D3D12\FrameGraph\D3D12FrameGraphDescriptorCreator.hpp">
-      <Filter>Rendering\D3D12\FrameGraph</Filter>
-    </ClInclude>
     <ClInclude Include="Rendering\D3D12\FrameGraph\D3D12FrameGraph.hpp">
       <Filter>Rendering\D3D12\FrameGraph</Filter>
     </ClInclude>
@@ -405,6 +399,9 @@
     <ClInclude Include="Core\Scene\PinholeCamera.hpp">
       <Filter>Core\Scene</Filter>
     </ClInclude>
+    <ClInclude Include="Rendering\D3D12\D3D12DescriptorCreator.hpp">
+      <Filter>Rendering\D3D12</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Platform\Win32\Win32Application.cpp">
@@ -503,16 +500,10 @@
     <ClCompile Include="..\3rdParty\SPIRV-Reflect\spirv_reflect.c">
       <Filter>3rdParty\SPIRV-Reflect</Filter>
     </ClCompile>
-    <ClCompile Include="Rendering\D3D12\Scene\D3D12SceneDescriptorCreator.cpp">
-      <Filter>Rendering\D3D12\Scene</Filter>
-    </ClCompile>
     <ClCompile Include="Rendering\D3D12\D3D12SrvDescriptorManager.cpp">
       <Filter>Rendering\D3D12</Filter>
     </ClCompile>
     <ClCompile Include="Rendering\D3D12\FrameGraph\D3D12FrameGraph.cpp">
-      <Filter>Rendering\D3D12\FrameGraph</Filter>
-    </ClCompile>
-    <ClCompile Include="Rendering\D3D12\FrameGraph\D3D12FrameGraphDescriptorCreator.cpp">
       <Filter>Rendering\D3D12\FrameGraph</Filter>
     </ClCompile>
     <ClCompile Include="Rendering\D3D12\FrameGraph\D3D12RenderPass.cpp">
@@ -640,6 +631,9 @@
     </ClCompile>
     <ClCompile Include="Core\Scene\PinholeCamera.cpp">
       <Filter>Core\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\D3D12\D3D12DescriptorCreator.cpp">
+      <Filter>Rendering\D3D12</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
