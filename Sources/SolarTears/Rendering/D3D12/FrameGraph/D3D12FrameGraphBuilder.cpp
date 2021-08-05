@@ -200,7 +200,7 @@ void D3D12::FrameGraphBuilder::Build(ID3D12Device8* device, const ShaderManager*
 
 D3D12_GPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetFrameGraphSrvHeapStart() const
 {
-	return mD3d12GraphToBuild->mPassDescriptorsStart;
+	return {.ptr = 0}; //We don't have any shader-visible descriptor heap yet. Until that we'll store all descriptors offseted from address 0
 }
 
 D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetFrameGraphRtvHeapStart() const
@@ -520,10 +520,7 @@ void D3D12::FrameGraphBuilder::AllocateImageViews(const std::vector<uint64_t>& s
 
 void D3D12::FrameGraphBuilder::CreateTextureViews(const std::vector<TextureSubresourceCreateInfo>& textureViewCreateInfos) const
 {
-	//We don't have the descriptor heap yet, and even if we did, it could be recreated any moment (for example, when the scene is rebuilt).
 	//The descriptor data will be stored in non-CPU-visible heap for now and copied to the main heap after.
-	mD3d12GraphToBuild->mPassDescriptorsStart = {.ptr = 0};
-
 	mD3d12GraphToBuild->mSrvUavDescriptorHeap.reset();
 	mD3d12GraphToBuild->mRtvDescriptorHeap.reset();
 	mD3d12GraphToBuild->mDsvDescriptorHeap.reset();

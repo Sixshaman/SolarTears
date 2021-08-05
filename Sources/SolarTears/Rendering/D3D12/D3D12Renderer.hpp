@@ -44,6 +44,8 @@ namespace D3D12
 		void EnableDebugMode();
 		void CreateDevice(IDXGIAdapter4* adapter);
 
+		void RecreateSceneAndFrameGraphDescriptors(D3D12_GPU_DESCRIPTOR_HANDLE prevFrameGraphDescriptorStart);
+
 	private:
 		ThreadPool*         mThreadPoolRef;
 		const FrameCounter* mFrameCounterRef;

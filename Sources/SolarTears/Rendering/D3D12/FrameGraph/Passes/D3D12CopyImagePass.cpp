@@ -44,22 +44,25 @@ void D3D12::CopyImagePass::RecordExecution(ID3D12GraphicsCommandList6* commandLi
 	commandList->CopyTextureRegion(&dstRegion, 0, 0, 0, &srcRegion, &srcBox);
 }
 
-consteval UINT D3D12::CopyImagePass::GetPassDescriptorCountNeeded()
+UINT D3D12::CopyImagePass::GetPassDescriptorCountNeeded()
 {
-	return 0;
-}
-
-consteval UINT D3D12::CopyImagePass::GetSceneDescriptorTypesNeeded()
-{
+	//No specific pass descriptors for this pass
 	return 0;
 }
 
 void D3D12::CopyImagePass::ValidatePassDescriptors([[maybe_unused]] D3D12_GPU_DESCRIPTOR_HANDLE prevHeapStart, [[maybe_unused]] D3D12_GPU_DESCRIPTOR_HANDLE newHeapStart)
 {
+	//No specific pass descriptors for this pass
 }
 
-void D3D12::CopyImagePass::ValidateSceneDescriptors([[maybe_unused]] const std::span<D3D12_GPU_DESCRIPTOR_HANDLE> newSceneDescriptorTables, [[maybe_unused]] const std::span<D3D12_GPU_VIRTUAL_ADDRESS> newSceneInlineDescriptors)
+void D3D12::CopyImagePass::RequestSceneDescriptors([[maybe_unused]] SceneDescriptorCreator* sceneDescriptorCreator)
 {
+	//No specific scene descriptors for this pass
+}
+
+void D3D12::CopyImagePass::ValidateSceneDescriptors([[maybe_unused]] const SceneDescriptorCreator* sceneDescriptorCreator)
+{
+	//No specific scene descriptors for this pass
 }
 
 ID3D12PipelineState* D3D12::CopyImagePass::FirstPipeline() const

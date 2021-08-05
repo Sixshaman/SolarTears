@@ -10,6 +10,7 @@ class FrameGraphConfig;
 namespace D3D12
 {
 	class FrameGraphBuilder;
+	class SceneDescriptorCreator;
 
 	//An alternative approach would be a single class with Execute() callback and different render pass description classes.
 	//This would eliminate the cost of dereferencing class pointer, then dereferencing vtable, then indexing through vtable.
@@ -32,10 +33,10 @@ namespace D3D12
 
 		virtual void RecordExecution(ID3D12GraphicsCommandList6* commandList, const RenderableScene* scene, const ShaderManager* shaderManager, const FrameGraphConfig& frameGraphConfig) const = 0;
 
-		virtual consteval UINT GetPassDescriptorCountNeeded()  = 0;
-		virtual consteval UINT GetSceneDescriptorTypesNeeded() = 0;
+		virtual UINT GetPassDescriptorCountNeeded()                                                                               = 0;
+		virtual void ValidatePassDescriptors(D3D12_GPU_DESCRIPTOR_HANDLE prevHeapStart, D3D12_GPU_DESCRIPTOR_HANDLE newHeapStart) = 0;
 
-		virtual void ValidatePassDescriptors(D3D12_GPU_DESCRIPTOR_HANDLE prevHeapStart, D3D12_GPU_DESCRIPTOR_HANDLE newHeapStart)                                                          = 0;
-		virtual void ValidateSceneDescriptors(const std::span<D3D12_GPU_DESCRIPTOR_HANDLE> newSceneDescriptorTables, const std::span<D3D12_GPU_VIRTUAL_ADDRESS> newSceneInlineDescriptors) = 0;
+		virtual void RequestSceneDescriptors(SceneDescriptorCreator* sceneDescriptorCreator)        = 0;
+		virtual void ValidateSceneDescriptors(const SceneDescriptorCreator* sceneDescriptorCreator) = 0;
 	};
 }

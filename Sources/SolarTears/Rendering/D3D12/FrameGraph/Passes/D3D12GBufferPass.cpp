@@ -1,7 +1,7 @@
 #include "D3D12GBufferPass.hpp"
 #include "../../D3D12DeviceFeatures.hpp"
 #include "../../D3D12Shaders.hpp"
-#include "../../Scene/D3D12SceneBuilder.hpp"
+#include "../../Scene/D3D12SceneDescriptorCreator.hpp"
 #include "../D3D12FrameGraph.hpp"
 #include "../D3D12FrameGraphBuilder.hpp"
 #include "../../../Common/FrameGraph/FrameGraphConfig.hpp"
@@ -111,31 +111,31 @@ ID3D12PipelineState* D3D12::GBufferPass::FirstPipeline() const
 	return mStaticPipelineState.get();
 }
 
-consteval UINT D3D12::GBufferPass::GetPassDescriptorCountNeeded()
+UINT D3D12::GBufferPass::GetPassDescriptorCountNeeded()
 {
+	//No specific pass descriptors for this pass
 	return 0;
-}
-
-consteval UINT D3D12::GBufferPass::GetSceneDescriptorTypesNeeded()
-{
-	//Need descriptor tables for scene materials, textures and objects
-	return (0x01u << (UINT)SceneDataType::ObjectData) | (0x01u << (UINT)SceneDataType::MaterialData) | (0x01u << (UINT)SceneDataType::TextureData);
 }
 
 void D3D12::GBufferPass::ValidatePassDescriptors([[maybe_unused]] D3D12_GPU_DESCRIPTOR_HANDLE prevHeapStart, [[maybe_unused]] D3D12_GPU_DESCRIPTOR_HANDLE newHeapStart)
 {
+	//No specific pass descriptors for this pass
 }
 
-void D3D12::GBufferPass::ValidateSceneDescriptors(const std::span<D3D12_GPU_DESCRIPTOR_HANDLE> newSceneDescriptorTables, const std::span<D3D12_GPU_VIRTUAL_ADDRESS> newSceneInlineDescriptors)
+void D3D12::GBufferPass::RequestSceneDescriptors(SceneDescriptorCreator* sceneDescriptorCreator)
 {
-	assert(newSceneDescriptorTables.size()  >= (UINT)SceneDataType::Count);
-	assert(newSceneInlineDescriptors.size() >= (UINT)SceneDataType::Count);
+	sceneDescriptorCreator->RequestTexturesDescriptorTable();
+	sceneDescriptorCreator->RequestMaterialDataDescriptorTable();
+	sceneDescriptorCreator->RequestStaticObjectDataDescriptorTable();
+	sceneDescriptorCreator->RequestDynamicObjectDataDescriptorTable();
+}
 
-	mSceneObjectsTable   = newSceneDescriptorTables[(UINT)SceneDataType::ObjectData];
-	mSceneMaterialsTable = newSceneDescriptorTables[(UINT)SceneDataType::MaterialData];
-	mSceneTexturesTable  = newSceneDescriptorTables[(UINT)SceneDataType::TextureData];
-
-	mSceneFrameDataBuffer = newSceneInlineDescriptors[(UINT)SceneDataType::FrameData];
+void D3D12::GBufferPass::ValidateSceneDescriptors(const SceneDescriptorCreator* sceneDescriptorCreator)
+{
+	mSceneTexturesTable      = sceneDescriptorCreator->GetTextureDescriptorTableStart();
+	mSceneMaterialsTable     = sceneDescriptorCreator->GetMaterialDataDescriptorTableStart();
+	mSceneStaticObjectsTable = sceneDescriptorCreator->GetStaticObjectDataDescriptorTableStart();
+	mSceneRigidObjectsTable  = sceneDescriptorCreator->GetDynamicObjectDataDescriptorTableStart();
 }
 
 void D3D12::GBufferPass::LoadShaders(const ShaderManager* shaderManager, IDxcBlobEncoding** outStaticVertexShader, IDxcBlobEncoding** outRigidVertexShader, IDxcBlobEncoding** outPixelShader)

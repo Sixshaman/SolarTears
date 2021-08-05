@@ -45,7 +45,7 @@ namespace D3D12
 
 		std::vector<D3D12_RESOURCE_BARRIER> mResourceBarriers;
 
-		D3D12_GPU_DESCRIPTOR_HANDLE                mPassDescriptorsStart;
+		wil::com_ptr_nothrow<ID3D12DescriptorHeap> mSrvUavDescriptorHeap; //Have a non-shader-visible heap to store the descriptors, in case scene gets recreated and the shader-visible heap gets destroyed
 		wil::com_ptr_nothrow<ID3D12DescriptorHeap> mRtvDescriptorHeap;
 		wil::com_ptr_nothrow<ID3D12DescriptorHeap> mDsvDescriptorHeap;
 

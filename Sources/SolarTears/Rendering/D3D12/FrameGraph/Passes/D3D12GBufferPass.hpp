@@ -33,11 +33,11 @@ namespace D3D12
 
 		ID3D12PipelineState* FirstPipeline() const override;
 
-		consteval UINT GetPassDescriptorCountNeeded()  override;
-		consteval UINT GetSceneDescriptorTypesNeeded() override;
+		virtual UINT GetPassDescriptorCountNeeded()                                                                               override;
+		virtual void ValidatePassDescriptors(D3D12_GPU_DESCRIPTOR_HANDLE prevHeapStart, D3D12_GPU_DESCRIPTOR_HANDLE newHeapStart) override;
 
-		void ValidatePassDescriptors(D3D12_GPU_DESCRIPTOR_HANDLE prevHeapStart, D3D12_GPU_DESCRIPTOR_HANDLE newHeapStart)                                                          override;
-		void ValidateSceneDescriptors(const std::span<D3D12_GPU_DESCRIPTOR_HANDLE> newSceneDescriptorTables, const std::span<D3D12_GPU_VIRTUAL_ADDRESS> newSceneInlineDescriptors) override;
+		virtual void RequestSceneDescriptors(SceneDescriptorCreator* sceneDescriptorCreator)        override;
+		virtual void ValidateSceneDescriptors(const SceneDescriptorCreator* sceneDescriptorCreator) override;
 
 	public:
 		static void OnAdd(FrameGraphBuilder* frameGraphBuilder, const std::string& passName);

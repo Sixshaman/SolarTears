@@ -66,23 +66,20 @@ BaseRenderableScene* D3D12::Renderer::InitScene(const RenderableSceneDescription
 
 	sceneBuilder.Build(sceneDescription, sceneMeshInitialLocations, outObjectHandles);
 
-	SceneDescriptorCreator      sceneDescriptorCreator(mScene.get());
-	FrameGraphDescriptorCreator frameGraphDescriptorCreator(mFrameGraph.get());
-	mDescriptorManager->ValidateDescriptorHeaps(mDevice.get(), &sceneDescriptorCreator, &frameGraphDescriptorCreator, SrvDescriptorManager::FLAG_FRAME_GRAPH_UNCHANGED);
-
+	RecreateSceneAndFrameGraphDescriptors(mDescriptorManager->GetFrameGraphGpuDescriptorStart());
 	return mScene.get();
 }
 
 void D3D12::Renderer::InitFrameGraph(FrameGraphConfig&& frameGraphConfig, FrameGraphDescription&& frameGraphDescription)
 {
-	mFrameGraph = std::make_unique<D3D12::FrameGraph>(std::move(frameGraphConfig));
+	mDeviceQueues->AllQueuesWaitStrong();
 
+	mFrameGraph = std::make_unique<D3D12::FrameGraph>(std::move(frameGraphConfig));
 	D3D12::FrameGraphBuilder frameGraphBuilder(mFrameGraph.get(), std::move(frameGraphDescription), mSwapChain.get());
+
 	frameGraphBuilder.Build(mDevice.get(), mShaderManager.get(), mMemoryAllocator.get());
 
-	SceneDescriptorCreator      sceneDescriptorCreator(mScene.get());
-	FrameGraphDescriptorCreator frameGraphDescriptorCreator(mFrameGraph.get());
-	mDescriptorManager->ValidateDescriptorHeaps(mDevice.get(), &sceneDescriptorCreator, &frameGraphDescriptorCreator, SrvDescriptorManager::FLAG_SCENE_UNCHANGED);
+	RecreateSceneAndFrameGraphDescriptors(D3D12_GPU_DESCRIPTOR_HANDLE{.ptr = 0}); //The previous GPU heap doesn't exist for the frame graph
 }
 
 void D3D12::Renderer::Render()
@@ -134,4 +131,21 @@ void D3D12::Renderer::CreateDevice(IDXGIAdapter4* adapter)
 	mLoggingBoard->PostLogMessage(L"");
 
 	THROW_IF_FAILED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(mDevice.put())));
+}
+
+void D3D12::Renderer::RecreateSceneAndFrameGraphDescriptors(D3D12_GPU_DESCRIPTOR_HANDLE prevFrameGraphDescriptorStart)
+{
+	//Create descriptor creators
+	SceneDescriptorCreator sceneDescriptorCreator(mScene.get());
+	FrameGraphDescriptorCreator frameGraphDescriptorCreator(mFrameGraph.get());
+	mFrameGraph->RequestSceneDescriptors(sceneDescriptorCreator);
+
+	//Recreate descriptor heaps if needed
+	mDescriptorManager->ValidateDescriptorHeaps(mDevice.get(), sceneDescriptorCreator.GetDescriptorCountNeeded(), frameGraphDescriptorCreator.GetSrvUavDescriptorCountNeeded());
+	
+	//Recreate the descriptors
+	sceneDescriptorCreator.RecreateDescriptors(mDevice.get(), mDescriptorManager->GetSceneCpuDescriptorStart(), mDescriptorManager->GetSceneGpuDescriptorStart());
+	frameGraphDescriptorCreator.RecreateSrvUavDescriptors(mDevice.get(), mDescriptorManager->GetFrameGraphCpuDescriptorStart(), mDescriptorManager->GetFrameGraphGpuDescriptorStart(), prevFrameGraphDescriptorStart);
+	
+	mFrameGraph->ValidateSceneDescriptors(sceneDescriptorCreator); //Let the passes that need it obtain the descriptors of the scene data
 }

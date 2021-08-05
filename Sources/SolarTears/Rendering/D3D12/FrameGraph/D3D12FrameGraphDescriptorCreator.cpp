@@ -8,7 +8,7 @@ D3D12::FrameGraphDescriptorCreator::~FrameGraphDescriptorCreator()
 {
 }
 
-UINT D3D12::FrameGraphDescriptorCreator::GetSrvUavDescriptorCountNeeded()
+UINT64 D3D12::FrameGraphDescriptorCreator::GetSrvUavDescriptorCountNeeded() const
 {
 	if(mFrameGraphToCreateDescriptors == nullptr)
 	{
@@ -17,24 +17,33 @@ UINT D3D12::FrameGraphDescriptorCreator::GetSrvUavDescriptorCountNeeded()
 		return 10;
 	}
 
-	return mFrameGraphToCreateDescriptors->mSrvUavDescriptorCount;
+	UINT64 result = 0;
+	for(size_t i = 0; i < mFrameGraphToCreateDescriptors->mRenderPasses.size(); i++)
+	{
+		result += mFrameGraphToCreateDescriptors->mRenderPasses[i]->GetPassDescriptorCountNeeded();
+	}
+
+	return result;
 }
 
-void D3D12::FrameGraphDescriptorCreator::RecreateFrameGraphSrvUavDescriptors(ID3D12Device* device, D3D12_CPU_DESCRIPTOR_HANDLE startDescriptorCpu, D3D12_GPU_DESCRIPTOR_HANDLE startDescriptorGpu, D3D12_GPU_DESCRIPTOR_HANDLE prevStartDescriptorGpu)
+void D3D12::FrameGraphDescriptorCreator::RecreateSrvUavDescriptors(ID3D12Device* device, D3D12_CPU_DESCRIPTOR_HANDLE startDescriptorCpu, D3D12_GPU_DESCRIPTOR_HANDLE startDescriptorGpu, D3D12_GPU_DESCRIPTOR_HANDLE prevStartDescriptorGpu)
 {
 	if(mFrameGraphToCreateDescriptors == nullptr)
 	{
 		return;
 	}
 
-	if(mFrameGraphToCreateDescriptors->mSrvUavDescriptorCount == 0)
+	UINT descriptorCount = GetSrvUavDescriptorCountNeeded();
+	if(descriptorCount == 0)
 	{
 		return;
 	}
 
-	device->CopyDescriptorsSimple(mFrameGraphToCreateDescriptors->mSrvUavDescriptorCount, mFrameGraphToCreateDescriptors->mSrvUavDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), startDescriptorCpu, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	//Frame graph stores the copy of its descriptors on non-shader-visible heap
+	device->CopyDescriptorsSimple(descriptorCount, mFrameGraphToCreateDescriptors->mSrvUavDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), startDescriptorCpu, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	for(size_t i = 0; i < mFrameGraphToCreateDescriptors->mRenderPasses.size(); i++)
 	{
-		mFrameGraphToCreateDescriptors->mRenderPasses[i]->RevalidateSrvUavDescriptors(prevStartDescriptorGpu, startDescriptorGpu);
+		//Frame graph passes will recalculate the new address for descriptors from the old ones
+		mFrameGraphToCreateDescriptors->mRenderPasses[i]->ValidatePassDescriptors(prevStartDescriptorGpu, startDescriptorGpu);
 	}
 }

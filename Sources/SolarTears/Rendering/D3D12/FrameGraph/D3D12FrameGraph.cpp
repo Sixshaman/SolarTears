@@ -75,7 +75,7 @@ void D3D12::FrameGraph::Traverse(ThreadPool* threadPool, const WorkerCommandList
 
 				that->BeginCommandList(graphicsCommandList, graphicsCommandAllocator, threadJobData->DependencyLevelSpanIndex);
 				
-				std::array descriptorHeaps = { threadJobData->ExecuteParams->DescriptorManager->GetSrvUavCbvHeap()};
+				std::array descriptorHeaps = {threadJobData->ExecuteParams->DescriptorManager->GetDescriptorHeap()};
 				graphicsCommandList->SetDescriptorHeaps((UINT)descriptorHeaps.size(), descriptorHeaps.data());
 
 				that->RecordGraphicsPasses(graphicsCommandList, threadJobData->ExecuteParams->Scene, threadJobData->ExecuteParams->Shaders, threadJobData->DependencyLevelSpanIndex, threadJobData->ExecuteParams->FrameIndex, threadJobData->ExecuteParams->SwapchainImageIndex);
@@ -92,7 +92,7 @@ void D3D12::FrameGraph::Traverse(ThreadPool* threadPool, const WorkerCommandList
 		
 		BeginCommandList(mainGraphicsCommandList, mainGraphicsCommandAllocator, (uint32_t)(mGraphicsPassSpans.size() - 1));
 
-		std::array descriptorHeaps = {descriptorManager->GetSrvUavCbvHeap()};
+		std::array descriptorHeaps = {descriptorManager->GetDescriptorHeap()};
 		mainGraphicsCommandList->SetDescriptorHeaps((UINT)descriptorHeaps.size(), descriptorHeaps.data());
 
 		RecordGraphicsPasses(mainGraphicsCommandList, scene, shaderManager, (uint32_t)(mGraphicsPassSpans.size() - 1), frameIndex, swapchainImageIndex);
