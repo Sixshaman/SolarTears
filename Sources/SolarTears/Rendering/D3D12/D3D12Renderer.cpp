@@ -65,7 +65,7 @@ BaseRenderableScene* D3D12::Renderer::InitScene(const RenderableSceneDescription
 
 	sceneBuilder.Build(sceneDescription, sceneMeshInitialLocations, outObjectHandles);
 
-	RecreateSceneAndFrameGraphDescriptors(mDescriptorManager->GetFrameGraphGpuDescriptorStart());
+	RecreateSceneAndFrameGraphDescriptors();
 	return mScene.get();
 }
 
@@ -73,12 +73,12 @@ void D3D12::Renderer::InitFrameGraph(FrameGraphConfig&& frameGraphConfig, FrameG
 {
 	mDeviceQueues->AllQueuesWaitStrong();
 
-	mFrameGraph = std::make_unique<D3D12::FrameGraph>(std::move(frameGraphConfig));
+	mFrameGraph = std::make_unique<D3D12::FrameGraph>(std::move(frameGraphConfig), mWorkerCommandLists.get(), mDescriptorManager.get(), mDeviceQueues.get());
 	D3D12::FrameGraphBuilder frameGraphBuilder(mFrameGraph.get(), std::move(frameGraphDescription), mSwapChain.get());
 
 	frameGraphBuilder.Build(mDevice.get(), mShaderManager.get(), mMemoryAllocator.get());
 
-	RecreateSceneAndFrameGraphDescriptors(D3D12_GPU_DESCRIPTOR_HANDLE{.ptr = 0}); //The previous GPU heap doesn't exist for the frame graph
+	RecreateSceneAndFrameGraphDescriptors();
 }
 
 void D3D12::Renderer::Render()
@@ -87,7 +87,7 @@ void D3D12::Renderer::Render()
 
 	mDeviceQueues->GraphicsQueueCpuWait(mFrameGraphicsFenceValues[currentFrameResourceIndex]);
 
-	mFrameGraph->Traverse(mThreadPoolRef, mWorkerCommandLists.get(), mScene.get(), mShaderManager.get(), mDescriptorManager.get(), mDeviceQueues.get(), currentFrameResourceIndex, mSwapChain->GetCurrentImageIndex());
+	mFrameGraph->Traverse(mThreadPoolRef, mScene.get(), currentFrameResourceIndex, mSwapChain->GetCurrentImageIndex());
 
 	mFrameGraphicsFenceValues[currentFrameResourceIndex] = mDeviceQueues->GraphicsFenceSignal();
 
@@ -132,7 +132,7 @@ void D3D12::Renderer::CreateDevice(IDXGIAdapter4* adapter)
 	THROW_IF_FAILED(D3D12CreateDevice(adapter, D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(mDevice.put())));
 }
 
-void D3D12::Renderer::RecreateSceneAndFrameGraphDescriptors(D3D12_GPU_DESCRIPTOR_HANDLE prevFrameGraphDescriptorStart)
+void D3D12::Renderer::RecreateSceneAndFrameGraphDescriptors()
 {
 	DescriptorCreator descriptorCreator(mFrameGraph.get(), mScene.get());
 	UINT descriptorCountNeeded = descriptorCreator.GetDescriptorCountNeeded();
@@ -141,5 +141,5 @@ void D3D12::Renderer::RecreateSceneAndFrameGraphDescriptors(D3D12_GPU_DESCRIPTOR
 	mDescriptorManager->ValidateDescriptorHeaps(mDevice.get(), descriptorCountNeeded);
 
 	ID3D12DescriptorHeap* descriptorHeap = mDescriptorManager->GetDescriptorHeap();
-	descriptorCreator.RecreateDescriptors(mDevice.get(), descriptorHeap->GetCPUDescriptorHandleForHeapStart(), descriptorHeap->GetGPUDescriptorHandleForHeapStart(), prevFrameGraphDescriptorStart);
+	descriptorCreator.RecreateDescriptors(mDevice.get(), descriptorHeap->GetCPUDescriptorHandleForHeapStart(), descriptorHeap->GetGPUDescriptorHandleForHeapStart());
 }

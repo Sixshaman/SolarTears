@@ -2,7 +2,7 @@
 #include "../RenderingUtils.hpp"
 #include "../../../Core/FrameCounter.hpp"
 
-ModernRenderableScene::ModernRenderableScene(const FrameCounter* frameCounter, uint64_t constantDataAlignment): mFrameCounterRef(frameCounter)
+ModernRenderableScene::ModernRenderableScene(uint64_t constantDataAlignment)
 {
 	mSceneConstantDataBufferPointer = nullptr;
 
@@ -18,9 +18,9 @@ ModernRenderableScene::~ModernRenderableScene()
 {
 }
 
-void ModernRenderableScene::UpdateFrameData(const FrameDataUpdateInfo& frameUpdate)
+void ModernRenderableScene::UpdateFrameData(const FrameDataUpdateInfo& frameUpdate, uint64_t frameNumber)
 {
-	uint32_t frameResourceIndex = mFrameCounterRef->GetFrameCount() % Utils::InFlightFrameCount;
+	uint32_t frameResourceIndex = frameNumber % Utils::InFlightFrameCount;
 
 	DirectX::XMMATRIX projMatrix = DirectX::XMLoadFloat4x4(&frameUpdate.ProjMatrix);
 	PerFrameData perFrameData = PackFrameData(frameUpdate.CameraLocation, projMatrix);
@@ -29,7 +29,7 @@ void ModernRenderableScene::UpdateFrameData(const FrameDataUpdateInfo& frameUpda
 	memcpy((std::byte*)mSceneConstantDataBufferPointer + frameDataOffset, &perFrameData, sizeof(PerFrameData));
 }
 
-void ModernRenderableScene::UpdateRigidSceneObjects(const std::span<ObjectDataUpdateInfo> rigidObjectUpdates)
+void ModernRenderableScene::UpdateRigidSceneObjects(const std::span<ObjectDataUpdateInfo> rigidObjectUpdates, uint64_t frameNumber)
 {
 	uint32_t prevFrameUpdateIndex = 0;
 	uint32_t currFrameUpdateIndex = 0;
@@ -109,7 +109,7 @@ void ModernRenderableScene::UpdateRigidSceneObjects(const std::span<ObjectDataUp
 	mNextFrameRigidMeshUpdates[nextFrameUpdateIndex] = {.MeshHandleIndex = (uint32_t)(-1), .ObjectDataIndex = (uint32_t)(-1)};
 	std::swap(mPrevFrameRigidMeshUpdates, mNextFrameRigidMeshUpdates);
 
-	uint32_t frameResourceIndex = mFrameCounterRef->GetFrameCount() % Utils::InFlightFrameCount;
+	uint32_t frameResourceIndex = frameNumber % Utils::InFlightFrameCount;
 
 	for(auto updateIndex = 0; updateIndex < currFrameUpdateIndex; updateIndex++)
 	{

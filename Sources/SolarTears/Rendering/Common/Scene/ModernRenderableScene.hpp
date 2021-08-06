@@ -3,8 +3,6 @@
 #include "BaseRenderableScene.hpp"
 #include <span>
 
-class FrameCounter;
-
 //Class for scene functions common to Vulkan and D3D12
 class ModernRenderableScene: public BaseRenderableScene
 {
@@ -17,11 +15,11 @@ class ModernRenderableScene: public BaseRenderableScene
 	};
 
 public:
-	ModernRenderableScene(const FrameCounter* frameCounter, uint64_t constantDataAlignment);
+	ModernRenderableScene(uint64_t constantDataAlignment);
 	~ModernRenderableScene();
 
-	void UpdateFrameData(const FrameDataUpdateInfo& frameUpdate)                           override final;
-	void UpdateRigidSceneObjects(const std::span<ObjectDataUpdateInfo> rigidObjectUpdates) override final;
+	void UpdateFrameData(const FrameDataUpdateInfo& frameUpdate, uint64_t frameNumber)                      override final;
+	void UpdateRigidSceneObjects(const std::span<ObjectDataUpdateInfo> objectUpdates, uint64_t frameNumber) override final;
 
 protected:
 	uint64_t CalculateMaterialDataOffset(uint32_t materialIndex)                                           const;
@@ -33,9 +31,6 @@ protected:
 	uint64_t GetBaseStaticObjectDataOffset()                                  const;
 	uint64_t GetBaseRigidObjectDataOffset(uint32_t currentFrameResourceIndex) const;
 	uint64_t GetBaseFrameDataOffset(uint32_t currentFrameResourceIndex)       const;
-
-protected:
-	const FrameCounter* mFrameCounterRef;
 
 protected:
 	//Leftover updates to updates all dirty data for frames in flight. Sorted by mesh indices, ping-pong with each other

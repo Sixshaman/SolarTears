@@ -21,7 +21,7 @@ void D3D12::CopyImagePass::OnAdd(FrameGraphBuilder* frameGraphBuilder, const std
 	frameGraphBuilder->SetPassSubresourceState(passName, DstImageId, D3D12_RESOURCE_STATE_COPY_DEST);
 }
 
-void D3D12::CopyImagePass::RecordExecution(ID3D12GraphicsCommandList6* commandList, [[maybe_unused]] const RenderableScene* scene, [[maybe_unused]] const ShaderManager* shaderManager, const FrameGraphConfig& frameGraphConfig) const
+void D3D12::CopyImagePass::RecordExecution(ID3D12GraphicsCommandList6* commandList, [[maybe_unused]] const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig, [[maybe_unused]] uint32_t frameResourceIndex) const
 {
 	D3D12_TEXTURE_COPY_LOCATION dstRegion;
 	dstRegion.pResource        = mDstImageRef;

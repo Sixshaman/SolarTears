@@ -31,7 +31,7 @@ namespace D3D12
 	public:
 		virtual ID3D12PipelineState* FirstPipeline() const = 0;
 
-		virtual void RecordExecution(ID3D12GraphicsCommandList6* commandList, const RenderableScene* scene, const ShaderManager* shaderManager, const FrameGraphConfig& frameGraphConfig) const = 0;
+		virtual void RecordExecution(ID3D12GraphicsCommandList6* commandList, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig, uint32_t frameResourceIndex) const = 0;
 
 		virtual UINT GetPassDescriptorCountNeeded()                                                                               = 0;
 		virtual void ValidatePassDescriptors(D3D12_GPU_DESCRIPTOR_HANDLE prevHeapStart, D3D12_GPU_DESCRIPTOR_HANDLE newHeapStart) = 0;

@@ -33,8 +33,8 @@ namespace D3D12
 		template<typename MeshCallback, typename SubmeshCallback>
 		inline void DrawRigidObjects(ID3D12GraphicsCommandList* cmdList, MeshCallback meshCallback, SubmeshCallback submeshCallback) const;
 
-		D3D12_GPU_VIRTUAL_ADDRESS GetCurrentFrameFrameData()  const;
-		D3D12_GPU_VIRTUAL_ADDRESS GetCurrentFrameObjectData() const;
+		D3D12_GPU_VIRTUAL_ADDRESS GetFrameData(uint32_t frameResourceIndex)  const;
+		D3D12_GPU_VIRTUAL_ADDRESS GetObjectData(uint32_t frameResourceIndex) const;
 
 	private:
 		wil::com_ptr_nothrow<ID3D12Resource> mSceneVertexBuffer;

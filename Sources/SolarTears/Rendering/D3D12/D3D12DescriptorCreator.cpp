@@ -31,7 +31,7 @@ UINT D3D12::DescriptorCreator::GetDescriptorCountNeeded()
 	return mSceneDescriptorsCount + mPassDescriptorsCount;
 }
 
-void D3D12::DescriptorCreator::RecreateDescriptors(ID3D12Device* device, D3D12_CPU_DESCRIPTOR_HANDLE startDescriptorCpu, D3D12_GPU_DESCRIPTOR_HANDLE startDescriptorGpu, D3D12_GPU_DESCRIPTOR_HANDLE oldFrameGraphDescriptorStartGpu)
+void D3D12::DescriptorCreator::RecreateDescriptors(ID3D12Device* device, D3D12_CPU_DESCRIPTOR_HANDLE startDescriptorCpu, D3D12_GPU_DESCRIPTOR_HANDLE startDescriptorGpu)
 {
 	UINT srvDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
@@ -41,7 +41,7 @@ void D3D12::DescriptorCreator::RecreateDescriptors(ID3D12Device* device, D3D12_C
 
 	cpuDescriptorAddress.ptr += mSceneDescriptorsCount * srvDescriptorSize;
 	gpuDescriptorAddress.ptr += mPassDescriptorsCount * srvDescriptorSize;
-	RevalidatePassDescriptors(device, cpuDescriptorAddress, gpuDescriptorAddress, oldFrameGraphDescriptorStartGpu);
+	RevalidatePassDescriptors(device, cpuDescriptorAddress, gpuDescriptorAddress);
 }
 
 void D3D12::DescriptorCreator::RequestDescriptors()
@@ -190,17 +190,19 @@ void D3D12::DescriptorCreator::RecreateSceneDescriptors(ID3D12Device* device, D3
 	}
 }
 
-void D3D12::DescriptorCreator::RevalidatePassDescriptors(ID3D12Device* device, D3D12_CPU_DESCRIPTOR_HANDLE startDescriptorCpu, D3D12_GPU_DESCRIPTOR_HANDLE startDescriptorGpu, D3D12_GPU_DESCRIPTOR_HANDLE prevDescriptorStartGpu)
+void D3D12::DescriptorCreator::RevalidatePassDescriptors(ID3D12Device* device, D3D12_CPU_DESCRIPTOR_HANDLE startDescriptorCpu, D3D12_GPU_DESCRIPTOR_HANDLE startDescriptorGpu)
 {
 	//Frame graph stores the copy of its descriptors on non-shader-visible heap
 	device->CopyDescriptorsSimple(mPassDescriptorsCount, mFrameGraphToCreateDescriptors->mSrvUavDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), startDescriptorCpu, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	for (size_t i = 0; i < mFrameGraphToCreateDescriptors->mRenderPasses.size(); i++)
 	{
 		//Frame graph passes will recalculate the new address for descriptors from the old ones
-		mFrameGraphToCreateDescriptors->mRenderPasses[i]->ValidatePassDescriptors(prevDescriptorStartGpu, startDescriptorGpu);
+		mFrameGraphToCreateDescriptors->mRenderPasses[i]->ValidatePassDescriptors(mFrameGraphToCreateDescriptors->mFrameGraphDescriptorStart, startDescriptorGpu);
 
 		mFrameGraphToCreateDescriptors->mRenderPasses[i]->ValidateSceneDescriptors(this);
 	}
+
+	mFrameGraphToCreateDescriptors->mFrameGraphDescriptorStart = startDescriptorGpu;
 }
 
 void D3D12::DescriptorCreator::RequestTexturesDescriptorTable()

@@ -9,15 +9,20 @@
 #include <array>
 #include <wil/com.h>
 
-D3D12::FrameGraph::FrameGraph(FrameGraphConfig&& frameGraphConfig): ModernFrameGraph(std::move(frameGraphConfig))
+D3D12::FrameGraph::FrameGraph(FrameGraphConfig&& frameGraphConfig, const WorkerCommandLists* workerCommandLists, const SrvDescriptorManager* descriptorManager, DeviceQueues* deviceQueues): ModernFrameGraph(std::move(frameGraphConfig)),
+                                                                                                                                                                                             mCommandListsRef(workerCommandLists),
+	                                                                                                                                                                                         mDescriptorManagerRef(descriptorManager),
+	                                                                                                                                                                                         mDeviceQueuesRef(deviceQueues)
 {
+	//We don't have any shader-visible descriptor heap yet. Until that we'll store all descriptors offseted from address 0
+	mFrameGraphDescriptorStart = D3D12_GPU_DESCRIPTOR_HANDLE{.ptr = 0};
 }
 
 D3D12::FrameGraph::~FrameGraph()
 {
 }
 
-void D3D12::FrameGraph::Traverse(ThreadPool* threadPool, const WorkerCommandLists* commandLists, const RenderableScene* scene, const ShaderManager* shaderManager, const SrvDescriptorManager* descriptorManager, DeviceQueues* deviceQueues, uint32_t frameIndex, uint32_t swapchainImageIndex)
+void D3D12::FrameGraph::Traverse(ThreadPool* threadPool, const RenderableScene* scene, uint32_t frameIndex, uint32_t swapchainImageIndex)
 {
 	SwitchBarrierTextures(swapchainImageIndex, frameIndex);
 
@@ -26,11 +31,8 @@ void D3D12::FrameGraph::Traverse(ThreadPool* threadPool, const WorkerCommandList
 	{
 		struct ExecuteParameters
 		{
-			const WorkerCommandLists*   CommandLists;
-			const FrameGraph*           FrameGraph;
-			const RenderableScene*      Scene;
-			const ShaderManager*        Shaders;
-			const SrvDescriptorManager* DescriptorManager;
+			const FrameGraph*      FrameGraph;
+			const RenderableScene* Scene;
 
 			uint32_t FrameIndex;
 			uint32_t FrameResourceIndex;
@@ -38,11 +40,8 @@ void D3D12::FrameGraph::Traverse(ThreadPool* threadPool, const WorkerCommandList
 		} 
 		executeParameters = 
 		{
-			.CommandLists      = commandLists,
-			.FrameGraph        = this,
-			.Scene             = scene,
-			.Shaders           = shaderManager,
-			.DescriptorManager = descriptorManager,
+			.FrameGraph = this,
+			.Scene      = scene,
 
 			.FrameIndex          = frameIndex,
 			.FrameResourceIndex  = currentFrameResourceIndex,
@@ -70,15 +69,15 @@ void D3D12::FrameGraph::Traverse(ThreadPool* threadPool, const WorkerCommandList
 				JobData* threadJobData = reinterpret_cast<JobData*>(userData);
 				const FrameGraph* that = threadJobData->ExecuteParams->FrameGraph;
 
-				ID3D12GraphicsCommandList6* graphicsCommandList      = threadJobData->ExecuteParams->CommandLists->GetThreadDirectCommandList(threadJobData->DependencyLevelSpanIndex);
-				ID3D12CommandAllocator*     graphicsCommandAllocator = threadJobData->ExecuteParams->CommandLists->GetThreadDirectCommandAllocator(threadJobData->DependencyLevelSpanIndex, threadJobData->ExecuteParams->FrameResourceIndex);
+				ID3D12GraphicsCommandList6* graphicsCommandList      = that->mCommandListsRef->GetThreadDirectCommandList(threadJobData->DependencyLevelSpanIndex);
+				ID3D12CommandAllocator*     graphicsCommandAllocator = that->mCommandListsRef->GetThreadDirectCommandAllocator(threadJobData->DependencyLevelSpanIndex, threadJobData->ExecuteParams->FrameResourceIndex);
 
 				that->BeginCommandList(graphicsCommandList, graphicsCommandAllocator, threadJobData->DependencyLevelSpanIndex);
 				
-				std::array descriptorHeaps = {threadJobData->ExecuteParams->DescriptorManager->GetDescriptorHeap()};
+				std::array descriptorHeaps = {that->mDescriptorManagerRef->GetDescriptorHeap()};
 				graphicsCommandList->SetDescriptorHeaps((UINT)descriptorHeaps.size(), descriptorHeaps.data());
 
-				that->RecordGraphicsPasses(graphicsCommandList, threadJobData->ExecuteParams->Scene, threadJobData->ExecuteParams->Shaders, threadJobData->DependencyLevelSpanIndex, threadJobData->ExecuteParams->FrameIndex, threadJobData->ExecuteParams->SwapchainImageIndex);
+				that->RecordGraphicsPasses(graphicsCommandList, threadJobData->ExecuteParams->Scene, threadJobData->DependencyLevelSpanIndex, threadJobData->ExecuteParams->FrameIndex, threadJobData->ExecuteParams->SwapchainImageIndex);
 				that->EndCommandList(graphicsCommandList);
 
 				threadJobData->Waitable->count_down();
@@ -87,27 +86,27 @@ void D3D12::FrameGraph::Traverse(ThreadPool* threadPool, const WorkerCommandList
 			threadPool->EnqueueWork(executePassJob, &jobData, sizeof(JobData));
 		}
 
-		ID3D12GraphicsCommandList6* mainGraphicsCommandList      = commandLists->GetMainThreadDirectCommandList();
-		ID3D12CommandAllocator*     mainGraphicsCommandAllocator = commandLists->GetMainThreadDirectCommandAllocator(currentFrameResourceIndex);
+		ID3D12GraphicsCommandList6* mainGraphicsCommandList      = mCommandListsRef->GetMainThreadDirectCommandList();
+		ID3D12CommandAllocator*     mainGraphicsCommandAllocator = mCommandListsRef->GetMainThreadDirectCommandAllocator(currentFrameResourceIndex);
 		
 		BeginCommandList(mainGraphicsCommandList, mainGraphicsCommandAllocator, (uint32_t)(mGraphicsPassSpans.size() - 1));
 
-		std::array descriptorHeaps = {descriptorManager->GetDescriptorHeap()};
+		std::array descriptorHeaps = {mDescriptorManagerRef->GetDescriptorHeap()};
 		mainGraphicsCommandList->SetDescriptorHeaps((UINT)descriptorHeaps.size(), descriptorHeaps.data());
 
-		RecordGraphicsPasses(mainGraphicsCommandList, scene, shaderManager, (uint32_t)(mGraphicsPassSpans.size() - 1), frameIndex, swapchainImageIndex);
+		RecordGraphicsPasses(mainGraphicsCommandList, scene, (uint32_t)(mGraphicsPassSpans.size() - 1), frameIndex, swapchainImageIndex);
 		EndCommandList(mainGraphicsCommandList);
 
 		graphicsPassLatch.wait();
 
 		for(size_t i = 0; i < mGraphicsPassSpans.size() - 1; i++)
 		{
-			mFrameRecordedGraphicsCommandLists[i] = commandLists->GetThreadDirectCommandList((uint32_t)i); //The command buffer that was used to record the command
+			mFrameRecordedGraphicsCommandLists[i] = mCommandListsRef->GetThreadDirectCommandList((uint32_t)i); //The command buffer that was used to record the command
 		}
 
 		mFrameRecordedGraphicsCommandLists[mGraphicsPassSpans.size() - 1] = mainGraphicsCommandList;
 
-		ID3D12CommandQueue* graphicsQueue = deviceQueues->GraphicsQueueHandle();
+		ID3D12CommandQueue* graphicsQueue = mDeviceQueuesRef->GraphicsQueueHandle();
 		graphicsQueue->ExecuteCommandLists((UINT)mGraphicsPassSpans.size(), mFrameRecordedGraphicsCommandLists.data());
 	}
 }
@@ -124,7 +123,7 @@ void D3D12::FrameGraph::EndCommandList(ID3D12GraphicsCommandList* commandList) c
 	THROW_IF_FAILED(commandList->Close());
 }
 
-void D3D12::FrameGraph::RecordGraphicsPasses(ID3D12GraphicsCommandList6* commandList, const RenderableScene* scene, const ShaderManager* shaderManager, uint32_t dependencyLevelSpanIndex, uint32_t frameIndex, uint32_t swapchainImageIndex) const
+void D3D12::FrameGraph::RecordGraphicsPasses(ID3D12GraphicsCommandList6* commandList, const RenderableScene* scene, uint32_t dependencyLevelSpanIndex, uint32_t frameIndex, uint32_t swapchainImageIndex) const
 {
 	Span<uint32_t> levelSpan = mGraphicsPassSpans[dependencyLevelSpanIndex];
 	for(uint32_t passSpanIndex = levelSpan.Begin; passSpanIndex < levelSpan.End; passSpanIndex++)
@@ -145,7 +144,7 @@ void D3D12::FrameGraph::RecordGraphicsPasses(ID3D12GraphicsCommandList6* command
 			commandList->ResourceBarrier(beforePassBarrierCount, barrierPointer);
 		}
 
-		mRenderPasses[renderPassIndex]->RecordExecution(commandList, scene, shaderManager, mFrameGraphConfig);
+		mRenderPasses[renderPassIndex]->RecordExecution(commandList, scene, mFrameGraphConfig, frameIndex % Utils::InFlightFrameCount);
 
 		if(afterPassBarrierCount != 0)
 		{

@@ -178,5 +178,5 @@ void ModernRenderableSceneBuilder::InitializeDynamicConstantData()
 		};
 	}
 
-	mModernSceneToBuild->UpdateRigidSceneObjects(rigidObjectUpdates);
+	mModernSceneToBuild->UpdateRigidSceneObjects(rigidObjectUpdates, 0);
 }

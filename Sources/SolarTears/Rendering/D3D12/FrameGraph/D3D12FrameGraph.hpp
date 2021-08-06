@@ -22,10 +22,10 @@ namespace D3D12
 		friend class FrameGraphBuilder;
 
 	public:
-		FrameGraph(FrameGraphConfig&& frameGraphConfig);
+		FrameGraph(FrameGraphConfig&& frameGraphConfig, const WorkerCommandLists* workerCommandLists, const SrvDescriptorManager* descriptorManager, DeviceQueues* deviceQueues);
 		~FrameGraph();
 
-		void Traverse(ThreadPool* threadPool, const WorkerCommandLists* commandLists, const RenderableScene* scene, const ShaderManager* shaderManager, const SrvDescriptorManager* descriptorManager, DeviceQueues* deviceQueues, uint32_t frameIndex, uint32_t swapchainImageIndex);
+		void Traverse(ThreadPool* threadPool, const RenderableScene* scene, uint32_t frameIndex, uint32_t swapchainImageIndex);
 
 	private:
 		void SwitchBarrierTextures(uint32_t swapchainImageIndex, uint32_t frameIndex);
@@ -33,9 +33,13 @@ namespace D3D12
 		void BeginCommandList(ID3D12GraphicsCommandList* commandList, ID3D12CommandAllocator* commandAllocator, uint32_t dependencyLevelSpanIndex) const;
 		void EndCommandList(ID3D12GraphicsCommandList* commandList)                                                                                const;
 
-		void RecordGraphicsPasses(ID3D12GraphicsCommandList6* commandList, const RenderableScene* scene, const ShaderManager* shaderManager, uint32_t dependencyLevelSpanIndex, uint32_t frameIndex, uint32_t swapchainImageIndex) const;
+		void RecordGraphicsPasses(ID3D12GraphicsCommandList6* commandList, const RenderableScene* scene, uint32_t dependencyLevelSpanIndex, uint32_t frameIndex, uint32_t swapchainImageIndex) const;
 
 	private:
+		const WorkerCommandLists*   mCommandListsRef;
+		const SrvDescriptorManager* mDescriptorManagerRef;
+		const DeviceQueues*         mDeviceQueuesRef;
+
 		std::vector<ID3D12Resource2*> mTextures;
 
 		std::vector<std::unique_ptr<RenderPass>> mRenderPasses; //All render passes (sorted by dependency level)
@@ -44,6 +48,8 @@ namespace D3D12
 		wil::com_ptr_nothrow<ID3D12Heap>                   mTextureHeap;
 
 		std::vector<D3D12_RESOURCE_BARRIER> mResourceBarriers;
+
+		D3D12_GPU_DESCRIPTOR_HANDLE mFrameGraphDescriptorStart; //The start of pass descriptor data
 
 		wil::com_ptr_nothrow<ID3D12DescriptorHeap> mSrvUavDescriptorHeap; //Have a non-shader-visible heap to store the descriptors, in case scene gets recreated and the shader-visible heap gets destroyed
 		wil::com_ptr_nothrow<ID3D12DescriptorHeap> mRtvDescriptorHeap;

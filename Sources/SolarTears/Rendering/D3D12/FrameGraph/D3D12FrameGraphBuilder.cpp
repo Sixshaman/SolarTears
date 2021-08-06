@@ -200,7 +200,7 @@ void D3D12::FrameGraphBuilder::Build(ID3D12Device8* device, const ShaderManager*
 
 D3D12_GPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetFrameGraphSrvHeapStart() const
 {
-	return {.ptr = 0}; //We don't have any shader-visible descriptor heap yet. Until that we'll store all descriptors offseted from address 0
+	return mD3d12GraphToBuild->mFrameGraphDescriptorStart; 
 }
 
 D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetFrameGraphRtvHeapStart() const
