@@ -26,10 +26,10 @@ public:
 	~Scene();
 
 	void ProcessControls(Inputter* inputter, float dt);
-	void UpdateScene();
+	void UpdateScene(uint64_t frameNumber);
 
 private:
-	void UpdateRenderableComponent();
+	void UpdateRenderableComponent(uint64_t frameNumber);
 
 private:
 	std::vector<SceneObject> mSceneObjects;

@@ -93,14 +93,29 @@ void Vulkan::GBufferPass::RecordExecution(VkCommandBuffer commandBuffer, const R
 	//TODO: Secondary command buffers
 	vkCmdBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout, 0, (uint32_t)mSceneDescriptorSets.size(), mSceneDescriptorSets.data(), 0, nullptr);
+	auto submeshCallback = [this](VkCommandBuffer commandBuffer, uint32_t materialIndex)
+	{
+		std::array pushConstants = {materialIndex};
+		vkCmdPushConstants(commandBuffer, mPipelineLayout, mMaterialIndexPushConstantStages, mMaterialIndexPushConstantOffset, pushConstants.size() * sizeof(decltype(pushConstants)::value_type), pushConstants.data());
+	};
+
+	auto meshCallback = [this](VkCommandBuffer commandBuffer, uint32_t objectDataIndex)
+	{
+		std::array pushConstants = {objectDataIndex};
+		vkCmdPushConstants(commandBuffer, mPipelineLayout, mObjectIndexPushConstantStages, mObjectIndexPushConstantOffset, pushConstants.size() * sizeof(decltype(pushConstants)::value_type), pushConstants.data());
+	};
+
+	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout, 0, (uint32_t)mSceneCommonAndStaticDescriptorSets.size(), mSceneCommonAndStaticDescriptorSets.data(), 0, nullptr);
 	scene->PrepareDrawBuffers(commandBuffer);
 	
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mStaticPipeline);
-	scene->DrawStaticObjectsWithRootConstants(commandBuffer, mPipelineLayout, mMaterialIndexPushConstantStages, mMaterialIndexPushConstantOffset);
+	scene->DrawStaticObjects(commandBuffer, submeshCallback);
 
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mRigidPipeline);
-	scene->DrawRigidObjectsWithRootConstants(commandBuffer, mPipelineLayout, mObjectIndexPushConstantStages, mObjectIndexPushConstantOffset, mMaterialIndexPushConstantStages, mMaterialIndexPushConstantOffset);
+	scene->DrawStaticInstancedObjects(commandBuffer, meshCallback, submeshCallback);
+
+	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mPipelineLayout, mSceneObjectDataSetNumber, (uint32_t)mSceneRigidDescriptorSets.size(), mSceneRigidDescriptorSets.data(), 0, nullptr);
+	scene->DrawRigidObjects(commandBuffer, meshCallback, submeshCallback);
 
 	vkCmdEndRenderPass(commandBuffer);
 }

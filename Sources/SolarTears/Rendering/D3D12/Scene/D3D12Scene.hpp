@@ -18,7 +18,7 @@ namespace D3D12
 		friend class DescriptorCreator;
 
 	public:
-		RenderableScene(const FrameCounter* frameCounter);
+		RenderableScene();
 		~RenderableScene();
 
 	public:

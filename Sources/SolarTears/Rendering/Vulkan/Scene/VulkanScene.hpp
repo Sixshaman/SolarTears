@@ -16,13 +16,20 @@ namespace Vulkan
 		friend class SceneDescriptorCreator;
 
 	public:
-		RenderableScene(const VkDevice device, const FrameCounter* frameCounter, const DeviceParameters& deviceParameters);
+		RenderableScene(const VkDevice device, const DeviceParameters& deviceParameters);
 		~RenderableScene();
 
 	public:
 		void PrepareDrawBuffers(VkCommandBuffer commandBuffer) const;
-		void DrawBakedPositionObjectsWithPushConstants(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, VkShaderStageFlags materialIndexShaderFlags, uint32_t materialIndexOffset) const;
-		void DrawBufferedPositionObjectsWithPushConstants(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, VkShaderStageFlags objectIndexShaderFlags, uint32_t objectIndexOffset, VkShaderStageFlags materialIndexShaderFlags, uint32_t materialIndexOffset) const;
+
+		template<typename SubmeshCallback>
+		inline void DrawStaticObjects(VkCommandBuffer commandBuffer, SubmeshCallback submeshCallback) const;
+
+		template<typename MeshCallback, typename SubmeshCallback>
+		inline void DrawStaticInstancedObjects(VkCommandBuffer commandBuffer, MeshCallback meshCallback, SubmeshCallback submeshCallback) const;
+
+		template<typename MeshCallback, typename SubmeshCallback>
+		inline void DrawRigidObjects(VkCommandBuffer commandBuffer, MeshCallback meshCallback, SubmeshCallback submeshCallback) const;
 
 	private:
 		const VkDevice mDeviceRef;
@@ -40,4 +47,6 @@ namespace Vulkan
 		VkDeviceMemory mBufferHostVisibleMemory;
 		VkDeviceMemory mTextureMemory;
 	};
+
+	#include "VulkanScene.inl"
 }

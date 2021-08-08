@@ -73,12 +73,12 @@ void Scene::ProcessControls(Inputter* inputter, float dt)
 	DirectX::XMStoreFloat4(&cameraLocation.RotationQuaternion, resultQuaternion);
 }
 
-void Scene::UpdateScene()
+void Scene::UpdateScene(uint64_t frameNumber)
 {
-	UpdateRenderableComponent();
+	UpdateRenderableComponent(frameNumber);
 }
 
-void Scene::UpdateRenderableComponent()
+void Scene::UpdateRenderableComponent(uint64_t frameNumber)
 {
 	//No objects move currently
 	std::span currentFrameMovedObjects = {mCurrFrameRenderableUpdates.begin(), mCurrFrameRenderableUpdates.begin()};
@@ -89,6 +89,6 @@ void Scene::UpdateRenderableComponent()
 		.ProjMatrix     = mCamera.GetProjMatrix()
 	};
 
-	mRenderableComponentRef->UpdateFrameData(frameUpdateInfo);
-	mRenderableComponentRef->UpdateRigidSceneObjects(currentFrameMovedObjects);
+	mRenderableComponentRef->UpdateFrameData(frameUpdateInfo, frameNumber);
+	mRenderableComponentRef->UpdateRigidSceneObjects(currentFrameMovedObjects, frameNumber);
 }

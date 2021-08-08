@@ -8,7 +8,7 @@
 #include "../../Common/RenderingUtils.hpp"
 #include <array>
 
-Vulkan::RenderableScene::RenderableScene(const VkDevice device, const FrameCounter* frameCounter, const DeviceParameters& deviceParameters): ModernRenderableScene(frameCounter, VulkanUtils::CalcUniformAlignment(deviceParameters)), mDeviceRef(device)
+Vulkan::RenderableScene::RenderableScene(const VkDevice device, const DeviceParameters& deviceParameters): ModernRenderableScene(VulkanUtils::CalcUniformAlignment(deviceParameters)), mDeviceRef(device)
 {
 	mSceneVertexBuffer         = VK_NULL_HANDLE;
 	mSceneIndexBuffer          = VK_NULL_HANDLE;
@@ -50,51 +50,9 @@ Vulkan::RenderableScene::~RenderableScene()
 void Vulkan::RenderableScene::PrepareDrawBuffers(VkCommandBuffer commandBuffer) const
 {
 	//TODO: extended dynamic state
-	uint32_t frameResourceIndex = mFrameCounterRef->GetFrameCount() % Utils::InFlightFrameCount;
-
 	std::array sceneVertexBuffers  = {mSceneVertexBuffer};
 	std::array vertexBufferOffsets = {(VkDeviceSize)0};
 	vkCmdBindVertexBuffers(commandBuffer, 0, (uint32_t)(sceneVertexBuffers.size()), sceneVertexBuffers.data(), vertexBufferOffsets.data());
 
 	vkCmdBindIndexBuffer(commandBuffer, mSceneIndexBuffer, 0, VulkanUtils::FormatForIndexType<RenderableSceneIndex>);
-}
-
-void Vulkan::RenderableScene::DrawBakedPositionObjectsWithPushConstants(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, VkShaderStageFlags materialIndexShaderFlags, uint32_t materialIndexOffset) const
-{
-	for(uint32_t meshIndex = mStaticMeshSpan.Begin; meshIndex < mStaticMeshSpan.End; meshIndex++)
-	{
-		for(uint32_t submeshIndex = mSceneMeshes[meshIndex].FirstSubmeshIndex; submeshIndex < mSceneMeshes[meshIndex].AfterLastSubmeshIndex; submeshIndex++)
-		{
-			std::array materialPushConstants = {mSceneSubmeshes[submeshIndex].MaterialIndex};
-			vkCmdPushConstants(commandBuffer, pipelineLayout, materialIndexShaderFlags, materialIndexOffset, materialPushConstants.size() * sizeof(decltype(materialPushConstants)::value_type), materialPushConstants.data());
-
-			vkCmdDrawIndexed(commandBuffer, mSceneSubmeshes[submeshIndex].IndexCount, mSceneMeshes[meshIndex].InstanceCount, mSceneSubmeshes[submeshIndex].FirstIndex, mSceneSubmeshes[submeshIndex].VertexOffset, 0);
-		}
-	}
-}
-
-void Vulkan::RenderableScene::DrawBufferedPositionObjectsWithPushConstants(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, VkShaderStageFlags objectIndexShaderFlags, uint32_t objectIndexOffset, VkShaderStageFlags materialIndexShaderFlags, uint32_t materialIndexOffset) const
-{
-	//The spans should follow each other
-	assert(mStaticInstancedMeshSpan.End == mRigidMeshSpan.Begin);
-
-	const uint32_t firstMeshIndex     = mStaticInstancedMeshSpan.Begin;
-	const uint32_t afterLastMeshIndex = mRigidMeshSpan.End;
-
-	uint32_t objectDataIndex = 0;
-	for(uint32_t meshIndex = firstMeshIndex; meshIndex < afterLastMeshIndex; meshIndex++)
-	{
-		std::array objectPushConstants = {objectDataIndex};
-		vkCmdPushConstants(commandBuffer, pipelineLayout, objectIndexShaderFlags, objectIndexOffset, objectPushConstants.size() * sizeof(decltype(objectPushConstants)::value_type), objectPushConstants.data());
-
-		for(uint32_t submeshIndex = mSceneMeshes[meshIndex].FirstSubmeshIndex; submeshIndex < mSceneMeshes[meshIndex].AfterLastSubmeshIndex; submeshIndex++)
-		{
-			std::array materialPushConstants = {mSceneSubmeshes[submeshIndex].MaterialIndex};
-			vkCmdPushConstants(commandBuffer, pipelineLayout, materialIndexShaderFlags, materialIndexOffset, materialPushConstants.size() * sizeof(decltype(materialPushConstants)::value_type), materialPushConstants.data());
-
-			vkCmdDrawIndexed(commandBuffer, mSceneSubmeshes[submeshIndex].IndexCount, mSceneMeshes[meshIndex].InstanceCount, mSceneSubmeshes[submeshIndex].FirstIndex, mSceneSubmeshes[submeshIndex].VertexOffset, 0);
-		}
-
-		objectDataIndex += mSceneMeshes[meshIndex].InstanceCount;
-	}
 }

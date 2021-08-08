@@ -5,7 +5,7 @@ inline void RenderableScene::DrawStaticObjects(ID3D12GraphicsCommandList* cmdLis
 	{
 		for(uint32_t submeshIndex = mSceneMeshes[meshIndex].FirstSubmeshIndex; submeshIndex < mSceneMeshes[meshIndex].AfterLastSubmeshIndex; submeshIndex++)
 		{
-			submeshCallback(cmdList, mSceneSubmeshes[submeshIndex]);
+			submeshCallback(cmdList, mSceneSubmeshes[submeshIndex].MaterialIndex);
 			cmdList->DrawIndexedInstanced(mSceneSubmeshes[submeshIndex].IndexCount, mSceneMeshes[meshIndex].InstanceCount, mSceneSubmeshes[submeshIndex].FirstIndex, mSceneSubmeshes[submeshIndex].VertexOffset, 0);
 		}
 	}

@@ -77,7 +77,7 @@ void Engine::Update()
 
 		mScene->ProcessControls(mInputSystem.get(), mTimer->GetDeltaTime());
 
-		mScene->UpdateScene();
+		mScene->UpdateScene(mFrameCounter->GetFrameCount());
 		mRenderingSystem->Render();
 
 		mFrameCounter->IncrementFrame();

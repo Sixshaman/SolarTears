@@ -402,6 +402,9 @@
     <ClInclude Include="Rendering\D3D12\D3D12DescriptorCreator.hpp">
       <Filter>Rendering\D3D12</Filter>
     </ClInclude>
+    <ClInclude Include="Rendering\Vulkan\Scene\VulkanSceneDescriptorDatabase.hpp">
+      <Filter>Rendering\Vulkan\Scene</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Platform\Win32\Win32Application.cpp">
@@ -635,6 +638,9 @@
     <ClCompile Include="Rendering\D3D12\D3D12DescriptorCreator.cpp">
       <Filter>Rendering\D3D12</Filter>
     </ClCompile>
+    <ClCompile Include="Rendering\Vulkan\Scene\VulkanSceneDescriptorDatabase.cpp">
+      <Filter>Rendering\Vulkan\Scene</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="Platform\Win32\Win32Util.inl">
@@ -664,6 +670,9 @@
     <None Include="Rendering\D3D12\Scene\D3D12Scene.inl">
       <Filter>Rendering\D3D12\Scene</Filter>
     </None>
+    <None Include="Rendering\Vulkan\Scene\VulkanScene.inl">
+      <Filter>Rendering\Vulkan\Scene</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="Shaders\Vulkan\GBuffer\GBufferDraw.frag">
@@ -683,6 +692,9 @@
     </CustomBuild>
     <CustomBuild Include="Shaders\D3D12\GBuffer\GBufferDrawStaticVS.hlsl">
       <Filter>Shaders\D3D12\GBuffer</Filter>
+    </CustomBuild>
+    <CustomBuild Include="Shaders\Vulkan\GBuffer\GBufferDrawStaticInstanced.vert">
+      <Filter>Shaders\Vulkan\GBuffer</Filter>
     </CustomBuild>
   </ItemGroup>
 </Project>

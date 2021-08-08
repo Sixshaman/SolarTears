@@ -15,12 +15,12 @@ layout(location = 0) out vec2 outTexCoord;
 layout(set = 3, binding = 0) uniform FrameConstants
 {
 	mat4 ViewProjMatrix;
-};
+} SceneFrameData;
 
 layout(set = 3, binding = 1) uniform ObjectConstants
 {
 	mat4 ModelMatrix;
-} ObjectDatas[];
+} SceneDynamicObjectDatas[];
 
 layout(push_constant) uniform ObjectPushConstants
 {
@@ -33,6 +33,6 @@ void main()
 {
 	outTexCoord = inTexCoord;
 
-	mat4 modelMatrix = ObjectDatas[PushConstants.ObjectIndex].ModelMatrix;
-	gl_Position = ViewProjMatrix * modelMatrix * vec4(inPosition, 1.0f);
+	mat4 modelMatrix = SceneDynamicObjectDatas[PushConstants.ObjectIndex].ModelMatrix;
+	gl_Position = SceneFrameData.ViewProjMatrix * modelMatrix * vec4(inPosition, 1.0f);
 }

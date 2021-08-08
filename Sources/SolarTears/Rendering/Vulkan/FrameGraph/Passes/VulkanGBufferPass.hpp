@@ -36,7 +36,9 @@ namespace Vulkan
 		VkPipeline       mStaticPipeline;
 		VkPipeline       mRigidPipeline;
 
-		std::span<VkDescriptorSet> mSceneDescriptorSets;
+		std::span<VkDescriptorSet> mSceneCommonAndStaticDescriptorSets; //All descriptor sets for static object drawing (materials, textures, frame + object data)
+		std::span<VkDescriptorSet> mSceneRigidDescriptorSets;           //Just the object data descriptor sets for dynamic objects (frame + dynamic object data)
+		uint32_t                   mSceneObjectDataSetNumber;           //The descriptor set for object data
 
 		uint32_t           mMaterialIndexPushConstantOffset;
 		VkShaderStageFlags mMaterialIndexPushConstantStages;

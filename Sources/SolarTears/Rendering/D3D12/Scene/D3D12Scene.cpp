@@ -5,7 +5,7 @@
 #include "../D3D12Shaders.hpp"
 #include <array>
 
-D3D12::RenderableScene::RenderableScene(const FrameCounter* frameCounter): ModernRenderableScene(frameCounter, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT)
+D3D12::RenderableScene::RenderableScene(): ModernRenderableScene(D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT)
 {
 }
 

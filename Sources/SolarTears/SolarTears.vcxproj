@@ -100,6 +100,7 @@
     <ClInclude Include="Rendering\Vulkan\Scene\VulkanScene.hpp" />
     <ClInclude Include="Rendering\Vulkan\Scene\VulkanSceneBuilder.hpp" />
     <ClInclude Include="Rendering\Vulkan\Scene\VulkanSceneDescriptorCreator.hpp" />
+    <ClInclude Include="Rendering\Vulkan\Scene\VulkanSceneDescriptorDatabase.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanDescriptorManager.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanDeviceParameters.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanDeviceQueues.hpp" />
@@ -179,6 +180,7 @@
     <ClCompile Include="Rendering\Vulkan\Scene\VulkanScene.cpp" />
     <ClCompile Include="Rendering\Vulkan\Scene\VulkanSceneBuilder.cpp" />
     <ClCompile Include="Rendering\Vulkan\Scene\VulkanSceneDescriptorCreator.cpp" />
+    <ClCompile Include="Rendering\Vulkan\Scene\VulkanSceneDescriptorDatabase.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanDescriptorManager.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanDeviceParameters.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanDeviceQueues.cpp" />
@@ -208,6 +210,7 @@
     <None Include="Rendering\D3D12\FrameGraph\D3D12FrameGraphBuilder.inl" />
     <None Include="Rendering\D3D12\Scene\D3D12Scene.inl" />
     <None Include="Rendering\Vulkan\FrameGraph\VulkanFrameGraphBuilder.inl" />
+    <None Include="Rendering\Vulkan\Scene\VulkanScene.inl" />
     <None Include="Rendering\Vulkan\Scene\VulkanSceneBuilder.inl" />
     <None Include="Shaders\D3D12\CommonHeader.hlsli" />
     <None Include="Shaders\D3D12\GBuffer\GBufferInclude.hlsli" />
@@ -228,6 +231,15 @@
       <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">"$(VULKAN_SDK)\Bin\glslangValidator.exe" -V -g0 --invert-y -o "$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv" "%(Identity)"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compiling %(Identity): %(Command)</Message>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="Shaders\Vulkan\GBuffer\GBufferDrawStaticInstanced.vert">
+      <FileType>Document</FileType>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling %(Identity): %(Command)</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compiling %(Identity): %(Command)</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">"$(VULKAN_SDK)\Bin\glslangValidator.exe" -V -g0 --invert-y -o "$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv" "%(Identity)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">"$(VULKAN_SDK)\Bin\glslangValidator.exe" -V -Od -g --invert-y -o "$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv" "%(Identity)"</Command>
     </CustomBuild>
   </ItemGroup>
   <ItemGroup>
