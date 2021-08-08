@@ -29,17 +29,58 @@ spv_reflect::ShaderModule Vulkan::ShaderManager::LoadShaderBlob(const std::wstri
 	return spv_reflect::ShaderModule(shaderData);
 }
 
-void Vulkan::ShaderManager::FindBindings(const std::span<spv_reflect::ShaderModule*>& shaderModules) const
+void Vulkan::ShaderManager::FindBindings(const std::span<spv_reflect::ShaderModule*>& shaderModules, std::vector<VkDescriptorSetLayoutBinding>& outSetBindings, std::vector<std::string>& outBindingNames, std::vector<Span<uint32_t>>& outBindingSpans) const
 {	
+	outSetBindings.clear();
+	outBindingNames.clear();
+	outBindingSpans.clear();
+
 	std::vector<std::vector<SpvReflectDescriptorBinding*>> bindingsForSets;
 	std::vector<std::vector<VkShaderStageFlags>>           bindingsStageFlags;
 	GatherSetBindings(shaderModules, bindingsForSets, bindingsStageFlags);
 
 	for(size_t setIndex = 0; setIndex < bindingsForSets.size(); setIndex++)
 	{
-		std::vector<VkDescriptorSetLayoutBinding> setBindings;
-		std::vector<VkDescriptorBindingFlags>     setFlags;
-		BuildDescriptorBindingInfos(bindingsForSets[setIndex], bindingsStageFlags[setIndex], setBindings, setFlags);
+		const std::vector<SpvReflectDescriptorBinding*>& setBindings           = bindingsForSets[setIndex];
+		const std::vector<VkShaderStageFlags>&           setBindingsStageFlags = bindingsStageFlags[setIndex];
+
+		Span<uint32_t> bindingSpan;
+		bindingSpan.Begin = (uint32_t)outSetBindings.size();
+		bindingSpan.End   = (uint32_t)(outSetBindings.size() + setBindings.size());
+
+		for(size_t bindingIndex = 0; bindingIndex < setBindings.size(); bindingIndex++)
+		{
+			SpvReflectDescriptorBinding* setBinding       = setBindings[bindingIndex];
+			VkShaderStageFlags           shaderStageFlags = setBindingsStageFlags[bindingIndex];
+
+			const VkSampler* descriptorImmutableSamplers = nullptr;
+
+			VkDescriptorType descriptorType = SpvToVkDescriptorType(setBinding->descriptor_type);
+			if (descriptorType == VK_DESCRIPTOR_TYPE_SAMPLER || descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+			{
+				descriptorImmutableSamplers = mSamplers.data();
+			}
+
+			uint32_t descriptorCount = setBinding->count;
+			if(setBinding->type_description->op == SpvOpTypeRuntimeArray)
+			{
+				descriptorCount = (uint32_t)(-1); //A way to check for variable descriptor count
+			}
+
+			VkDescriptorSetLayoutBinding descriptorSetBinding =
+			{
+				.binding            = setBinding->binding,
+				.descriptorType     = descriptorType,
+				.descriptorCount    = descriptorCount,
+				.stageFlags         = shaderStageFlags,
+				.pImmutableSamplers = descriptorImmutableSamplers
+			};
+		
+			outSetBindings.push_back(descriptorSetBinding);
+			outBindingNames.push_back(setBinding->name);
+		}
+
+		outBindingSpans.push_back(bindingSpan);
 	}
 }
 
@@ -216,6 +257,9 @@ void Vulkan::ShaderManager::GatherSetBindings(const std::span<spv_reflect::Shade
 			std::vector<SpvReflectDescriptorBinding*>& setBindings          = outBindingsForSets[descriptorBinding->set];
 			std::vector<VkShaderStageFlags>&           setBindingStageFlags = outBindingsStageFlags[descriptorBinding->set];
 
+			//Name should be defined in every shader for every uniform block
+			assert(descriptorBinding->name != nullptr && descriptorBinding->name[0] != '\0');
+
 			if(descriptorBinding->binding >= setBindings.size())
 			{
 				setBindings.resize(descriptorBinding->binding + 1, nullptr);
@@ -243,37 +287,6 @@ void Vulkan::ShaderManager::GatherSetBindings(const std::span<spv_reflect::Shade
 					setBindingStageFlags[descriptorBinding->binding] |= shaderStageFlags;
 				}
 			}
-		}
-	}
-}
-
-void Vulkan::ShaderManager::BuildDescriptorBindingInfos(const std::span<SpvReflectDescriptorBinding*> spvSetBindings, const std::span<VkShaderStageFlags> setBindingStageFlags, std::vector<VkDescriptorSetLayoutBinding>& outSetBindings, std::vector<VkDescriptorBindingFlags>& outSetFlags) const
-{
-	outSetBindings.resize(spvSetBindings.size());
-	outSetFlags.resize(spvSetBindings.size(), 0);
-
-	for(uint32_t bindingIndex = 0; bindingIndex < spvSetBindings.size(); bindingIndex++)
-	{
-		SpvReflectDescriptorBinding* setBinding       = spvSetBindings[bindingIndex];
-		VkShaderStageFlags           shaderStageFlags = setBindingStageFlags[bindingIndex];
-
-		const VkSampler* descriptorImmutableSamplers = nullptr;
-
-		VkDescriptorType descriptorType = SpvToVkDescriptorType(setBinding->descriptor_type);
-		if (descriptorType == VK_DESCRIPTOR_TYPE_SAMPLER || descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
-		{
-			descriptorImmutableSamplers = mSamplers.data();
-		}
-
-		outSetBindings[bindingIndex].binding            = setBinding->binding;
-		outSetBindings[bindingIndex].descriptorType     = descriptorType;
-		outSetBindings[bindingIndex].descriptorCount    = setBinding->count;
-		outSetBindings[bindingIndex].stageFlags         = shaderStageFlags;
-		outSetBindings[bindingIndex].pImmutableSamplers = descriptorImmutableSamplers;
-
-		if(setBinding->type_description->op == SpvOpTypeRuntimeArray)
-		{
-			outSetFlags[bindingIndex] |= VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT;
 		}
 	}
 }
