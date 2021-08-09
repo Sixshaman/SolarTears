@@ -32,9 +32,9 @@ std::wstring Vulkan::VulkanUtils::VkException::ToString() const
     return FunctionName + L" failed in " + Filename + L"; line " + std::to_wstring(LineNumber) + L"; error code: " + std::to_wstring(ErrorCode);
 }
 
-void Vulkan::VulkanUtils::LoadShaderModuleFromFile(const std::wstring& filename, std::vector<uint32_t>& dataBlob, LoggerQueue* logger)
+void Vulkan::VulkanUtils::LoadShaderModuleFromFile(const std::wstring_view filename, std::vector<uint32_t>& dataBlob, LoggerQueue* logger)
 {
-    std::ifstream fin(filename, std::ios::binary); //Открываем файл
+    std::ifstream fin(filename.data(), std::ios::binary); //Открываем файл
     if(!fin)
     {
         logger->PostLogMessage(L"Cannot read shader file " + filename + L"!\n");

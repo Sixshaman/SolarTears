@@ -52,7 +52,7 @@ namespace Vulkan
 			int LineNumber = -1;
 		};
 
-		void LoadShaderModuleFromFile(const std::wstring& filename, std::vector<uint32_t>& dataBlob, LoggerQueue* logger);
+		void LoadShaderModuleFromFile(const std::wstring_view filename, std::vector<uint32_t>& dataBlob, LoggerQueue* logger);
 
 		void SetDebugObjectName(const VkDevice device, VkImage         image,         const std::string_view name);
 		void SetDebugObjectName(const VkDevice device, VkCommandBuffer commandBuffer, const std::string_view name);

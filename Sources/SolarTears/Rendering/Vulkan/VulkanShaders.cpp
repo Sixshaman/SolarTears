@@ -21,7 +21,7 @@ Vulkan::ShaderManager::~ShaderManager()
 	}
 }
 
-spv_reflect::ShaderModule Vulkan::ShaderManager::LoadShaderBlob(const std::wstring& path) const
+spv_reflect::ShaderModule Vulkan::ShaderManager::LoadShaderBlob(const std::wstring_view path) const
 {
 	std::vector<uint32_t> shaderData;
 	VulkanUtils::LoadShaderModuleFromFile(path, shaderData, mLogger);
@@ -29,7 +29,7 @@ spv_reflect::ShaderModule Vulkan::ShaderManager::LoadShaderBlob(const std::wstri
 	return spv_reflect::ShaderModule(shaderData);
 }
 
-void Vulkan::ShaderManager::FindBindings(const std::span<spv_reflect::ShaderModule*>& shaderModules, std::vector<VkDescriptorSetLayoutBinding>& outSetBindings, std::vector<std::string>& outBindingNames, std::vector<Span<uint32_t>>& outBindingSpans) const
+void Vulkan::ShaderManager::FindBindings(const std::span<spv_reflect::ShaderModule> shaderModules, std::vector<VkDescriptorSetLayoutBinding>& outSetBindings, std::vector<std::string>& outBindingNames, std::vector<Span<uint32_t>>& outBindingSpans) const
 {	
 	outBindingSpans.clear();
 
@@ -205,22 +205,22 @@ void Vulkan::ShaderManager::CreateSamplers()
 	}
 }
 
-void Vulkan::ShaderManager::GatherSetBindings(const std::span<spv_reflect::ShaderModule*>& shaderModules, std::vector<SpvReflectDescriptorBinding*>& outBindings, std::vector<VkShaderStageFlags>& outBindingStageFlags, std::vector<Span<uint32_t>>& outSetSpans) const
+void Vulkan::ShaderManager::GatherSetBindings(const std::span<spv_reflect::ShaderModule> shaderModules, std::vector<SpvReflectDescriptorBinding*>& outBindings, std::vector<VkShaderStageFlags>& outBindingStageFlags, std::vector<Span<uint32_t>>& outSetSpans) const
 {
 	uint32_t totalSetCount = 0;
 
 	//Gather all bindings from all stages
 	std::vector<SpvReflectDescriptorBinding*>            allBindings;
 	std::vector<std::span<SpvReflectDescriptorBinding*>> moduleBindings;
-	for(spv_reflect::ShaderModule* shaderModule: shaderModules)
+	for(const spv_reflect::ShaderModule& shaderModule: shaderModules)
 	{
 		uint32_t moduleBindingCount = 0;
-		shaderModule->EnumerateDescriptorBindings(&moduleBindingCount, nullptr);
+		shaderModule.EnumerateDescriptorBindings(&moduleBindingCount, nullptr);
 
 		moduleBindings.push_back({allBindings.end(), allBindings.end() + moduleBindingCount});
 		allBindings.resize(allBindings.size() + moduleBindingCount);
 
-		shaderModule->EnumerateDescriptorBindings(&moduleBindingCount, moduleBindings.back().data());
+		shaderModule.EnumerateDescriptorBindings(&moduleBindingCount, moduleBindings.back().data());
 		for(SpvReflectDescriptorBinding* binding: moduleBindings.back())
 		{
 			totalSetCount = std::max(totalSetCount, binding->set + 1);
@@ -251,10 +251,10 @@ void Vulkan::ShaderManager::GatherSetBindings(const std::span<spv_reflect::Shade
 	outBindingStageFlags.resize(accumulatedBindingCount, 0);
 	for(size_t moduleIndex = 0; moduleIndex < shaderModules.size(); moduleIndex++)
 	{
-		const spv_reflect::ShaderModule*              shaderModule      = shaderModules[moduleIndex];
+		const spv_reflect::ShaderModule&              shaderModule      = shaderModules[moduleIndex];
 		const std::span<SpvReflectDescriptorBinding*> moduleBindingSpan = moduleBindings[moduleIndex];
 
-		VkShaderStageFlags shaderStageFlags = SpvToVkShaderStage(shaderModule->GetShaderStage());
+		VkShaderStageFlags shaderStageFlags = SpvToVkShaderStage(shaderModule.GetShaderStage());
 		for(SpvReflectDescriptorBinding* descriptorBinding: moduleBindingSpan)
 		{
 			Span<uint32_t> setSpan          = outSetSpans[descriptorBinding->set];

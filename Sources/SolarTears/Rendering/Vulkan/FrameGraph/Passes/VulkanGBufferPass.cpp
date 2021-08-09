@@ -23,13 +23,7 @@ Vulkan::GBufferPass::GBufferPass(VkDevice device, const FrameGraphBuilder* frame
 	CreateRenderPass(frameGraphBuilder,  frameGraphBuilder->GetDeviceParameters(), passName);
 	CreateFramebuffer(frameGraphBuilder, frameGraphBuilder->GetConfig(), passName, frame);
 
-	//Load shaders
-	const std::wstring shaderFolder = Utils::GetMainDirectory() + L"Shaders/\Vulkan/GBuffer/";
-	spv_reflect::ShaderModule staticVertexShader = frameGraphBuilder->GetShaderManager()->LoadShaderBlob(shaderFolder + L"GBufferDrawStatic.vert.spv");
-	spv_reflect::ShaderModule rigidVertexShader  = frameGraphBuilder->GetShaderManager()->LoadShaderBlob(shaderFolder + L"GBufferDrawRigid.vert.spv");
-	spv_reflect::ShaderModule fragmentShader     = frameGraphBuilder->GetShaderManager()->LoadShaderBlob(shaderFolder + L"GBufferDraw.frag.spv");
-
-	std::array pipelineLayoutShaders = {&rigidVertexShader, &fragmentShader};
+	std::array pipelineLayoutShaders = { &rigidVertexShader, &fragmentShader };
 	frameGraphBuilder->GetShaderManager()->CreatePipelineLayout(device, pipelineLayoutShaders, &mPipelineLayout);
 
 	//Create pipelines
@@ -60,6 +54,20 @@ void Vulkan::GBufferPass::OnAdd(FrameGraphBuilder* frameGraphBuilder, const std:
 	frameGraphBuilder->SetPassSubresourceLayout(passName, ColorBufferImageId, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 	frameGraphBuilder->SetPassSubresourceUsage(passName, ColorBufferImageId, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
 	frameGraphBuilder->SetPassSubresourceAccessFlags(passName, ColorBufferImageId, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+
+	//Load shaders
+	const std::wstring shaderFolder = Utils::GetMainDirectory() + L"Shaders/Vulkan/GBuffer/";
+
+	std::array<std::wstring, 4> shaderFilenames;
+	shaderFilenames[StaticVertexShaderIndex]          = shaderFolder + L"GBufferDrawStatic.vert.spv";
+	shaderFilenames[StaticInstancedVertexShaderIndex] = shaderFolder + L"GBufferDrawStatic.vert.spv";
+	shaderFilenames[RigidVertexShaderIndex]           = shaderFolder + L"GBufferDrawStatic.vert.spv";
+	shaderFilenames[FragmentShaderIndex]              = shaderFolder + L"GBufferDrawStatic.vert.spv";
+
+	for(const std::wstring& shaderFilename: shaderFilenames)
+	{
+		frameGraphBuilder->AddPassShader(passName, shaderFilename);
+	}
 }
 
 void Vulkan::GBufferPass::RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig) const

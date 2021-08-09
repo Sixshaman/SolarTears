@@ -14,6 +14,11 @@ namespace Vulkan
 
 	class GBufferPass: public RenderPass, public GBufferPassBase
 	{
+		static constexpr uint32_t StaticVertexShaderIndex          = 0;
+		static constexpr uint32_t StaticInstancedVertexShaderIndex = 1;
+		static constexpr uint32_t RigidVertexShaderIndex           = 2;
+		static constexpr uint32_t FragmentShaderIndex              = 3;
+
 	public:
 		GBufferPass(VkDevice device, const FrameGraphBuilder* frameGraphBuilder, const std::string& passName, uint32_t frame);
 		~GBufferPass();

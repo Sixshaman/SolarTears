@@ -5,6 +5,8 @@
 #include <unordered_map>
 #include <memory>
 #include <array>
+#include "../VulkanShaders.hpp"
+#include "../../../Core/DataStructures/Span.hpp"
 #include "../../Common/FrameGraph/ModernFrameGraphBuilder.hpp"
 
 namespace Vulkan
@@ -15,7 +17,6 @@ namespace Vulkan
 	class InstanceParameters;
 	class RenderableScene;
 	class DeviceParameters;
-	class ShaderManager;
 	class DescriptorManager;
 
 	using RenderPassCreateFunc = std::unique_ptr<RenderPass>(*)(VkDevice, const FrameGraphBuilder*, const std::string&, uint32_t);
@@ -43,6 +44,8 @@ namespace Vulkan
 		void SetPassSubresourceAspectFlags(const std::string_view passName, const std::string_view subresourceId, VkImageAspectFlags aspect);
 		void SetPassSubresourceStageFlags(const std::string_view passName,  const std::string_view subresourceId, VkPipelineStageFlags stage);
 		void SetPassSubresourceAccessFlags(const std::string_view passName, const std::string_view subresourceId, VkAccessFlags accessFlags);
+
+		void AddPassShader(const std::string_view passName, std::wstring_view shaderModulePath);
 
 		const DeviceParameters*  GetDeviceParameters()  const;
 		const ShaderManager*     GetShaderManager()     const;
@@ -88,7 +91,13 @@ namespace Vulkan
 		//Creates an image view
 		VkImageView CreateImageView(VkImage image, uint32_t subresourceInfoIndex) const;
 
+		//Creates a descriptor set layout
+		VkDescriptorSetLayout CreateDescriptorSetLayout(std::span<VkDescriptorSetLayoutBinding> bindings);
+
 	private:
+		//Load descriptors and update descriptor databases
+		void PreprocessPasses() override final;
+
 		//Creates a new subresource info record
 		uint32_t AddSubresourceMetadata() override final;
 
@@ -133,6 +142,20 @@ namespace Vulkan
 
 		std::unordered_map<RenderPassType, RenderPassAddFunc>    mPassAddFuncTable;
 		std::unordered_map<RenderPassType, RenderPassCreateFunc> mPassCreateFuncTable;
+
+		//Shader database for passes.
+		//We can't load shaders individually for each pass when needed because of a complex problem.
+		//Suppose pass A accesses scene textures in vertex shader and pass B accesses them in fragment shader.
+		//This means the texture descriptor set layout must have VERTEX | FRAGMENT shader flags.
+		//Since we create descriptor set layouts based on reflection data, we have to:
+		//1) Load all possible shaders for passes;
+		//2) Go through the whole reflection data for all shaders and build descriptor set layouts;
+		//3) Create passes only after that, giving them descriptor set layouts.
+		std::unordered_map<std::string_view, Span<uint32_t>> mShaderModulePassSpans;
+		std::vector<spv_reflect::ShaderModule>               mShaderModulesFlat;
+
+		//Descriptor set layout for samplers
+		VkDescriptorSetLayout mSamplersDescriptorSetLayout;
 
 		std::vector<SubresourceInfo> mSubresourceInfos;
 

@@ -6,6 +6,7 @@
 #include "../VulkanMemory.hpp"
 #include "../VulkanSwapChain.hpp"
 #include "../VulkanDeviceQueues.hpp"
+#include <VulkanGenericStructures.h>
 #include <algorithm>
 #include <numeric>
 
@@ -15,6 +16,8 @@
 Vulkan::FrameGraphBuilder::FrameGraphBuilder(FrameGraph* graphToBuild, FrameGraphDescription&& frameGraphDescription, const SwapChain* swapchain): ModernFrameGraphBuilder(graphToBuild, std::move(frameGraphDescription)), mVulkanGraphToBuild(graphToBuild), mSwapChain(swapchain)
 {
 	mImageViewCount = 0;
+
+	mSamplersDescriptorSetLayout = VK_NULL_HANDLE;
 
 	InitPassTable();
 }
@@ -75,6 +78,24 @@ void Vulkan::FrameGraphBuilder::SetPassSubresourceAccessFlags(const std::string_
 
 	uint32_t subresourceInfoIndex = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr).SubresourceInfoIndex;
 	mSubresourceInfos[subresourceInfoIndex].Access = accessFlags;
+}
+
+void Vulkan::FrameGraphBuilder::AddPassShader(const std::string_view passName, std::wstring_view shaderModulePath)
+{
+	auto passShadersIt = mShaderModulePassSpans.find(passName);
+	if(passShadersIt != mShaderModulePassSpans.end())
+	{
+		//Make sure we can't interleave shaders for passes
+		assert(passShadersIt->second.End == (uint32_t)mShaderModulesFlat.size());
+
+		mShaderModulePassSpans[passName].End++;
+	}
+	else
+	{
+		mShaderModulePassSpans[passName] = {.Begin = (uint32_t)mShaderModulesFlat.size(), .End = (uint32_t)mShaderModulesFlat.size() + 1};
+	}
+
+	mShaderModulesFlat.emplace_back(mShaderManager->LoadShaderBlob(shaderModulePath));
 }
 
 const Vulkan::DescriptorManager* Vulkan::FrameGraphBuilder::GetDescriptorManager() const
@@ -487,6 +508,78 @@ void Vulkan::FrameGraphBuilder::CreateTextures(const std::vector<TextureResource
 	mDeviceQueues->GraphicsQueueWait(); //TODO: may wait after build finished
 }
 
+void Vulkan::FrameGraphBuilder::PreprocessPasses()
+{
+	std::unordered_map<std::string_view, VkDescriptorSetLayoutBinding> specialBindings;
+	specialBindings["Samplers"]                = {};
+	specialBindings["SceneTextures"]           = {};
+	specialBindings["SceneMaterials"]          = {};
+	specialBindings["SceneStaticObjectDatas"]  = {};
+	specialBindings["SceneFrameData"]          = {};
+	specialBindings["SceneDynamicObjectDatas"] = {};
+
+	for(auto passSpanIt: mShaderModulePassSpans)
+	{
+		std::span<spv_reflect::ShaderModule> shaderModuleSpan = {mShaderModulesFlat.begin() + passSpanIt.second.Begin, mShaderModulesFlat.begin() + passSpanIt.second.End};
+
+		std::vector<VkDescriptorSetLayoutBinding> setBindings;
+		std::vector<std::string>                  setBindingNames;
+		std::vector<Span<uint32_t>>               setSpans;
+		mShaderManager->FindBindings(shaderModuleSpan, setBindings, setBindingNames, setSpans);
+
+		for(Span<uint32_t> setSpan: setSpans)
+		{
+			DescriptorBindingType setBindingsType = DescriptorBindingType::Unknown; //Only a single type for a descriptor set allowed
+			for(uint32_t bindingIndex = setSpan.Begin; bindingIndex < setSpan.End; bindingIndex++)
+			{
+				DescriptorBindingType currentBindingType = DescriptorBindingType::Unknown;
+
+				std::string_view bindingName = setBindingNames[bindingIndex];
+				if(sceneBindingNames.contains(bindingName))
+				{
+					//Process as scene binding
+					currentBindingType = DescriptorBindingType::SceneBinding;
+				}
+				else if(bindingName == samplerBindingName)
+				{
+					//Process as sampler binding
+					currentBindingType = DescriptorBindingType::SamplerBinding;
+				}
+				else
+				{
+					//Process as pass binding
+					currentBindingType = DescriptorBindingType::PassBinding;
+				}
+
+				assert(setBindingsType == DescriptorBindingType::Unknown || currentBindingType == setBindingsType);
+				setBindingsType = currentBindingType;
+			}
+
+			std::span<VkDescriptorSetLayoutBinding> bindingSpan = {setBindings.begin() + setSpan.Begin, setBindings.begin() + setSpan.End};
+
+			assert(setBindingsType != DescriptorBindingType::Unknown);
+			switch(setBindingsType)
+			{
+			case Vulkan::FrameGraphBuilder::DescriptorBindingType::SceneBinding:
+				break;
+
+			case Vulkan::FrameGraphBuilder::DescriptorBindingType::SamplerBinding:
+				if(mSamplersDescriptorSetLayout == VK_NULL_HANDLE)
+				{
+
+				}
+				break;
+
+			case Vulkan::FrameGraphBuilder::DescriptorBindingType::PassBinding:
+				break;
+
+			default:
+				break;
+			}
+		}
+	}
+}
+
 uint32_t Vulkan::FrameGraphBuilder::AddSubresourceMetadata()
 {
 	SubresourceInfo subresourceInfo;
@@ -778,4 +871,34 @@ VkImageView Vulkan::FrameGraphBuilder::CreateImageView(VkImage image, uint32_t s
 	ThrowIfFailed(vkCreateImageView(mVulkanGraphToBuild->mDeviceRef, &imageViewCreateInfo, nullptr, &imageView));
 
 	return imageView;
+}
+
+VkDescriptorSetLayout Vulkan::FrameGraphBuilder::CreateDescriptorSetLayout(std::span<VkDescriptorSetLayoutBinding> bindings)
+{
+	std::vector<VkDescriptorBindingFlags> setFlags(bindings.size(), 0);
+	for(size_t bindingIndex = 0; bindingIndex < bindings.size(); bindingIndex++)
+	{
+		const VkDescriptorSetLayoutBinding& binding = bindings[bindingIndex];
+		if(binding.descriptorCount == (uint32_t)(-1))
+		{
+			setFlags[bindingIndex] |= VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT;
+		}
+	}
+
+	vgs::StructureChainBlob<VkDescriptorSetLayoutCreateInfo> descriptorSetLayoutCreateInfoChain;
+	descriptorSetLayoutCreateInfoChain.AppendToChain(VkDescriptorSetLayoutBindingFlagsCreateInfo
+	{
+		.bindingCount  = (uint32_t)setFlags.size(),
+		.pBindingFlags = setFlags.data()
+	});
+	
+	VkDescriptorSetLayoutCreateInfo& setLayoutCreateInfo = descriptorSetLayoutCreateInfoChain.GetChainHead();
+	setLayoutCreateInfo.flags        = 0;
+	setLayoutCreateInfo.bindingCount = (uint32_t)bindings.size();
+	setLayoutCreateInfo.pBindings    = bindings.data();
+
+	VkDescriptorSetLayout setLayout = VK_NULL_HANDLE;
+	ThrowIfFailed(vkCreateDescriptorSetLayout(mVulkanGraphToBuild->mDeviceRef, &setLayoutCreateInfo, nullptr, &setLayout));
+
+	return setLayout;
 }
