@@ -32,8 +32,7 @@ namespace Vulkan
 	private:
 		void CreateSamplers();
 
-		uint32_t GetModulesSetCount(const std::span<spv_reflect::ShaderModule*>& shaderModules) const;
-		void GatherSetBindings(const std::span<spv_reflect::ShaderModule*>& shaderModules, std::vector<std::vector<SpvReflectDescriptorBinding*>>& outBindingsForSets, std::vector<std::vector<VkShaderStageFlags>>& outBindingsStageFlags) const;
+		void GatherSetBindings(const std::span<spv_reflect::ShaderModule*>& shaderModules, std::vector<SpvReflectDescriptorBinding*>& outBindings, std::vector<VkShaderStageFlags>& outBindingStageFlags, std::vector<Span<uint32_t>>& outSetSpans) const;
 
 		VkShaderStageFlagBits SpvToVkShaderStage(SpvReflectShaderStageFlagBits spvShaderStage)  const;
 		VkDescriptorType      SpvToVkDescriptorType(SpvReflectDescriptorType spvDescriptorType) const;

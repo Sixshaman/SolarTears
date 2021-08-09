@@ -95,8 +95,8 @@ namespace Vulkan
 		//Creates a new subresource info record for present pass
 		uint32_t AddPresentSubresourceMetadata() override final;
 
-		//Registers render pass inputs and outputs
-		void RegisterPassSubresources(RenderPassType passType, const FrameGraphDescription::RenderPassName& passName) override;
+		//Registers render pass related data in the graph (inputs, outputs, possibly shader bindings, etc)
+		void RegisterPassInGraph(RenderPassType passType, const FrameGraphDescription::RenderPassName& passName) override final;
 
 		//Creates a new render pass
 		void CreatePassObject(const FrameGraphDescription::RenderPassName& passName, RenderPassType passType, uint32_t frame) override final;

@@ -515,7 +515,7 @@ uint32_t Vulkan::FrameGraphBuilder::AddPresentSubresourceMetadata()
 	return (uint32_t)(mSubresourceInfos.size() - 1);
 }
 
-void Vulkan::FrameGraphBuilder::RegisterPassSubresources(RenderPassType passType, const FrameGraphDescription::RenderPassName& passName)
+void Vulkan::FrameGraphBuilder::RegisterPassInGraph(RenderPassType passType, const FrameGraphDescription::RenderPassName& passName)
 {
 	auto passRegisterFunc = mPassAddFuncTable.at(passType);
 	passRegisterFunc(this, passName);

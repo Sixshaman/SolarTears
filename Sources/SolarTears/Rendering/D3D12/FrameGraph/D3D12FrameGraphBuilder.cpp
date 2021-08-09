@@ -407,7 +407,7 @@ uint32_t D3D12::FrameGraphBuilder::AddPresentSubresourceMetadata()
 	return (uint32_t)(mSubresourceInfos.size() - 1);
 }
 
-void D3D12::FrameGraphBuilder::RegisterPassSubresources(RenderPassType passType, const FrameGraphDescription::RenderPassName& passName)
+void D3D12::FrameGraphBuilder::RegisterPassInGraph(RenderPassType passType, const FrameGraphDescription::RenderPassName& passName)
 {
 	auto passRegisterFunc = mPassAddFuncTable.at(passType);
 	passRegisterFunc(this, passName);

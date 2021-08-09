@@ -143,8 +143,8 @@ protected:
 	//Creates a new subresource info record for present pass
 	virtual uint32_t AddPresentSubresourceMetadata() = 0;
 
-	//Registers render pass inputs and outputs
-	virtual void RegisterPassSubresources(RenderPassType passType, const FrameGraphDescription::RenderPassName& passName) = 0;
+	//Registers render pass related data in the graph (inputs, outputs, possibly shader bindings, etc)
+	virtual void RegisterPassInGraph(RenderPassType passType, const FrameGraphDescription::RenderPassName& passName) = 0;
 
 	//Creates a new render pass
 	virtual void CreatePassObject(const FrameGraphDescription::RenderPassName& passName, RenderPassType passType, uint32_t frame) = 0;
