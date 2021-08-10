@@ -18,7 +18,7 @@ void ModernFrameGraphBuilder::RegisterRenderPass(RenderPassType passType, const 
 	FrameGraphDescription::RenderPassName renderPassName(passName);
 	mRenderPassClasses[renderPassName] = mRenderPassClassTable[passType];
 
-	RegisterPassSubresources(passType, renderPassName);
+	RegisterPassInGraph(passType, renderPassName);
 }
 
 void ModernFrameGraphBuilder::RegisterReadSubresource(const std::string_view passName, const std::string_view subresourceId)

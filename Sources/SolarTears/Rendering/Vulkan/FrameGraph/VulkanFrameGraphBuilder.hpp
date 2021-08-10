@@ -8,6 +8,7 @@
 #include "../VulkanShaders.hpp"
 #include "../../../Core/DataStructures/Span.hpp"
 #include "../../Common/FrameGraph/ModernFrameGraphBuilder.hpp"
+#include "../../Vulkan/Scene/VulkanSceneDescriptorDatabase.hpp"
 
 namespace Vulkan
 {
@@ -32,6 +33,14 @@ namespace Vulkan
 			VkImageAspectFlags   Aspect;
 			VkPipelineStageFlags Stage;
 			VkAccessFlags        Access;
+		};
+
+		struct PassDescriptorDatabaseRequest
+		{
+			VkDescriptorSetLayout SetLayout;
+			uint32_t              BindingIndex;
+			uint32_t              RenderPassNameIndex;
+			std::string_view      SubresourceName;
 		};
 
 	public:
@@ -154,8 +163,10 @@ namespace Vulkan
 		std::unordered_map<std::string_view, Span<uint32_t>> mShaderModulePassSpans;
 		std::vector<spv_reflect::ShaderModule>               mShaderModulesFlat;
 
-		//Descriptor set layout for samplers
-		VkDescriptorSetLayout mSamplersDescriptorSetLayout;
+		//Descriptor set layout related data
+		std::vector<PassDescriptorDatabaseRequest>  mPassDescriptorDatabaseRequests;
+		std::vector<SceneDescriptorDatabaseRequest> mSceneDescriptorDatabaseRequests;
+		VkDescriptorSetLayout                       mSamplersDescriptorSetLayout;
 
 		std::vector<SubresourceInfo> mSubresourceInfos;
 

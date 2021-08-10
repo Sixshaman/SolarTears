@@ -10,7 +10,7 @@ public:
 	static constexpr RenderPassType  PassType = RenderPassType::GBufferGenerate;
 
 public:
-	static constexpr std::string_view ColorBufferImageId = "GBufferPass-ColorBufferImage";
+	static constexpr std::string_view ColorBufferImageId = "ColorBufferImage";
 
 public:
 	static void OnAdd(ModernFrameGraphBuilder* frameGraphBuilder, const std::string& passName);

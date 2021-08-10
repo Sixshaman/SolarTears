@@ -510,72 +510,80 @@ void Vulkan::FrameGraphBuilder::CreateTextures(const std::vector<TextureResource
 
 void Vulkan::FrameGraphBuilder::PreprocessPasses()
 {
-	std::unordered_map<std::string_view, VkDescriptorSetLayoutBinding> specialBindings;
-	specialBindings["Samplers"]                = {};
-	specialBindings["SceneTextures"]           = {};
-	specialBindings["SceneMaterials"]          = {};
-	specialBindings["SceneStaticObjectDatas"]  = {};
-	specialBindings["SceneFrameData"]          = {};
-	specialBindings["SceneDynamicObjectDatas"] = {};
+	static const std::string_view                     samplerBindingName = "Samplers";
+	static const std::unordered_set<std::string_view> sceneBindingNames  = {"SceneTextures", "SceneMaterials", "SceneStaticObjectDatas", "SceneFrameData", "SceneDynamicObjectDatas"};
 
-	for(auto passSpanIt: mShaderModulePassSpans)
+	VkDescriptorSetLayoutBinding samplerBinding;
+	samplerBinding.binding            = 0;
+	samplerBinding.descriptorType     = VK_DESCRIPTOR_TYPE_SAMPLER;
+	samplerBinding.descriptorCount    = 0;
+	samplerBinding.stageFlags         = 0;
+	samplerBinding.pImmutableSamplers = nullptr;
+
+	for(size_t passNameIndex = 0; passNameIndex = mSortedRenderPassNames.size(); passNameIndex++)
 	{
-		std::span<spv_reflect::ShaderModule> shaderModuleSpan = {mShaderModulesFlat.begin() + passSpanIt.second.Begin, mShaderModulesFlat.begin() + passSpanIt.second.End};
+		const FrameGraphDescription::RenderPassName& renderPassName = mSortedRenderPassNames[passNameIndex];
+		Span<uint32_t> passSpan = mShaderModulePassSpans[renderPassName];
+
+		std::span<spv_reflect::ShaderModule> shaderModuleSpan = {mShaderModulesFlat.begin() + passSpan.Begin, mShaderModulesFlat.begin() + passSpan.End};
+		const auto& metadataMap = mRenderPassesSubresourceMetadatas.at(renderPassName);
 
 		std::vector<VkDescriptorSetLayoutBinding> setBindings;
 		std::vector<std::string>                  setBindingNames;
 		std::vector<Span<uint32_t>>               setSpans;
 		mShaderManager->FindBindings(shaderModuleSpan, setBindings, setBindingNames, setSpans);
 
+		//Validate bindings
 		for(Span<uint32_t> setSpan: setSpans)
 		{
-			DescriptorBindingType setBindingsType = DescriptorBindingType::Unknown; //Only a single type for a descriptor set allowed
+			bool isSceneSet = true;
+			bool isPassSet  = true;
+
 			for(uint32_t bindingIndex = setSpan.Begin; bindingIndex < setSpan.End; bindingIndex++)
 			{
-				DescriptorBindingType currentBindingType = DescriptorBindingType::Unknown;
+				const std::string&                  bindingName = setBindingNames[bindingIndex];
+				const VkDescriptorSetLayoutBinding& setBinding  = setBindings[bindingIndex];
 
-				std::string_view bindingName = setBindingNames[bindingIndex];
 				if(sceneBindingNames.contains(bindingName))
 				{
 					//Process as scene binding
-					currentBindingType = DescriptorBindingType::SceneBinding;
+					assert(isSceneSet);
+
+					isPassSet = false;
 				}
 				else if(bindingName == samplerBindingName)
 				{
 					//Process as sampler binding
-					currentBindingType = DescriptorBindingType::SamplerBinding;
+					assert(setSpan.End == setSpan.Begin); //Only 1 binding in this set is allowed
+					isSceneSet = false;
+					isPassSet  = false;
+
+					assert(setBinding.binding        == 0);
+					assert(setBinding.descriptorType == VK_DESCRIPTOR_TYPE_SAMPLER);
+
+					if(samplerBinding.pImmutableSamplers == nullptr)
+					{
+						samplerBinding.descriptorCount    = setBinding.descriptorCount;
+						samplerBinding.pImmutableSamplers = setBinding.pImmutableSamplers;
+					}
+					else
+					{
+						assert(samplerBinding.descriptorCount    == setBinding.descriptorCount);
+						assert(samplerBinding.pImmutableSamplers == setBinding.pImmutableSamplers);
+					}
+
+					samplerBinding.stageFlags |= setBinding.stageFlags;
 				}
-				else
+				else if(metadataMap.contains(bindingName))
 				{
 					//Process as pass binding
-					currentBindingType = DescriptorBindingType::PassBinding;
-				}
+					assert(isPassSet);
 
-				assert(setBindingsType == DescriptorBindingType::Unknown || currentBindingType == setBindingsType);
-				setBindingsType = currentBindingType;
+					isSceneSet = false;
+				}
 			}
 
 			std::span<VkDescriptorSetLayoutBinding> bindingSpan = {setBindings.begin() + setSpan.Begin, setBindings.begin() + setSpan.End};
-
-			assert(setBindingsType != DescriptorBindingType::Unknown);
-			switch(setBindingsType)
-			{
-			case Vulkan::FrameGraphBuilder::DescriptorBindingType::SceneBinding:
-				break;
-
-			case Vulkan::FrameGraphBuilder::DescriptorBindingType::SamplerBinding:
-				if(mSamplersDescriptorSetLayout == VK_NULL_HANDLE)
-				{
-
-				}
-				break;
-
-			case Vulkan::FrameGraphBuilder::DescriptorBindingType::PassBinding:
-				break;
-
-			default:
-				break;
-			}
 		}
 	}
 }
