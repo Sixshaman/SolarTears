@@ -21,12 +21,11 @@ namespace Vulkan
 		Unknown = Count
 	};
 
-	//The request to add a single descriptor binding to the database of scene descriptors
+	//The request to add a descriptor set layout to the database of scene descriptors
 	struct SceneDescriptorDatabaseRequest
 	{
-		VkDescriptorSetLayout        SetLayout;
-		SceneDescriptorSetType       SetType;
-		VkDescriptorSetLayoutBinding LayoutBinding;
+		VkDescriptorSetLayout  SetLayout;
+		SceneDescriptorSetType SetType;
 	};
 
 	class SceneDescriptorDatabase
@@ -34,6 +33,11 @@ namespace Vulkan
 	public:
 		SceneDescriptorDatabase(VkDevice device);
 		~SceneDescriptorDatabase();
+
+		//Check if this binding is related to scene objects
+		bool IsSceneBinding(std::string_view bindingName);
+
+		SceneDescriptorSetType ComputeSetType(std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<std::string> bindingNames);
 
 		void UpdateDatabaseEntries(std::span<SceneDescriptorDatabaseRequest> requests);
 

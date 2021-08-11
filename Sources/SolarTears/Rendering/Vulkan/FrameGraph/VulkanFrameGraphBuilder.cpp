@@ -1,5 +1,6 @@
 #include "VulkanFrameGraphBuilder.hpp"
 #include "VulkanFrameGraph.hpp"
+#include "../Scene/VulkanSceneDescriptorDatabase.hpp"
 #include "../VulkanInstanceParameters.hpp"
 #include "../VulkanWorkerCommandBuffers.hpp"
 #include "../VulkanFunctions.hpp"
@@ -510,8 +511,7 @@ void Vulkan::FrameGraphBuilder::CreateTextures(const std::vector<TextureResource
 
 void Vulkan::FrameGraphBuilder::PreprocessPasses()
 {
-	static const std::string_view                     samplerBindingName = "Samplers";
-	static const std::unordered_set<std::string_view> sceneBindingNames  = {"SceneTextures", "SceneMaterials", "SceneStaticObjectDatas", "SceneFrameData", "SceneDynamicObjectDatas"};
+	static const std::string_view samplerBindingName = "Samplers";
 
 	VkDescriptorSetLayoutBinding samplerBinding;
 	samplerBinding.binding            = 0;
@@ -519,6 +519,10 @@ void Vulkan::FrameGraphBuilder::PreprocessPasses()
 	samplerBinding.descriptorCount    = 0;
 	samplerBinding.stageFlags         = 0;
 	samplerBinding.pImmutableSamplers = nullptr;
+
+	std::vector<VkDescriptorSetLayoutBinding> sceneDescriptorBindings;
+	std::vector<VkDescriptorBindingFlags>     sceneDescriptorBindingFlags;
+	std::vector<Span<uint32_t>>               sceneDescriptorBindingSetSpans((uint32_t)SceneDescriptorSetType::Count, {.Begin = 0, .End = 0});
 
 	for(size_t passNameIndex = 0; passNameIndex = mSortedRenderPassNames.size(); passNameIndex++)
 	{
@@ -544,12 +548,13 @@ void Vulkan::FrameGraphBuilder::PreprocessPasses()
 				const std::string&                  bindingName = setBindingNames[bindingIndex];
 				const VkDescriptorSetLayoutBinding& setBinding  = setBindings[bindingIndex];
 
-				if(sceneBindingNames.contains(bindingName))
+				if(mSceneDescriptorDatabase->IsSceneBinding(bindingName))
 				{
 					//Process as scene binding
 					assert(isSceneSet);
-
 					isPassSet = false;
+
+					//Do nothing at this step, only validate it's a scene set
 				}
 				else if(bindingName == samplerBindingName)
 				{
@@ -578,12 +583,62 @@ void Vulkan::FrameGraphBuilder::PreprocessPasses()
 				{
 					//Process as pass binding
 					assert(isPassSet);
-
 					isSceneSet = false;
 				}
 			}
 
-			std::span<VkDescriptorSetLayoutBinding> bindingSpan = {setBindings.begin() + setSpan.Begin, setBindings.begin() + setSpan.End};
+			std::span<VkDescriptorSetLayoutBinding> bindingSpan = {setBindings.begin()     + setSpan.Begin, setBindings.begin()     + setSpan.End};
+			std::span<std::string>                  nameSpan    = {setBindingNames.begin() + setSpan.Begin, setBindingNames.begin() + setSpan.End};
+			if(isSceneSet)
+			{
+				SceneDescriptorSetType sceneSetType = mSceneDescriptorDatabase->ComputeSetType(bindingSpan, nameSpan);
+				assert(sceneSetType != SceneDescriptorSetType::Unknown);
+
+				Span<uint32_t>& setBindingSpan = sceneDescriptorBindingSetSpans[(uint32_t)sceneSetType];
+				if(setBindingSpan.Begin == setBindingSpan.End)
+				{
+					//Add a new scene descriptor set layout
+					setBindingSpan = {(uint32_t)sceneDescriptorBindings.size(), (uint32_t)(sceneDescriptorBindings.size() + bindingSpan.size())};
+					sceneDescriptorBindings.insert(sceneDescriptorBindings.end(), bindingSpan.begin(), bindingSpan.end());
+
+					//Set VARIABLE_DESCRIPTOR_COUNT flag for bindings with descriptor count of -1
+					sceneDescriptorBindingFlags.resize(sceneDescriptorBindingFlags.size() + bindingSpan.size(), 0);
+					for(uint32_t bindingIndex = setBindingSpan.Begin; bindingIndex < setBindingSpan.End; bindingIndex++)
+					{
+						if(sceneDescriptorBindings[bindingIndex].descriptorCount == (uint32_t)(-1))
+						{
+							sceneDescriptorBindingFlags[bindingIndex] |= VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT;
+						}
+					}
+				}
+				else
+				{
+					//Update the existing scene descriptor set layout
+					assert(bindingSpan.size() == setBindingSpan.End - setBindingSpan.Begin);
+					for(uint32_t bindingIndex = setBindingSpan.Begin; bindingIndex < setBindingSpan.End; bindingIndex++)
+					{
+						setBindings[bindingIndex].stageFlags |= bindingSpan[bindingIndex].stageFlags;
+					}
+				}
+			}
+		}
+	}
+
+	std::vector<SceneDescriptorDatabaseRequest> sceneDatabaseRequests;
+	sceneDatabaseRequests.reserve(sceneDescriptorBindingSetSpans.size());
+	for(uint32_t setSpanIndex = 0; setSpanIndex < (uint32_t)sceneDescriptorBindingSetSpans.size(); setSpanIndex++)
+	{
+		Span<uint32_t> sceneSetSpan = sceneDescriptorBindingSetSpans[setSpanIndex];
+		if(sceneSetSpan.Begin != sceneSetSpan.End)
+		{
+			std::span<VkDescriptorSetLayoutBinding> bindingSpan = {sceneDescriptorBindings.begin()     + sceneSetSpan.Begin, sceneDescriptorBindings.begin()     + sceneSetSpan.End};
+			std::span<VkDescriptorBindingFlags>     flagSpan    = {sceneDescriptorBindingFlags.begin() + sceneSetSpan.Begin, sceneDescriptorBindingFlags.begin() + sceneSetSpan.End};
+
+			sceneDatabaseRequests.push_back(SceneDescriptorDatabaseRequest
+			{
+				.SetLayout = CreateDescriptorSetLayout(bindingSpan, flagSpan),
+				.SetType   = (SceneDescriptorSetType)(setSpanIndex)
+			});
 		}
 	}
 }
@@ -881,23 +936,13 @@ VkImageView Vulkan::FrameGraphBuilder::CreateImageView(VkImage image, uint32_t s
 	return imageView;
 }
 
-VkDescriptorSetLayout Vulkan::FrameGraphBuilder::CreateDescriptorSetLayout(std::span<VkDescriptorSetLayoutBinding> bindings)
+VkDescriptorSetLayout Vulkan::FrameGraphBuilder::CreateDescriptorSetLayout(std::span<VkDescriptorSetLayoutBinding> bindings, std::span<VkDescriptorBindingFlags> bindingFlags)
 {
-	std::vector<VkDescriptorBindingFlags> setFlags(bindings.size(), 0);
-	for(size_t bindingIndex = 0; bindingIndex < bindings.size(); bindingIndex++)
-	{
-		const VkDescriptorSetLayoutBinding& binding = bindings[bindingIndex];
-		if(binding.descriptorCount == (uint32_t)(-1))
-		{
-			setFlags[bindingIndex] |= VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT;
-		}
-	}
-
 	vgs::StructureChainBlob<VkDescriptorSetLayoutCreateInfo> descriptorSetLayoutCreateInfoChain;
 	descriptorSetLayoutCreateInfoChain.AppendToChain(VkDescriptorSetLayoutBindingFlagsCreateInfo
 	{
-		.bindingCount  = (uint32_t)setFlags.size(),
-		.pBindingFlags = setFlags.data()
+		.bindingCount  = (uint32_t)bindingFlags.size(),
+		.pBindingFlags = bindingFlags.data()
 	});
 	
 	VkDescriptorSetLayoutCreateInfo& setLayoutCreateInfo = descriptorSetLayoutCreateInfoChain.GetChainHead();

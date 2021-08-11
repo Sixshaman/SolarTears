@@ -19,6 +19,7 @@ namespace Vulkan
 	class RenderableScene;
 	class DeviceParameters;
 	class DescriptorManager;
+	class SceneDescriptorDatabase;
 
 	using RenderPassCreateFunc = std::unique_ptr<RenderPass>(*)(VkDevice, const FrameGraphBuilder*, const std::string&, uint32_t);
 	using RenderPassAddFunc    = void(*)(FrameGraphBuilder* frameGraphBuilder, const std::string& passName);
@@ -101,7 +102,7 @@ namespace Vulkan
 		VkImageView CreateImageView(VkImage image, uint32_t subresourceInfoIndex) const;
 
 		//Creates a descriptor set layout
-		VkDescriptorSetLayout CreateDescriptorSetLayout(std::span<VkDescriptorSetLayoutBinding> bindings);
+		VkDescriptorSetLayout CreateDescriptorSetLayout(std::span<VkDescriptorSetLayoutBinding> bindings, std::span<VkDescriptorBindingFlags> bindingFlags);
 
 	private:
 		//Load descriptors and update descriptor databases
@@ -181,6 +182,7 @@ namespace Vulkan
 		const DeviceParameters*     mDeviceParameters;
 		const ShaderManager*        mShaderManager;
 		const MemoryManager*        mMemoryManager;
+		SceneDescriptorDatabase*    mSceneDescriptorDatabase;
 	};
 }
 

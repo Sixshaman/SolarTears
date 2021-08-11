@@ -48,13 +48,10 @@ void Vulkan::VulkanUtils::LoadShaderModuleFromFile(const std::wstring_view filen
     fin.seekg(0, std::ios::beg);
 
     size_t fileLength = end - beg;
-    std::vector<char> fileContents(fileLength);
-    fin.read(fileContents.data(), fileLength);
+    dataBlob.resize((size_t)ceilf((float)fileLength / (float)sizeof(uint32_t)));
+    fin.read(reinterpret_cast<char*>(dataBlob.data()), fileLength);
 
     fin.close();
-
-    dataBlob.resize((size_t)ceilf((float)fileLength / (float)sizeof(uint32_t)));
-    memcpy(dataBlob.data(), fileContents.data(), fileLength);
 }
 
 void Vulkan::VulkanUtils::SetDebugObjectName(const VkDevice device, VkImage image, const std::string_view name)
