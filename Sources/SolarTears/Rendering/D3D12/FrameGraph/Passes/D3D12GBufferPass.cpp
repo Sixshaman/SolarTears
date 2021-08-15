@@ -136,7 +136,7 @@ void D3D12::GBufferPass::ValidateSceneDescriptors(const DescriptorCreator* descr
 	mSceneMaterialsTable     = descriptorCreator->GetMaterialDataDescriptorTableStart();
 	mSceneStaticObjectsTable = descriptorCreator->GetStaticObjectDataDescriptorTableStart();
 
-	for(size_t frameIndex = 0; frameIndex < Utils::InFlightFrameCount; frameIndex++)
+	for(uint32_t frameIndex = 0; frameIndex < Utils::InFlightFrameCount; frameIndex++)
 	{
 		mSceneRigidObjectsTable[frameIndex] = descriptorCreator->GetDynamicObjectDataDescriptorTableStart(frameIndex);
 	}

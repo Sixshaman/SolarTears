@@ -20,8 +20,7 @@ namespace Vulkan
 	class DeviceQueues;
 	class RenderableScene;
 	class FrameGraph;
-	class ShaderManager;
-	class DescriptorManager;
+	class SceneDescriptorDatabase;
 
 	class Renderer: public ::Renderer
 	{
@@ -66,14 +65,13 @@ namespace Vulkan
 		
 		std::unique_ptr<FunctionsLibrary> mDynamicLibrary;
 
-		std::unique_ptr<ShaderManager>     mShaderManager;
-		std::unique_ptr<DescriptorManager> mDescriptorManager;
-
 		std::unique_ptr<SwapChain>            mSwapChain;
 		std::unique_ptr<DeviceQueues>         mDeviceQueues;
 		std::unique_ptr<WorkerCommandBuffers> mCommandBuffers;
 
 		std::unique_ptr<MemoryManager> mMemoryAllocator;
+
+		std::unique_ptr<SceneDescriptorDatabase> mSceneDescriptorDatabase;
 
 #if (defined(DEBUG) || defined(_DEBUG)) && defined(VK_EXT_debug_utils)
 		VkDebugUtilsMessengerEXT mDebugMessenger;

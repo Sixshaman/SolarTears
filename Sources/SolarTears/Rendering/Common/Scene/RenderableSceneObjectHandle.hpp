@@ -20,22 +20,21 @@ class RenderableSceneObjectHandleGeneral
 	static constexpr int InternalObjectTypeOffset  = sizeof(InternalIdType) * CHAR_BIT - BitsPerObjectType;
 	static constexpr int InternalBufferIndexOffset = sizeof(InternalIdType) * CHAR_BIT - BitsPerObjectType - BitsPerBufferIndex;
 
-	static constexpr InternalIdType ObjectTypeMask  = ((1 << BitsPerObjectType) - 1) << InternalObjectTypeOffset;
-	static constexpr InternalIdType BufferIndexMask = ((1 << BitsPerObjectType) - 1) << InternalBufferIndexOffset;
+	static constexpr InternalIdType ObjectTypeMask  = (InternalIdType)(((1 << BitsPerObjectType) - 1) << InternalObjectTypeOffset);
+	static constexpr InternalIdType BufferIndexMask = (InternalIdType)(((1 << BitsPerObjectType) - 1) << InternalBufferIndexOffset);
 
 
 	static_assert(std::numeric_limits<InternalIdType>::is_integer);
 	static_assert((uint8_t)SceneObjectType::Count < (1 << BitsPerObjectType));
 
 public:
+	constexpr RenderableSceneObjectHandleGeneral(): RenderableSceneObjectHandleGeneral((uint32_t)BufferIndexMask, SceneObjectType::Undefined)
+	{
+	}
+
 	constexpr RenderableSceneObjectHandleGeneral(uint32_t objectBufferIndex, SceneObjectType objectType): Id(((InternalIdType)objectType << InternalObjectTypeOffset) | objectBufferIndex)
 	{
 		assert(objectBufferIndex < (1 << BitsPerBufferIndex));
-	}
-
-	static constexpr RenderableSceneObjectHandleGeneral InvalidHandle()
-	{
-		return RenderableSceneObjectHandle((uint32_t)BufferIndexMask, SceneObjectType::Undefined);
 	}
 
 	constexpr bool IsValid() const

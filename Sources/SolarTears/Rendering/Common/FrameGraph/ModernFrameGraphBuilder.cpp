@@ -458,8 +458,6 @@ void ModernFrameGraphBuilder::CalculatePassPeriods()
 
 void ModernFrameGraphBuilder::BuildPassObjects()
 {
-	PreprocessPasses();
-
 	for(const std::string& passName: mSortedRenderPassNames)
 	{
 		RenderPassType passType = mFrameGraphDescription.mRenderPassTypes[passName];

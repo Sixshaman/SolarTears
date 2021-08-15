@@ -57,17 +57,17 @@ void D3D12::DescriptorCreator::RequestDescriptors()
 
 	if(mTextureTableRequestState != DescriptorRequestState::NotRequested)
 	{
-		mSceneDescriptorsCount += mSceneToMakeDescriptors->mSceneTextures.size();
+		mSceneDescriptorsCount += (UINT)mSceneToMakeDescriptors->mSceneTextures.size();
 	}
 
 	if(mMaterialDataTableRequestState != DescriptorRequestState::NotRequested)
 	{
-		mSceneDescriptorsCount += mSceneToMakeDescriptors->mMaterialDataSize / mSceneToMakeDescriptors->mMaterialChunkDataSize;
+		mSceneDescriptorsCount += (UINT)mSceneToMakeDescriptors->mMaterialDataSize / mSceneToMakeDescriptors->mMaterialChunkDataSize;
 	}
 
 	if(mStaticObjectDataTableRequestState != DescriptorRequestState::NotRequested)
 	{
-		mSceneDescriptorsCount += mSceneToMakeDescriptors->mStaticObjectDataSize / mSceneToMakeDescriptors->mObjectChunkDataSize;
+		mSceneDescriptorsCount += (UINT)mSceneToMakeDescriptors->mStaticObjectDataSize / mSceneToMakeDescriptors->mObjectChunkDataSize;
 	}
 
 	if(mFrameDataTableRequestState != DescriptorRequestState::NotRequested)
@@ -77,7 +77,7 @@ void D3D12::DescriptorCreator::RequestDescriptors()
 
 	if(mDynamicObjectDataTableRequestState != DescriptorRequestState::NotRequested)
 	{
-		mSceneDescriptorsCount += mSceneToMakeDescriptors->mCurrFrameDataToUpdate.size() * Utils::InFlightFrameCount;
+		mSceneDescriptorsCount += (UINT)mSceneToMakeDescriptors->mCurrFrameDataToUpdate.size() * Utils::InFlightFrameCount;
 	}
 }
 
@@ -111,7 +111,7 @@ void D3D12::DescriptorCreator::RecreateSceneDescriptors(ID3D12Device* device, D3
 
 	if(mMaterialDataTableRequestState == DescriptorRequestState::NotYetCreated)
 	{
-		uint32_t materialCount = mSceneToMakeDescriptors->mMaterialDataSize / mSceneToMakeDescriptors->mMaterialChunkDataSize;
+		uint32_t materialCount = (uint32_t)(mSceneToMakeDescriptors->mMaterialDataSize / mSceneToMakeDescriptors->mMaterialChunkDataSize);
 
 		mMaterialDataDescriptorTableStart = gpuDescriptorAddress;
 		for(uint32_t materialIndex = 0; materialIndex < materialCount; materialIndex++)
@@ -131,7 +131,7 @@ void D3D12::DescriptorCreator::RecreateSceneDescriptors(ID3D12Device* device, D3
 
 	if(mStaticObjectDataTableRequestState == DescriptorRequestState::NotYetCreated)
 	{
-		uint32_t staticObjectCount = mSceneToMakeDescriptors->mStaticObjectDataSize / mSceneToMakeDescriptors->mObjectChunkDataSize;
+		uint32_t staticObjectCount = (uint32_t)(mSceneToMakeDescriptors->mStaticObjectDataSize / mSceneToMakeDescriptors->mObjectChunkDataSize);
 
 		mStaticObjectDataDescriptorTableStart = gpuDescriptorAddress;
 		for(uint32_t objectDataIndex = 0; objectDataIndex < staticObjectCount; objectDataIndex++)
@@ -173,7 +173,7 @@ void D3D12::DescriptorCreator::RecreateSceneDescriptors(ID3D12Device* device, D3
 		for(uint32_t frameIndex = 0; frameIndex < Utils::InFlightFrameCount; frameIndex++)
 		{
 			mDynamicObjectDataDescriptorTableStart[frameIndex] = gpuDescriptorAddress;
-			for(size_t objectDataIndex = 0; objectDataIndex < mSceneToMakeDescriptors->mCurrFrameDataToUpdate.size(); objectDataIndex++)
+			for(uint32_t objectDataIndex = 0; objectDataIndex < mSceneToMakeDescriptors->mCurrFrameDataToUpdate.size(); objectDataIndex++)
 			{
 				D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc;
 				cbvDesc.BufferLocation = mSceneToMakeDescriptors->mSceneDynamicConstantBuffer->GetGPUVirtualAddress() + mSceneToMakeDescriptors->CalculateRigidObjectDataOffset(frameIndex, objectDataIndex);

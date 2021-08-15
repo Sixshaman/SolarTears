@@ -7,13 +7,14 @@
 #include "../../Common/Scene/ModernRenderableScene.hpp"
 #include "../../Common/RenderingUtils.hpp"
 #include "../../../Core/FrameCounter.hpp"
+#include "../VulkanFunctions.hpp"
 
 namespace Vulkan
 {
 	class RenderableScene: public ModernRenderableScene
 	{
 		friend class RenderableSceneBuilder;
-		friend class SceneDescriptorCreator;
+		friend class SceneDescriptorDatabase;
 
 	public:
 		RenderableScene(const VkDevice device, const DeviceParameters& deviceParameters);

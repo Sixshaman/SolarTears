@@ -324,9 +324,6 @@
     <ClInclude Include="Rendering\Common\Scene\ModernRenderableScene.hpp">
       <Filter>Rendering\Common\Scene</Filter>
     </ClInclude>
-    <ClInclude Include="Rendering\Vulkan\VulkanDescriptorManager.hpp">
-      <Filter>Rendering\Vulkan</Filter>
-    </ClInclude>
     <ClInclude Include="Rendering\Common\RenderingUtils.hpp">
       <Filter>Rendering\Common</Filter>
     </ClInclude>
@@ -356,9 +353,6 @@
     </ClInclude>
     <ClInclude Include="Rendering\D3D12\D3D12WorkerCommandLists.hpp">
       <Filter>Rendering\D3D12</Filter>
-    </ClInclude>
-    <ClInclude Include="Rendering\Vulkan\Scene\VulkanSceneDescriptorCreator.hpp">
-      <Filter>Rendering\Vulkan\Scene</Filter>
     </ClInclude>
     <ClInclude Include="Core\DataStructures\CompileTimeChrono.hpp">
       <Filter>Core\DataStructures</Filter>
@@ -404,6 +398,12 @@
     </ClInclude>
     <ClInclude Include="Rendering\Vulkan\Scene\VulkanSceneDescriptorDatabase.hpp">
       <Filter>Rendering\Vulkan\Scene</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Vulkan\FrameGraph\VulkanPassDescriptorDatabase.hpp">
+      <Filter>Rendering\Vulkan\FrameGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="Rendering\Vulkan\VulkanSamplerDescriptorDatabase.hpp">
+      <Filter>Rendering\Vulkan</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -584,17 +584,11 @@
     <ClCompile Include="Rendering\Common\Scene\ModernRenderableScene.cpp">
       <Filter>Rendering\Common\Scene</Filter>
     </ClCompile>
-    <ClCompile Include="Rendering\Vulkan\VulkanDescriptorManager.cpp">
-      <Filter>Rendering\Vulkan</Filter>
-    </ClCompile>
     <ClCompile Include="Rendering\Common\RenderingUtils.cpp">
       <Filter>Rendering\Common</Filter>
     </ClCompile>
     <ClCompile Include="Rendering\Common\Scene\ModernRenderableSceneBuilder.cpp">
       <Filter>Rendering\Common\Scene</Filter>
-    </ClCompile>
-    <ClCompile Include="Rendering\Vulkan\Scene\VulkanSceneDescriptorCreator.cpp">
-      <Filter>Rendering\Vulkan\Scene</Filter>
     </ClCompile>
     <ClCompile Include="Rendering\Common\FrameGraph\ModernFrameGraphBuilder.cpp">
       <Filter>Rendering\Common\FrameGraph</Filter>
@@ -640,6 +634,12 @@
     </ClCompile>
     <ClCompile Include="Rendering\Vulkan\Scene\VulkanSceneDescriptorDatabase.cpp">
       <Filter>Rendering\Vulkan\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Vulkan\FrameGraph\VulkanPassDescriptorDatabase.cpp">
+      <Filter>Rendering\Vulkan\FrameGraph</Filter>
+    </ClCompile>
+    <ClCompile Include="Rendering\Vulkan\VulkanSamplerDescriptorDatabase.cpp">
+      <Filter>Rendering\Vulkan</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

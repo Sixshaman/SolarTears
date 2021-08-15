@@ -110,8 +110,7 @@ void ModernRenderableScene::UpdateRigidSceneObjects(const std::span<ObjectDataUp
 	std::swap(mPrevFrameRigidMeshUpdates, mNextFrameRigidMeshUpdates);
 
 	uint32_t frameResourceIndex = frameNumber % Utils::InFlightFrameCount;
-
-	for(auto updateIndex = 0; updateIndex < currFrameUpdateIndex; updateIndex++)
+	for(uint32_t updateIndex = 0; updateIndex < currFrameUpdateIndex; updateIndex++)
 	{
 		uint32_t meshIndex = mCurrFrameRigidMeshUpdateIndices[updateIndex];
 

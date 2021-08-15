@@ -5,7 +5,6 @@
 #include <unordered_map>
 #include <memory>
 #include <array>
-#include "../VulkanShaders.hpp"
 #include "../../../Core/DataStructures/Span.hpp"
 #include "../../Common/FrameGraph/ModernFrameGraphBuilder.hpp"
 #include "../../Vulkan/Scene/VulkanSceneDescriptorDatabase.hpp"
@@ -18,11 +17,26 @@ namespace Vulkan
 	class InstanceParameters;
 	class RenderableScene;
 	class DeviceParameters;
-	class DescriptorManager;
+	class ShaderDatabase;
 	class SceneDescriptorDatabase;
+	class PassDescriptorDatabase;
+	class SamplerDescriptorDatabase;
 
 	using RenderPassCreateFunc = std::unique_ptr<RenderPass>(*)(VkDevice, const FrameGraphBuilder*, const std::string&, uint32_t);
 	using RenderPassAddFunc    = void(*)(FrameGraphBuilder* frameGraphBuilder, const std::string& passName);
+
+	struct FrameGraphBuildInfo
+	{
+		const InstanceParameters*   InstanceParams;
+		const DeviceParameters*     DeviceParams; 
+		const MemoryManager*        MemoryAllocator; 
+		const DeviceQueues*         Queues;
+		const WorkerCommandBuffers* CommandBuffers;
+
+		SceneDescriptorDatabase*   DescriptorDatabaseScene;
+		PassDescriptorDatabase*    DescriptorDatabasePasses;
+		SamplerDescriptorDatabase* DescriptorDatabaseSamplers;
+	};
 
 	class FrameGraphBuilder final: public ModernFrameGraphBuilder
 	{
@@ -36,16 +50,8 @@ namespace Vulkan
 			VkAccessFlags        Access;
 		};
 
-		struct PassDescriptorDatabaseRequest
-		{
-			VkDescriptorSetLayout SetLayout;
-			uint32_t              BindingIndex;
-			uint32_t              RenderPassNameIndex;
-			std::string_view      SubresourceName;
-		};
-
 	public:
-		FrameGraphBuilder(FrameGraph* graphToBuild, FrameGraphDescription&& frameGraphDescription, const SwapChain* swapchain);
+		FrameGraphBuilder(LoggerQueue* logger, FrameGraph* graphToBuild, FrameGraphDescription&& frameGraphDescription, const SwapChain* swapchain);
 		~FrameGraphBuilder();
 
 		void SetPassSubresourceFormat(const std::string_view passName,      const std::string_view subresourceId, VkFormat format);
@@ -55,13 +61,14 @@ namespace Vulkan
 		void SetPassSubresourceStageFlags(const std::string_view passName,  const std::string_view subresourceId, VkPipelineStageFlags stage);
 		void SetPassSubresourceAccessFlags(const std::string_view passName, const std::string_view subresourceId, VkAccessFlags accessFlags);
 
-		void AddPassShader(const std::string_view passName, std::wstring_view shaderModulePath);
-
 		const DeviceParameters*  GetDeviceParameters()  const;
-		const ShaderManager*     GetShaderManager()     const;
-		const DescriptorManager* GetDescriptorManager() const;
 		const DeviceQueues*      GetDeviceQueues()      const;
 		const SwapChain*         GetSwapChain()         const;
+
+		ShaderDatabase*            GetShaderDatabase()            const;
+		SceneDescriptorDatabase*   GetSceneDescriptorDatabase()   const;
+		PassDescriptorDatabase*    GetPassDescriptorDatabase()    const;
+		SamplerDescriptorDatabase* GetSamplerDescriptorDatabase() const;
 
 		VkImage              GetRegisteredResource(const std::string_view passName,    const std::string_view subresourceId, uint32_t frame) const;
 		VkImageView          GetRegisteredSubresource(const std::string_view passName, const std::string_view subresourceId, uint32_t frame) const;
@@ -85,7 +92,7 @@ namespace Vulkan
 		VkImageAspectFlags   GetNextPassSubresourceAspectFlags(const std::string_view passName, const std::string_view subresourceId) const;
 		VkAccessFlags        GetNextPassSubresourceAccessFlags(const std::string_view passName, const std::string_view subresourceId) const;
 
-		void Build(const InstanceParameters* instanceParameters, const DeviceParameters* deviceParameters, const DescriptorManager* descriptorManager, const MemoryManager* memoryManager, const ShaderManager* shaderManager, const DeviceQueues* deviceQueues, WorkerCommandBuffers* workerCommandBuffers);
+		void Build(const FrameGraphBuildInfo& buildInfo);
 
 	private:
 		//Adds a render pass of type Pass to the frame graph pass table
@@ -105,9 +112,6 @@ namespace Vulkan
 		VkDescriptorSetLayout CreateDescriptorSetLayout(std::span<VkDescriptorSetLayoutBinding> bindings, std::span<VkDescriptorBindingFlags> bindingFlags);
 
 	private:
-		//Load descriptors and update descriptor databases
-		void PreprocessPasses() override final;
-
 		//Creates a new subresource info record
 		uint32_t AddSubresourceMetadata() override final;
 
@@ -150,24 +154,10 @@ namespace Vulkan
 	private:
 		FrameGraph* mVulkanGraphToBuild;
 
+		LoggerQueue* mLogger;
+
 		std::unordered_map<RenderPassType, RenderPassAddFunc>    mPassAddFuncTable;
 		std::unordered_map<RenderPassType, RenderPassCreateFunc> mPassCreateFuncTable;
-
-		//Shader database for passes.
-		//We can't load shaders individually for each pass when needed because of a complex problem.
-		//Suppose pass A accesses scene textures in vertex shader and pass B accesses them in fragment shader.
-		//This means the texture descriptor set layout must have VERTEX | FRAGMENT shader flags.
-		//Since we create descriptor set layouts based on reflection data, we have to:
-		//1) Load all possible shaders for passes;
-		//2) Go through the whole reflection data for all shaders and build descriptor set layouts;
-		//3) Create passes only after that, giving them descriptor set layouts.
-		std::unordered_map<std::string_view, Span<uint32_t>> mShaderModulePassSpans;
-		std::vector<spv_reflect::ShaderModule>               mShaderModulesFlat;
-
-		//Descriptor set layout related data
-		std::vector<PassDescriptorDatabaseRequest>  mPassDescriptorDatabaseRequests;
-		std::vector<SceneDescriptorDatabaseRequest> mSceneDescriptorDatabaseRequests;
-		VkDescriptorSetLayout                       mSamplersDescriptorSetLayout;
 
 		std::vector<SubresourceInfo> mSubresourceInfos;
 
@@ -177,12 +167,14 @@ namespace Vulkan
 		const DeviceQueues*         mDeviceQueues;
 		const SwapChain*            mSwapChain;
 		const WorkerCommandBuffers* mWorkerCommandBuffers;
-		const DescriptorManager*    mDescriptorManager;
 		const InstanceParameters*   mInstanceParameters;
 		const DeviceParameters*     mDeviceParameters;
-		const ShaderManager*        mShaderManager;
 		const MemoryManager*        mMemoryManager;
-		SceneDescriptorDatabase*    mSceneDescriptorDatabase;
+
+		std::unique_ptr<ShaderDatabase> mShaderDatabase;
+		SceneDescriptorDatabase*        mSceneDescriptorDatabase;
+		PassDescriptorDatabase*         mPassDescriptorDatabase;
+		SamplerDescriptorDatabase*      mSamplerDescriptorDatabase;
 	};
 }
 

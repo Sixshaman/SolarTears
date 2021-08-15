@@ -3,8 +3,13 @@
 
 SceneDescription::SceneDescription()
 {
-	mSceneObjects.resize((uint32_t)Scene::SpecialSceneObjects::Count);
-
+	mSceneObjects.reserve((uint32_t)Scene::SpecialSceneObjects::Count);	
+	for(uint32_t specialObjectIndex = 0; specialObjectIndex < (uint32_t)Scene::SpecialSceneObjects::Count; specialObjectIndex++)
+	{
+		uint64_t id = mSceneObjects.size();
+		mSceneObjects.emplace_back(SceneDescriptionObject(id));
+	}
+	
 	mSceneCameraComponent = SceneCameraComponent
 	{
 		.VerticalFov = DirectX::XM_PIDIV2,
@@ -37,7 +42,7 @@ void SceneDescription::BuildScene(Scene* scene, BaseRenderableScene* renderableC
 	scene->mSceneObjects.reserve(mSceneObjects.size());
 	for(size_t i = 0; i < mSceneObjects.size(); i++)
 	{
-		RenderableSceneObjectHandle renderableHandle = RenderableSceneObjectHandle::InvalidHandle();
+		RenderableSceneObjectHandle renderableHandle;
 
 		auto renderableIt = meshHandles.find(mSceneObjects[i].GetMeshComponentName());
 		if(renderableIt != meshHandles.end())

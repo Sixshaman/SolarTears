@@ -143,7 +143,7 @@ void D3D12::ShaderManager::BuildRootSignature(ID3D12Device* device, const std::u
 	//Create root signature
 	std::vector<D3D12_ROOT_PARAMETER1>   rootParameters;
 	std::vector<D3D12_DESCRIPTOR_RANGE1> rootDescriptorRanges;
-	for(size_t i = 0; i = shaderInputNames.size(); i++)
+	for(size_t i = 0; i < shaderInputNames.size(); i++)
 	{
 		D3D12_ROOT_PARAMETER1 rootParameter;
 		rootParameter.ParameterType    = shaderInputTypes[i];

@@ -3,7 +3,6 @@
 #include "../VulkanFunctions.hpp"
 #include "../VulkanMemory.hpp"
 #include "../VulkanShaders.hpp"
-#include "../VulkanDescriptorManager.hpp"
 #include "../VulkanDeviceQueues.hpp"
 #include "../VulkanWorkerCommandBuffers.hpp"
 #include "../../Common/RenderingUtils.hpp"

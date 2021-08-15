@@ -2,7 +2,9 @@
 
 #include <vulkan/vulkan.h>
 #include <span>
+#include <array>
 #include <unordered_set>
+#include "../../../Core/DataStructures/Span.hpp"
 
 namespace Vulkan
 {
@@ -21,34 +23,41 @@ namespace Vulkan
 		Unknown = Count
 	};
 
-	//The request to add a descriptor set layout to the database of scene descriptors
-	struct SceneDescriptorDatabaseRequest
-	{
-		VkDescriptorSetLayout  SetLayout;
-		SceneDescriptorSetType SetType;
-	};
-
 	class SceneDescriptorDatabase
 	{
+		struct DatabaseEntry
+		{
+			VkDescriptorSetLayout DescriptorSetLayout;
+			Span<uint32_t>        AllocatedSetSpan;
+			VkShaderStageFlags    ShaderStageFlags;
+		};
+
 	public:
 		SceneDescriptorDatabase(VkDevice device);
 		~SceneDescriptorDatabase();
 
-		//Check if this binding is related to scene objects
-		bool IsSceneBinding(std::string_view bindingName);
-
+		//Check if this set is of scene objects
 		SceneDescriptorSetType ComputeSetType(std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<std::string> bindingNames);
 
-		void UpdateDatabaseEntries(std::span<SceneDescriptorDatabaseRequest> requests);
+		void ResetRegisteredSets();
+		void RegisterRequiredSet(SceneDescriptorSetType setType, VkShaderStageFlags setShaderFlags);
 
 		void RecreateDescriptorSets(const RenderableScene* sceneToCreateDescriptors);
+		void UpdateDescriptorSets(const RenderableScene* sceneToCreateDescriptors);
 
 	private:
-		void RecreateDescriptorPool();
+		void RecreateSetLayouts();
+		void AllocateSpaceForSets();
+		void RecreateDescriptorPool(const RenderableScene* sceneToCreateDescriptors);
+		void AllocateSets(const RenderableScene* sceneToCreateDescriptors);
 
 	private:
 		VkDevice mDeviceRef;
 
+		std::vector<VkDescriptorSet> mAllocatedSets;
+
 		VkDescriptorPool mDescriptorPool; //оскъ деяйпхорнпнб! оюс! оскъ деяйпхорнпнб! оскъ деяйпхорнпнб! оюс, оюс, оюс! оскъ деяйпхорнпнб!
+
+		std::array<DatabaseEntry, (size_t)SceneDescriptorSetType::Count> mEntriesPerType;
 	};
 }

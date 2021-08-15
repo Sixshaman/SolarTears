@@ -118,36 +118,36 @@ void BaseRenderableSceneBuilder::SortMeshesBySubmeshGeometry(std::vector<NamedSc
 	{
 		meshRanges.clear();
 
-		auto currentRangeStart = inoutSceneMeshes.begin();
-		auto currentRangeEnd   = inoutSceneMeshes.end();
+		auto rangeStart = inoutSceneMeshes.begin();
+		auto rangeEnd   = inoutSceneMeshes.end();
 
-		size_t           currentSubmeshCount = 0;
-		std::string_view currentGeometryName = "";
+		size_t           submeshCount = 0;
+		std::string_view geometryName = "";
 		for(auto meshIt = inoutSceneMeshes.begin(); meshIt != inoutSceneMeshes.end(); ++meshIt)
 		{
 			//Meshes are sorted, all further meshes won't have groupSubmeshCount submeshes
 			if(meshIt->MeshData.Submeshes.size() < geometrySortIndex + 1)
 			{
-				currentRangeEnd = meshIt;
+				rangeEnd = meshIt;
 				break;
 			}
 
-			if(meshIt->MeshData.Submeshes.size() != currentSubmeshCount || meshIt->MeshData.Submeshes[geometrySortIndex].GeometryName != currentGeometryName)
+			if(meshIt->MeshData.Submeshes.size() != submeshCount || meshIt->MeshData.Submeshes[geometrySortIndex].GeometryName != geometryName)
 			{
-				if(std::distance(currentRangeStart, meshIt) > 1) //No point to sort single-element ranges
+				if(std::distance(rangeStart, meshIt) > 1) //No point to sort single-element ranges
 				{
-					meshRanges.push_back({currentRangeStart, meshIt});
+					meshRanges.push_back({ rangeStart, meshIt});
 				}
 
-				currentRangeStart   = meshIt;
-				currentSubmeshCount = meshIt->MeshData.Submeshes.size();
-				currentGeometryName = meshIt->MeshData.Submeshes[geometrySortIndex].GeometryName;
+				rangeStart   = meshIt;
+				submeshCount = meshIt->MeshData.Submeshes.size();
+				geometryName = meshIt->MeshData.Submeshes[geometrySortIndex].GeometryName;
 			}
 		}
 
-		if(std::distance(currentRangeStart, currentRangeEnd) > 1)
+		if(std::distance(rangeStart, rangeEnd) > 1)
 		{
-			meshRanges.push_back({currentRangeStart, currentRangeEnd});
+			meshRanges.push_back({rangeStart, rangeEnd });
 		}
 
 		//Sort each range by ith geometry name
@@ -297,7 +297,7 @@ void BaseRenderableSceneBuilder::FillMeshLists(const std::vector<std::span<const
 		std::span<const NamedSceneMeshData> instanceSpan = sortedInstanceSpans[meshIndex];
 		const RenderableSceneMeshData& representativeMeshData = instanceSpan.front().MeshData;
 
-		uint32_t instanceCount   = instanceSpan.size();
+		uint32_t instanceCount   = (uint32_t)instanceSpan.size();
 		bool     isSpanNonStatic = !(representativeMeshData.MeshFlags & (uint32_t)RenderableSceneMeshFlags::NonStatic);
 		
 		if(instanceCount != prevInstanceCount || isSpanNonStatic != prevSpanNonStatic)

@@ -37,7 +37,7 @@ void Vulkan::VulkanUtils::LoadShaderModuleFromFile(const std::wstring_view filen
     std::ifstream fin(filename.data(), std::ios::binary); //Открываем файл
     if(!fin)
     {
-        logger->PostLogMessage(L"Cannot read shader file " + filename + L"!\n");
+        logger->PostLogMessage(L"Cannot read shader file " + std::wstring(filename) + L"!\n");
         return;
     }
 

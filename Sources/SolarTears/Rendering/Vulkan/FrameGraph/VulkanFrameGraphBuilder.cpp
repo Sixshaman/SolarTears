@@ -7,6 +7,7 @@
 #include "../VulkanMemory.hpp"
 #include "../VulkanSwapChain.hpp"
 #include "../VulkanDeviceQueues.hpp"
+#include "../VulkanShaders.hpp"
 #include <VulkanGenericStructures.h>
 #include <algorithm>
 #include <numeric>
@@ -14,11 +15,9 @@
 #include "Passes/VulkanGBufferPass.hpp"
 #include "Passes/VulkanCopyImagePass.hpp"
 
-Vulkan::FrameGraphBuilder::FrameGraphBuilder(FrameGraph* graphToBuild, FrameGraphDescription&& frameGraphDescription, const SwapChain* swapchain): ModernFrameGraphBuilder(graphToBuild, std::move(frameGraphDescription)), mVulkanGraphToBuild(graphToBuild), mSwapChain(swapchain)
+Vulkan::FrameGraphBuilder::FrameGraphBuilder(LoggerQueue* logger, FrameGraph* graphToBuild, FrameGraphDescription&& frameGraphDescription, const SwapChain* swapchain): ModernFrameGraphBuilder(graphToBuild, std::move(frameGraphDescription)), mLogger(logger), mVulkanGraphToBuild(graphToBuild), mSwapChain(swapchain)
 {
 	mImageViewCount = 0;
-
-	mSamplersDescriptorSetLayout = VK_NULL_HANDLE;
 
 	InitPassTable();
 }
@@ -81,29 +80,6 @@ void Vulkan::FrameGraphBuilder::SetPassSubresourceAccessFlags(const std::string_
 	mSubresourceInfos[subresourceInfoIndex].Access = accessFlags;
 }
 
-void Vulkan::FrameGraphBuilder::AddPassShader(const std::string_view passName, std::wstring_view shaderModulePath)
-{
-	auto passShadersIt = mShaderModulePassSpans.find(passName);
-	if(passShadersIt != mShaderModulePassSpans.end())
-	{
-		//Make sure we can't interleave shaders for passes
-		assert(passShadersIt->second.End == (uint32_t)mShaderModulesFlat.size());
-
-		mShaderModulePassSpans[passName].End++;
-	}
-	else
-	{
-		mShaderModulePassSpans[passName] = {.Begin = (uint32_t)mShaderModulesFlat.size(), .End = (uint32_t)mShaderModulesFlat.size() + 1};
-	}
-
-	mShaderModulesFlat.emplace_back(mShaderManager->LoadShaderBlob(shaderModulePath));
-}
-
-const Vulkan::DescriptorManager* Vulkan::FrameGraphBuilder::GetDescriptorManager() const
-{
-	return mDescriptorManager;
-}
-
 const Vulkan::DeviceQueues* Vulkan::FrameGraphBuilder::GetDeviceQueues() const
 {
 	return mDeviceQueues;
@@ -119,9 +95,24 @@ const Vulkan::DeviceParameters* Vulkan::FrameGraphBuilder::GetDeviceParameters()
 	return mDeviceParameters;
 }
 
-const Vulkan::ShaderManager* Vulkan::FrameGraphBuilder::GetShaderManager() const
+Vulkan::ShaderDatabase* Vulkan::FrameGraphBuilder::GetShaderDatabase() const
 {
-	return mShaderManager;
+	return mShaderDatabase.get();
+}
+
+Vulkan::SceneDescriptorDatabase* Vulkan::FrameGraphBuilder::GetSceneDescriptorDatabase() const
+{
+	return mSceneDescriptorDatabase;
+}
+
+Vulkan::PassDescriptorDatabase* Vulkan::FrameGraphBuilder::GetPassDescriptorDatabase() const
+{
+	return mPassDescriptorDatabase;
+}
+
+Vulkan::SamplerDescriptorDatabase* Vulkan::FrameGraphBuilder::GetSamplerDescriptorDatabase() const
+{
+	return mSamplerDescriptorDatabase;
 }
 
 VkImage Vulkan::FrameGraphBuilder::GetRegisteredResource(const std::string_view passName, const std::string_view subresourceId, uint32_t frame) const
@@ -318,15 +309,18 @@ VkAccessFlags Vulkan::FrameGraphBuilder::GetNextPassSubresourceAccessFlags(const
 	return mSubresourceInfos[subresourceInfoIndex].Access;
 }
 
-void Vulkan::FrameGraphBuilder::Build(const InstanceParameters* instanceParameters, const DeviceParameters* deviceParameters, const DescriptorManager* descriptorManager, const MemoryManager* memoryManager, const ShaderManager* shaderManager, const DeviceQueues* deviceQueues, WorkerCommandBuffers* workerCommandBuffers)
+void Vulkan::FrameGraphBuilder::Build(const FrameGraphBuildInfo& buildInfo)
 {
-	mInstanceParameters   = instanceParameters;
-	mDeviceParameters     = deviceParameters;
-	mDescriptorManager    = descriptorManager;
-	mMemoryManager        = memoryManager;
-	mShaderManager        = shaderManager;
-	mDeviceQueues         = deviceQueues;
-	mWorkerCommandBuffers = workerCommandBuffers;
+	mInstanceParameters   = buildInfo.InstanceParams;
+	mDeviceParameters     = buildInfo.DeviceParams;
+	mMemoryManager        = buildInfo.MemoryAllocator;
+	mDeviceQueues         = buildInfo.Queues;
+	mWorkerCommandBuffers = buildInfo.CommandBuffers;
+
+	mShaderDatabase            = std::make_unique<ShaderDatabase>(mLogger);
+	mSceneDescriptorDatabase   = buildInfo.DescriptorDatabaseScene;
+	mPassDescriptorDatabase    = buildInfo.DescriptorDatabasePasses;
+	mSamplerDescriptorDatabase = buildInfo.DescriptorDatabaseSamplers;
 
 	ModernFrameGraphBuilder::Build();
 }
@@ -507,140 +501,6 @@ void Vulkan::FrameGraphBuilder::CreateTextures(const std::vector<TextureResource
 	mDeviceQueues->GraphicsQueueSubmit(graphicsCommandBuffer);
 
 	mDeviceQueues->GraphicsQueueWait(); //TODO: may wait after build finished
-}
-
-void Vulkan::FrameGraphBuilder::PreprocessPasses()
-{
-	static const std::string_view samplerBindingName = "Samplers";
-
-	VkDescriptorSetLayoutBinding samplerBinding;
-	samplerBinding.binding            = 0;
-	samplerBinding.descriptorType     = VK_DESCRIPTOR_TYPE_SAMPLER;
-	samplerBinding.descriptorCount    = 0;
-	samplerBinding.stageFlags         = 0;
-	samplerBinding.pImmutableSamplers = nullptr;
-
-	std::vector<VkDescriptorSetLayoutBinding> sceneDescriptorBindings;
-	std::vector<VkDescriptorBindingFlags>     sceneDescriptorBindingFlags;
-	std::vector<Span<uint32_t>>               sceneDescriptorBindingSetSpans((uint32_t)SceneDescriptorSetType::Count, {.Begin = 0, .End = 0});
-
-	for(size_t passNameIndex = 0; passNameIndex = mSortedRenderPassNames.size(); passNameIndex++)
-	{
-		const FrameGraphDescription::RenderPassName& renderPassName = mSortedRenderPassNames[passNameIndex];
-		Span<uint32_t> passSpan = mShaderModulePassSpans[renderPassName];
-
-		std::span<spv_reflect::ShaderModule> shaderModuleSpan = {mShaderModulesFlat.begin() + passSpan.Begin, mShaderModulesFlat.begin() + passSpan.End};
-		const auto& metadataMap = mRenderPassesSubresourceMetadatas.at(renderPassName);
-
-		std::vector<VkDescriptorSetLayoutBinding> setBindings;
-		std::vector<std::string>                  setBindingNames;
-		std::vector<Span<uint32_t>>               setSpans;
-		mShaderManager->FindBindings(shaderModuleSpan, setBindings, setBindingNames, setSpans);
-
-		//Validate bindings
-		for(Span<uint32_t> setSpan: setSpans)
-		{
-			bool isSceneSet = true;
-			bool isPassSet  = true;
-
-			for(uint32_t bindingIndex = setSpan.Begin; bindingIndex < setSpan.End; bindingIndex++)
-			{
-				const std::string&                  bindingName = setBindingNames[bindingIndex];
-				const VkDescriptorSetLayoutBinding& setBinding  = setBindings[bindingIndex];
-
-				if(mSceneDescriptorDatabase->IsSceneBinding(bindingName))
-				{
-					//Process as scene binding
-					assert(isSceneSet);
-					isPassSet = false;
-
-					//Do nothing at this step, only validate it's a scene set
-				}
-				else if(bindingName == samplerBindingName)
-				{
-					//Process as sampler binding
-					assert(setSpan.End == setSpan.Begin); //Only 1 binding in this set is allowed
-					isSceneSet = false;
-					isPassSet  = false;
-
-					assert(setBinding.binding        == 0);
-					assert(setBinding.descriptorType == VK_DESCRIPTOR_TYPE_SAMPLER);
-
-					if(samplerBinding.pImmutableSamplers == nullptr)
-					{
-						samplerBinding.descriptorCount    = setBinding.descriptorCount;
-						samplerBinding.pImmutableSamplers = setBinding.pImmutableSamplers;
-					}
-					else
-					{
-						assert(samplerBinding.descriptorCount    == setBinding.descriptorCount);
-						assert(samplerBinding.pImmutableSamplers == setBinding.pImmutableSamplers);
-					}
-
-					samplerBinding.stageFlags |= setBinding.stageFlags;
-				}
-				else if(metadataMap.contains(bindingName))
-				{
-					//Process as pass binding
-					assert(isPassSet);
-					isSceneSet = false;
-				}
-			}
-
-			std::span<VkDescriptorSetLayoutBinding> bindingSpan = {setBindings.begin()     + setSpan.Begin, setBindings.begin()     + setSpan.End};
-			std::span<std::string>                  nameSpan    = {setBindingNames.begin() + setSpan.Begin, setBindingNames.begin() + setSpan.End};
-			if(isSceneSet)
-			{
-				SceneDescriptorSetType sceneSetType = mSceneDescriptorDatabase->ComputeSetType(bindingSpan, nameSpan);
-				assert(sceneSetType != SceneDescriptorSetType::Unknown);
-
-				Span<uint32_t>& setBindingSpan = sceneDescriptorBindingSetSpans[(uint32_t)sceneSetType];
-				if(setBindingSpan.Begin == setBindingSpan.End)
-				{
-					//Add a new scene descriptor set layout
-					setBindingSpan = {(uint32_t)sceneDescriptorBindings.size(), (uint32_t)(sceneDescriptorBindings.size() + bindingSpan.size())};
-					sceneDescriptorBindings.insert(sceneDescriptorBindings.end(), bindingSpan.begin(), bindingSpan.end());
-
-					//Set VARIABLE_DESCRIPTOR_COUNT flag for bindings with descriptor count of -1
-					sceneDescriptorBindingFlags.resize(sceneDescriptorBindingFlags.size() + bindingSpan.size(), 0);
-					for(uint32_t bindingIndex = setBindingSpan.Begin; bindingIndex < setBindingSpan.End; bindingIndex++)
-					{
-						if(sceneDescriptorBindings[bindingIndex].descriptorCount == (uint32_t)(-1))
-						{
-							sceneDescriptorBindingFlags[bindingIndex] |= VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT;
-						}
-					}
-				}
-				else
-				{
-					//Update the existing scene descriptor set layout
-					assert(bindingSpan.size() == setBindingSpan.End - setBindingSpan.Begin);
-					for(uint32_t bindingIndex = setBindingSpan.Begin; bindingIndex < setBindingSpan.End; bindingIndex++)
-					{
-						setBindings[bindingIndex].stageFlags |= bindingSpan[bindingIndex].stageFlags;
-					}
-				}
-			}
-		}
-	}
-
-	std::vector<SceneDescriptorDatabaseRequest> sceneDatabaseRequests;
-	sceneDatabaseRequests.reserve(sceneDescriptorBindingSetSpans.size());
-	for(uint32_t setSpanIndex = 0; setSpanIndex < (uint32_t)sceneDescriptorBindingSetSpans.size(); setSpanIndex++)
-	{
-		Span<uint32_t> sceneSetSpan = sceneDescriptorBindingSetSpans[setSpanIndex];
-		if(sceneSetSpan.Begin != sceneSetSpan.End)
-		{
-			std::span<VkDescriptorSetLayoutBinding> bindingSpan = {sceneDescriptorBindings.begin()     + sceneSetSpan.Begin, sceneDescriptorBindings.begin()     + sceneSetSpan.End};
-			std::span<VkDescriptorBindingFlags>     flagSpan    = {sceneDescriptorBindingFlags.begin() + sceneSetSpan.Begin, sceneDescriptorBindingFlags.begin() + sceneSetSpan.End};
-
-			sceneDatabaseRequests.push_back(SceneDescriptorDatabaseRequest
-			{
-				.SetLayout = CreateDescriptorSetLayout(bindingSpan, flagSpan),
-				.SetType   = (SceneDescriptorSetType)(setSpanIndex)
-			});
-		}
-	}
 }
 
 uint32_t Vulkan::FrameGraphBuilder::AddSubresourceMetadata()

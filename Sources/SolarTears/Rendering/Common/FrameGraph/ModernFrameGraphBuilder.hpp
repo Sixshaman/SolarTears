@@ -137,9 +137,6 @@ protected:
 	const Span<uint32_t> GetBackbufferImageSpan() const;
 
 protected:
-	//For any type of pre-processing needed before creating passes
-	virtual void PreprocessPasses() {}
-
 	//Creates a new subresource info record
 	virtual uint32_t AddSubresourceMetadata() = 0;
 

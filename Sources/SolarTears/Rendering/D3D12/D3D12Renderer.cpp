@@ -34,7 +34,7 @@ D3D12::Renderer::Renderer(LoggerQueue* loggerQueue, FrameCounter* frameCounter, 
 	mWorkerCommandLists = std::make_unique<WorkerCommandLists>(mDevice.get(), threadPool->GetWorkerThreadCount());
 
 	mMemoryAllocator   = std::make_unique<MemoryManager>(mLoggingBoard);
-	mShaderManager     = std::make_unique<ShaderManager>(mLoggingBoard, mDevice.get());
+	mShaderManager     = std::make_unique<ShaderManager>(mLoggingBoard);
 	mDescriptorManager = std::make_unique<SrvDescriptorManager>();
 
 	mFrameGraphicsFenceValues.fill(0);
@@ -60,7 +60,7 @@ BaseRenderableScene* D3D12::Renderer::InitScene(const RenderableSceneDescription
 {
 	mDeviceQueues->AllQueuesWaitStrong();
 
-	mScene = std::make_unique<D3D12::RenderableScene>(mFrameCounterRef);
+	mScene = std::make_unique<D3D12::RenderableScene>();
 	D3D12::RenderableSceneBuilder sceneBuilder(mDevice.get(), mScene.get(), mMemoryAllocator.get(), mDeviceQueues.get(), mWorkerCommandLists.get());
 
 	sceneBuilder.Build(sceneDescription, sceneMeshInitialLocations, outObjectHandles);
