@@ -16,25 +16,61 @@ Vulkan::ShaderDatabase::~ShaderDatabase()
 {
 }
 
-void Vulkan::ShaderDatabase::LoadShader(const std::wstring& path)
+void Vulkan::ShaderDatabase::RegisterShaderGroup(const std::string& passName, const std::string& groupName, std::span<std::wstring> shaderPaths, ShaderGroupRegisterFlags groupRegisterFlags)
 {
-	if(mLoadedShaderModules.contains(path))
+	for(const std::wstring& shaderPath: shaderPaths)
 	{
-		return;
+		if(!mShaderModuleIndices.contains(shaderPath))
+		{
+			std::vector<uint32_t> shaderData;
+			VulkanUtils::LoadShaderModuleFromFile(shaderPath, shaderData, mLogger);
+
+			mLoadedShaderModules.emplace_back(spv_reflect::ShaderModule(shaderData));
+			mShaderModuleIndices[shaderPath] = mLoadedShaderModules.size() - 1;
+		}
+
+		//This pass contains either scene or sampler bindings, no individual pass bindings
+		SamplerDescriptorDatabase* samplerDescriptorDatabase = frameGraphBuilder->GetSamplerDescriptorDatabase();
+		SceneDescriptorDatabase*   sceneDescriptorDatabase   = frameGraphBuilder->GetSceneDescriptorDatabase();
+		PassDescriptorDatabase*    passDescriptorDatabase    = frameGraphBuilder->GetPassDescriptorDatabase();
+
+		std::vector<VkDescriptorSetLayoutBinding>            setBindings;
+		std::vector<std::string>                             setBindingNames;
+		std::vector<TypedSpan<uint32_t, VkShaderStageFlags>> setSpans;
+		FindBindings(shaderPaths, setBindings, setBindingNames, setSpans);
+
+		for(TypedSpan<uint32_t, VkShaderStageFlags> setSpan: setSpans)
+		{
+			std::span<VkDescriptorSetLayoutBinding> bindingSpan = {setBindings.begin()     + setSpan.Begin, setBindings.begin()     + setSpan.End};
+			std::span<std::string>                  nameSpan    = {setBindingNames.begin() + setSpan.Begin, setBindingNames.begin() + setSpan.End};
+			if(samplerDescriptorDatabase->IsSamplerDescriptorSet(bindingSpan, nameSpan))
+			{
+				samplerDescriptorDatabase->RegisterSamplerSet(setSpan.Type);
+			}
+			else
+			{
+				SceneDescriptorSetType sceneSetType = sceneDescriptorDatabase->ComputeSetType(bindingSpan, nameSpan);
+				assert(sceneSetType != SceneDescriptorSetType::Unknown);
+
+				if(sceneSetType != SceneDescriptorSetType::Unknown)
+				{
+					sceneDescriptorDatabase->RegisterRequiredSet(sceneSetType, setSpan.Type);
+				}
+				else
+				{
+					passDescriptorDatabase->RegisterRequiredSet(passName, bindingSpan, nameSpan);
+				}
+			}
+		}
 	}
-
-	std::vector<uint32_t> shaderData;
-	VulkanUtils::LoadShaderModuleFromFile(path, shaderData, mLogger);
-
-	mLoadedShaderModules.emplace(std::make_pair(path, spv_reflect::ShaderModule(shaderData)));
 }
 
-void Vulkan::ShaderDatabase::GetLoadedShaderInfo(const std::wstring& path, const uint32_t** outShaderData, uint32_t* outShaderSize)
+void Vulkan::ShaderDatabase::GetRegisteredShaderInfo(const std::wstring& path, const uint32_t** outShaderData, uint32_t* outShaderSize) const
 {
 	assert(outShaderData != nullptr);
 	assert(outShaderSize != nullptr);
 
-	spv_reflect::ShaderModule& shaderModule = mLoadedShaderModules.at(path);
+	const spv_reflect::ShaderModule& shaderModule = mLoadedShaderModules.at(path);
 
 	*outShaderData = shaderModule.GetCode();
 	*outShaderSize = shaderModule.GetCodeSize();

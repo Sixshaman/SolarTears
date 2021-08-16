@@ -20,19 +20,24 @@ namespace Vulkan
 	//3) Create passes only after that, giving them descriptor set layouts.
 	//This is all to avoid loading the shaders twice - once to obtain the reflection data, once to create pipelines
 
+	enum class ShaderGroupRegisterFlags: uint32_t
+	{
+		None         = 0x00,
+		DontNeedSets = 0x01 //Don't create new descriptor set layouts for this shader group
+	};
+
 	class ShaderDatabase
 	{
 	public:
 		ShaderDatabase(LoggerQueue* logger);
 		~ShaderDatabase();
 
-		void LoadShader(const std::wstring& path);
+		void RegisterShaderGroup(const std::string& passName, const std::string& groupName, std::span<std::wstring> shaderPaths, ShaderGroupRegisterFlags groupRegisterFlags);
 
-		void GetLoadedShaderInfo(const std::wstring& path, const uint32_t** outShaderData, uint32_t* outShaderSize);
-
-		void FindBindings(const std::span<std::wstring> shaderModuleNames, std::vector<VkDescriptorSetLayoutBinding>& outSetBindings, std::vector<std::string>& outBindingNames, std::vector<TypedSpan<uint32_t, VkShaderStageFlags>>& outBindingSpans) const;
+		void GetRegisteredShaderInfo(const std::wstring& path, const uint32_t** outShaderData, uint32_t* outShaderSize) const;
 
 	private:
+		void FindBindings(const std::span<std::wstring> shaderModuleNames, std::vector<VkDescriptorSetLayoutBinding>& outSetBindings, std::vector<std::string>& outBindingNames, std::vector<TypedSpan<uint32_t, VkShaderStageFlags>>& outBindingSpans) const;
 		void GatherSetBindings(const std::span<std::wstring> shaderModuleNames, std::vector<SpvReflectDescriptorBinding*>& outBindings, std::vector<VkShaderStageFlags>& outBindingStageFlags, std::vector<TypedSpan<uint32_t, VkShaderStageFlags>>& outSetSpans) const;
 
 		VkShaderStageFlagBits SpvToVkShaderStage(SpvReflectShaderStageFlagBits spvShaderStage)  const;
@@ -41,6 +46,7 @@ namespace Vulkan
 	private:
 		LoggerQueue* mLogger;
 
-		std::unordered_map<std::wstring, spv_reflect::ShaderModule> mLoadedShaderModules;
+		std::vector<spv_reflect::ShaderModule>     mLoadedShaderModules;
+		std::unordered_map<std::wstring, uint32_t> mShaderModuleIndices;
 	};
 }

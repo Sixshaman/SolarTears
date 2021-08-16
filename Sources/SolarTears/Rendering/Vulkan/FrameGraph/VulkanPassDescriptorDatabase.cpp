@@ -15,6 +15,20 @@ Vulkan::PassDescriptorDatabase::~PassDescriptorDatabase()
 	}
 }
 
+void Vulkan::PassDescriptorDatabase::RegisterRequiredSet(std::string_view passName, std::span<VkDescriptorSetLayoutBinding> bindingSpan, std::span<std::string> bindingNameSpan)
+{
+	auto passIt = mSetBindingNamesPerPass.find(passName);
+	if(passIt == mSetBindingNamesPerPass.end())
+	{
+		#error "Not implemented"
+	}
+	else
+	{
+		//Compare with one of the registered bindings
+		pass->Validate
+	}
+}
+
 void Vulkan::PassDescriptorDatabase::PostToDatabase(std::span<VkDescriptorSetLayout> descriptorSetLayouts, std::span<PassDatabaseRequest> bindingRequests)
 {
 	size_t firstAddedLayoutIndex = mDescriptorSetLayouts.size();

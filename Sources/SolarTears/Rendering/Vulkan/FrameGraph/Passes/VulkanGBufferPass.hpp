@@ -15,6 +15,15 @@ namespace Vulkan
 
 	class GBufferPass: public RenderPass, public GBufferPassBase
 	{
+		//IDs for shared pipeline layouts 
+		enum class PipelineLayoutType: uint32_t
+		{
+			Static,
+			Rigid,
+
+			Count
+		};
+
 	public:
 		GBufferPass(VkDevice device, const FrameGraphBuilder* frameGraphBuilder, const std::string& passName, uint32_t frame);
 		~GBufferPass();
@@ -25,11 +34,12 @@ namespace Vulkan
 		static void OnAdd(FrameGraphBuilder* frameGraphBuilder, const std::string& passName);
 
 	private:
-		static void RegisterDescriptorSets(std::span<std::wstring> shaderModuleNames, const FrameGraphBuilder* frameGraphBuilder);
+		static void RegisterShaders(FrameGraphBuilder* frameGraphBuilder, const std::string& passName);
 
 		void CreateRenderPass(const FrameGraphBuilder* frameGraphBuilder, const DeviceParameters* deviceParameters, const std::string& currentPassName);
 		void CreateFramebuffer(const FrameGraphBuilder* frameGraphBuilder, const FrameGraphConfig* frameGraphConfig, const std::string& currentPassName, uint32_t frame);
-		void CreateGBufferPipeline(const uint32_t* vertexShaderModule, uint32_t vertexShaderModuleSize, const uint32_t* fragmentShaderModule, uint32_t fragmetShaderModuleSize, VkPipelineLayout pipelineLayout, FrameGraphConfig* frameGraphConfig, VkPipeline* outPipeline);
+		void CreatePipelineLayout(std::span<VkDescriptorSetLayout> setLayouts, std::span<VkPushConstantRange> pushConstantRanges, VkPipelineLayout* outPipelineLayout);
+		void CreateGBufferPipeline(const uint32_t* vertexShaderModule, uint32_t vertexShaderModuleSize, const uint32_t* fragmentShaderModule, uint32_t fragmetShaderModuleSize, VkPipelineLayout pipelineLayout, const FrameGraphConfig* frameGraphConfig, VkPipeline* outPipeline);
 
 	private:
 		VkRenderPass  mRenderPass;
@@ -42,9 +52,9 @@ namespace Vulkan
 		VkPipeline mStaticInstancedPipeline;
 		VkPipeline mRigidPipeline;
 
-		std::span<VkDescriptorSet> mSceneCommonAndStaticDescriptorSets; //All descriptor sets for static object drawing (materials, textures, frame + object data)
-		std::span<VkDescriptorSet> mSceneRigidDescriptorSets;           //Just the object data descriptor sets for dynamic objects (frame + dynamic object data)
-		uint32_t                   mSceneObjectDataSetNumber;           //The descriptor set for object data
+		std::span<VkDescriptorSet> mSceneCommonAndStaticDescriptorSets; //Common descriptor sets for both pipeline layouts (materials, textures) + descriptor sets for static object drawing (frame data, static object data)
+		std::span<VkDescriptorSet> mSceneRigidDescriptorSets;           //Descriptor sets for dynamic objects drawing (frame + dynamic object data)
+		uint32_t                   mCommonDescriptorSetCount;           //The number of common descriptor sets
 
 		uint32_t           mMaterialIndexPushConstantOffset;
 		VkShaderStageFlags mMaterialIndexPushConstantStages;

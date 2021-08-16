@@ -4,34 +4,25 @@
 #include <vector>
 #include <string_view>
 #include <span>
+#include <unordered_map>
 #include "../../../Core/DataStructures/Span.hpp"
 
 namespace Vulkan
 {
-	struct PassDatabaseRequest
-	{
-		uint32_t         SpanSetLayoutIndex;
-		uint32_t         Binding;
-		std::string_view SubresourceId;
-	};
-
 	class PassDescriptorDatabase
 	{
-		struct PassDatabaseBinding
-		{
-			uint32_t         SetLayoutIndex;
-			uint32_t         Binding;
-			std::string_view SubresourceId;
-		};
-
 	public:
 		PassDescriptorDatabase(const VkDevice device);
 		~PassDescriptorDatabase();
 
-		void PostToDatabase(std::span<VkDescriptorSetLayout> descriptorSetLayouts, std::span<PassDatabaseRequest> bindingRequests);
+		void RegisterRequiredSet(std::string_view passName, std::span<VkDescriptorSetLayoutBinding> bindingSpan, std::span<std::string> nameSpan);
 
 	private:
 		const VkDevice mDeviceRef;
+	
+
+		std::unordered_map<std::string_view, std::vector<std::span<VkDescriptorSetLayoutBinding>>> mSetBindingsPerPass;
+		std::unordered_map<std::string_view, std::vector<std::span<std::string>>>                  mSetBindingNamesPerPass;
 
 		std::vector<VkDescriptorSetLayout> mDescriptorSetLayouts;
 		std::vector<PassDatabaseBinding>   mDescriptorBindings;
