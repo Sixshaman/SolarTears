@@ -20,10 +20,24 @@ namespace Vulkan
 	//3) Create passes only after that, giving them descriptor set layouts.
 	//This is all to avoid loading the shaders twice - once to obtain the reflection data, once to create pipelines
 
+	class SceneDescriptorDatabase;
+	class PassDescriptorDatabase;
+	class SamplerDescriptorDatabase;
+
 	enum class ShaderGroupRegisterFlags: uint32_t
 	{
 		None         = 0x00,
 		DontNeedSets = 0x01 //Don't create new descriptor set layouts for this shader group
+	};
+
+	using ValidatePassFunc = uint32_t(*)(std::span<VkDescriptorSetLayoutBinding> bindingSpan, std::span<std::string> nameSpan);
+
+	struct RegisterGroupValidateInfo
+	{
+		SceneDescriptorDatabase*   SceneDatabase;
+		SamplerDescriptorDatabase* SamplerDatabase;
+		PassDescriptorDatabase*    PassDatabase;
+		ValidatePassFunc           PassBindingsValidateFunc;
 	};
 
 	class ShaderDatabase
@@ -32,7 +46,7 @@ namespace Vulkan
 		ShaderDatabase(LoggerQueue* logger);
 		~ShaderDatabase();
 
-		void RegisterShaderGroup(const std::string& passName, const std::string& groupName, std::span<std::wstring> shaderPaths, ShaderGroupRegisterFlags groupRegisterFlags);
+		void RegisterShaderGroup(const std::string& groupName, const std::string_view passName, RegisterGroupValidateInfo& validateInfo, std::span<std::wstring> shaderPaths, ShaderGroupRegisterFlags groupRegisterFlags);
 
 		void GetRegisteredShaderInfo(const std::wstring& path, const uint32_t** outShaderData, uint32_t* outShaderSize) const;
 

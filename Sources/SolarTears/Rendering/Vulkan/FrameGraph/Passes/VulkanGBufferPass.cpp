@@ -30,19 +30,19 @@ Vulkan::GBufferPass::GBufferPass(VkDevice device, const FrameGraphBuilder* frame
 
 	uint32_t* staticVertexShaderCode = nullptr;
 	uint32_t  staticVertexShaderSize = 0;
-	shaderDatabase->GetLoadedShaderInfo(shaderFolder + L"GBufferDrawStatic.vert.spv", &staticVertexShaderCode, &staticVertexShaderSize);
+	shaderDatabase->GetRegisteredShaderInfo(shaderFolder + L"GBufferDrawStatic.vert.spv", &staticVertexShaderCode, &staticVertexShaderSize);
 
 	uint32_t* staticInstancedVertexShaderCode = nullptr;
 	uint32_t  staticInstancedVertexShaderSize = 0;
-	shaderDatabase->GetLoadedShaderInfo(shaderFolder + L"GBufferDrawStaticInstanced.vert.spv", &staticInstancedVertexShaderCode, &staticInstancedVertexShaderSize);
+	shaderDatabase->GetRegisteredShaderInfo(shaderFolder + L"GBufferDrawStaticInstanced.vert.spv", &staticInstancedVertexShaderCode, &staticInstancedVertexShaderSize);
 
 	uint32_t* rigidVertexShaderCode = nullptr;
 	uint32_t  rigidVertexShaderSize = 0;
-	shaderDatabase->GetLoadedShaderInfo(shaderFolder + L"GBufferDrawRigid.vert.spv", &rigidVertexShaderCode, &rigidVertexShaderSize);
+	shaderDatabase->GetRegisteredShaderInfo(shaderFolder + L"GBufferDrawRigid.vert.spv", &rigidVertexShaderCode, &rigidVertexShaderSize);
 
 	uint32_t* fragmentShaderCode = nullptr;
 	uint32_t  fragmentShaderSize = 0;
-	shaderDatabase->GetLoadedShaderInfo(shaderFolder + L"GBufferDraw.frag.spv", &fragmentShaderCode, &fragmentShaderSize);
+	shaderDatabase->GetRegisteredShaderInfo(shaderFolder + L"GBufferDraw.frag.spv", &fragmentShaderCode, &fragmentShaderSize);
 
 	mStaticPipelineLayout = frameGraphBuilder->GetPipelineLayout(passName, (uint32_t)PipelineLayoutType::Static);
 	mRigidPipelineLayout  = frameGraphBuilder->GetPipelineLayout(passName, (uint32_t)PipelineLayoutType::Rigid);

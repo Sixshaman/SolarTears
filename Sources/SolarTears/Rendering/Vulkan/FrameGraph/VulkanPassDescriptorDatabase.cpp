@@ -15,7 +15,7 @@ Vulkan::PassDescriptorDatabase::~PassDescriptorDatabase()
 	}
 }
 
-void Vulkan::PassDescriptorDatabase::RegisterRequiredSet(std::string_view passName, std::span<VkDescriptorSetLayoutBinding> bindingSpan, std::span<std::string> bindingNameSpan)
+void Vulkan::PassDescriptorDatabase::RegisterRequiredSet(ValidatePassFunc validatePassFunc, std::span<VkDescriptorSetLayoutBinding> bindingSpan, std::span<std::string> nameSpan)
 {
 	auto passIt = mSetBindingNamesPerPass.find(passName);
 	if(passIt == mSetBindingNamesPerPass.end())

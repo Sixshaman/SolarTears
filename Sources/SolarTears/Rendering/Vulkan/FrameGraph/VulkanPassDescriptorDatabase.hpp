@@ -5,27 +5,24 @@
 #include <string_view>
 #include <span>
 #include <unordered_map>
+#include <functional>
 #include "../../../Core/DataStructures/Span.hpp"
 
 namespace Vulkan
 {
+	using ValidatePassFunc = std::function<uint32_t(std::span<VkDescriptorSetLayoutBinding>, std::span<std::string>)>;
+
 	class PassDescriptorDatabase
 	{
 	public:
 		PassDescriptorDatabase(const VkDevice device);
 		~PassDescriptorDatabase();
 
-		void RegisterRequiredSet(std::string_view passName, std::span<VkDescriptorSetLayoutBinding> bindingSpan, std::span<std::string> nameSpan);
+		void RegisterRequiredSet(std::string_view passName, uint32_t setId, VkShaderStageFlags stageFlags);
 
 	private:
 		const VkDevice mDeviceRef;
-	
 
-		std::unordered_map<std::string_view, std::vector<std::span<VkDescriptorSetLayoutBinding>>> mSetBindingsPerPass;
-		std::unordered_map<std::string_view, std::vector<std::span<std::string>>>                  mSetBindingNamesPerPass;
 
-		std::vector<VkDescriptorSetLayout> mDescriptorSetLayouts;
-		std::vector<PassDatabaseBinding>   mDescriptorBindings;
-		std::vector<Span<uint32_t>>        mBindingsPerPass;
 	};
 }

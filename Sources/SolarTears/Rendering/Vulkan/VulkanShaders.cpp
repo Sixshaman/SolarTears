@@ -3,6 +3,9 @@
 #include "VulkanFunctions.hpp"
 #include "../../Core/Util.hpp"
 #include "../../Logging/Logger.hpp"
+#include "VulkanSamplerDescriptorDatabase.hpp"
+#include "Scene/VulkanSceneDescriptorDatabase.hpp"
+#include "FrameGraph/VulkanPassDescriptorDatabase.hpp"
 #include <VulkanGenericStructures.h>
 #include <cassert>
 #include <unordered_map>
@@ -16,7 +19,7 @@ Vulkan::ShaderDatabase::~ShaderDatabase()
 {
 }
 
-void Vulkan::ShaderDatabase::RegisterShaderGroup(const std::string& passName, const std::string& groupName, std::span<std::wstring> shaderPaths, ShaderGroupRegisterFlags groupRegisterFlags)
+void Vulkan::ShaderDatabase::RegisterShaderGroup(const std::string& groupName, const std::string_view passName, RegisterGroupValidateInfo& validateInfo, std::span<std::wstring> shaderPaths, ShaderGroupRegisterFlags groupRegisterFlags)
 {
 	for(const std::wstring& shaderPath: shaderPaths)
 	{
@@ -29,11 +32,6 @@ void Vulkan::ShaderDatabase::RegisterShaderGroup(const std::string& passName, co
 			mShaderModuleIndices[shaderPath] = mLoadedShaderModules.size() - 1;
 		}
 
-		//This pass contains either scene or sampler bindings, no individual pass bindings
-		SamplerDescriptorDatabase* samplerDescriptorDatabase = frameGraphBuilder->GetSamplerDescriptorDatabase();
-		SceneDescriptorDatabase*   sceneDescriptorDatabase   = frameGraphBuilder->GetSceneDescriptorDatabase();
-		PassDescriptorDatabase*    passDescriptorDatabase    = frameGraphBuilder->GetPassDescriptorDatabase();
-
 		std::vector<VkDescriptorSetLayoutBinding>            setBindings;
 		std::vector<std::string>                             setBindingNames;
 		std::vector<TypedSpan<uint32_t, VkShaderStageFlags>> setSpans;
@@ -43,22 +41,25 @@ void Vulkan::ShaderDatabase::RegisterShaderGroup(const std::string& passName, co
 		{
 			std::span<VkDescriptorSetLayoutBinding> bindingSpan = {setBindings.begin()     + setSpan.Begin, setBindings.begin()     + setSpan.End};
 			std::span<std::string>                  nameSpan    = {setBindingNames.begin() + setSpan.Begin, setBindingNames.begin() + setSpan.End};
-			if(samplerDescriptorDatabase->IsSamplerDescriptorSet(bindingSpan, nameSpan))
+			if(validateInfo.SamplerDatabase->IsSamplerDescriptorSet(bindingSpan, nameSpan))
 			{
-				samplerDescriptorDatabase->RegisterSamplerSet(setSpan.Type);
+				validateInfo.SamplerDatabase->RegisterSamplerSet(setSpan.Type);
 			}
 			else
 			{
-				SceneDescriptorSetType sceneSetType = sceneDescriptorDatabase->ComputeSetType(bindingSpan, nameSpan);
+				SceneDescriptorSetType sceneSetType = validateInfo.SceneDatabase->ComputeSetType(bindingSpan, nameSpan);
 				assert(sceneSetType != SceneDescriptorSetType::Unknown);
 
 				if(sceneSetType != SceneDescriptorSetType::Unknown)
 				{
-					sceneDescriptorDatabase->RegisterRequiredSet(sceneSetType, setSpan.Type);
+					validateInfo.SceneDatabase->RegisterRequiredSet(sceneSetType, setSpan.Type);
 				}
 				else
 				{
-					passDescriptorDatabase->RegisterRequiredSet(passName, bindingSpan, nameSpan);
+					uint32_t setId = validateInfo.PassBindingsValidateFunc(bindingSpan, nameSpan);
+					assert(setId != (uint32_t)(-1));
+
+					validateInfo.PassDatabase->RegisterRequiredSet(passName, setId, setSpan.Type);
 				}
 			}
 		}
