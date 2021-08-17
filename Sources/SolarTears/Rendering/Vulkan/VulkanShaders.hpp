@@ -5,6 +5,7 @@
 #include <span> 
 #include <unordered_map>
 #include "../../Core/DataStructures/Span.hpp"
+#include "FrameGraph/VulkanRenderPass.hpp"
 
 class LoggerQueue;
 
@@ -30,14 +31,13 @@ namespace Vulkan
 		DontNeedSets = 0x01 //Don't create new descriptor set layouts for this shader group
 	};
 
-	using ValidatePassFunc = uint32_t(*)(std::span<VkDescriptorSetLayoutBinding> bindingSpan, std::span<std::string> nameSpan);
-
-	struct RegisterGroupValidateInfo
+	struct RegisterGroupInfo
 	{
 		SceneDescriptorDatabase*   SceneDatabase;
 		SamplerDescriptorDatabase* SamplerDatabase;
 		PassDescriptorDatabase*    PassDatabase;
 		ValidatePassFunc           PassBindingsValidateFunc;
+		std::string_view           PassName;
 	};
 
 	class ShaderDatabase
@@ -46,7 +46,7 @@ namespace Vulkan
 		ShaderDatabase(LoggerQueue* logger);
 		~ShaderDatabase();
 
-		void RegisterShaderGroup(const std::string& groupName, const std::string_view passName, RegisterGroupValidateInfo& validateInfo, std::span<std::wstring> shaderPaths, ShaderGroupRegisterFlags groupRegisterFlags);
+		void RegisterShaderGroup(const std::string& groupName, RegisterGroupInfo& registerInfo, std::span<std::wstring> shaderPaths, ShaderGroupRegisterFlags groupRegisterFlags);
 
 		void GetRegisteredShaderInfo(const std::wstring& path, const uint32_t** outShaderData, uint32_t* outShaderSize) const;
 
@@ -60,7 +60,6 @@ namespace Vulkan
 	private:
 		LoggerQueue* mLogger;
 
-		std::vector<spv_reflect::ShaderModule>     mLoadedShaderModules;
-		std::unordered_map<std::wstring, uint32_t> mShaderModuleIndices;
+		std::unordered_map<std::wstring, spv_reflect::ShaderModule> mLoadedShaderModules;
 	};
 }

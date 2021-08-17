@@ -19,17 +19,16 @@ Vulkan::ShaderDatabase::~ShaderDatabase()
 {
 }
 
-void Vulkan::ShaderDatabase::RegisterShaderGroup(const std::string& groupName, const std::string_view passName, RegisterGroupValidateInfo& validateInfo, std::span<std::wstring> shaderPaths, ShaderGroupRegisterFlags groupRegisterFlags)
+void Vulkan::ShaderDatabase::RegisterShaderGroup(const std::string& groupName, RegisterGroupInfo& registerInfo, std::span<std::wstring> shaderPaths, ShaderGroupRegisterFlags groupRegisterFlags)
 {
 	for(const std::wstring& shaderPath: shaderPaths)
 	{
-		if(!mShaderModuleIndices.contains(shaderPath))
+		if(!mLoadedShaderModules.contains(shaderPath))
 		{
 			std::vector<uint32_t> shaderData;
 			VulkanUtils::LoadShaderModuleFromFile(shaderPath, shaderData, mLogger);
 
-			mLoadedShaderModules.emplace_back(spv_reflect::ShaderModule(shaderData));
-			mShaderModuleIndices[shaderPath] = mLoadedShaderModules.size() - 1;
+			mLoadedShaderModules.emplace(std::make_pair(shaderPath, spv_reflect::ShaderModule(shaderData)));
 		}
 
 		std::vector<VkDescriptorSetLayoutBinding>            setBindings;
@@ -41,25 +40,25 @@ void Vulkan::ShaderDatabase::RegisterShaderGroup(const std::string& groupName, c
 		{
 			std::span<VkDescriptorSetLayoutBinding> bindingSpan = {setBindings.begin()     + setSpan.Begin, setBindings.begin()     + setSpan.End};
 			std::span<std::string>                  nameSpan    = {setBindingNames.begin() + setSpan.Begin, setBindingNames.begin() + setSpan.End};
-			if(validateInfo.SamplerDatabase->IsSamplerDescriptorSet(bindingSpan, nameSpan))
+			if(registerInfo.SamplerDatabase->IsSamplerDescriptorSet(bindingSpan, nameSpan))
 			{
-				validateInfo.SamplerDatabase->RegisterSamplerSet(setSpan.Type);
+				registerInfo.SamplerDatabase->RegisterSamplerSet(setSpan.Type);
 			}
 			else
 			{
-				SceneDescriptorSetType sceneSetType = validateInfo.SceneDatabase->ComputeSetType(bindingSpan, nameSpan);
+				SceneDescriptorSetType sceneSetType = registerInfo.SceneDatabase->ComputeSetType(bindingSpan, nameSpan);
 				assert(sceneSetType != SceneDescriptorSetType::Unknown);
 
 				if(sceneSetType != SceneDescriptorSetType::Unknown)
 				{
-					validateInfo.SceneDatabase->RegisterRequiredSet(sceneSetType, setSpan.Type);
+					registerInfo.SceneDatabase->RegisterRequiredSet(sceneSetType, setSpan.Type);
 				}
 				else
 				{
-					uint32_t setId = validateInfo.PassBindingsValidateFunc(bindingSpan, nameSpan);
+					uint32_t setId = registerInfo.PassBindingsValidateFunc(bindingSpan, nameSpan);
 					assert(setId != (uint32_t)(-1));
 
-					validateInfo.PassDatabase->RegisterRequiredSet(passName, setId, setSpan.Type);
+					registerInfo.PassDatabase->RegisterRequiredSet(registerInfo.PassName, setId, setSpan.Type);
 				}
 			}
 		}
