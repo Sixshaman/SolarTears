@@ -14,7 +14,7 @@ namespace Vulkan
 	class RenderableScene: public ModernRenderableScene
 	{
 		friend class RenderableSceneBuilder;
-		friend class SceneDescriptorDatabase;
+		friend class SharedDescriptorDatabase;
 
 	public:
 		RenderableScene(const VkDevice device, const DeviceParameters& deviceParameters);

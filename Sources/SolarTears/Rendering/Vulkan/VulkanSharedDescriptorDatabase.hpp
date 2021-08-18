@@ -32,7 +32,7 @@ namespace Vulkan
 		static constexpr uint32_t TotalSamplers = (uint32_t)(SamplerType::Count);
 
 		//Scene descriptor sets can only be one of these
-		enum class SceneDescriptorSetType : uint32_t
+		enum class SceneDescriptorSetType: uint32_t
 		{
 			TextureList,                   //The variable sized list of all scene textures, variable size
 			MaterialList,                  //The variable sized list of all scen materials
@@ -83,12 +83,14 @@ namespace Vulkan
 		void RecreateSets(const RenderableScene* sceneToCreateDescriptors);
 
 	private:
+		SetRegisterResult TryRegisterSamplerSet(std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<std::string> bindingNames);
+		SetRegisterResult TryRegisterSceneSet(std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<std::string> bindingNames);
+
 		void RecreateSamplerSetLayouts();
 		void RecreateSceneSetLayouts();
+
 		void RecreateDescriptorPool(const RenderableScene* sceneToCreateDescriptors);
 		void AllocateSets(const RenderableScene* sceneToCreateDescriptors);
-
-		void RecreateDescriptorSets(const RenderableScene* sceneToCreateDescriptors);
 		void UpdateDescriptorSets(const RenderableScene* sceneToCreateDescriptors);
 
 		void CreateSamplers();
