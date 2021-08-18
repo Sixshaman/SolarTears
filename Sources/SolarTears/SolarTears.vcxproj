@@ -100,7 +100,6 @@
     <ClInclude Include="Rendering\Vulkan\FrameGraph\VulkanRenderPass.hpp" />
     <ClInclude Include="Rendering\Vulkan\Scene\VulkanScene.hpp" />
     <ClInclude Include="Rendering\Vulkan\Scene\VulkanSceneBuilder.hpp" />
-    <ClInclude Include="Rendering\Vulkan\Scene\VulkanSceneDescriptorDatabase.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanDeviceParameters.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanDeviceQueues.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanFunctions.hpp" />
@@ -108,8 +107,8 @@
     <ClInclude Include="Rendering\Vulkan\VulkanInstanceParameters.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanMemory.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanRenderer.hpp" />
-    <ClInclude Include="Rendering\Vulkan\VulkanSamplerDescriptorDatabase.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanShaders.hpp" />
+    <ClInclude Include="Rendering\Vulkan\VulkanSharedDescriptorDatabase.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanSwapChain.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanUtils.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanWorkerCommandBuffers.hpp" />
@@ -180,7 +179,6 @@
     <ClCompile Include="Rendering\Vulkan\FrameGraph\VulkanRenderPass.cpp" />
     <ClCompile Include="Rendering\Vulkan\Scene\VulkanScene.cpp" />
     <ClCompile Include="Rendering\Vulkan\Scene\VulkanSceneBuilder.cpp" />
-    <ClCompile Include="Rendering\Vulkan\Scene\VulkanSceneDescriptorDatabase.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanDeviceParameters.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanDeviceQueues.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanFunctions.cpp" />
@@ -188,8 +186,8 @@
     <ClCompile Include="Rendering\Vulkan\VulkanInstanceParameters.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanMemory.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanRenderer.cpp" />
-    <ClCompile Include="Rendering\Vulkan\VulkanSamplerDescriptorDatabase.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanShaders.cpp" />
+    <ClCompile Include="Rendering\Vulkan\VulkanSharedDescriptorDatabase.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanSwapChain.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanUtils.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanWorkerCommandBuffers.cpp" />

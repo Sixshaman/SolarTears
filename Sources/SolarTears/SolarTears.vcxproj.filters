@@ -396,13 +396,10 @@
     <ClInclude Include="Rendering\D3D12\D3D12DescriptorCreator.hpp">
       <Filter>Rendering\D3D12</Filter>
     </ClInclude>
-    <ClInclude Include="Rendering\Vulkan\Scene\VulkanSceneDescriptorDatabase.hpp">
-      <Filter>Rendering\Vulkan\Scene</Filter>
-    </ClInclude>
     <ClInclude Include="Rendering\Vulkan\FrameGraph\VulkanPassDescriptorDatabase.hpp">
       <Filter>Rendering\Vulkan\FrameGraph</Filter>
     </ClInclude>
-    <ClInclude Include="Rendering\Vulkan\VulkanSamplerDescriptorDatabase.hpp">
+    <ClInclude Include="Rendering\Vulkan\VulkanSharedDescriptorDatabase.hpp">
       <Filter>Rendering\Vulkan</Filter>
     </ClInclude>
   </ItemGroup>
@@ -632,13 +629,10 @@
     <ClCompile Include="Rendering\D3D12\D3D12DescriptorCreator.cpp">
       <Filter>Rendering\D3D12</Filter>
     </ClCompile>
-    <ClCompile Include="Rendering\Vulkan\Scene\VulkanSceneDescriptorDatabase.cpp">
-      <Filter>Rendering\Vulkan\Scene</Filter>
-    </ClCompile>
     <ClCompile Include="Rendering\Vulkan\FrameGraph\VulkanPassDescriptorDatabase.cpp">
       <Filter>Rendering\Vulkan\FrameGraph</Filter>
     </ClCompile>
-    <ClCompile Include="Rendering\Vulkan\VulkanSamplerDescriptorDatabase.cpp">
+    <ClCompile Include="Rendering\Vulkan\VulkanSharedDescriptorDatabase.cpp">
       <Filter>Rendering\Vulkan</Filter>
     </ClCompile>
   </ItemGroup>
