@@ -11,16 +11,11 @@ namespace Vulkan
 {
 	class RenderableScene;
 
-	enum class SetRegisterResult
-	{
-		Success,
-		UndefinedSharedSet,
-		ValidateError
-	};
-
 	//The database for all common descriptor sets and set layouts (samplers, scene data)
 	class SharedDescriptorDatabase
 	{
+		friend class SharedDescriptorDatabaseBuilder;
+
 		enum class SamplerType : uint32_t
 		{
 			Linear = 0,
@@ -44,13 +39,6 @@ namespace Vulkan
 			Unknown = Count
 		};
 
-		struct SceneSetDatabaseEntry
-		{
-			VkDescriptorSetLayout      DescriptorSetLayout;
-			std::span<VkDescriptorSet> DescriptorSetSpan;
-			VkShaderStageFlags         ShaderStageFlags;
-		};
-
 		static constexpr uint32_t TotalSceneSetLayouts = (uint32_t)(SceneDescriptorSetType::Count);
 		static constexpr std::array<uint32_t, TotalSceneSetLayouts> SetCountsPerType =
 		{
@@ -63,35 +51,24 @@ namespace Vulkan
 
 		static constexpr size_t TotalSceneSets = std::accumulate(SetCountsPerType.begin(), SetCountsPerType.end(), 0);
 
+		inline static constexpr uint32_t SetStartIndexPerType(SceneDescriptorSetType type)
+		{
+			return std::accumulate(SetCountsPerType.begin(), SetCountsPerType.begin() + (uint32_t)type, 0);
+		}
+
 	public:
 		SharedDescriptorDatabase(const VkDevice device);
 		~SharedDescriptorDatabase();
-
-		//Tries to register a descriptor set in the database, updating the used shader stage flags for it.
-		//Returns SetRegisterResult::Success on success.
-		//Returns SetRegisterResult::UndefinedSharedSet if the bindings don't correspond to any sampler or scene data sets.
-		//Returns SetRegisterResult::ValidateError if the binding names correspond to sampler or scene data sets, but binding values do not match.
-		SetRegisterResult TryRegisterSet(std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<std::string> bindingNames);
-
-		//Resets all registered set stage flags and destroys set layouts
-		void ResetSetsLayouts();
-
-		//Creates and fills descriptor sets
-		void RecreateSetLayouts();
 
 		//Creates sets from registered set layouts
 		void RecreateSets(const RenderableScene* sceneToCreateDescriptors);
 
 	private:
-		SetRegisterResult TryRegisterSamplerSet(std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<std::string> bindingNames);
-		SetRegisterResult TryRegisterSceneSet(std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<std::string> bindingNames);
-
-		void RecreateSamplerSetLayouts();
-		void RecreateSceneSetLayouts();
-
 		void RecreateDescriptorPool(const RenderableScene* sceneToCreateDescriptors);
-		void AllocateSets(const RenderableScene* sceneToCreateDescriptors);
-		void UpdateDescriptorSets(const RenderableScene* sceneToCreateDescriptors);
+		void AllocateSceneSets(const RenderableScene* sceneToCreateDescriptors);
+		void UpdateSceneSets(const RenderableScene* sceneToCreateDescriptors);
+
+		void AllocateSamplerSet();
 
 		void CreateSamplers();
 
@@ -102,9 +79,8 @@ namespace Vulkan
 
 		VkDescriptorSetLayout mSamplerDescriptorSetLayout;
 		VkDescriptorSet       mSamplerDescriptorSet;
-		VkShaderStageFlags    mSamplerShaderFlags;
 
-		std::array<SceneSetDatabaseEntry, TotalSceneSetLayouts> mSceneEntriesPerType;
+		std::array<VkDescriptorSetLayout, TotalSceneSetLayouts> mSceneSetLayouts;
 		std::array<VkDescriptorSet,       TotalSceneSets>       mSceneSets;
 
 		std::array<VkSampler, TotalSamplers> mSamplers;
