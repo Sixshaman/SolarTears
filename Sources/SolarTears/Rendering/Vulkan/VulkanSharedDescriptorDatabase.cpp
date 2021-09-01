@@ -11,8 +11,8 @@ Vulkan::SharedDescriptorDatabase::SharedDescriptorDatabase(const VkDevice device
 	mSamplerDescriptorSetLayout = VK_NULL_HANDLE;
 	mSamplerDescriptorSet       = VK_NULL_HANDLE;
 
-	std::fill(mSceneSetLayouts.begin(), mSceneSetLayouts.end(), VK_NULL_HANDLE);
-	std::fill(mSceneSets.begin(),       mSceneSets.end(),       VK_NULL_HANDLE);
+	std::fill(mSceneSetLayouts.begin(), mSceneSetLayouts.end(), (VkDescriptorSetLayout)VK_NULL_HANDLE);
+	std::fill(mSceneSets.begin(),       mSceneSets.end(),       (VkDescriptorSet)VK_NULL_HANDLE);
 }
 
 Vulkan::SharedDescriptorDatabase::~SharedDescriptorDatabase()
@@ -91,7 +91,7 @@ void Vulkan::SharedDescriptorDatabase::RecreateDescriptorPool(const RenderableSc
 
 void Vulkan::SharedDescriptorDatabase::AllocateSceneSets(const RenderableScene* sceneToCreateDescriptors)
 {
-	std::fill(mSceneSets.begin(), mSceneSets.end(), VK_NULL_HANDLE);
+	std::fill(mSceneSets.begin(), mSceneSets.end(), (VkDescriptorSet)VK_NULL_HANDLE);
 
 	std::array<uint32_t, (size_t)TotalSceneSetLayouts> variableCountsPerType = std::to_array
 	({
@@ -159,45 +159,210 @@ void Vulkan::SharedDescriptorDatabase::AllocateSceneSets(const RenderableScene* 
 
 void Vulkan::SharedDescriptorDatabase::UpdateSceneSets(const RenderableScene* sceneToCreateDescriptors)
 {
-	std::vector<VkDescriptorImageInfo> textureDescriptorInfos(sceneToCreateDescriptors->mSceneTextureViews.size());
-	for(size_t textureIndex = 0; textureIndex < sceneToCreateDescriptors->mSceneTextureViews.size(); textureIndex++)
+	const uint32_t textureCount      = (uint32_t)sceneToCreateDescriptors->mSceneTextureViews.size();
+	const uint32_t materialCount     = (uint32_t)(sceneToCreateDescriptors->mMaterialDataSize / sceneToCreateDescriptors->mMaterialChunkDataSize);
+	const uint32_t staticObjectCount = (uint32_t)(sceneToCreateDescriptors->mStaticObjectDataSize / sceneToCreateDescriptors->mObjectChunkDataSize);
+	const uint32_t frameDataCount    = 1u;
+	const uint32_t rigidObjectCount  = (uint32_t)(sceneToCreateDescriptors->mCurrFrameDataToUpdate.size());
+
+	constexpr std::array<uint32_t, SharedDescriptorDatabase::TotalSceneSetLayouts> sceneSetBindingCounts = std::to_array
+	({
+		1u, //1 binding for textures set
+		1u, //1 binding for materials set
+		1u, //1 binding for static object data set
+		1u, //1 binding for frame data set
+		2u  //2 bindings for frame + dynamic object data sets
+	});
+
+	constexpr uint32_t UniqueBindings = std::accumulate(sceneSetBindingCounts.begin(), sceneSetBindingCounts.end(), 0);
+	constexpr std::array<VkDescriptorType, UniqueBindings> bindingDescriptorTypes = std::to_array
+	({
+		VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+		VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+		VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+		VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+		VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+	});
+
+	std::array<uint32_t, UniqueBindings> bindingDescriptorCounts = std::to_array
+	({
+		textureCount,
+		materialCount,
+		staticObjectCount,
+		frameDataCount,
+		frameDataCount, rigidObjectCount
+	});
+
+	size_t imageDescriptorCount  = 0;
+	size_t bufferDescriptorCount = 0;
+	std::array<VkWriteDescriptorSet, UniqueBindings> writeDescriptorSetTemplates;
+	for(uint32_t typeIndex = 0, totalBindingIndex = 0; typeIndex < TotalSceneSetLayouts; typeIndex++)
 	{
-		VkDescriptorImageInfo& descriptorImageInfo = textureDescriptorInfos[textureIndex];
-		descriptorImageInfo.sampler     = VK_NULL_HANDLE;
-		descriptorImageInfo.imageView   = sceneToCreateDescriptors->mSceneTextureViews[textureIndex];
-		descriptorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		for(uint32_t bindingIndex = 0; bindingIndex < sceneSetBindingCounts[typeIndex]; bindingIndex++, totalBindingIndex++)
+		{
+			//In case we start supporting more types and forget to check here
+			assert(bindingDescriptorTypes[totalBindingIndex] == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE || bindingDescriptorTypes[totalBindingIndex] == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER);
+
+			if(bindingDescriptorTypes[totalBindingIndex] == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE)
+			{
+				imageDescriptorCount += bindingDescriptorCounts[totalBindingIndex] * SetCountsPerType[typeIndex];
+			}
+
+			if(bindingDescriptorTypes[totalBindingIndex] == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)
+			{
+				bufferDescriptorCount += bindingDescriptorCounts[totalBindingIndex] * SetCountsPerType[typeIndex];
+			}
+
+			writeDescriptorSetTemplates[totalBindingIndex] =
+			{
+				.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+				.pNext            = nullptr,
+				.dstSet           = VK_NULL_HANDLE,
+				.dstBinding       = bindingIndex,
+				.dstArrayElement  = 0,
+				.descriptorCount  = bindingDescriptorCounts[totalBindingIndex],
+				.descriptorType   = bindingDescriptorTypes[totalBindingIndex],
+				.pImageInfo       = nullptr,
+				.pBufferInfo      = nullptr,
+				.pTexelBufferView = nullptr
+			};
+		}
 	}
 
-	std::vector<VkWriteDescriptorSet> writeDescriptorSets;
-	writeDescriptorSets.reserve(mSceneSets.size());
+	std::vector<VkDescriptorImageInfo> imageDescriptorInfos; 
+	imageDescriptorInfos.reserve(imageDescriptorCount);
 
+	std::vector<VkDescriptorBufferInfo> bufferDescriptorInfos;
+	bufferDescriptorInfos.reserve(bufferDescriptorCount);
+
+	size_t textureDescriptorOffset      = (size_t)(-1);
+	size_t materialDescriptorOffset     = (size_t)(-1);
+	size_t staticObjectDescriptorOffset = (size_t)(-1);
+	size_t frameDescriptorOffset        = (size_t)(-1);
+	size_t rigidObjectDescriptorOffset  = (size_t)(-1);
+
+	//Might've made it so it only gets filled if the corresponding set layouts are not null... Well, it's not like I'll need more bindings than that, and these ones are usually filled up anyway
+	textureDescriptorOffset = imageDescriptorInfos.size();
+	for(VkImageView sceneImageView: sceneToCreateDescriptors->mSceneTextureViews)
+	{
+		imageDescriptorInfos.push_back(VkDescriptorImageInfo
+		{
+			.sampler     = VK_NULL_HANDLE,
+			.imageView   = sceneImageView,
+			.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+		});
+	}
+
+	materialDescriptorOffset = bufferDescriptorInfos.size();
+	for(uint32_t materialIndex = 0; materialIndex < materialCount; materialIndex++)
+	{
+		bufferDescriptorInfos.push_back(VkDescriptorBufferInfo
+		{
+			.buffer = sceneToCreateDescriptors->mSceneStaticUniformBuffer,
+			.offset = sceneToCreateDescriptors->CalculateMaterialDataOffset(materialIndex),
+			.range  = sceneToCreateDescriptors->mMaterialChunkDataSize
+		});
+	}
+
+	staticObjectDescriptorOffset = bufferDescriptorInfos.size();
+	for(uint32_t staticObjectIndex = 0; staticObjectIndex < staticObjectCount; staticObjectIndex++)
+	{
+		bufferDescriptorInfos.push_back(VkDescriptorBufferInfo
+		{
+			.buffer = sceneToCreateDescriptors->mSceneStaticUniformBuffer,
+			.offset = sceneToCreateDescriptors->CalculateStaticObjectDataOffset(staticObjectIndex),
+			.range  = sceneToCreateDescriptors->mObjectChunkDataSize
+		});
+	}
+
+	frameDescriptorOffset = bufferDescriptorInfos.size();
+	for(uint32_t frameResourceIndex = 0; frameResourceIndex < Utils::InFlightFrameCount; frameResourceIndex++)
+	{
+		bufferDescriptorInfos.push_back(VkDescriptorBufferInfo
+		{
+			.buffer = sceneToCreateDescriptors->mSceneDynamicUniformBuffer,
+			.offset = sceneToCreateDescriptors->CalculateFrameDataOffset(frameResourceIndex),
+			.range  = sceneToCreateDescriptors->mFrameChunkDataSize
+		});
+	}
+
+	rigidObjectDescriptorOffset = bufferDescriptorInfos.size();
+	for(uint32_t frameResourceIndex = 0; frameResourceIndex < Utils::InFlightFrameCount; frameResourceIndex++)
+	{
+		for(uint32_t rigidObjectIndex = 0; rigidObjectIndex < rigidObjectCount; rigidObjectIndex++)
+		{
+			bufferDescriptorInfos.push_back(VkDescriptorBufferInfo
+			{
+				.buffer = sceneToCreateDescriptors->mSceneDynamicUniformBuffer,
+				.offset = sceneToCreateDescriptors->CalculateRigidObjectDataOffset(frameResourceIndex, rigidObjectIndex),
+				.range  = sceneToCreateDescriptors->mObjectChunkDataSize
+			});
+		}
+	}
+
+	std::array<VkDescriptorImageInfo*, UniqueBindings> bindingImageStartInfos = std::to_array
+	({
+		imageDescriptorInfos.data() + textureDescriptorOffset,
+		(VkDescriptorImageInfo*)nullptr,
+		(VkDescriptorImageInfo*)nullptr,
+		(VkDescriptorImageInfo*)nullptr,
+		(VkDescriptorImageInfo*)nullptr, (VkDescriptorImageInfo*)nullptr
+	});
+
+	std::array<VkDescriptorBufferInfo*, UniqueBindings> bindingBufferStartInfos = std::to_array
+	({
+		(VkDescriptorBufferInfo*)nullptr,
+		bufferDescriptorInfos.data() + materialDescriptorOffset,
+		bufferDescriptorInfos.data() + staticObjectDescriptorOffset,
+		bufferDescriptorInfos.data() + frameDescriptorOffset,
+		bufferDescriptorInfos.data() + frameDescriptorOffset, bufferDescriptorInfos.data() + rigidObjectDescriptorOffset
+	});
+
+
+	constexpr uint32_t TotalBindings = std::inner_product(sceneSetBindingCounts.begin(), sceneSetBindingCounts.end(), SetCountsPerType.begin(), 0);
+
+	std::vector<VkWriteDescriptorSet> writeDescriptorSets;
+	writeDescriptorSets.reserve(TotalBindings);
+
+	uint32_t totalBindingOffset = 0;
 	for(uint32_t typeIndex = 0; typeIndex < TotalSceneSetLayouts; typeIndex++)
 	{
 		if(mSceneSetLayouts[typeIndex] != VK_NULL_HANDLE)
 		{
 			uint32_t layoutSetStart = SetStartIndexPerType((SceneDescriptorSetType)typeIndex);
-			uint32_t layoutSetEnd   = layoutSetStart + SetCountsPerType[typeIndex];
-
-			for(uint32_t setIndex = layoutSetStart; setIndex < layoutSetEnd; setIndex++)
+			for(uint32_t bindingIndex = 0; bindingIndex < (uint32_t)sceneSetBindingCounts[typeIndex]; bindingIndex++)
 			{
-				VkWriteDescriptorSet writeDescriptorSet;
-				writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-				writeDescriptorSet.pNext = nullptr;
-				writeDescriptorSet.dstSet = mSceneSets[setIndex];
-				writeDescriptorSet.dstBinding = error;
-				writeDescriptorSet.dstArrayElement = 0;
-				writeDescriptorSet.descriptorCount = error;
-				writeDescriptorSet.descriptorType = error;
-				writeDescriptorSet.pImageInfo = error;
-				writeDescriptorSet.pBufferInfo = error;
-				writeDescriptorSet.pTexelBufferView = error;
+				VkWriteDescriptorSet writeDescriptorSet = writeDescriptorSetTemplates[bindingIndex];
 
-				writeDescriptorSets.push_back(writeDescriptorSet);
+				VkDescriptorImageInfo*  pImageInfo  = bindingImageStartInfos[(size_t)totalBindingOffset + bindingIndex];
+				VkDescriptorBufferInfo* pBufferInfo = bindingBufferStartInfos[(size_t)totalBindingOffset + bindingIndex];
+				for(uint32_t setIndex = 0; setIndex < SetCountsPerType[typeIndex]; setIndex++)
+				{
+					writeDescriptorSet.dstSet      = mSceneSets[(size_t)layoutSetStart + setIndex];
+					writeDescriptorSet.pImageInfo  = pImageInfo;
+					writeDescriptorSet.pBufferInfo = pBufferInfo;
+
+					writeDescriptorSets.push_back(writeDescriptorSet);
+
+					if(pImageInfo != nullptr)
+					{
+						//Shift for the next set
+						pBufferInfo += writeDescriptorSet.descriptorCount;
+					}
+
+					if(pBufferInfo != nullptr)
+					{
+						//Shift for the next set
+						pBufferInfo += writeDescriptorSet.descriptorCount;
+					}
+				}
 			}
 		}
+
+		totalBindingOffset += sceneSetBindingCounts[typeIndex];
 	}
 
-	vkUpdateDescriptorSets(mDeviceRef, )
+	vkUpdateDescriptorSets(mDeviceRef, (uint32_t)writeDescriptorSets.size(), writeDescriptorSets.data(), 0, nullptr);
 }
 
 void Vulkan::SharedDescriptorDatabase::AllocateSamplerSet()
