@@ -1,6 +1,5 @@
 #include "VulkanFrameGraphBuilder.hpp"
 #include "VulkanFrameGraph.hpp"
-#include "../Scene/VulkanSceneDescriptorDatabase.hpp"
 #include "../VulkanInstanceParameters.hpp"
 #include "../VulkanWorkerCommandBuffers.hpp"
 #include "../VulkanFunctions.hpp"
@@ -8,6 +7,7 @@
 #include "../VulkanSwapChain.hpp"
 #include "../VulkanDeviceQueues.hpp"
 #include "../VulkanShaders.hpp"
+#include "../VulkanSharedDescriptorDatabaseBuilder.hpp"
 #include <VulkanGenericStructures.h>
 #include <algorithm>
 #include <numeric>
@@ -80,6 +80,48 @@ void Vulkan::FrameGraphBuilder::SetPassSubresourceAccessFlags(const std::string_
 	mSubresourceInfos[subresourceInfoIndex].Access = accessFlags;
 }
 
+Vulkan::SetRegisterResult Vulkan::FrameGraphBuilder::TryRegisterPassDescriptorSet(const FrameGraphDescription::RenderPassName& passName, std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<std::string> bindingNames)
+{
+	const auto& passReadIds  = mRenderPassesReadSubresourceIds.at(passName);
+	const auto& passWriteIds = mRenderPassesWriteSubresourceIds.at(passName);
+
+	for(size_t bindingIndex = 0; bindingIndex < bindingNames.size(); bindingIndex++)
+	{
+		const VkDescriptorSetLayoutBinding&         setBinding    = setBindings[bindingIndex];
+		const FrameGraphDescription::SubresourceId& subresourceId = bindingNames[bindingIndex];
+
+		if(setBinding.pImmutableSamplers != nullptr)
+		{
+			return SetRegisterResult::ValidateError;
+		}
+
+		if(setBinding.descriptorCount != 1)
+		{
+			//No multiple pass descriptors per binding are supported for now
+			return SetRegisterResult::ValidateError;
+		}
+
+		bool isInReadIds  = passReadIds.contains(subresourceId);
+		bool isInWriteIds = passWriteIds.contains(subresourceId);
+
+		if(setBinding.descriptorType != VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE && setBinding.descriptorType != VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT && setBinding.descriptorType != VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+		{
+			//Other descriptor types aren't supported by now
+			return SetRegisterResult::ValidateError;
+		}
+		else if((setBinding.descriptorType == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE || setBinding.descriptorType == VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT) && !isInReadIds)
+		{
+			return SetRegisterResult::UndefinedSet;
+		}
+		else if(setBinding.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE && !isInReadIds && !isInWriteIds)
+		{
+			return SetRegisterResult::UndefinedSet;
+		}
+	}
+
+	return SetRegisterResult::Success;
+}
+
 const Vulkan::DeviceQueues* Vulkan::FrameGraphBuilder::GetDeviceQueues() const
 {
 	return mDeviceQueues;
@@ -100,19 +142,9 @@ Vulkan::ShaderDatabase* Vulkan::FrameGraphBuilder::GetShaderDatabase() const
 	return mShaderDatabase.get();
 }
 
-Vulkan::SceneDescriptorDatabase* Vulkan::FrameGraphBuilder::GetSceneDescriptorDatabase() const
+Vulkan::SharedDescriptorDatabaseBuilder* Vulkan::FrameGraphBuilder::GetSharedDescriptorDatabaseBuilder() const
 {
-	return mSceneDescriptorDatabase;
-}
-
-Vulkan::PassDescriptorDatabase* Vulkan::FrameGraphBuilder::GetPassDescriptorDatabase() const
-{
-	return mPassDescriptorDatabase;
-}
-
-Vulkan::SamplerDescriptorDatabase* Vulkan::FrameGraphBuilder::GetSamplerDescriptorDatabase() const
-{
-	return mSamplerDescriptorDatabase;
+	return mSharedDescriptorDatabaseBuilder.get();
 }
 
 VkImage Vulkan::FrameGraphBuilder::GetRegisteredResource(const std::string_view passName, const std::string_view subresourceId, uint32_t frame) const
@@ -317,10 +349,8 @@ void Vulkan::FrameGraphBuilder::Build(const FrameGraphBuildInfo& buildInfo)
 	mDeviceQueues         = buildInfo.Queues;
 	mWorkerCommandBuffers = buildInfo.CommandBuffers;
 
-	mShaderDatabase            = std::make_unique<ShaderDatabase>(mLogger);
-	mSceneDescriptorDatabase   = buildInfo.DescriptorDatabaseScene;
-	mPassDescriptorDatabase    = buildInfo.DescriptorDatabasePasses;
-	mSamplerDescriptorDatabase = buildInfo.DescriptorDatabaseSamplers;
+	mShaderDatabase                  = std::make_unique<ShaderDatabase>(mLogger);
+	mSharedDescriptorDatabaseBuilder = std::make_unique<SharedDescriptorDatabaseBuilder>();
 
 	ModernFrameGraphBuilder::Build();
 }
@@ -794,24 +824,4 @@ VkImageView Vulkan::FrameGraphBuilder::CreateImageView(VkImage image, uint32_t s
 	ThrowIfFailed(vkCreateImageView(mVulkanGraphToBuild->mDeviceRef, &imageViewCreateInfo, nullptr, &imageView));
 
 	return imageView;
-}
-
-VkDescriptorSetLayout Vulkan::FrameGraphBuilder::CreateDescriptorSetLayout(std::span<VkDescriptorSetLayoutBinding> bindings, std::span<VkDescriptorBindingFlags> bindingFlags)
-{
-	vgs::StructureChainBlob<VkDescriptorSetLayoutCreateInfo> descriptorSetLayoutCreateInfoChain;
-	descriptorSetLayoutCreateInfoChain.AppendToChain(VkDescriptorSetLayoutBindingFlagsCreateInfo
-	{
-		.bindingCount  = (uint32_t)bindingFlags.size(),
-		.pBindingFlags = bindingFlags.data()
-	});
-	
-	VkDescriptorSetLayoutCreateInfo& setLayoutCreateInfo = descriptorSetLayoutCreateInfoChain.GetChainHead();
-	setLayoutCreateInfo.flags        = 0;
-	setLayoutCreateInfo.bindingCount = (uint32_t)bindings.size();
-	setLayoutCreateInfo.pBindings    = bindings.data();
-
-	VkDescriptorSetLayout setLayout = VK_NULL_HANDLE;
-	ThrowIfFailed(vkCreateDescriptorSetLayout(mVulkanGraphToBuild->mDeviceRef, &setLayoutCreateInfo, nullptr, &setLayout));
-
-	return setLayout;
 }

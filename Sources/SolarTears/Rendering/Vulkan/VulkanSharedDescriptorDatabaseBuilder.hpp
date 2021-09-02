@@ -1,20 +1,14 @@
 #pragma once
 
 #include "VulkanSharedDescriptorDatabase.hpp"
+#include "VulkanDescriptorDatabaseCommon.hpp"
 
 namespace Vulkan
 {
-	enum class SetRegisterResult
-	{
-		Success,
-		UndefinedSharedSet,
-		ValidateError
-	};
-
 	class SharedDescriptorDatabaseBuilder
 	{
 	public:
-		SharedDescriptorDatabaseBuilder(SharedDescriptorDatabase* databaseToBuild);
+		SharedDescriptorDatabaseBuilder();
 		~SharedDescriptorDatabaseBuilder();
 
 	public:
@@ -24,18 +18,16 @@ namespace Vulkan
 		//Returns SetRegisterResult::ValidateError if the binding names correspond to sampler or scene data sets, but binding values do not match.
 		SetRegisterResult TryRegisterSet(std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<std::string> bindingNames);
 
-		void Build();
+		void Build(SharedDescriptorDatabase* databaseToBuild);
 
 	private:
 		SetRegisterResult TryRegisterSamplerSet(std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<std::string> bindingNames);
 		SetRegisterResult TryRegisterSceneSet(std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<std::string> bindingNames);
 
-		void RecreateSamplerSetLayouts();
-		void RecreateSceneSetLayouts();
+		void RecreateSamplerSetLayouts(SharedDescriptorDatabase* databaseToBuild);
+		void RecreateSceneSetLayouts(SharedDescriptorDatabase* databaseToBuild);
 
 	private:
-		SharedDescriptorDatabase* mDatabaseToBuild;
-
 		VkShaderStageFlags mSamplerShaderFlags;
 		std::array<VkShaderStageFlags, SharedDescriptorDatabase::TotalSceneSetLayouts> mShaderFlagsPerSceneType;
 	};

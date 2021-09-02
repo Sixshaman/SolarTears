@@ -5,9 +5,10 @@
 #include <unordered_map>
 #include <memory>
 #include <array>
+#include <span>
 #include "../../../Core/DataStructures/Span.hpp"
 #include "../../Common/FrameGraph/ModernFrameGraphBuilder.hpp"
-#include "../../Vulkan/Scene/VulkanSceneDescriptorDatabase.hpp"
+#include "../VulkanDescriptorDatabaseCommon.hpp"
 
 namespace Vulkan
 {
@@ -18,9 +19,7 @@ namespace Vulkan
 	class RenderableScene;
 	class DeviceParameters;
 	class ShaderDatabase;
-	class SceneDescriptorDatabase;
-	class PassDescriptorDatabase;
-	class SamplerDescriptorDatabase;
+	class SharedDescriptorDatabaseBuilder;
 
 	using RenderPassCreateFunc = std::unique_ptr<RenderPass>(*)(VkDevice, const FrameGraphBuilder*, const std::string&, uint32_t);
 	using RenderPassAddFunc    = void(*)(FrameGraphBuilder* frameGraphBuilder, const std::string& passName);
@@ -32,10 +31,6 @@ namespace Vulkan
 		const MemoryManager*        MemoryAllocator; 
 		const DeviceQueues*         Queues;
 		const WorkerCommandBuffers* CommandBuffers;
-
-		SceneDescriptorDatabase*   DescriptorDatabaseScene;
-		PassDescriptorDatabase*    DescriptorDatabasePasses;
-		SamplerDescriptorDatabase* DescriptorDatabaseSamplers;
 	};
 
 	class FrameGraphBuilder final: public ModernFrameGraphBuilder
@@ -61,14 +56,14 @@ namespace Vulkan
 		void SetPassSubresourceStageFlags(const std::string_view passName,  const std::string_view subresourceId, VkPipelineStageFlags stage);
 		void SetPassSubresourceAccessFlags(const std::string_view passName, const std::string_view subresourceId, VkAccessFlags accessFlags);
 
+		SetRegisterResult TryRegisterPassDescriptorSet(const FrameGraphDescription::RenderPassName& passName, std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<std::string> bindingNames);
+
 		const DeviceParameters*  GetDeviceParameters()  const;
 		const DeviceQueues*      GetDeviceQueues()      const;
 		const SwapChain*         GetSwapChain()         const;
 
-		ShaderDatabase*            GetShaderDatabase()            const;
-		SceneDescriptorDatabase*   GetSceneDescriptorDatabase()   const;
-		PassDescriptorDatabase*    GetPassDescriptorDatabase()    const;
-		SamplerDescriptorDatabase* GetSamplerDescriptorDatabase() const;
+		ShaderDatabase*                  GetShaderDatabase()                  const;
+		SharedDescriptorDatabaseBuilder* GetSharedDescriptorDatabaseBuilder() const;
 
 		VkImage              GetRegisteredResource(const std::string_view passName,    const std::string_view subresourceId, uint32_t frame) const;
 		VkImageView          GetRegisteredSubresource(const std::string_view passName, const std::string_view subresourceId, uint32_t frame) const;
@@ -107,9 +102,6 @@ namespace Vulkan
 
 		//Creates an image view
 		VkImageView CreateImageView(VkImage image, uint32_t subresourceInfoIndex) const;
-
-		//Creates a descriptor set layout
-		VkDescriptorSetLayout CreateDescriptorSetLayout(std::span<VkDescriptorSetLayoutBinding> bindings, std::span<VkDescriptorBindingFlags> bindingFlags);
 
 	private:
 		//Creates a new subresource info record
@@ -171,10 +163,10 @@ namespace Vulkan
 		const DeviceParameters*     mDeviceParameters;
 		const MemoryManager*        mMemoryManager;
 
-		std::unique_ptr<ShaderDatabase> mShaderDatabase;
-		SceneDescriptorDatabase*        mSceneDescriptorDatabase;
-		PassDescriptorDatabase*         mPassDescriptorDatabase;
-		SamplerDescriptorDatabase*      mSamplerDescriptorDatabase;
+		std::unique_ptr<ShaderDatabase>                  mShaderDatabase;
+		std::unique_ptr<SharedDescriptorDatabaseBuilder> mSharedDescriptorDatabaseBuilder;
+
+
 	};
 }
 

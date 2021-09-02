@@ -3,7 +3,7 @@
 #include "VulkanUtils.hpp"
 #include <VulkanGenericStructures.h>
 
-Vulkan::SharedDescriptorDatabaseBuilder::SharedDescriptorDatabaseBuilder(SharedDescriptorDatabase* databaseToBuild): mDatabaseToBuild(databaseToBuild)
+Vulkan::SharedDescriptorDatabaseBuilder::SharedDescriptorDatabaseBuilder()
 {
 	std::fill(mShaderFlagsPerSceneType.begin(), mShaderFlagsPerSceneType.end(), VkShaderStageFlags(0));
 }
@@ -15,7 +15,7 @@ Vulkan::SharedDescriptorDatabaseBuilder::~SharedDescriptorDatabaseBuilder()
 Vulkan::SetRegisterResult Vulkan::SharedDescriptorDatabaseBuilder::TryRegisterSet(std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<std::string> bindingNames)
 {
 	SetRegisterResult sceneRegisterResult = TryRegisterSceneSet(setBindings, bindingNames);
-	if(sceneRegisterResult == SetRegisterResult::UndefinedSharedSet)
+	if(sceneRegisterResult == SetRegisterResult::UndefinedSet)
 	{
 		return TryRegisterSamplerSet(setBindings, bindingNames);
 	}
@@ -23,16 +23,16 @@ Vulkan::SetRegisterResult Vulkan::SharedDescriptorDatabaseBuilder::TryRegisterSe
 	return sceneRegisterResult;
 }
 
-void Vulkan::SharedDescriptorDatabaseBuilder::Build()
+void Vulkan::SharedDescriptorDatabaseBuilder::Build(SharedDescriptorDatabase* databaseToBuild)
 {
-	SafeDestroyObject(vkDestroyDescriptorSetLayout, mDatabaseToBuild->mDeviceRef, mDatabaseToBuild->mSamplerDescriptorSetLayout);
-	for (size_t entryIndex = 0; entryIndex < mDatabaseToBuild->mSceneSetLayouts.size(); entryIndex++)
+	SafeDestroyObject(vkDestroyDescriptorSetLayout, databaseToBuild->mDeviceRef, databaseToBuild->mSamplerDescriptorSetLayout);
+	for (size_t entryIndex = 0; entryIndex < databaseToBuild->mSceneSetLayouts.size(); entryIndex++)
 	{
-		SafeDestroyObject(vkDestroyDescriptorSetLayout, mDatabaseToBuild->mDeviceRef, mDatabaseToBuild->mSceneSetLayouts[entryIndex]);
+		SafeDestroyObject(vkDestroyDescriptorSetLayout, databaseToBuild->mDeviceRef, databaseToBuild->mSceneSetLayouts[entryIndex]);
 	}
 
-	RecreateSamplerSetLayouts();
-	RecreateSceneSetLayouts();
+	RecreateSamplerSetLayouts(databaseToBuild);
+	RecreateSceneSetLayouts(databaseToBuild);
 }
 
 Vulkan::SetRegisterResult Vulkan::SharedDescriptorDatabaseBuilder::TryRegisterSamplerSet(std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<std::string> bindingNames)
@@ -50,7 +50,7 @@ Vulkan::SetRegisterResult Vulkan::SharedDescriptorDatabaseBuilder::TryRegisterSa
 		return SetRegisterResult::Success;
 	}
 
-	return SetRegisterResult::UndefinedSharedSet;
+	return SetRegisterResult::UndefinedSet;
 }
 
 Vulkan::SetRegisterResult Vulkan::SharedDescriptorDatabaseBuilder::TryRegisterSceneSet(std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<std::string> bindingNames)
@@ -132,19 +132,19 @@ Vulkan::SetRegisterResult Vulkan::SharedDescriptorDatabaseBuilder::TryRegisterSc
 		}
 	}
 
-	return SetRegisterResult::UndefinedSharedSet;
+	return SetRegisterResult::UndefinedSet;
 }
 
-void Vulkan::SharedDescriptorDatabaseBuilder::RecreateSamplerSetLayouts()
+void Vulkan::SharedDescriptorDatabaseBuilder::RecreateSamplerSetLayouts(SharedDescriptorDatabase* databaseToBuild)
 {
-	SafeDestroyObject(vkDestroyDescriptorSetLayout, mDatabaseToBuild->mDeviceRef, mDatabaseToBuild->mSamplerDescriptorSetLayout);
+	SafeDestroyObject(vkDestroyDescriptorSetLayout, databaseToBuild->mDeviceRef, databaseToBuild->mSamplerDescriptorSetLayout);
 
 	VkDescriptorSetLayoutBinding samplerBinding;
 	samplerBinding.binding            = 0;
-	samplerBinding.descriptorCount    = (uint32_t)mDatabaseToBuild->mSamplers.size();
+	samplerBinding.descriptorCount    = (uint32_t)databaseToBuild->mSamplers.size();
 	samplerBinding.descriptorType     = VK_DESCRIPTOR_TYPE_SAMPLER;
 	samplerBinding.stageFlags         = mSamplerShaderFlags;
-	samplerBinding.pImmutableSamplers = mDatabaseToBuild->mSamplers.data();
+	samplerBinding.pImmutableSamplers = databaseToBuild->mSamplers.data();
 
 	std::array setLayoutBindings = {samplerBinding};
 
@@ -155,10 +155,10 @@ void Vulkan::SharedDescriptorDatabaseBuilder::RecreateSamplerSetLayouts()
 	descriptorSetLayoutCreateInfo.bindingCount = (uint32_t)setLayoutBindings.size();
 	descriptorSetLayoutCreateInfo.pBindings    = setLayoutBindings.data();
 
-	ThrowIfFailed(vkCreateDescriptorSetLayout(mDatabaseToBuild->mDeviceRef, &descriptorSetLayoutCreateInfo, nullptr, &mDatabaseToBuild->mSamplerDescriptorSetLayout));
+	ThrowIfFailed(vkCreateDescriptorSetLayout(databaseToBuild->mDeviceRef, &descriptorSetLayoutCreateInfo, nullptr, &databaseToBuild->mSamplerDescriptorSetLayout));
 }
 
-void Vulkan::SharedDescriptorDatabaseBuilder::RecreateSceneSetLayouts()
+void Vulkan::SharedDescriptorDatabaseBuilder::RecreateSceneSetLayouts(SharedDescriptorDatabase* databaseToBuild)
 {
 	std::array textureListBindingFlags               = {(VkDescriptorBindingFlags)VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT};
 	std::array materialListBindingFlags              = {(VkDescriptorBindingFlags)VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT};
@@ -212,10 +212,10 @@ void Vulkan::SharedDescriptorDatabaseBuilder::RecreateSceneSetLayouts()
 	std::array<vgs::GenericStructureChain<VkDescriptorSetLayoutCreateInfo>,  (size_t)SharedDescriptorDatabase::TotalSceneSetLayouts> createInfosPerType;
 	for(uint32_t typeIndex = 0; typeIndex < SharedDescriptorDatabase::TotalSceneSetLayouts; typeIndex++)
 	{
-		SafeDestroyObject(vkDestroyDescriptorSetLayout, mDatabaseToBuild->mDeviceRef, mDatabaseToBuild->mSceneSetLayouts[typeIndex]);
+		SafeDestroyObject(vkDestroyDescriptorSetLayout, databaseToBuild->mDeviceRef, databaseToBuild->mSceneSetLayouts[typeIndex]);
 		createInfosPerType[typeIndex].AppendToChain(createFlagsPerType[typeIndex]);
 
 		const VkDescriptorSetLayoutCreateInfo& setLayoutCreateInfo = createInfosPerType[typeIndex].GetChainHead();
-		ThrowIfFailed(vkCreateDescriptorSetLayout(mDatabaseToBuild->mDeviceRef, &setLayoutCreateInfo, nullptr, &mDatabaseToBuild->mSceneSetLayouts[typeIndex]));
+		ThrowIfFailed(vkCreateDescriptorSetLayout(databaseToBuild->mDeviceRef, &setLayoutCreateInfo, nullptr, &databaseToBuild->mSceneSetLayouts[typeIndex]));
 	}
 }
