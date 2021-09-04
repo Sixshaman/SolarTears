@@ -42,9 +42,9 @@ D3D12::GBufferPass::~GBufferPass()
 {
 }
 
-void D3D12::GBufferPass::OnAdd(FrameGraphBuilder* frameGraphBuilder, const std::string& passName)
+void D3D12::GBufferPass::RegisterResources(FrameGraphBuilder* frameGraphBuilder, const std::string& passName)
 {
-	GBufferPassBase::OnAdd(frameGraphBuilder, passName);
+	GBufferPassBase::RegisterResources(frameGraphBuilder, passName);
 
 	frameGraphBuilder->SetPassSubresourceFormat(passName, ColorBufferImageId, ColorOutputFormat); //TODO: maybe passing the format????
 	frameGraphBuilder->SetPassSubresourceState(passName, ColorBufferImageId, D3D12_RESOURCE_STATE_RENDER_TARGET);

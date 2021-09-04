@@ -14,5 +14,5 @@ public:
 	static constexpr std::string_view DstImageId = "DstImage";
 
 public:
-	static void OnAdd(ModernFrameGraphBuilder* frameGraphBuilder, const std::string& passName);
+	static void RegisterResources(ModernFrameGraphBuilder* frameGraphBuilder, const std::string& passName);
 };

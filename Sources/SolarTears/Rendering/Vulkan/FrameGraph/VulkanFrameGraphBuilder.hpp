@@ -20,9 +20,11 @@ namespace Vulkan
 	class DeviceParameters;
 	class ShaderDatabase;
 	class SharedDescriptorDatabaseBuilder;
+	class PassDescriptorDatabaseBuilder;
 
-	using RenderPassCreateFunc = std::unique_ptr<RenderPass>(*)(VkDevice, const FrameGraphBuilder*, const std::string&, uint32_t);
-	using RenderPassAddFunc    = void(*)(FrameGraphBuilder* frameGraphBuilder, const std::string& passName);
+	using RenderPassCreateFunc         = std::unique_ptr<RenderPass>(*)(VkDevice, const FrameGraphBuilder*, const std::string&, uint32_t);
+	using RenderPassAddFunc            = void(*)(FrameGraphBuilder*, const std::string&);
+	using RenderPassShaderRegisterFunc = void(*)(ShaderDatabase*, SharedDescriptorDatabaseBuilder*, PassDescriptorDatabaseBuilder*);
 
 	struct FrameGraphBuildInfo
 	{
@@ -56,14 +58,9 @@ namespace Vulkan
 		void SetPassSubresourceStageFlags(const std::string_view passName,  const std::string_view subresourceId, VkPipelineStageFlags stage);
 		void SetPassSubresourceAccessFlags(const std::string_view passName, const std::string_view subresourceId, VkAccessFlags accessFlags);
 
-		SetRegisterResult TryRegisterPassDescriptorSet(const FrameGraphDescription::RenderPassName& passName, std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<std::string> bindingNames);
-
-		const DeviceParameters*  GetDeviceParameters()  const;
-		const DeviceQueues*      GetDeviceQueues()      const;
-		const SwapChain*         GetSwapChain()         const;
-
-		ShaderDatabase*                  GetShaderDatabase()                  const;
-		SharedDescriptorDatabaseBuilder* GetSharedDescriptorDatabaseBuilder() const;
+		const DeviceParameters* GetDeviceParameters() const;
+		const DeviceQueues*     GetDeviceQueues()     const;
+		const SwapChain*        GetSwapChain()        const;
 
 		VkImage              GetRegisteredResource(const std::string_view passName,    const std::string_view subresourceId, uint32_t frame) const;
 		VkImageView          GetRegisteredSubresource(const std::string_view passName, const std::string_view subresourceId, uint32_t frame) const;
@@ -148,8 +145,9 @@ namespace Vulkan
 
 		LoggerQueue* mLogger;
 
-		std::unordered_map<RenderPassType, RenderPassAddFunc>    mPassAddFuncTable;
-		std::unordered_map<RenderPassType, RenderPassCreateFunc> mPassCreateFuncTable;
+		std::unordered_map<RenderPassType, RenderPassAddFunc>            mPassAddFuncTable;
+		std::unordered_map<RenderPassType, RenderPassShaderRegisterFunc> mPassRegisterShadersFuncTable;
+		std::unordered_map<RenderPassType, RenderPassCreateFunc>         mPassCreateFuncTable;
 
 		std::vector<SubresourceInfo> mSubresourceInfos;
 
@@ -165,8 +163,6 @@ namespace Vulkan
 
 		std::unique_ptr<ShaderDatabase>                  mShaderDatabase;
 		std::unique_ptr<SharedDescriptorDatabaseBuilder> mSharedDescriptorDatabaseBuilder;
-
-
 	};
 }
 

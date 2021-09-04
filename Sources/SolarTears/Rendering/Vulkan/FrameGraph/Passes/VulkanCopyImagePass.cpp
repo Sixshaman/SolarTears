@@ -17,9 +17,9 @@ Vulkan::CopyImagePass::~CopyImagePass()
 {
 }
 
-void Vulkan::CopyImagePass::OnAdd(FrameGraphBuilder* frameGraphBuilder, const std::string& passName)
+void Vulkan::CopyImagePass::RegisterResources(FrameGraphBuilder* frameGraphBuilder, const std::string& passName)
 {
-	CopyImagePassBase::OnAdd(frameGraphBuilder, passName);
+	CopyImagePassBase::RegisterResources(frameGraphBuilder, passName);
 
 	frameGraphBuilder->SetPassSubresourceAspectFlags(passName, SrcImageId, 0);
 	frameGraphBuilder->SetPassSubresourceStageFlags(passName, SrcImageId, VK_PIPELINE_STAGE_TRANSFER_BIT);

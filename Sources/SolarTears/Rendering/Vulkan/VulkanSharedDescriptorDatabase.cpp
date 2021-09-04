@@ -251,27 +251,30 @@ void Vulkan::SharedDescriptorDatabase::UpdateDescriptorSets(const RenderableScen
 		(AddBindingFunc)addFrameDataBindingsFunc
 	});
 
-	constexpr uint32_t uniqueBindingCount = std::accumulate(FrameCountsPerBinding.begin(), FrameCountsPerBinding.end(), 0u);
+	constexpr uint32_t UniqueBindingCount = std::accumulate(FrameCountsPerBinding.begin(), FrameCountsPerBinding.end(), 0u);
 
 	constexpr std::array<uint32_t, TotalBindings> uniqueBindingStarts = { 0 };
 	std::exclusive_scan(FrameCountsPerBinding.begin(), FrameCountsPerBinding.end(), uniqueBindingStarts.begin(), 0u);
 
-	std::array<VkDescriptorImageInfo*,  uniqueBindingCount> imageDescriptorInfosPerUniqueBinding       = {0};
-	std::array<VkDescriptorBufferInfo*, uniqueBindingCount> bufferDescriptorInfosPerUniqueBinding      = {0};
-	std::array<VkBufferView*,           uniqueBindingCount> texelBufferDescriptorInfosPerUniqueBinding = {0};
+	std::array<VkDescriptorImageInfo*,  UniqueBindingCount> imageDescriptorInfosPerUniqueBinding       = {0};
+	std::array<VkDescriptorBufferInfo*, UniqueBindingCount> bufferDescriptorInfosPerUniqueBinding      = {0};
+	std::array<VkBufferView*,           UniqueBindingCount> texelBufferDescriptorInfosPerUniqueBinding = {0};
 
 	imageDescriptorInfos.reserve(imageDescriptorCount);
 	bufferDescriptorInfos.reserve(bufferDescriptorCount);
-	for(uint32_t bindingTypeIndex = 0, totalBindingIndex = 0; bindingTypeIndex < TotalBindings; bindingTypeIndex++)
+	for(uint32_t bindingTypeIndex = 0; bindingTypeIndex < TotalBindings; bindingTypeIndex++)
 	{
 		AddBindingFunc addfunc      = bindingAddFuncs[bindingTypeIndex];
 		uint32_t       bindingCount = bindingDescriptorCounts[bindingTypeIndex];
-		for(uint32_t frameIndex = 0; frameIndex < FrameCountsPerBinding[bindingTypeIndex]; frameIndex++, totalBindingIndex++)
+
+		for(uint32_t frameIndex = 0; frameIndex < FrameCountsPerBinding[bindingTypeIndex]; frameIndex++)
 		{
+			uint32_t uniqueBindingIndex = uniqueBindingStarts[bindingTypeIndex] + frameIndex;
+
 			//The memory is already reserved, it's safe to assume it won't move anywhere
-			imageDescriptorInfosPerUniqueBinding[totalBindingIndex]       = imageDescriptorInfos.data()  + imageDescriptorInfos.size();
-			bufferDescriptorInfosPerUniqueBinding[totalBindingIndex]      = bufferDescriptorInfos.data() + bufferDescriptorInfos.size();
-			texelBufferDescriptorInfosPerUniqueBinding[totalBindingIndex] = nullptr;
+			imageDescriptorInfosPerUniqueBinding[uniqueBindingIndex]       = imageDescriptorInfos.data()  + imageDescriptorInfos.size();
+			bufferDescriptorInfosPerUniqueBinding[uniqueBindingIndex]      = bufferDescriptorInfos.data() + bufferDescriptorInfos.size();
+			texelBufferDescriptorInfosPerUniqueBinding[uniqueBindingIndex] = nullptr;
 
 			for(uint32_t bindingIndex = 0; bindingIndex < bindingCount; bindingIndex++)
 			{
@@ -300,7 +303,7 @@ void Vulkan::SharedDescriptorDatabase::UpdateDescriptorSets(const RenderableScen
 				uint32_t layoutBindingIndex = bindingIndex - layoutBindingSpan.Begin;
 				uint32_t bindingTypeIndex   = (uint32_t)mSetFormatsFlat[bindingIndex];
 
-				uint32_t uniqueBindingIndex = uniqueBindingStarts[bindingIndex] + setIndex;
+				uint32_t uniqueBindingIndex = uniqueBindingStarts[bindingTypeIndex] + setIndex % FrameCountsPerBinding[bindingTypeIndex];
 
 				VkWriteDescriptorSet writeDescriptorSet;
 				writeDescriptorSet.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;

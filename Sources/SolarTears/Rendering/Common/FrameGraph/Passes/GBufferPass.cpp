@@ -1,6 +1,6 @@
 #include "GBufferPass.hpp"
 
-void GBufferPassBase::OnAdd(ModernFrameGraphBuilder* frameGraphBuilder, const std::string& passName)
+void GBufferPassBase::RegisterResources(ModernFrameGraphBuilder* frameGraphBuilder, const std::string& passName)
 {
 	frameGraphBuilder->RegisterWriteSubresource(passName, ColorBufferImageId);
 }

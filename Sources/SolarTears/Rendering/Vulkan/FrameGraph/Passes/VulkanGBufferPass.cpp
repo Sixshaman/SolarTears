@@ -2,8 +2,6 @@
 #include "../../../../Core/Util.hpp"
 #include "../../VulkanFunctions.hpp"
 #include "../../Scene/VulkanScene.hpp"
-#include "../../Scene/VulkanSceneDescriptorDatabase.hpp"
-#include "../../VulkanSamplerDescriptorDatabase.hpp"
 #include "../../VulkanShaders.hpp"
 #include "../VulkanFrameGraphBuilder.hpp"
 #include <array>
@@ -69,20 +67,38 @@ Vulkan::GBufferPass::~GBufferPass()
 	SafeDestroyObject(vkDestroyFramebuffer, mDeviceRef, mFramebuffer);
 }
 
-void Vulkan::GBufferPass::OnAdd(FrameGraphBuilder* frameGraphBuilder, const std::string& passName)
+void Vulkan::GBufferPass::RegisterResources(FrameGraphBuilder* frameGraphBuilder, const std::string& passName)
 {
-	GBufferPassBase::OnAdd(frameGraphBuilder, passName);
+	GBufferPassBase::RegisterResources(frameGraphBuilder, passName);
 
 	frameGraphBuilder->EnableSubresourceAutoBeforeBarrier(passName, ColorBufferImageId, true);
-	frameGraphBuilder->EnableSubresourceAutoAfterBarrier(passName, ColorBufferImageId, true);
-	frameGraphBuilder->SetPassSubresourceFormat(passName, ColorBufferImageId, VK_FORMAT_B8G8R8A8_UNORM); //TODO: maybe passing the format????
-	frameGraphBuilder->SetPassSubresourceAspectFlags(passName, ColorBufferImageId, VK_IMAGE_ASPECT_COLOR_BIT);
-	frameGraphBuilder->SetPassSubresourceStageFlags(passName, ColorBufferImageId, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-	frameGraphBuilder->SetPassSubresourceLayout(passName, ColorBufferImageId, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-	frameGraphBuilder->SetPassSubresourceUsage(passName, ColorBufferImageId, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
-	frameGraphBuilder->SetPassSubresourceAccessFlags(passName, ColorBufferImageId, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+	frameGraphBuilder->EnableSubresourceAutoAfterBarrier(passName,  ColorBufferImageId, true);
 
-	RegisterShaders(frameGraphBuilder, passName);
+	frameGraphBuilder->SetPassSubresourceFormat(passName,      ColorBufferImageId, VK_FORMAT_B8G8R8A8_UNORM); //TODO: maybe passing the format????
+	frameGraphBuilder->SetPassSubresourceAspectFlags(passName, ColorBufferImageId, VK_IMAGE_ASPECT_COLOR_BIT);
+	frameGraphBuilder->SetPassSubresourceStageFlags(passName,  ColorBufferImageId, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+	frameGraphBuilder->SetPassSubresourceLayout(passName,      ColorBufferImageId, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+	frameGraphBuilder->SetPassSubresourceUsage(passName,       ColorBufferImageId, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+	frameGraphBuilder->SetPassSubresourceAccessFlags(passName, ColorBufferImageId, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+}
+
+void Vulkan::GBufferPass::RegisterShaders(ShaderDatabase* shaderDatabase, SharedDescriptorDatabaseBuilder* sharedDescriptorDatabaseBuilder, PassDescriptorDatabaseBuilder* passDescriptorDatabaseBuilder)
+{
+	//Load shaders in advance to process all bindings common for all passes (scene, samplers)
+	const std::wstring shaderFolder = Utils::GetMainDirectory() + L"Shaders/Vulkan/GBuffer/";
+	
+	std::wstring staticShaderFilename          = shaderFolder + L"GBufferDrawStatic.vert.spv";
+	std::wstring staticInstancedShaderFilename = shaderFolder + L"GBufferDrawStaticInstanced.vert.spv";
+	std::wstring rigidShaderFilename           = shaderFolder + L"GBufferDrawRigid.vert.spv";
+	std::wstring fragmentShaderFilename        = shaderFolder + L"GBufferDraw.frag.spv";
+
+	std::array staticShaders          = {staticShaderFilename,          fragmentShaderFilename};
+	std::array staticInstancedShaders = {staticInstancedShaderFilename, fragmentShaderFilename};
+	std::array rigidShaders           = {rigidShaderFilename,           fragmentShaderFilename};
+
+	shaderDatabase->RegisterShaderGroup(staticShaders,          sharedDescriptorDatabaseBuilder, passDescriptorDatabaseBuilder);
+	shaderDatabase->RegisterShaderGroup(staticInstancedShaders, sharedDescriptorDatabaseBuilder, passDescriptorDatabaseBuilder);
+	shaderDatabase->RegisterShaderGroup(rigidShaders,           sharedDescriptorDatabaseBuilder, passDescriptorDatabaseBuilder);
 }
 
 void Vulkan::GBufferPass::RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig) const
@@ -150,26 +166,6 @@ void Vulkan::GBufferPass::RecordExecution(VkCommandBuffer commandBuffer, const R
 	scene->DrawRigidObjects(commandBuffer, meshCallback, submeshCallback);
 
 	vkCmdEndRenderPass(commandBuffer);
-}
-
-void Vulkan::GBufferPass::RegisterShaders(FrameGraphBuilder* frameGraphBuilder, const std::string& passName)
-{
-	//Load shaders in advance to process all bindings common for all passes (scene, samplers)
-	const std::wstring shaderFolder = Utils::GetMainDirectory() + L"Shaders/Vulkan/GBuffer/";
-	
-	std::wstring staticShaderFilename          = shaderFolder + L"GBufferDrawStatic.vert.spv";
-	std::wstring staticInstancedShaderFilename = shaderFolder + L"GBufferDrawStaticInstanced.vert.spv";
-	std::wstring rigidShaderFilename           = shaderFolder + L"GBufferDrawRigid.vert.spv";
-	std::wstring fragmentShaderFilename        = shaderFolder + L"GBufferDraw.frag.spv";
-
-	std::array staticShaders          = {staticShaderFilename,          fragmentShaderFilename};
-	std::array staticInstancedShaders = {staticInstancedShaderFilename, fragmentShaderFilename};
-	std::array rigidShaders           = {rigidShaderFilename,           fragmentShaderFilename};
-
-	ShaderDatabase* shaderDatabase = frameGraphBuilder->GetShaderDatabase();
-	shaderDatabase->RegisterShaderGroup(passName, staticShaders,          ShaderGroupRegisterFlags::DontNeedSets);
-	shaderDatabase->RegisterShaderGroup(passName, staticInstancedShaders, ShaderGroupRegisterFlags::None);
-	shaderDatabase->RegisterShaderGroup(passName, rigidShaders,           ShaderGroupRegisterFlags::None);
 }
 
 void Vulkan::GBufferPass::CreateRenderPass(const FrameGraphBuilder* frameGraphBuilder, const DeviceParameters* deviceParameters, const std::string& currentPassName)

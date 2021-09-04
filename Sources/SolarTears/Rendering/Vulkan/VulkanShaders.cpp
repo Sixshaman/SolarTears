@@ -3,9 +3,8 @@
 #include "VulkanFunctions.hpp"
 #include "../../Core/Util.hpp"
 #include "../../Logging/Logger.hpp"
-#include "VulkanSamplerDescriptorDatabase.hpp"
-#include "Scene/VulkanSceneDescriptorDatabase.hpp"
-#include "FrameGraph/VulkanPassDescriptorDatabase.hpp"
+#include "VulkanSharedDescriptorDatabaseBuilder.hpp"
+#include "FrameGraph/VulkanPassDescriptorDatabaseBuilder.hpp"
 #include <VulkanGenericStructures.h>
 #include <cassert>
 #include <unordered_map>
@@ -19,7 +18,7 @@ Vulkan::ShaderDatabase::~ShaderDatabase()
 {
 }
 
-void Vulkan::ShaderDatabase::RegisterShaderGroup(const std::string& groupName, RegisterGroupInfo& registerInfo, std::span<std::wstring> shaderPaths, ShaderGroupRegisterFlags groupRegisterFlags)
+void Vulkan::ShaderDatabase::RegisterShaderGroup(std::span<std::wstring> shaderPaths, SharedDescriptorDatabaseBuilder* sharedDescriptorDatabaseBuilder, PassDescriptorDatabaseBuilder* passDescriptorDatabaseBuilder)
 {
 	for(const std::wstring& shaderPath: shaderPaths)
 	{
@@ -40,26 +39,16 @@ void Vulkan::ShaderDatabase::RegisterShaderGroup(const std::string& groupName, R
 		{
 			std::span<VkDescriptorSetLayoutBinding> bindingSpan = {setBindings.begin()     + setSpan.Begin, setBindings.begin()     + setSpan.End};
 			std::span<std::string>                  nameSpan    = {setBindingNames.begin() + setSpan.Begin, setBindingNames.begin() + setSpan.End};
-			if(registerInfo.SamplerDatabase->IsSamplerDescriptorSet(bindingSpan, nameSpan))
+
+			SetRegisterResult sharedRegisterResult = sharedDescriptorDatabaseBuilder->TryRegisterSet(setBindings, setBindingNames);
+			if(sharedRegisterResult == SetRegisterResult::UndefinedSet)
 			{
-				registerInfo.SamplerDatabase->RegisterSamplerSet(setSpan.Type);
+				SetRegisterResult passRegisterResult = passDescriptorDatabaseBuilder->TryRegisterSet(setBindings, setBindingNames);
+				assert(sharedRegisterResult == SetRegisterResult::Success);
 			}
 			else
 			{
-				SceneDescriptorSetType sceneSetType = registerInfo.SceneDatabase->ComputeSetType(bindingSpan, nameSpan);
-				assert(sceneSetType != SceneDescriptorSetType::Unknown);
-
-				if(sceneSetType != SceneDescriptorSetType::Unknown)
-				{
-					registerInfo.SceneDatabase->RegisterRequiredSet(sceneSetType, setSpan.Type);
-				}
-				else
-				{
-					uint32_t setId = registerInfo.PassBindingsValidateFunc(bindingSpan, nameSpan);
-					assert(setId != (uint32_t)(-1));
-
-					registerInfo.PassDatabase->RegisterRequiredSet(registerInfo.PassName, setId, setSpan.Type);
-				}
+				assert(sharedRegisterResult != SetRegisterResult::ValidateError);
 			}
 		}
 	}

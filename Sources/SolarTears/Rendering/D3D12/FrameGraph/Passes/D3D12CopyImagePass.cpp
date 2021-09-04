@@ -13,9 +13,9 @@ D3D12::CopyImagePass::~CopyImagePass()
 {
 }
 
-void D3D12::CopyImagePass::OnAdd(FrameGraphBuilder* frameGraphBuilder, const std::string& passName)
+void D3D12::CopyImagePass::RegisterResources(FrameGraphBuilder* frameGraphBuilder, const std::string& passName)
 {
-	CopyImagePassBase::OnAdd(frameGraphBuilder, passName);
+	CopyImagePassBase::RegisterResources(frameGraphBuilder, passName);
 
 	frameGraphBuilder->SetPassSubresourceState(passName, SrcImageId, D3D12_RESOURCE_STATE_COPY_SOURCE);
 	frameGraphBuilder->SetPassSubresourceState(passName, DstImageId, D3D12_RESOURCE_STATE_COPY_DEST);

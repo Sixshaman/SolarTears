@@ -4,7 +4,7 @@
 #include "VulkanSamplers.hpp"
 #include <VulkanGenericStructures.h>
 
-Vulkan::SharedDescriptorDatabaseBuilder::SharedDescriptorDatabaseBuilder(SamplerManager* samplerManager): mSamplerManagerRef(samplerManager)
+Vulkan::SharedDescriptorDatabaseBuilder::SharedDescriptorDatabaseBuilder(VkDevice device, SamplerManager* samplerManager): mDeviceRef(device), mSamplerManagerRef(samplerManager)
 {
 	for(uint32_t bindingTypeIndex = 0; bindingTypeIndex < SharedDescriptorDatabase::TotalBindings; bindingTypeIndex++)
 	{
@@ -15,6 +15,11 @@ Vulkan::SharedDescriptorDatabaseBuilder::SharedDescriptorDatabaseBuilder(Sampler
 
 Vulkan::SharedDescriptorDatabaseBuilder::~SharedDescriptorDatabaseBuilder()
 {
+	//Destroy the non-flushed layouts
+	for(VkDescriptorSetLayout setLayout: mSetLayouts)
+	{
+		SafeDestroyObject(vkDestroyDescriptorSetLayout, mDeviceRef, setLayout);
+	}
 }
 
 Vulkan::SetRegisterResult Vulkan::SharedDescriptorDatabaseBuilder::TryRegisterSet(std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<std::string> bindingNames)
@@ -40,19 +45,26 @@ Vulkan::SetRegisterResult Vulkan::SharedDescriptorDatabaseBuilder::TryRegisterSe
 		if(layoutBindingCount == (uint32_t)setBindings.size())
 		{
 			//Try to match the set
-			bool allBindingsMatch = true;
-			for(uint32_t bindingIndex = layoutBindingSpan.Begin; bindingIndex < layoutBindingSpan.End; bindingIndex++)
+			uint32_t layoutBindingIndex = 0;
+			while(layoutBindingIndex < layoutBindingCount)
 			{
-				uint32_t layoutBindingIndex = bindingIndex - layoutBindingSpan.Begin;
-				if(mSetLayoutBindingsFlat[bindingIndex].BindingType != mBindingTypes.at(bindingNames[layoutBindingIndex]))
+				auto bindingTypeIt = mBindingTypes.find(bindingNames[layoutBindingIndex]);
+				if(bindingTypeIt == mBindingTypes.end())
 				{
-					allBindingsMatch = false;
+					//All binding names should match
+					return SetRegisterResult::ValidateError;
+				}
+
+				if(mSetLayoutBindingTypesFlat[(size_t)layoutBindingSpan.Begin + layoutBindingIndex] != bindingTypeIt->second)
+				{
+					//Binding types don't match
 					break;
 				}
 			}
 
-			if(allBindingsMatch)
+			if(layoutBindingIndex == layoutBindingCount)
 			{
+				//All binding types matched
 				matchingLayoutIndex = layoutIndex;
 				break;
 			}
@@ -97,12 +109,12 @@ Vulkan::SetRegisterResult Vulkan::SharedDescriptorDatabaseBuilder::TryRegisterSe
 				return SetRegisterResult::ValidateError;
 			}
 
-			mSetLayoutBindingsFlat[layoutBindingIndex].BindingType = bindingType;
-			mSetLayoutBindingsFlat[layoutBindingIndex].BindingInfo = bindingInfo;
+			mSetLayoutBindingTypesFlat[layoutBindingIndex] = bindingType;
+			mSetLayoutBindingsFlat[layoutBindingIndex]     = bindingInfo;
 
 			if(bindingType == SharedDescriptorDatabase::SharedDescriptorBindingType::SamplerList)
 			{
-				mSetLayoutBindingsFlat[layoutBindingIndex].BindingInfo.pImmutableSamplers = mSamplerManagerRef->GetSamplerVariableArray();
+				mSetLayoutBindingsFlat[layoutBindingIndex].pImmutableSamplers = mSamplerManagerRef->GetSamplerVariableArray();
 			}
 		}
 	}
@@ -114,7 +126,7 @@ Vulkan::SetRegisterResult Vulkan::SharedDescriptorDatabaseBuilder::TryRegisterSe
 		for(uint32_t bindingIndex = 0; bindingIndex < setBindings.size(); bindingIndex++)
 		{
 			const VkDescriptorSetLayoutBinding& newBindingInfo = setBindings[bindingIndex];
-			VkDescriptorSetLayoutBinding& existingBindingInfo  = mSetLayoutBindingsFlat[(size_t)layoutBindingSpan.Begin + bindingIndex].BindingInfo;
+			VkDescriptorSetLayoutBinding& existingBindingInfo  = mSetLayoutBindingsFlat[(size_t)layoutBindingSpan.Begin + bindingIndex];
 
 			if(!ValidateExistingBinding(newBindingInfo, existingBindingInfo))
 			{
@@ -133,42 +145,66 @@ Vulkan::SetRegisterResult Vulkan::SharedDescriptorDatabaseBuilder::TryRegisterSe
 	return SetRegisterResult::Success;
 }
 
-void Vulkan::SharedDescriptorDatabaseBuilder::BuildSetLayouts(SharedDescriptorDatabase* databaseToBuild)
+void Vulkan::SharedDescriptorDatabaseBuilder::BuildSetLayouts()
 {
-	for(size_t setLayoutIndex = 0; setLayoutIndex < databaseToBuild->mSetLayouts.size(); setLayoutIndex++)
-	{
-		SafeDestroyObject(vkDestroyDescriptorSetLayout, databaseToBuild->mDeviceRef, databaseToBuild->mSetLayouts[setLayoutIndex]);
-	}
+	mSetLayouts.resize(mSetBindingSpansPerLayout.size());
 
 	size_t layoutCount       = mSetBindingSpansPerLayout.size();
 	size_t totalBindingCount = mSetLayoutBindingsFlat.size();
 
-	databaseToBuild->mSetFormatsPerLayout.resize(layoutCount);
-	databaseToBuild->mSetsPerLayout.resize(layoutCount);
+	std::vector<VkDescriptorBindingFlags> bindingFlagsPerBinding(totalBindingCount);
+	for(size_t layoutIndex = 0; layoutIndex < layoutCount; layoutIndex++)
+	{
+		Span<uint32_t> layoutBindingSpan  = mSetBindingSpansPerLayout[layoutIndex];
+		uint32_t       layoutBindingCount = layoutBindingSpan.End - layoutBindingSpan.Begin;
 
-	databaseToBuild->mSetFormatsFlat.resize(totalBindingCount);
+		for(uint32_t bindingIndex = layoutBindingSpan.Begin; bindingIndex < layoutBindingSpan.End; bindingIndex++)
+		{
+			uint32_t layoutBindingIndex = bindingIndex - layoutBindingSpan.Begin;
+			bindingFlagsPerBinding[bindingIndex] = DescriptorFlagsPerBinding[layoutBindingIndex];
+		}
 
-	std::vector<VkDescriptorBindingFlags>                                    bindingFlagsPerBinding(totalBindingCount);
-	std::vector<VkDescriptorSetLayoutBindingFlagsCreateInfo>                 bindingFlagInfosPerLayout(layoutCount);
-	std::vector<vgs::GenericStructureChain<VkDescriptorSetLayoutCreateInfo>> createInfosPerLayout(layoutCount);
+		VkDescriptorSetLayoutBindingFlagsCreateInfo bindingFlagsCreateInfo =
+		{
+			.pNext         = nullptr,
+			.bindingCount  = layoutBindingCount,
+			.pBindingFlags = bindingFlagsPerBinding.data() + layoutBindingSpan.Begin
+		};
+
+		vgs::GenericStructureChain<VkDescriptorSetLayoutCreateInfo> setLayoutCreateInfoChain;
+		setLayoutCreateInfoChain.AppendToChain(bindingFlagsCreateInfo);
+
+		VkDescriptorSetLayoutCreateInfo& setLayoutCreateInfo = setLayoutCreateInfoChain.GetChainHead();
+		setLayoutCreateInfo.flags        = 0;
+		setLayoutCreateInfo.pBindings    = mSetLayoutBindingsFlat.data() + layoutBindingSpan.Begin;
+		setLayoutCreateInfo.bindingCount = layoutBindingCount;
+
+		ThrowIfFailed(vkCreateDescriptorSetLayout(mDeviceRef, &setLayoutCreateInfo, nullptr, &mSetLayouts[layoutIndex]));	
+	}
+}
+
+void Vulkan::SharedDescriptorDatabaseBuilder::FlushSetLayoutInfos(SharedDescriptorDatabase* databaseToBuild)
+{
+	size_t layoutCount = mSetBindingSpansPerLayout.size();
+
+	//Move these to the scene directly
+	std::swap(databaseToBuild->mSetFormatsPerLayout, mSetBindingSpansPerLayout);
+	std::swap(databaseToBuild->mSetFormatsFlat,      mSetLayoutBindingTypesFlat);
+
+	std::swap(databaseToBuild->mSetLayouts, mSetLayouts);
 
 	size_t totalSetCount = 0;
-	for(size_t layoutIndex = 0; layoutIndex < mSetBindingSpansPerLayout.size(); layoutIndex++)
+	databaseToBuild->mSetsPerLayout.resize(layoutCount);
+	for(size_t layoutIndex = 0; layoutIndex < databaseToBuild->mSetFormatsPerLayout.size(); layoutIndex++)
 	{
-		Span<uint32_t> layoutBindingSpan = mSetBindingSpansPerLayout[layoutIndex];
-		databaseToBuild->mSetFormatsPerLayout[layoutIndex] = layoutBindingSpan;
-
-		uint32_t layoutBindingCount = layoutBindingSpan.End - layoutBindingSpan.Begin;
+		Span<uint32_t> layoutBindingSpan  = databaseToBuild->mSetFormatsPerLayout[layoutIndex];
+		uint32_t       layoutBindingCount = layoutBindingSpan.End - layoutBindingSpan.Begin;
 
 		size_t layoutSetCount = 1;
 		for(uint32_t bindingIndex = layoutBindingSpan.Begin; bindingIndex < layoutBindingSpan.End; bindingIndex++)
 		{
 			uint32_t layoutBindingIndex = bindingIndex - layoutBindingSpan.Begin;
 			layoutSetCount = std::lcm(layoutSetCount, SharedDescriptorDatabase::FrameCountsPerBinding[layoutBindingIndex]);
-
-			databaseToBuild->mSetFormatsFlat[bindingIndex] = mSetLayoutBindingsFlat[bindingIndex].BindingType;
-
-			bindingFlagsPerBinding[bindingIndex] = DescriptorFlagsPerBinding[layoutBindingIndex];
 		}
 
 		databaseToBuild->mSetsPerLayout[layoutIndex] = 		
@@ -178,20 +214,6 @@ void Vulkan::SharedDescriptorDatabaseBuilder::BuildSetLayouts(SharedDescriptorDa
 		};
 
 		totalSetCount += layoutSetCount;
-
-
-		bindingFlagInfosPerLayout[layoutIndex] =
-		{
-			.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO,
-			.pNext         = nullptr,
-			.bindingCount  = layoutBindingCount,
-			.pBindingFlags = bindingFlagsPerBinding.data() + layoutBindingSpan.Begin
-		};
-
-		createInfosPerLayout[layoutIndex].AppendToChain(bindingFlagInfosPerLayout[layoutIndex]);
-
-		VkDescriptorSetLayoutCreateInfo& setLayoutCreateInfo = createInfosPerLayout[layoutIndex].GetChainHead();
-		ThrowIfFailed(vkCreateDescriptorSetLayout(databaseToBuild->mDeviceRef, &setLayoutCreateInfo, nullptr, &databaseToBuild->mSetLayouts[layoutIndex]));
 	}
 
 	databaseToBuild->mSets.resize(totalSetCount);

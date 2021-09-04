@@ -11,12 +11,6 @@ namespace Vulkan
 
 	class SharedDescriptorDatabaseBuilder
 	{
-		struct BindingData
-		{
-			SharedDescriptorDatabase::SharedDescriptorBindingType BindingType;
-			VkDescriptorSetLayoutBinding                          BindingInfo;
-		};
-
 		constexpr static std::array<std::string_view, SharedDescriptorDatabase::TotalBindings> DescriptorBindingNames = std::to_array
 		({
 			std::string_view("Samplers"),
@@ -38,7 +32,7 @@ namespace Vulkan
 		});
 
 	public:
-		SharedDescriptorDatabaseBuilder(SamplerManager* samplerManager);
+		SharedDescriptorDatabaseBuilder(VkDevice device, SamplerManager* samplerManager);
 		~SharedDescriptorDatabaseBuilder();
 
 	public:
@@ -48,17 +42,24 @@ namespace Vulkan
 		//Returns SetRegisterResult::ValidateError if the binding names correspond to sampler or scene data sets, but binding values do not match.
 		SetRegisterResult TryRegisterSet(std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<std::string> bindingNames);
 
-		void BuildSetLayouts(SharedDescriptorDatabase* databaseToBuild);
+		void BuildSetLayouts();
+
+		void FlushSetLayoutInfos(SharedDescriptorDatabase* databaseToBuild);
 
 	private:
 		bool ValidateNewBinding(const VkDescriptorSetLayoutBinding& bindingInfo, SharedDescriptorDatabase::SharedDescriptorBindingType bindingType) const;
 		bool ValidateExistingBinding(const VkDescriptorSetLayoutBinding& newBindingInfo, const VkDescriptorSetLayoutBinding& existingBindingInfo) const;
 
 	private:
+		const VkDevice mDeviceRef;
+
 		const SamplerManager* mSamplerManagerRef;
 
-		std::vector<Span<uint32_t>> mSetBindingSpansPerLayout;
-		std::vector<BindingData>    mSetLayoutBindingsFlat;
+		std::vector<Span<uint32_t>>                                        mSetBindingSpansPerLayout;
+		std::vector<VkDescriptorSetLayoutBinding>                          mSetLayoutBindingsFlat;
+		std::vector<SharedDescriptorDatabase::SharedDescriptorBindingType> mSetLayoutBindingTypesFlat;
+
+		std::vector<VkDescriptorSetLayout> mSetLayouts;
 
 		std::unordered_map<std::string_view, SharedDescriptorDatabase::SharedDescriptorBindingType> mBindingTypes;
 	};

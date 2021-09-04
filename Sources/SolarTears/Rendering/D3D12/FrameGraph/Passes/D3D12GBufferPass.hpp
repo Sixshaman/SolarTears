@@ -40,7 +40,7 @@ namespace D3D12
 		virtual void ValidateSceneDescriptors(const DescriptorCreator* sceneDescriptorCreator) override;
 
 	public:
-		static void OnAdd(FrameGraphBuilder* frameGraphBuilder, const std::string& passName);
+		static void RegisterResources(FrameGraphBuilder* frameGraphBuilder, const std::string& passName);
 
 	private:
 		void LoadShaders(const ShaderManager* shaderManager, IDxcBlobEncoding** outStaticVertexShader, IDxcBlobEncoding** outRigidVertexShader, IDxcBlobEncoding** outPixelShader);

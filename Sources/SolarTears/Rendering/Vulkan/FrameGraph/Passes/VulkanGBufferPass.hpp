@@ -11,7 +11,8 @@ namespace Vulkan
 	class DescriptorManager;
 	class RenderableScene;
 	class ShaderDatabase;
-	class SceneDescriptorDatabase;
+	class SharedDescriptorDatabaseBuilder;
+	class PassDescriptorDatabaseBuilder;
 
 	class GBufferPass: public RenderPass, public GBufferPassBase
 	{
@@ -31,11 +32,10 @@ namespace Vulkan
 		void RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* renderableScene, const FrameGraphConfig& frameGraphConfig) const override;
 
 	public:
-		static void OnAdd(FrameGraphBuilder* frameGraphBuilder, const std::string& passName);
+		static void RegisterResources(FrameGraphBuilder* frameGraphBuilder, const std::string& passName);
+		static void RegisterShaders(ShaderDatabase* shaderDatabase, SharedDescriptorDatabaseBuilder* sharedDescriptorDatabaseBuilder, PassDescriptorDatabaseBuilder* passDescriptorDatabaseBuilder);
 
 	private:
-		static void RegisterShaders(FrameGraphBuilder* frameGraphBuilder, const std::string& passName);
-
 		void CreateRenderPass(const FrameGraphBuilder* frameGraphBuilder, const DeviceParameters* deviceParameters, const std::string& currentPassName);
 		void CreateFramebuffer(const FrameGraphBuilder* frameGraphBuilder, const FrameGraphConfig* frameGraphConfig, const std::string& currentPassName, uint32_t frame);
 		void CreatePipelineLayout(std::span<VkDescriptorSetLayout> setLayouts, std::span<VkPushConstantRange> pushConstantRanges, VkPipelineLayout* outPipelineLayout);
