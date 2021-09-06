@@ -78,39 +78,156 @@ void Vulkan::ShaderDatabase::GetRegisteredShaderInfo(const std::wstring& path, c
 	*outShaderSize = shaderModule.GetCodeSize();
 }
 
+void Vulkan::ShaderDatabase::GetPushConstantInfo(std::string_view groupName, std::string_view pushConstantName, uint32_t* outPushConstantOffset, VkShaderStageFlags* outShaderStages)
+{
+	Span<uint32_t> pushConstantSpan = mPushConstantSpansPerShaderGroup.at(groupName);
+
+	const auto rangeBegin = mPushConstantRecords.begin() + pushConstantSpan.Begin;
+	const auto rangeEnd   = mPushConstantRecords.begin() + pushConstantSpan.End;
+	auto pushConstantRecord = std::find(rangeBegin, rangeEnd, [pushConstantName](const PushConstantRecord& rec)
+	{
+		return pushConstantName == rec.Name;
+	});
+
+	if(pushConstantRecord != rangeEnd)
+	{
+		if(outPushConstantOffset != nullptr)
+		{
+			*outPushConstantOffset = pushConstantRecord->Offset;
+		}
+
+		if(outShaderStages != nullptr)
+		{
+			*outShaderStages = pushConstantRecord->ShaderStages;
+		}
+	}
+}
+
 void Vulkan::ShaderDatabase::FindBindings(const std::span<std::wstring> shaderModuleNames, std::vector<VkDescriptorSetLayoutBinding>& outSetBindings, std::vector<std::string>& outBindingNames, std::vector<TypedSpan<uint32_t, VkShaderStageFlags>>& outBindingSpans) const
 {	
 	outBindingSpans.clear();
+	outSetBindings.clear();
+	outBindingNames.clear();
 
-	std::vector<SpvReflectDescriptorBinding*> bindings;
-	std::vector<VkShaderStageFlags>           bindingStageFlags;
-	GatherSetBindings(shaderModuleNames, bindings, bindingStageFlags, outBindingSpans);
+	std::vector<SpvReflectDescriptorBinding*> allBindings;
+	CollectBindings(shaderModuleNames, allBindings);
 
-	outSetBindings.resize(bindings.size());
-	outBindingNames.resize(bindings.size());
-	for(size_t bindingIndex = 0; bindingIndex < outBindingSpans.size(); bindingIndex++)
+	uint32_t totalSetCount = FindSetCount(allBindings);
+
+	//Calculate the binding count for each set and store it in outSetSpans[binding->set].End
+	outBindingSpans.resize(totalSetCount, {.Begin = 0, .End = 0, .Type = 0});
+	for(size_t spanIndex = 0; spanIndex < moduleBindingSpans.size(); spanIndex++)
 	{
-		SpvReflectDescriptorBinding* setBinding       = bindings[bindingIndex];
-		VkShaderStageFlags           shaderStageFlags = bindingStageFlags[bindingIndex];
-
-		uint32_t descriptorCount = setBinding->count;
-		if(setBinding->type_description->op == SpvOpTypeRuntimeArray)
+		TypedSpan<uint32_t, SpvReflectShaderStageFlagBits> bindingSpan = moduleBindingSpans[spanIndex];
+		for(uint32_t bindingIndex = bindingSpan.Begin; bindingIndex < bindingSpan.End; bindingIndex++)
 		{
-			descriptorCount = (uint32_t)(-1); //A way to check for variable descriptor count
+			SpvReflectDescriptorBinding* binding = allBindings[bindingIndex];
+			outBindingSpans[binding->set].End   = std::max(outBindingSpans[binding->set].End, binding->binding + 1);
+			outBindingSpans[binding->set].Type |= SpvToVkShaderStage(bindingSpan.Type);
 		}
-
-		VkDescriptorSetLayoutBinding descriptorSetBinding =
-		{
-			.binding            = setBinding->binding,
-			.descriptorType     = SpvToVkDescriptorType(setBinding->descriptor_type),
-			.descriptorCount    = descriptorCount,
-			.stageFlags         = shaderStageFlags,
-			.pImmutableSamplers = nullptr
-		};
-		
-		outSetBindings.push_back(descriptorSetBinding);
-		outBindingNames.push_back(setBinding->name);
 	}
+
+	//Now outSetSpans[i].End contains the binding count for ith set. Accumulate the spans
+	uint32_t accumulatedBindingCount = 0;
+	for(TypedSpan<uint32_t, VkShaderStageFlags>& bindingSpan: outBindingSpans)
+	{
+		uint32_t writtenBindingCount = bindingSpan.End;
+
+		bindingSpan.Begin = accumulatedBindingCount;
+		bindingSpan.End   = accumulatedBindingCount + writtenBindingCount;
+
+		accumulatedBindingCount += writtenBindingCount;
+	}
+
+	//Fill out the bindings
+	outSetBindings.resize(accumulatedBindingCount);
+	outBindingNames.resize(accumulatedBindingCount);
+	for(TypedSpan<uint32_t, SpvReflectShaderStageFlagBits> moduleSpan: moduleBindingSpans)
+	{
+		const VkShaderStageFlags                      shaderStage       = SpvToVkShaderStage(moduleSpan.Type);
+		const std::span<SpvReflectDescriptorBinding*> moduleBindingSpan = {allBindings.begin() + moduleSpan.Begin, allBindings.begin() + moduleSpan.End};
+
+		for(SpvReflectDescriptorBinding* spvDescriptorBinding: moduleBindingSpan)
+		{
+			TypedSpan<uint32_t, VkShaderStageFlags> setSpan          = outBindingSpans[spvDescriptorBinding->set];
+			uint32_t                                flatBindingIndex = setSpan.Begin + spvDescriptorBinding->binding;
+
+			//Name should be defined in every shader for every uniform block
+			assert(spvDescriptorBinding->name != nullptr && spvDescriptorBinding->name[0] != '\0');
+
+			if(outSetBindings[flatBindingIndex].binding == (uint32_t)(-1))
+			{
+				outBindings[flatBindingIndex]          = spvDescriptorBinding;
+				outBindingStageFlags[flatBindingIndex] = shaderStage;
+			}
+			else
+			{
+				//Make sure the binding is the same
+				SpvReflectDescriptorBinding* definedBinding = outBindings[flatBindingIndex];
+
+				assert(strcmp(spvDescriptorBinding->name, definedBinding->name) == 0);
+				assert(spvDescriptorBinding->resource_type == definedBinding->resource_type);
+				assert(spvDescriptorBinding->count         == definedBinding->count);
+
+				outBindingStageFlags[flatBindingIndex] |= shaderStage;
+			}
+
+			VkShaderStageFlags shaderStageFlags = bindingStageFlags[bindingIndex];
+
+			uint32_t descriptorCount = spvDescriptorBinding->count;
+			if(spvDescriptorBinding->type_description->op == SpvOpTypeRuntimeArray)
+			{
+				descriptorCount = (uint32_t)(-1); //A way to check for variable descriptor count
+			}
+
+			VkDescriptorSetLayoutBinding vkDescriptorBinding =
+			{
+				.binding            = spvDescriptorBinding->binding,
+				.descriptorType     = SpvToVkDescriptorType(spvDescriptorBinding->descriptor_type),
+				.descriptorCount    = descriptorCount,
+				.stageFlags         = shaderStageFlags,
+				.pImmutableSamplers = nullptr
+			};
+		
+			outSetBindings.push_back(vkDescriptorBinding);
+			outBindingNames.push_back(setBinding->name);
+		}
+	}
+}
+
+void Vulkan::ShaderDatabase::CollectBindings(const std::span<std::wstring> shaderModuleNames, std::vector<SpvReflectDescriptorBinding*>& outBindings, std::vector<TypedSpan<uint32_t, SpvReflectShaderStageFlagBits>>& outModuleBindingSpans)
+{
+	//Gather all bindings from all stages
+	for(const std::wstring& shaderModuleName: shaderModuleNames)
+	{
+		const spv_reflect::ShaderModule& shaderModule = mLoadedShaderModules.at(shaderModuleName);
+
+		uint32_t moduleBindingCount = 0;
+		shaderModule.EnumerateDescriptorBindings(&moduleBindingCount, nullptr);
+
+		TypedSpan<uint32_t, SpvReflectShaderStageFlagBits> moduleBindingSpan = 
+		{
+			.Begin = (uint32_t)outBindings.size(),
+			.End   = (uint32_t)outBindings.size() + moduleBindingCount,
+			.Type  = shaderModule.GetShaderStage()
+		};
+
+		outModuleBindingSpans.push_back(moduleBindingSpan);
+		outBindings.resize(outBindings.size() + moduleBindingCount);
+
+		shaderModule.EnumerateDescriptorBindings(&moduleBindingCount, outBindings.data() + moduleBindingSpan.Begin);
+	}
+}
+
+uint32_t Vulkan::ShaderDatabase::FindSetCount(const std::vector<SpvReflectDescriptorBinding*>& allBindings) const
+{
+	uint32_t totalSetCount = 0;
+	for(SpvReflectDescriptorBinding* binding: allBindings)
+	{
+		totalSetCount = std::max(totalSetCount, binding->set + 1);
+	}
+
+	return totalSetCount;
 }
 
 VkShaderStageFlagBits Vulkan::ShaderDatabase::SpvToVkShaderStage(SpvReflectShaderStageFlagBits spvShaderStage) const
@@ -211,93 +328,5 @@ VkDescriptorType Vulkan::ShaderDatabase::SpvToVkDescriptorType(SpvReflectDescrip
 
 void Vulkan::ShaderDatabase::GatherSetBindings(const std::span<std::wstring> shaderModuleNames, std::vector<SpvReflectDescriptorBinding*>& outBindings, std::vector<VkShaderStageFlags>& outBindingStageFlags, std::vector<TypedSpan<uint32_t, VkShaderStageFlags>>& outSetSpans) const
 {
-	uint32_t totalSetCount = 0;
 
-	//Gather all bindings from all stages
-	std::vector<SpvReflectDescriptorBinding*>                       allBindings;
-	std::vector<TypedSpan<uint32_t, SpvReflectShaderStageFlagBits>> moduleBindingSpans;
-	for(const std::wstring& shaderModuleName: shaderModuleNames)
-	{
-		const spv_reflect::ShaderModule& shaderModule = mLoadedShaderModules.at(shaderModuleName);
-
-		uint32_t moduleBindingCount = 0;
-		shaderModule.EnumerateDescriptorBindings(&moduleBindingCount, nullptr);
-
-		TypedSpan<uint32_t, SpvReflectShaderStageFlagBits> moduleBindingSpan = 
-		{
-			.Begin = (uint32_t)allBindings.size(),
-			.End   = (uint32_t)allBindings.size() + moduleBindingCount,
-			.Type  = shaderModule.GetShaderStage()
-		};
-
-		moduleBindingSpans.push_back(moduleBindingSpan);
-		allBindings.resize(allBindings.size() + moduleBindingCount);
-
-		shaderModule.EnumerateDescriptorBindings(&moduleBindingCount, allBindings.data() + moduleBindingSpan.Begin);
-		for(uint32_t bindingIndex = moduleBindingSpan.Begin; bindingIndex < moduleBindingSpan.End; bindingIndex++)
-		{
-			SpvReflectDescriptorBinding* binding = allBindings[bindingIndex];
-			totalSetCount = std::max(totalSetCount, binding->set + 1);
-		}
-	}
-
-	//Calculate the binding count for each set and store it in outSetSpans[binding->set].End
-	outSetSpans.resize(totalSetCount, {.Begin = 0, .End = 0, .Type = 0});
-	for(size_t spanIndex = 0; spanIndex < moduleBindingSpans.size(); spanIndex++)
-	{
-		TypedSpan<uint32_t, SpvReflectShaderStageFlagBits> bindingSpan = moduleBindingSpans[spanIndex];
-		for(uint32_t bindingIndex = bindingSpan.Begin; bindingIndex < bindingSpan.End; bindingIndex++)
-		{
-			SpvReflectDescriptorBinding* binding = allBindings[bindingIndex];
-			outSetSpans[binding->set].End   = std::max(outSetSpans[binding->set].End, binding->binding + 1);
-			outSetSpans[binding->set].Type |= SpvToVkShaderStage(bindingSpan.Type);
-		}
-	}
-
-	//Now outSetSpans[i].End contains the binding count for ith set. Accumulate the spans
-	uint32_t accumulatedBindingCount = 0;
-	for(TypedSpan<uint32_t, VkShaderStageFlags>& bindingSpan: outSetSpans)
-	{
-		uint32_t writtenBindingCount = bindingSpan.End;
-
-		bindingSpan.Begin = accumulatedBindingCount;
-		bindingSpan.End   = accumulatedBindingCount + writtenBindingCount;
-
-		accumulatedBindingCount += writtenBindingCount;
-	}
-
-	//Fill out the bindings
-	outBindings.resize(accumulatedBindingCount, nullptr);
-	outBindingStageFlags.resize(accumulatedBindingCount, 0);
-	for(TypedSpan<uint32_t, SpvReflectShaderStageFlagBits> moduleSpan: moduleBindingSpans)
-	{
-		const VkShaderStageFlags                      shaderStage       = SpvToVkShaderStage(moduleSpan.Type);
-		const std::span<SpvReflectDescriptorBinding*> moduleBindingSpan = {allBindings.begin() + moduleSpan.Begin, allBindings.begin() + moduleSpan.End};
-
-		for(SpvReflectDescriptorBinding* descriptorBinding: moduleBindingSpan)
-		{
-			TypedSpan<uint32_t, VkShaderStageFlags> setSpan          = outSetSpans[descriptorBinding->set];
-			uint32_t                                flatBindingIndex = setSpan.Begin + descriptorBinding->binding;
-
-			//Name should be defined in every shader for every uniform block
-			assert(descriptorBinding->name != nullptr && descriptorBinding->name[0] != '\0');
-
-			if(outBindings[flatBindingIndex] == nullptr)
-			{
-				outBindings[flatBindingIndex]          = descriptorBinding;
-				outBindingStageFlags[flatBindingIndex] = shaderStage;
-			}
-			else
-			{
-				//Make sure the binding is the same
-				SpvReflectDescriptorBinding* definedBinding = outBindings[flatBindingIndex];
-
-				assert(strcmp(descriptorBinding->name, definedBinding->name) == 0);
-				assert(descriptorBinding->resource_type == definedBinding->resource_type);
-				assert(descriptorBinding->count         == definedBinding->count);
-
-				outBindingStageFlags[flatBindingIndex] |= shaderStage;
-			}
-		}
-	}
 }

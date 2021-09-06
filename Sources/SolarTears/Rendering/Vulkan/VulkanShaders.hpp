@@ -14,7 +14,7 @@ namespace Vulkan
 	//Shader database for render passes.
 	//We can't load shaders individually for each pass when needed because of a complex problem.
 	//Suppose pass A accesses scene textures in vertex shader and pass B accesses them in fragment shader.
-	//This means the texture descriptor set layout must have VERTEX | FRAGMENT shader flags.
+	//This means the (common) texture descriptor set layout must have VERTEX | FRAGMENT shader flags.
 	//Since we create descriptor set layouts based on reflection data, we have to:
 	//1) Load all possible shaders for passes;
 	//2) Go through the whole reflection data for all shaders and build descriptor set layouts;
@@ -33,6 +33,13 @@ namespace Vulkan
 			uint16_t Id;   //Per-type set layout id
 		};
 
+		struct PushConstantRecord
+		{
+			std::string_view   Name;
+			uint32_t           Offset;
+			VkShaderStageFlags ShaderStages;
+		};
+
 	public:
 		ShaderDatabase(LoggerQueue* logger);
 		~ShaderDatabase();
@@ -45,7 +52,10 @@ namespace Vulkan
 
 	private:
 		void FindBindings(const std::span<std::wstring> shaderModuleNames, std::vector<VkDescriptorSetLayoutBinding>& outSetBindings, std::vector<std::string>& outBindingNames, std::vector<TypedSpan<uint32_t, VkShaderStageFlags>>& outBindingSpans) const;
-		void GatherSetBindings(const std::span<std::wstring> shaderModuleNames, std::vector<SpvReflectDescriptorBinding*>& outBindings, std::vector<VkShaderStageFlags>& outBindingStageFlags, std::vector<TypedSpan<uint32_t, VkShaderStageFlags>>& outSetSpans) const;
+
+		void CollectBindings(const std::span<std::wstring> shaderModuleNames, std::vector<SpvReflectDescriptorBinding*>& outBindings, std::vector<TypedSpan<uint32_t, SpvReflectShaderStageFlagBits>>& outModuleBindingSpans);
+
+		uint32_t FindSetCount(const std::vector<SpvReflectDescriptorBinding*>& allBindings) const;
 
 		VkShaderStageFlagBits SpvToVkShaderStage(SpvReflectShaderStageFlagBits spvShaderStage)  const;
 		VkDescriptorType      SpvToVkDescriptorType(SpvReflectDescriptorType spvDescriptorType) const;
@@ -55,9 +65,13 @@ namespace Vulkan
 
 		std::unordered_map<std::wstring, spv_reflect::ShaderModule> mLoadedShaderModules;
 
+		//Set layout records for each shader group
 		std::vector<SetLayoutRecord>                         mSetLayoutRecords;
 		std::unordered_map<std::string_view, Span<uint32_t>> mSetLayoutSpansPerShaderGroup;
 
-		std::unordered_map<std::string_view, std::unordered_map<>>
+		//Push constants for each shader group
+		//Each push constant span is lexicographically sorted by name
+		std::vector<PushConstantRecord>                      mPushConstantRecords;
+		std::unordered_map<std::string_view, Span<uint32_t>> mPushConstantSpansPerShaderGroup;
 	};
 }
