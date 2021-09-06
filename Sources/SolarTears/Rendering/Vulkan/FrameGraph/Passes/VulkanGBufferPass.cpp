@@ -42,8 +42,7 @@ Vulkan::GBufferPass::GBufferPass(VkDevice device, const FrameGraphBuilder* frame
 	uint32_t  fragmentShaderSize = 0;
 	shaderDatabase->GetRegisteredShaderInfo(shaderFolder + L"GBufferDraw.frag.spv", &fragmentShaderCode, &fragmentShaderSize);
 
-	mStaticPipelineLayout = frameGraphBuilder->GetPipelineLayout(passName, (uint32_t)PipelineLayoutType::Static);
-	mRigidPipelineLayout  = frameGraphBuilder->GetPipelineLayout(passName, (uint32_t)PipelineLayoutType::Rigid);
+
 
 	shaderDatabase->GetRegisteredPushConstant(passName, "MaterialIndex", &mMaterialIndexPushConstantOffset, &mMaterialIndexPushConstantStages);
 	shaderDatabase->GetRegisteredPushConstant(passName, "ObjectIndex",   &mObjectIndexPushConstantOffset,   &mObjectIndexPushConstantStages);

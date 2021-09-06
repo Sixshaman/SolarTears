@@ -11,11 +11,7 @@ namespace Vulkan
 {
 	class FrameGraphBuilder;
 	class RenderableScene;
-
-	//Validates pass-specific bindings.
-	//Returns the pass-specific set id if bindings are validated correctly and -1 if not
-	//Used by passes that have pass-specific shader bindings
-	using ValidatePassFunc = uint32_t(*)(std::span<VkDescriptorSetLayoutBinding> bindingSpan, std::span<std::string> nameSpan);
+	class ShaderManager;
 
 	//An alternative approach would be a single class with Execute() callback and different render pass description classes.
 	//This would eliminate the cost of dereferencing class pointer, then dereferencing vtable, then indexing through vtable.

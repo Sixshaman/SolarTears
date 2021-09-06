@@ -16,15 +16,6 @@ namespace Vulkan
 
 	class GBufferPass: public RenderPass, public GBufferPassBase
 	{
-		//IDs for shared pipeline layouts 
-		enum class PipelineLayoutType: uint32_t
-		{
-			Static,
-			Rigid,
-
-			Count
-		};
-
 	public:
 		GBufferPass(VkDevice device, const FrameGraphBuilder* frameGraphBuilder, const std::string& passName, uint32_t frame);
 		~GBufferPass();
@@ -45,16 +36,15 @@ namespace Vulkan
 		VkRenderPass  mRenderPass;
 		VkFramebuffer mFramebuffer;
 
-		VkPipelineLayout mStaticPipelineLayout;
+		VkPipelineLayout mStaticPipelineLayout; //Should match static instanced
 		VkPipelineLayout mRigidPipelineLayout;
 
 		VkPipeline mStaticPipeline;
 		VkPipeline mStaticInstancedPipeline;
 		VkPipeline mRigidPipeline;
 
-		std::span<VkDescriptorSet> mSceneCommonAndStaticDescriptorSets; //Common descriptor sets for both pipeline layouts (materials, textures) + descriptor sets for static object drawing (frame data, static object data)
-		std::span<VkDescriptorSet> mSceneRigidDescriptorSets;           //Descriptor sets for dynamic objects drawing (frame + dynamic object data)
-		uint32_t                   mCommonDescriptorSetCount;           //The number of common descriptor sets
+		std::span<VkDescriptorSet> mStaticDescriptorSets;
+		std::span<VkDescriptorSet> mRigidDescriptorSets;
 
 		uint32_t           mMaterialIndexPushConstantOffset;
 		VkShaderStageFlags mMaterialIndexPushConstantStages;

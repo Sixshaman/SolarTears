@@ -1,6 +1,10 @@
 #include "VulkanPassDescriptorDatabaseBuilder.hpp"
+#include "../VulkanUtils.hpp"
+#include "../VulkanFunctions.hpp"
+#include <cassert>
+#include <VulkanGenericStructures.h>
 
-Vulkan::PassDescriptorDatabaseBuilder::PassDescriptorDatabaseBuilder(VkDevice device, const std::vector<PassBindingInfo>& bindingInfos): mDeviceRef(device)
+Vulkan::PassDescriptorDatabaseBuilder::PassDescriptorDatabaseBuilder(const std::vector<PassBindingInfo>& bindingInfos)
 {
 	mDescriptorTypePerBindingType.resize(bindingInfos.size());
 	mDescriptorFlagsPerBindingType.resize(bindingInfos.size());
@@ -122,6 +126,49 @@ Vulkan::SetRegisterResult Vulkan::PassDescriptorDatabaseBuilder::TryRegisterSet(
 	}
 
 	return SetRegisterResult::Success;
+}
+
+uint32_t Vulkan::PassDescriptorDatabaseBuilder::GetSetLayoutCount()
+{
+	return (uint32_t)mSetBindingSpansPerLayout.size();
+}
+
+void Vulkan::PassDescriptorDatabaseBuilder::BuildSetLayouts(VkDevice device, std::span<VkDescriptorSetLayout> setLayoutSpan)
+{
+	size_t layoutCount       = GetSetLayoutCount();
+	size_t totalBindingCount = mSetLayoutBindingsFlat.size();
+
+	assert(layoutCount == (uint32_t)setLayoutSpan.size());
+
+	std::vector<VkDescriptorBindingFlags> bindingFlagsPerBinding(totalBindingCount);
+	for(size_t layoutIndex = 0; layoutIndex < layoutCount; layoutIndex++)
+	{
+		Span<uint32_t> layoutBindingSpan  = mSetBindingSpansPerLayout[layoutIndex];
+		uint32_t       layoutBindingCount = layoutBindingSpan.End - layoutBindingSpan.Begin;
+
+		for(uint32_t bindingIndex = layoutBindingSpan.Begin; bindingIndex < layoutBindingSpan.End; bindingIndex++)
+		{
+			uint32_t bindingTypeIndex = mSetLayoutBindingTypesFlat[bindingIndex];
+			bindingFlagsPerBinding[bindingIndex] = mDescriptorFlagsPerBindingType[bindingTypeIndex];
+		}
+
+		VkDescriptorSetLayoutBindingFlagsCreateInfo bindingFlagsCreateInfo =
+		{
+			.pNext         = nullptr,
+			.bindingCount  = layoutBindingCount,
+			.pBindingFlags = bindingFlagsPerBinding.data() + layoutBindingSpan.Begin
+		};
+
+		vgs::GenericStructureChain<VkDescriptorSetLayoutCreateInfo> setLayoutCreateInfoChain;
+		setLayoutCreateInfoChain.AppendToChain(bindingFlagsCreateInfo);
+
+		VkDescriptorSetLayoutCreateInfo& setLayoutCreateInfo = setLayoutCreateInfoChain.GetChainHead();
+		setLayoutCreateInfo.flags        = 0;
+		setLayoutCreateInfo.pBindings    = mSetLayoutBindingsFlat.data() + layoutBindingSpan.Begin;
+		setLayoutCreateInfo.bindingCount = layoutBindingCount;
+
+		ThrowIfFailed(vkCreateDescriptorSetLayout(device, &setLayoutCreateInfo, nullptr, &setLayoutSpan[layoutIndex]));
+	}
 }
 
 bool Vulkan::PassDescriptorDatabaseBuilder::ValidateNewBinding(const VkDescriptorSetLayoutBinding& bindingInfo, uint32_t bindingType) const

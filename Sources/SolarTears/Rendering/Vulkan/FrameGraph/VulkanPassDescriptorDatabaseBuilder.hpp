@@ -19,7 +19,7 @@ namespace Vulkan
 		};
 
 	public:
-		PassDescriptorDatabaseBuilder(VkDevice device, const std::vector<PassBindingInfo>& bindingInfos);
+		PassDescriptorDatabaseBuilder(const std::vector<PassBindingInfo>& bindingInfos);
 		~PassDescriptorDatabaseBuilder();
 
 	public:
@@ -29,15 +29,15 @@ namespace Vulkan
 		//Returns SetRegisterResult::ValidateError if the binding names correspond to sampler or scene data sets, but binding values do not match.
 		SetRegisterResult TryRegisterSet(std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<std::string> bindingNames);
 
-		void BuildSetLayouts();
+		uint32_t GetSetLayoutCount();
+
+		void BuildSetLayouts(VkDevice device, std::span<VkDescriptorSetLayout> setLayoutSpan);
 
 	private:
 		bool ValidateNewBinding(const VkDescriptorSetLayoutBinding& bindingInfo, uint32_t bindingType)                                            const;
 		bool ValidateExistingBinding(const VkDescriptorSetLayoutBinding& newBindingInfo, const VkDescriptorSetLayoutBinding& existingBindingInfo) const;
 
 	private:
-		const VkDevice mDeviceRef;
-
 		std::vector<Span<uint32_t>>               mSetBindingSpansPerLayout;
 		std::vector<VkDescriptorSetLayoutBinding> mSetLayoutBindingsFlat;
 		std::vector<uint32_t>                     mSetLayoutBindingTypesFlat;

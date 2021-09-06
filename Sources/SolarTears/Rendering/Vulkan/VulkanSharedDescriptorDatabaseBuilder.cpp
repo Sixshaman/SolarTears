@@ -160,8 +160,8 @@ void Vulkan::SharedDescriptorDatabaseBuilder::BuildSetLayouts()
 
 		for(uint32_t bindingIndex = layoutBindingSpan.Begin; bindingIndex < layoutBindingSpan.End; bindingIndex++)
 		{
-			uint32_t layoutBindingIndex = bindingIndex - layoutBindingSpan.Begin;
-			bindingFlagsPerBinding[bindingIndex] = DescriptorFlagsPerBinding[layoutBindingIndex];
+			uint32_t bindingTypeIndex = (uint32_t)mSetLayoutBindingTypesFlat[bindingIndex];
+			bindingFlagsPerBinding[bindingIndex] = DescriptorFlagsPerBinding[bindingTypeIndex];
 		}
 
 		VkDescriptorSetLayoutBindingFlagsCreateInfo bindingFlagsCreateInfo =
