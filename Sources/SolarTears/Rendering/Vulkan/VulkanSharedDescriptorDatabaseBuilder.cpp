@@ -22,18 +22,12 @@ Vulkan::SharedDescriptorDatabaseBuilder::~SharedDescriptorDatabaseBuilder()
 	}
 }
 
-Vulkan::SetRegisterResult Vulkan::SharedDescriptorDatabaseBuilder::TryRegisterSet(std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<std::string> bindingNames)
+uint16_t Vulkan::SharedDescriptorDatabaseBuilder::TryRegisterSet(std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<std::string> bindingNames)
 {
+	//Assume empty set is invalid
 	if(bindingNames.size() == 0)
 	{
-		//Assume empty set is invalid
-		return SetRegisterResult::ValidateError;
-	}
-
-	if(!mBindingTypes.contains(bindingNames[0]))
-	{
-		//Assume that either all bindings are shared or none
-		return SetRegisterResult::UndefinedSet;
+		return 0xff;
 	}
 
 	uint32_t matchingLayoutIndex = (uint32_t)(-1);
@@ -52,7 +46,7 @@ Vulkan::SetRegisterResult Vulkan::SharedDescriptorDatabaseBuilder::TryRegisterSe
 				if(bindingTypeIt == mBindingTypes.end())
 				{
 					//All binding names should match
-					return SetRegisterResult::ValidateError;
+					return 0xff;
 				}
 
 				if(mSetLayoutBindingTypesFlat[(size_t)layoutBindingSpan.Begin + layoutBindingIndex] != bindingTypeIt->second)
@@ -94,20 +88,9 @@ Vulkan::SetRegisterResult Vulkan::SharedDescriptorDatabaseBuilder::TryRegisterSe
 			const VkDescriptorSetLayoutBinding&                   bindingInfo = setBindings[layoutBindingIndex];
 			SharedDescriptorDatabase::SharedDescriptorBindingType bindingType = mBindingTypes.at(bindingNames[layoutBindingIndex]);
 
-			if(!ValidateNewBinding(bindingInfo, bindingType))
-			{
-				return SetRegisterResult::ValidateError;
-			}
-
-			if(bindingInfo.descriptorCount == (uint32_t)(-1) && bindingInfo.binding != (setBindings.size() - 1)) //Only the last binding can be variable sized
-			{
-				return SetRegisterResult::ValidateError;
-			}
-
-			if(bindingInfo.binding != layoutBindingIndex)
-			{
-				return SetRegisterResult::ValidateError;
-			}
+			assert(ValidateNewBinding(bindingInfo, bindingType));
+			assert(bindingInfo.descriptorCount != (uint32_t)(-1) || bindingInfo.binding == (setBindings.size() - 1)); //Only the last binding can be variable sized
+			assert(bindingInfo.binding == layoutBindingIndex);
 
 			mSetLayoutBindingTypesFlat[layoutBindingIndex] = bindingType;
 			mSetLayoutBindingsFlat[layoutBindingIndex]     = bindingInfo;
@@ -117,6 +100,8 @@ Vulkan::SetRegisterResult Vulkan::SharedDescriptorDatabaseBuilder::TryRegisterSe
 				mSetLayoutBindingsFlat[layoutBindingIndex].pImmutableSamplers = mSamplerManagerRef->GetSamplerVariableArray();
 			}
 		}
+
+		matchingLayoutIndex = (uint32_t)(mSetBindingSpansPerLayout.size() - 1);
 	}
 	else
 	{
@@ -128,21 +113,14 @@ Vulkan::SetRegisterResult Vulkan::SharedDescriptorDatabaseBuilder::TryRegisterSe
 			const VkDescriptorSetLayoutBinding& newBindingInfo = setBindings[bindingIndex];
 			VkDescriptorSetLayoutBinding& existingBindingInfo  = mSetLayoutBindingsFlat[(size_t)layoutBindingSpan.Begin + bindingIndex];
 
-			if(!ValidateExistingBinding(newBindingInfo, existingBindingInfo))
-			{
-				return SetRegisterResult::ValidateError;
-			}
-
-			if(newBindingInfo.binding != bindingIndex)
-			{
-				return SetRegisterResult::ValidateError;
-			}
+			assert(ValidateExistingBinding(newBindingInfo, existingBindingInfo));
+			assert(newBindingInfo.binding == bindingIndex);
 
 			existingBindingInfo.stageFlags |= newBindingInfo.stageFlags;
 		}
 	}
 
-	return SetRegisterResult::Success;
+	return (uint32_t)(matchingLayoutIndex);
 }
 
 void Vulkan::SharedDescriptorDatabaseBuilder::BuildSetLayouts()

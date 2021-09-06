@@ -100,7 +100,6 @@
     <ClInclude Include="Rendering\Vulkan\FrameGraph\VulkanRenderPass.hpp" />
     <ClInclude Include="Rendering\Vulkan\Scene\VulkanScene.hpp" />
     <ClInclude Include="Rendering\Vulkan\Scene\VulkanSceneBuilder.hpp" />
-    <ClInclude Include="Rendering\Vulkan\VulkanDescriptorDatabaseCommon.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanDeviceParameters.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanDeviceQueues.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanFunctions.hpp" />

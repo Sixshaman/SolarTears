@@ -26,13 +26,22 @@ namespace Vulkan
 
 	class ShaderDatabase
 	{
+		//The data structure needed to store information about which passes use which set layouts
+		struct SetLayoutRecord
+		{
+			uint16_t Type; //Type of the pass that uses the set (Shared, Pass 1, Pass 2, etc.)
+			uint16_t Id;   //Per-type set layout id
+		};
+
 	public:
 		ShaderDatabase(LoggerQueue* logger);
 		~ShaderDatabase();
 
-		void RegisterShaderGroup(std::span<std::wstring> shaderPaths, SharedDescriptorDatabaseBuilder* sharedDescriptorDatabaseBuilder, PassDescriptorDatabaseBuilder* passDescriptorDatabaseBuilder);
+		void RegisterShaderGroup(std::string_view groupName, std::span<std::wstring> shaderPaths, SharedDescriptorDatabaseBuilder* sharedDescriptorDatabaseBuilder, PassDescriptorDatabaseBuilder* passDescriptorDatabaseBuilder);
 
 		void GetRegisteredShaderInfo(const std::wstring& path, const uint32_t** outShaderData, uint32_t* outShaderSize) const;
+
+		void GetPushConstantInfo(std::string_view groupName, std::string_view pushConstantName, uint32_t* outPushConstantOffset, VkShaderStageFlags* outShaderStages);
 
 	private:
 		void FindBindings(const std::span<std::wstring> shaderModuleNames, std::vector<VkDescriptorSetLayoutBinding>& outSetBindings, std::vector<std::string>& outBindingNames, std::vector<TypedSpan<uint32_t, VkShaderStageFlags>>& outBindingSpans) const;
@@ -45,5 +54,10 @@ namespace Vulkan
 		LoggerQueue* mLogger;
 
 		std::unordered_map<std::wstring, spv_reflect::ShaderModule> mLoadedShaderModules;
+
+		std::vector<SetLayoutRecord>                         mSetLayoutRecords;
+		std::unordered_map<std::string_view, Span<uint32_t>> mSetLayoutSpansPerShaderGroup;
+
+		std::unordered_map<std::string_view, std::unordered_map<>>
 	};
 }

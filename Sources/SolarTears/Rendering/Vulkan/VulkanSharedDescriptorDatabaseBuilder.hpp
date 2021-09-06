@@ -1,7 +1,6 @@
 #pragma once
 
 #include "VulkanSharedDescriptorDatabase.hpp"
-#include "VulkanDescriptorDatabaseCommon.hpp"
 #include <string_view>
 #include <unordered_map>
 
@@ -36,11 +35,8 @@ namespace Vulkan
 		~SharedDescriptorDatabaseBuilder();
 
 	public:
-		//Tries to register a descriptor set in the database, updating the used shader stage flags for it.
-		//Returns SetRegisterResult::Success on success.
-		//Returns SetRegisterResult::UndefinedSharedSet if the bindings don't correspond to any sampler or scene data sets.
-		//Returns SetRegisterResult::ValidateError if the binding names correspond to sampler or scene data sets, but binding values do not match.
-		SetRegisterResult TryRegisterSet(std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<std::string> bindingNames);
+		//Tries to register a descriptor set in the database, updating the used shader stage flags for it. Returns the set id on success and 0xff if no corresponding set was found.
+		uint16_t TryRegisterSet(std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<std::string> bindingNames);
 
 		void BuildSetLayouts();
 

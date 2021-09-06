@@ -4,7 +4,7 @@
 #include <cassert>
 #include <VulkanGenericStructures.h>
 
-Vulkan::PassDescriptorDatabaseBuilder::PassDescriptorDatabaseBuilder(const std::vector<PassBindingInfo>& bindingInfos)
+Vulkan::PassDescriptorDatabaseBuilder::PassDescriptorDatabaseBuilder(uint16_t passDatabaseTypeId, const std::vector<PassBindingInfo>& bindingInfos): mTypeId(passDatabaseTypeId)
 {
 	mDescriptorTypePerBindingType.resize(bindingInfos.size());
 	mDescriptorFlagsPerBindingType.resize(bindingInfos.size());
@@ -22,7 +22,7 @@ Vulkan::PassDescriptorDatabaseBuilder::~PassDescriptorDatabaseBuilder()
 {
 }
 
-Vulkan::SetRegisterResult Vulkan::PassDescriptorDatabaseBuilder::TryRegisterSet(std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<std::string> bindingNames)
+uint16_t Vulkan::PassDescriptorDatabaseBuilder::TryRegisterSet(std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<std::string> bindingNames)
 {
 	uint32_t matchingLayoutIndex = (uint32_t)(-1);
 	for(size_t layoutIndex = 0; layoutIndex < mSetBindingSpansPerLayout.size(); layoutIndex++)
@@ -40,7 +40,7 @@ Vulkan::SetRegisterResult Vulkan::PassDescriptorDatabaseBuilder::TryRegisterSet(
 				if(bindingTypeIt == mBindingTypeIndices.end())
 				{
 					//All binding names should match
-					return SetRegisterResult::ValidateError;
+					return 0xff;
 				}
 
 				if(mSetLayoutBindingTypesFlat[(size_t)layoutBindingSpan.Begin + layoutBindingIndex] != bindingTypeIt->second)
@@ -82,24 +82,15 @@ Vulkan::SetRegisterResult Vulkan::PassDescriptorDatabaseBuilder::TryRegisterSet(
 			const VkDescriptorSetLayoutBinding& bindingInfo     = setBindings[layoutBindingIndex];
 			uint32_t                           bindingTypeIndex = mBindingTypeIndices.at(bindingNames[layoutBindingIndex]);
 
-			if(!ValidateNewBinding(bindingInfo, bindingTypeIndex))
-			{
-				return SetRegisterResult::ValidateError;
-			}
-
-			if(bindingInfo.descriptorCount == (uint32_t)(-1) && bindingInfo.binding != (setBindings.size() - 1)) //Only the last binding can be variable sized
-			{
-				return SetRegisterResult::ValidateError;
-			}
-
-			if(bindingInfo.binding != layoutBindingIndex)
-			{
-				return SetRegisterResult::ValidateError;
-			}
+			assert(ValidateNewBinding(bindingInfo, bindingTypeIndex));
+			assert(bindingInfo.descriptorCount != (uint32_t)(-1) || bindingInfo.binding == (setBindings.size() - 1)); //Only the last binding can be variable sized
+			assert(bindingInfo.binding == layoutBindingIndex);
 
 			mSetLayoutBindingTypesFlat[layoutBindingIndex] = bindingTypeIndex;
 			mSetLayoutBindingsFlat[layoutBindingIndex]     = bindingInfo;
 		}
+
+		matchingLayoutIndex = (uint32_t)(mSetBindingSpansPerLayout.size() - 1);
 	}
 	else
 	{
@@ -111,21 +102,19 @@ Vulkan::SetRegisterResult Vulkan::PassDescriptorDatabaseBuilder::TryRegisterSet(
 			const VkDescriptorSetLayoutBinding& newBindingInfo = setBindings[bindingIndex];
 			VkDescriptorSetLayoutBinding& existingBindingInfo  = mSetLayoutBindingsFlat[(size_t)layoutBindingSpan.Begin + bindingIndex];
 
-			if(!ValidateExistingBinding(newBindingInfo, existingBindingInfo))
-			{
-				return SetRegisterResult::ValidateError;
-			}
-
-			if(newBindingInfo.binding != bindingIndex)
-			{
-				return SetRegisterResult::ValidateError;
-			}
+			assert(ValidateExistingBinding(newBindingInfo, existingBindingInfo));
+			assert(newBindingInfo.binding == bindingIndex);
 
 			existingBindingInfo.stageFlags |= newBindingInfo.stageFlags;
 		}
 	}
 
-	return SetRegisterResult::Success;
+	return (uint32_t)matchingLayoutIndex;
+}
+
+uint16_t Vulkan::PassDescriptorDatabaseBuilder::GetPassTypeId() const
+{
+	return mTypeId;
 }
 
 uint32_t Vulkan::PassDescriptorDatabaseBuilder::GetSetLayoutCount()

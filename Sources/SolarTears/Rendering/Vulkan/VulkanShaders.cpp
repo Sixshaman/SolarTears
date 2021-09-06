@@ -18,8 +18,10 @@ Vulkan::ShaderDatabase::~ShaderDatabase()
 {
 }
 
-void Vulkan::ShaderDatabase::RegisterShaderGroup(std::span<std::wstring> shaderPaths, SharedDescriptorDatabaseBuilder* sharedDescriptorDatabaseBuilder, PassDescriptorDatabaseBuilder* passDescriptorDatabaseBuilder)
+void Vulkan::ShaderDatabase::RegisterShaderGroup(std::string_view groupName, std::span<std::wstring> shaderPaths, SharedDescriptorDatabaseBuilder* sharedDescriptorDatabaseBuilder, PassDescriptorDatabaseBuilder* passDescriptorDatabaseBuilder)
 {
+	assert(!mSetLayoutSpansPerShaderGroup.contains(groupName));
+
 	for(const std::wstring& shaderPath: shaderPaths)
 	{
 		if(!mLoadedShaderModules.contains(shaderPath))
@@ -29,29 +31,40 @@ void Vulkan::ShaderDatabase::RegisterShaderGroup(std::span<std::wstring> shaderP
 
 			mLoadedShaderModules.emplace(std::make_pair(shaderPath, spv_reflect::ShaderModule(shaderData)));
 		}
-
-		std::vector<VkDescriptorSetLayoutBinding>            setBindings;
-		std::vector<std::string>                             setBindingNames;
-		std::vector<TypedSpan<uint32_t, VkShaderStageFlags>> setSpans;
-		FindBindings(shaderPaths, setBindings, setBindingNames, setSpans);
-
-		for(TypedSpan<uint32_t, VkShaderStageFlags> setSpan: setSpans)
-		{
-			std::span<VkDescriptorSetLayoutBinding> bindingSpan = {setBindings.begin()     + setSpan.Begin, setBindings.begin()     + setSpan.End};
-			std::span<std::string>                  nameSpan    = {setBindingNames.begin() + setSpan.Begin, setBindingNames.begin() + setSpan.End};
-
-			SetRegisterResult sharedRegisterResult = sharedDescriptorDatabaseBuilder->TryRegisterSet(setBindings, setBindingNames);
-			if(sharedRegisterResult == SetRegisterResult::UndefinedSet)
-			{
-				SetRegisterResult passRegisterResult = passDescriptorDatabaseBuilder->TryRegisterSet(setBindings, setBindingNames);
-				assert(sharedRegisterResult == SetRegisterResult::Success);
-			}
-			else
-			{
-				assert(sharedRegisterResult != SetRegisterResult::ValidateError);
-			}
-		}
 	}
+
+	std::vector<VkDescriptorSetLayoutBinding>            setBindings;
+	std::vector<std::string>                             setBindingNames;
+	std::vector<TypedSpan<uint32_t, VkShaderStageFlags>> setSpans;
+	FindBindings(shaderPaths, setBindings, setBindingNames, setSpans);
+
+	Span<uint32_t> layoutRecordSpan = 
+	{
+		.Begin = (uint32_t)mSetLayoutRecords.size(),
+		.End   = (uint32_t)(mSetLayoutRecords.size() + setSpans.size())
+	};
+
+	for(TypedSpan<uint32_t, VkShaderStageFlags> setSpan: setSpans)
+	{
+		std::span<VkDescriptorSetLayoutBinding> bindingSpan = {setBindings.begin()     + setSpan.Begin, setBindings.begin()     + setSpan.End};
+		std::span<std::string>                  nameSpan    = {setBindingNames.begin() + setSpan.Begin, setBindingNames.begin() + setSpan.End};
+
+		uint16_t setDatabaseType   = 0xff; //Try shared set first
+		uint16_t setRegisterResult = sharedDescriptorDatabaseBuilder->TryRegisterSet(bindingSpan, nameSpan);
+		if(setRegisterResult == 0xff)
+		{
+			setRegisterResult = passDescriptorDatabaseBuilder->TryRegisterSet(bindingSpan, nameSpan);
+			setDatabaseType   = passDescriptorDatabaseBuilder->GetPassTypeId();
+		}
+
+		mSetLayoutRecords.push_back(SetLayoutRecord
+		{
+			.Type = setDatabaseType,
+			.Id   = setRegisterResult
+		});
+	}
+
+	mSetLayoutSpansPerShaderGroup[groupName] = layoutRecordSpan;
 }
 
 void Vulkan::ShaderDatabase::GetRegisteredShaderInfo(const std::wstring& path, const uint32_t** outShaderData, uint32_t* outShaderSize) const
