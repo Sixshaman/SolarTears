@@ -17,7 +17,7 @@ namespace Vulkan
 	//The database for all common descriptor sets and set layouts (samplers, scene data)
 	class SharedDescriptorDatabase
 	{
-		friend class SharedDescriptorDatabaseBuilder;
+		friend class ShaderDatabase;
 
 		//Shared descriptor binding type
 		enum class SharedDescriptorBindingType: uint32_t
@@ -53,6 +53,26 @@ namespace Vulkan
 			VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
 			VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
 			VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+		});
+
+		constexpr static std::array<std::string_view, SharedDescriptorDatabase::TotalBindings> DescriptorBindingNames = std::to_array
+		({
+			std::string_view("Samplers"),
+			std::string_view("SceneTextures"),
+			std::string_view("SceneMaterials"),
+			std::string_view("SceneStaticObjectDatas"),
+			std::string_view("SceneDynamicObjectDatas"),
+			std::string_view("SceneFrameData"),
+		});
+
+		constexpr static std::array<VkDescriptorBindingFlags, SharedDescriptorDatabase::TotalBindings> DescriptorFlagsPerBinding = std::to_array
+		({
+			(VkDescriptorBindingFlags)VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT, //Variable sampler count
+			(VkDescriptorBindingFlags)VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT, //Variable texture count
+			(VkDescriptorBindingFlags)VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT, //Variable material count
+			(VkDescriptorBindingFlags)VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT, //Variable static object count
+			(VkDescriptorBindingFlags)VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT, //Variable dynamic object count
+			(VkDescriptorBindingFlags)0                                                    //Non-variable frame data count
 		});
 
 	public:

@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include "../../Core/DataStructures/Span.hpp"
 #include "FrameGraph/VulkanRenderPass.hpp"
+#include "VulkanSharedDescriptorDatabase.hpp"
 
 class LoggerQueue;
 
@@ -21,8 +22,7 @@ namespace Vulkan
 	//3) Create passes only after that, giving them descriptor set layouts.
 	//This is all to avoid loading the shaders twice - once to obtain the reflection data, once to create pipelines
 
-	class SharedDescriptorDatabaseBuilder;
-	class PassDescriptorDatabaseBuilder;
+	class SamplerManager;
 
 	class ShaderDatabase
 	{
@@ -33,6 +33,7 @@ namespace Vulkan
 			uint16_t Id;   //Per-type set layout id
 		};
 
+		//The data structure to store information about pass constants used by a shader group
 		struct PushConstantRecord
 		{
 			std::string_view   Name;
@@ -41,25 +42,40 @@ namespace Vulkan
 		};
 
 	public:
-		ShaderDatabase(LoggerQueue* logger);
+		ShaderDatabase(VkDevice device, SamplerManager* samplerManager, LoggerQueue* logger);
 		~ShaderDatabase();
 
-		void RegisterShaderGroup(std::string_view groupName, std::span<std::wstring> shaderPaths, SharedDescriptorDatabaseBuilder* sharedDescriptorDatabaseBuilder, PassDescriptorDatabaseBuilder* passDescriptorDatabaseBuilder);
+		void RegisterShaderGroup(std::string_view groupName, std::span<std::wstring> shaderPaths);
 
 		void GetRegisteredShaderInfo(const std::wstring& path, const uint32_t** outShaderData, uint32_t* outShaderSize) const;
 
 		void GetPushConstantInfo(std::string_view groupName, std::string_view pushConstantName, uint32_t* outPushConstantOffset, VkShaderStageFlags* outShaderStages);
 
 	private:
-		void FindBindings(const std::span<std::wstring> shaderModuleNames, std::vector<VkDescriptorSetLayoutBinding>& outSetBindings, std::vector<std::string>& outBindingNames) const;
+		void CollectBindings(const std::span<std::wstring> shaderModuleNames);
+		void CollectPushConstants(const std::span<std::wstring> shaderModuleNames);
 
-		void CollectBindings(const std::span<std::wstring> shaderModuleNames, std::vector<SpvReflectDescriptorBinding*>& outSeparateBindings) const;
+		void FindBindings(const std::span<std::wstring> shaderModuleNames, std::vector<VkDescriptorSetLayoutBinding>& outSetBindings, std::vector<std::string>& outBindingNames) const;
 
 		VkShaderStageFlagBits SpvToVkShaderStage(SpvReflectShaderStageFlagBits spvShaderStage)  const;
 		VkDescriptorType      SpvToVkDescriptorType(SpvReflectDescriptorType spvDescriptorType) const;
 
 	private:
+		//Tries to register a descriptor set in the database, updating the used shader stage flags for it. Returns the set id on success and 0xff if no corresponding set was found.
+		uint16_t TryRegisterSet(std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<std::string> bindingNames);
+
+		void BuildSetLayouts();
+
+		void FlushSetLayoutInfos(SharedDescriptorDatabase* databaseToBuild);
+
+		bool ValidateNewBinding(const VkDescriptorSetLayoutBinding& bindingInfo, SharedDescriptorDatabase::SharedDescriptorBindingType bindingType) const;
+		bool ValidateExistingBinding(const VkDescriptorSetLayoutBinding& newBindingInfo, const VkDescriptorSetLayoutBinding& existingBindingInfo) const;
+
+	private:
 		LoggerQueue* mLogger;
+
+		const VkDevice        mDeviceRef;
+		const SamplerManager* mSamplerManagerRef;
 
 		std::unordered_map<std::wstring, spv_reflect::ShaderModule> mLoadedShaderModules;
 
@@ -71,5 +87,13 @@ namespace Vulkan
 		//Each push constant span is lexicographically sorted by name
 		std::vector<PushConstantRecord>                      mPushConstantRecords;
 		std::unordered_map<std::string_view, Span<uint32_t>> mPushConstantSpansPerShaderGroup;
+
+
+		std::vector<Span<uint32_t>>                                        mSharedSetBindingSpansPerLayout;
+		std::vector<VkDescriptorSetLayoutBinding>                          mSharedSetLayoutBindingsFlat;
+		std::vector<SharedDescriptorDatabase::SharedDescriptorBindingType> mSharedSetLayoutBindingTypesFlat;
+
+		std::vector<VkDescriptorSetLayout> mSharedSetLayouts;
+		std::unordered_map<std::string_view, SharedDescriptorDatabase::SharedDescriptorBindingType> mSharedBindingTypes;
 	};
 }
