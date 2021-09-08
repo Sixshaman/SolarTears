@@ -185,7 +185,7 @@ void Vulkan::ShaderDatabase::CollectBindings(const std::span<std::wstring> shade
 			newSetLayoutBindings.resize(preservedBindingCount);
 			memcpy(newSetLayoutBindings.data(), setLayoutBindings.data(), preservedBindingCount);
 
-			//Recalculate new set sizes. To do it without allocating any new arrays, first shift all changed sets forward
+			//Recalculate new set sizes. To do it without allocating any new arrays, first move the beginning points of spans to the left while leaving end points untouched
 			for(uint32_t setIndex = existingSetSpan.Begin; setIndex < existingSetSpan.End; setIndex++)
 			{
 				SpvReflectDescriptorSet* moduleSet = moduleSets[setIndex];
@@ -199,24 +199,34 @@ void Vulkan::ShaderDatabase::CollectBindings(const std::span<std::wstring> shade
 						sizeDiff = moduleSet->binding_count - recordedSetSize;
 					}
 
-					bindingSpansPerSet[moduleSet->set].Begin += sizeDiff;
-					bindingSpansPerSet[moduleSet->set].End   += sizeDiff;
+					bindingSpansPerSet[moduleSet->set].Begin -= sizeDiff;
 				}
 			}
 
 			//Next, copy the bindings
-			uint32_t spanBegin = preservedBindingCount;
+			uint32_t originalSpanBegin = preservedBindingCount;
+			uint32_t newSpanBegin      = preservedBindingCount;
 			for(uint32_t setIndex = firstSetIndexToUpdate; setIndex < (uint32_t)bindingSpansPerSet.size(); setIndex++)
 			{
-				Span<uint32_t> originalSpan = {.Begin = spanBegin, .End = ???};
+				Span<uint32_t> originalSpan = {.Begin = originalSpanBegin, .End = bindingSpansPerSet[setIndex].End};
 				uint32_t originalSpanSize = originalSpan.End - originalSpan.Begin;
 
-				Span<uint32_t> newSpan = ???;
+				uint32_t newSpanSize = bindingSpansPerSet[setIndex].End - bindingSpansPerSet[setIndex].Begin; //Safe even with unsigned wrap
+
+				Span<uint32_t> newSpan = {.Begin = newSpanBegin, .End = newSpanBegin + newSpanSize};
 				memcpy(newSetLayoutBindings.data() + newSpan.Begin, setLayoutBindings.data() + originalSpan.Begin, originalSpanSize);
 
 				bindingSpansPerSet[setIndex] = newSpan;
+
+				originalSpanBegin += originalSpanSize;
+				newSpanBegin      += newSpanSize;
 			}
+
+			setLayoutBindings.swap(newSetLayoutBindings);
 		}
+
+
+
 
 		////Now outSetSpans[i].End contains the binding count for ith set. Accumulate the spans
 		//uint32_t accumulatedBindingCount = 0;
