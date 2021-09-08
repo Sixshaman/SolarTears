@@ -149,32 +149,30 @@ void Vulkan::ShaderDatabase::CollectBindings(const std::span<std::wstring> shade
 		newSetSpan.Begin = existingSetSpan.End;
 
 
-		uint32_t addedExistingSetBindingCount = 0;
-		uint32_t addedNewSetBindingCount      = 0;
-		uint32_t firstSetIndexToUpdate        = (uint32_t)setLayoutBindings.size();
-		for(SpvReflectDescriptorSet* moduleSet: moduleSets)
+		uint32_t firstSetIndexToUpdate = (uint32_t)setLayoutBindings.size();
+		for(uint32_t setIndex = existingSetSpan.Begin; setIndex < existingSetSpan.End; setIndex++)
 		{
-			if(moduleSet->set < bindingSpansPerSet.size())
+			SpvReflectDescriptorSet* moduleSet = moduleSets[setIndex];
+
+			//Need to update existing set info
+			uint32_t recordedSetSize = bindingSpansPerSet[moduleSet->set].End - bindingSpansPerSet[moduleSet->set].Begin;
+			if(recordedSetSize < moduleSet->binding_count)
 			{
-				//Need to update existing set info
-				uint32_t recordedSetSize = bindingSpansPerSet[moduleSet->set].End - bindingSpansPerSet[moduleSet->set].Begin;
-				if(recordedSetSize < moduleSet->binding_count)
-				{
-					addedExistingSetBindingCount += (moduleSet->binding_count - recordedSetSize);
-					firstSetIndexToUpdate = std::min(firstSetIndexToUpdate, moduleSet->set);
-				}
-			}
-			else
-			{
-				addedNewSetBindingCount += moduleSet->binding_count;
+				firstSetIndexToUpdate = std::min(firstSetIndexToUpdate, moduleSet->set);
 			}
 		}
 
-		if(firstSetIndexToUpdate + 1 == bindingSpansPerSet.size())
+		if(firstSetIndexToUpdate == bindingSpansPerSet.size() - 1)
 		{
+			//If the first existing set to update is also the last one, there's only one existing set to update
+			SpvReflectDescriptorSet* moduleSet = moduleSets[existingSetSpan.Begin];
+
+			uint32_t recordedSetSize = bindingSpansPerSet[moduleSet->set].End - bindingSpansPerSet[moduleSet->set].Begin;
+			uint32_t sizeDiff        = moduleSet->binding_count - recordedSetSize;
+
 			//Just append the data for the last set to the end, only the last set is changed
-			setLayoutBindings.resize(setLayoutBindings.size() + addedExistingSetBindingCount);
-			bindingSpansPerSet.back().End = bindingSpansPerSet.back().End + addedExistingSetBindingCount;
+			setLayoutBindings.resize(setLayoutBindings.size() + sizeDiff);
+			bindingSpansPerSet.back().End = bindingSpansPerSet.back().End + sizeDiff;
 		}
 		else if(firstSetIndexToUpdate < bindingSpansPerSet.size())
 		{
@@ -187,12 +185,36 @@ void Vulkan::ShaderDatabase::CollectBindings(const std::span<std::wstring> shade
 			newSetLayoutBindings.resize(preservedBindingCount);
 			memcpy(newSetLayoutBindings.data(), setLayoutBindings.data(), preservedBindingCount);
 
-			for(SpvReflectDescriptorSet* moduleSet: moduleSets)
+			//Recalculate new set sizes. To do it without allocating any new arrays, first shift all changed sets forward
+			for(uint32_t setIndex = existingSetSpan.Begin; setIndex < existingSetSpan.End; setIndex++)
 			{
-				if(moduleSet->set >= firstSetIndexToUpdate && moduleSet->set < bindingSpansPerSet.size())
+				SpvReflectDescriptorSet* moduleSet = moduleSets[setIndex];
+				if(moduleSet->set >= firstSetIndexToUpdate)
 				{
-					
+					uint32_t recordedSetSize = bindingSpansPerSet[moduleSet->set].End - bindingSpansPerSet[moduleSet->set].Begin;
+
+					uint32_t sizeDiff = 0;	
+					if(recordedSetSize < moduleSet->binding_count)
+					{
+						sizeDiff = moduleSet->binding_count - recordedSetSize;
+					}
+
+					bindingSpansPerSet[moduleSet->set].Begin += sizeDiff;
+					bindingSpansPerSet[moduleSet->set].End   += sizeDiff;
 				}
+			}
+
+			//Next, copy the bindings
+			uint32_t spanBegin = preservedBindingCount;
+			for(uint32_t setIndex = firstSetIndexToUpdate; setIndex < (uint32_t)bindingSpansPerSet.size(); setIndex++)
+			{
+				Span<uint32_t> originalSpan = {.Begin = spanBegin, .End = ???};
+				uint32_t originalSpanSize = originalSpan.End - originalSpan.Begin;
+
+				Span<uint32_t> newSpan = ???;
+				memcpy(newSetLayoutBindings.data() + newSpan.Begin, setLayoutBindings.data() + originalSpan.Begin, originalSpanSize);
+
+				bindingSpansPerSet[setIndex] = newSpan;
 			}
 		}
 
