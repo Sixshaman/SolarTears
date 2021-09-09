@@ -55,7 +55,15 @@ namespace Vulkan
 		void CollectBindings(const std::span<std::wstring> shaderModuleNames);
 		void CollectPushConstants(const std::span<std::wstring> shaderModuleNames);
 
-		void FindBindings(const std::span<std::wstring> shaderModuleNames, std::vector<VkDescriptorSetLayoutBinding>& outSetBindings, std::vector<std::string>& outBindingNames) const;
+		void SplitNewAndExistingSets(uint32_t existingSetCount, std::vector<SpvReflectDescriptorSet*>& inoutSpvSets, std::span<SpvReflectDescriptorSet*>* outExistingSetSpan, std::span<SpvReflectDescriptorSet*>* outNewSetSpan);
+		void CalculateExistingSetSizePairs(const std::span<SpvReflectDescriptorSet*> moduleExistingSetSpan, std::vector<Span<uint32_t>> existingBindingSpansPerSet, std::vector<std::pair<SpvReflectDescriptorSet*, uint32_t>>& outExistingSetsWithSizes);
+		void CalculateNewSetSizePairs(const std::span<SpvReflectDescriptorSet*> moduleNewSetSpan, std::vector<std::pair<SpvReflectDescriptorSet*, uint32_t>>& outNewSetsWithSizes);
+
+		void UpdateExistingSets(const std::vector<std::pair<SpvReflectDescriptorSet*, uint32_t>> setUpdates, std::vector<VkDescriptorSetLayoutBinding>& inoutBindings, std::vector<Span<uint32_t>>& inoutSetSpans, VkShaderStageFlags stageFlags);
+		void AddNewSets(const std::vector<std::pair<SpvReflectDescriptorSet*, uint32_t>> newSets, std::vector<VkDescriptorSetLayoutBinding>& inoutBindings, std::vector<Span<uint32_t>>& inoutSetSpans, VkShaderStageFlags stageFlags);
+
+		void InitializeDescriptorSetBinding(SpvReflectDescriptorBinding* moduleBinding, VkDescriptorSetLayoutBinding* bindingToInitialize, VkShaderStageFlags shaderStage);
+		void UpdateValidateDescriptorSetBinding(SpvReflectDescriptorBinding* moduleBinding, VkDescriptorSetLayoutBinding* bindingToUpdate, VkShaderStageFlags shaderStage);
 
 		VkShaderStageFlagBits SpvToVkShaderStage(SpvReflectShaderStageFlagBits spvShaderStage)  const;
 		VkDescriptorType      SpvToVkDescriptorType(SpvReflectDescriptorType spvDescriptorType) const;
