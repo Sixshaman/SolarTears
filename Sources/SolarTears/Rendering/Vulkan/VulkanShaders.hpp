@@ -51,6 +51,8 @@ namespace Vulkan
 
 		void GetPushConstantInfo(std::string_view groupName, std::string_view pushConstantName, uint32_t* outPushConstantOffset, VkShaderStageFlags* outShaderStages);
 
+		void FlushSharedSetLayoutInfos(SharedDescriptorDatabase* databaseToBuild);
+
 	private:
 		void CollectBindings(const std::span<std::wstring> shaderModuleNames);
 		void CollectPushConstants(const std::span<std::wstring> shaderModuleNames);
@@ -73,8 +75,6 @@ namespace Vulkan
 		uint16_t TryRegisterSet(std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<std::string> bindingNames);
 
 		void BuildSetLayouts();
-
-		void FlushSetLayoutInfos(SharedDescriptorDatabase* databaseToBuild);
 
 		bool ValidateNewBinding(const VkDescriptorSetLayoutBinding& bindingInfo, SharedDescriptorDatabase::SharedDescriptorBindingType bindingType) const;
 		bool ValidateExistingBinding(const VkDescriptorSetLayoutBinding& newBindingInfo, const VkDescriptorSetLayoutBinding& existingBindingInfo) const;
