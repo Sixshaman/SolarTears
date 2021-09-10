@@ -149,9 +149,10 @@ void Vulkan::ShaderDatabase::FlushSharedSetLayoutInfos(SharedDescriptorDatabase*
 
 void Vulkan::ShaderDatabase::CollectBindings(const std::span<std::wstring> shaderModuleNames)
 {
-	std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings;
-	std::vector<std::string>                  setLayoutBindingNames;
-	std::vector<Span<uint32_t>>               bindingSpansPerSet;
+	std::vector<Span<uint32_t>> bindingSpansPerSet;
+
+	std::vector<SpvReflectDescriptorBinding*> spvSetLayoutBindings;
+	std::vector<VkShaderStageFlags>           bindingStageFlags;
 
 	//Gather all bindings from all stages
 	for(const std::wstring& shaderModuleName: shaderModuleNames)
@@ -168,17 +169,55 @@ void Vulkan::ShaderDatabase::CollectBindings(const std::span<std::wstring> shade
 		std::span<SpvReflectDescriptorSet*> newSets;
 		SplitNewAndExistingSets((uint32_t)bindingSpansPerSet.size(), moduleSets, &existingSets, &newSets);
 
-		std::vector<std::pair<SpvReflectDescriptorSet*, uint32_t>> existingSetsWithSizes;
-		CalculateExistingSetSizePairs(existingSets, bindingSpansPerSet, existingSetsWithSizes);
-
-		std::vector<std::pair<SpvReflectDescriptorSet*, uint32_t>> newSetsWithSizes;
-		CalculateNewSetSizePairs(newSets, newSetsWithSizes);
+		UpdateExistingSets(existingSets, spvSetLayoutBindings, bindingSpansPerSet);
+		AddNewSets(newSets, spvSetLayoutBindings, bindingSpansPerSet);
 
 		VkShaderStageFlags shaderStage = SpvToVkShaderStage(shaderModule.GetShaderStage());
-		UpdateExistingSets(existingSetsWithSizes, setLayoutBindings, bindingSpansPerSet, shaderStage);
-		AddNewSets(newSetsWithSizes, setLayoutBindings, bindingSpansPerSet, shaderStage);
+		bindingStageFlags.resize(spvSetLayoutBindings.size(), (VkShaderStageFlags)0);
 
-		 
+		for(SpvReflectDescriptorSet* moduleSet: moduleSets)
+		{
+			Span<uint32_t> setSpan = bindingSpansPerSet[moduleSet->set];
+			for(uint32_t bindingIndex = 0; bindingIndex < moduleSet->binding_count; bindingIndex++)
+			{
+				SpvReflectDescriptorBinding* binding = moduleSet->bindings[bindingIndex];
+				bindingStageFlags[setSpan.Begin + binding->binding] |= shaderStage;
+			}
+		}
+	}
+
+	//Construct binding list and name list
+	std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings;
+	std::vector<std::string_view>             setLayoutBindingNames;
+	for(size_t bindingIndex = 0; bindingIndex < spvSetLayoutBindings.size(); bindingIndex++)
+	{
+		SpvReflectDescriptorBinding* spvBinding = spvSetLayoutBindings[bindingIndex];
+		assert(spvBinding != nullptr);
+
+		VkDescriptorSetLayoutBinding setLayoutBinding;
+		setLayoutBinding.binding            = spvBinding->binding,
+		setLayoutBinding.descriptorType     = SpvToVkDescriptorType(spvBinding->descriptor_type),
+		setLayoutBinding.descriptorCount    = spvBinding->count,
+		setLayoutBinding.stageFlags         = bindingStageFlags[bindingIndex],
+		setLayoutBinding.pImmutableSamplers = nullptr;
+
+		if(spvBinding->type_description->op == SpvOpTypeRuntimeArray)
+		{
+			setLayoutBinding.descriptorCount = (uint32_t)(-1); //Mark the variable descriptor count
+		}
+
+		std::string_view bindingName = spvBinding->name;
+
+		setLayoutBindings.push_back(setLayoutBinding);
+		setLayoutBindingNames.push_back(bindingName);
+	}
+
+	for(Span<uint32_t> bindingSpan: bindingSpansPerSet)
+	{
+		std::span<VkDescriptorSetLayoutBinding> bindingInfoSpan = std::span(setLayoutBindings.begin()     + bindingSpan.Begin, setLayoutBindings.begin()     + bindingSpan.End);
+		std::span<std::string_view>             bindingNameSpan = std::span(setLayoutBindingNames.begin() + bindingSpan.Begin, setLayoutBindingNames.begin() + bindingSpan.End);
+
+		AddSet(bindingInfoSpan, bindingNameSpan);
 	}
 }
 
@@ -208,10 +247,10 @@ void Vulkan::ShaderDatabase::SplitNewAndExistingSets(uint32_t existingSetCount, 
 	*outNewSetSpan      = std::span(inoutSpvSets.begin() + splitPos, inoutSpvSets.end());
 }
 
-void Vulkan::ShaderDatabase::CalculateExistingSetSizePairs(const std::span<SpvReflectDescriptorSet*> moduleExistingSetSpan, std::vector<Span<uint32_t>> existingBindingSpansPerSet, std::vector<std::pair<SpvReflectDescriptorSet*, uint32_t>>& outExistingSetsWithSizes)
+void Vulkan::ShaderDatabase::CalculateUpdatedSetSizes(const std::span<SpvReflectDescriptorSet*> moduleUpdatedSets, const std::vector<Span<uint32_t>>& existingBindingSpansPerSet, std::vector<uint32_t>& outUpdatedSetSizes)
 {
-	outExistingSetsWithSizes.reserve(moduleExistingSetSpan.size());
-	for(SpvReflectDescriptorSet* moduleSet: moduleExistingSetSpan)
+	outUpdatedSetSizes.reserve(moduleUpdatedSets.size());
+	for(SpvReflectDescriptorSet* moduleSet: moduleUpdatedSets)
 	{
 		uint32_t setSize = existingBindingSpansPerSet[moduleSet->set].End - existingBindingSpansPerSet[moduleSet->set].Begin;
 		for(uint32_t bindingIndex = 0; bindingIndex < moduleSet->binding_count; bindingIndex++)
@@ -219,32 +258,20 @@ void Vulkan::ShaderDatabase::CalculateExistingSetSizePairs(const std::span<SpvRe
 			setSize = std::max(setSize, moduleSet->bindings[bindingIndex]->binding + 1);
 		}
 
-		outExistingSetsWithSizes.push_back(std::make_pair(moduleSet, setSize));
+		outUpdatedSetSizes.push_back(setSize);
 	}
 }
 
-void Vulkan::ShaderDatabase::CalculateNewSetSizePairs(const std::span<SpvReflectDescriptorSet*> moduleNewSetSpan, std::vector<std::pair<SpvReflectDescriptorSet*, uint32_t>>& outNewSetsWithSizes)
+void Vulkan::ShaderDatabase::UpdateExistingSets(const std::span<SpvReflectDescriptorSet*> setUpdates, std::vector<SpvReflectDescriptorBinding*>& inoutBindings, std::vector<Span<uint32_t>>& inoutSetSpans)
 {
-	outNewSetsWithSizes.reserve(moduleNewSetSpan.size());
-	for(SpvReflectDescriptorSet* moduleSet: moduleNewSetSpan)
-	{
-		uint32_t setSize = 0;
-		for(uint32_t bindingIndex = 0; bindingIndex < moduleSet->binding_count; bindingIndex++)
-		{
-			setSize = std::max(setSize, moduleSet->bindings[bindingIndex]->binding + 1);
-		}
+	std::vector<uint32_t> moduleSetSizes;
+	CalculateUpdatedSetSizes(setUpdates, inoutSetSpans, moduleSetSizes);
 
-		outNewSetsWithSizes.push_back(std::make_pair(moduleSet, setSize));
-	}
-}
-
-void Vulkan::ShaderDatabase::UpdateExistingSets(const std::vector<std::pair<SpvReflectDescriptorSet*, uint32_t>> setUpdates, std::vector<VkDescriptorSetLayoutBinding>& inoutBindings, std::vector<Span<uint32_t>>& inoutSetSpans, VkShaderStageFlags stageFlags)
-{
 	uint32_t firstSetIndexToUpdate = (uint32_t)inoutSetSpans.size();
 	for(size_t moduleSetIndex = 0; moduleSetIndex < setUpdates.size(); moduleSetIndex++)
 	{
-		SpvReflectDescriptorSet* moduleSet     = setUpdates[moduleSetIndex].first;
-		uint32_t                 moduleSetSize = setUpdates[moduleSetIndex].second;
+		SpvReflectDescriptorSet* moduleSet     = setUpdates[moduleSetIndex];
+		uint32_t                 moduleSetSize = moduleSetSizes[moduleSetIndex];
 
 		//Need to update existing set info
 		uint32_t recordedSetSize = inoutSetSpans[moduleSet->set].End - inoutSetSpans[moduleSet->set].Begin;
@@ -257,20 +284,20 @@ void Vulkan::ShaderDatabase::UpdateExistingSets(const std::vector<std::pair<SpvR
 	if(firstSetIndexToUpdate == inoutSetSpans.size() - 1)
 	{
 		//If the first existing set to update is also the last one, there's only one existing set to update
-		SpvReflectDescriptorSet* moduleSet     = setUpdates[0].first;
-		uint32_t                 moduleSetSize = setUpdates[0].second;
+		SpvReflectDescriptorSet* moduleSet     = setUpdates[0];
+		uint32_t                 moduleSetSize = moduleSetSizes[0];
 
 		uint32_t recordedSetSize = inoutSetSpans.back().End - inoutSetSpans.back().Begin;
 		uint32_t sizeDiff        = moduleSetSize - recordedSetSize;
 
 		//Just append the data for the last set to the end, only the last set is changed
-		inoutBindings.resize(inoutBindings.size() + sizeDiff, VkDescriptorSetLayoutBinding{.stageFlags = 0}); //Uninitialized bindings are marked with stageFlags == 0
+		inoutBindings.resize(inoutBindings.size() + sizeDiff, nullptr);
 		inoutSetSpans.back().End = inoutSetSpans.back().End + sizeDiff;
 	}
 	else if(firstSetIndexToUpdate < inoutSetSpans.size())
 	{
 		//Recreate the set binding data
-		std::vector<VkDescriptorSetLayoutBinding> newSetLayoutBindings;
+		std::vector<SpvReflectDescriptorBinding*> newSetLayoutBindings;
 		newSetLayoutBindings.reserve(inoutBindings.size());
 
 		//Copy the bindings that don't need to be re-sorted
@@ -279,17 +306,18 @@ void Vulkan::ShaderDatabase::UpdateExistingSets(const std::vector<std::pair<SpvR
 		memcpy(newSetLayoutBindings.data(), inoutBindings.data(), preservedBindingCount);
 
 		//Recalculate new set sizes. To do it in-place, first shift the beginning points of spans left while leaving end points untouched
-		for(auto setUpdate: setUpdates)
+		for(size_t moduleSetIndex = 0; moduleSetIndex < setUpdates.size(); moduleSetIndex++)
 		{
-			SpvReflectDescriptorSet* moduleSet = setUpdate.first;
+			SpvReflectDescriptorSet* moduleSet = setUpdates[moduleSetIndex];
 			if(moduleSet->set >= firstSetIndexToUpdate)
 			{
+				uint32_t moduleSetSize   = moduleSetSizes[moduleSetIndex];
 				uint32_t recordedSetSize = inoutSetSpans[moduleSet->set].End - inoutSetSpans[moduleSet->set].Begin;
 
 				uint32_t sizeDiff = 0;	
-				if(recordedSetSize < setUpdate.second)
+				if(recordedSetSize < moduleSetSize)
 				{
-					sizeDiff = setUpdate.second - recordedSetSize;
+					sizeDiff = moduleSetSize - recordedSetSize;
 					inoutSetSpans[moduleSet->set].Begin -= sizeDiff;
 				}
 			}
@@ -310,61 +338,66 @@ void Vulkan::ShaderDatabase::UpdateExistingSets(const std::vector<std::pair<SpvR
 			Span<uint32_t> newSpan     = {.Begin = (uint32_t)newSetLayoutBindings.size(), .End = (uint32_t)newSetLayoutBindings.size() + newSpanSize};
 			inoutSetSpans[setIndex] = newSpan;
 
-			newSetLayoutBindings.resize(newSetLayoutBindings.size() + newSpanSize, VkDescriptorSetLayoutBinding{.stageFlags = 0});
+			newSetLayoutBindings.resize(newSetLayoutBindings.size() + newSpanSize, nullptr);
 			memcpy(newSetLayoutBindings.data() + newSpan.Begin, inoutBindings.data() + originalSpan.Begin, originalSpanSize);
 		}
 
 		inoutBindings.swap(newSetLayoutBindings);
 	}
 
-	for(auto moduleSetPair: setUpdates)
+	for(auto moduleSet: setUpdates)
 	{
-		SpvReflectDescriptorSet* moduleSet = moduleSetPair.first;
-
 		size_t bindingStart = inoutSetSpans[moduleSet->set].Begin;
 		for(uint32_t moduleBindingIndex = 0; moduleBindingIndex < moduleSet->binding_count; moduleBindingIndex++)
 		{
-			SpvReflectDescriptorBinding*  moduleBinding   = moduleSet->bindings[moduleBindingIndex];
-			VkDescriptorSetLayoutBinding* bindingToUpdate = &inoutBindings[bindingStart + moduleBinding->binding];
+			SpvReflectDescriptorBinding* moduleBinding   = moduleSet->bindings[moduleBindingIndex];
+			SpvReflectDescriptorBinding* bindingToUpdate = inoutBindings[bindingStart + moduleBinding->binding];
 
-			if(bindingToUpdate->stageFlags == 0) //Uninitialized binding
+			if(bindingToUpdate == nullptr)
 			{
-				InitializeDescriptorSetBinding(moduleBinding, bindingToUpdate, stageFlags);
+				inoutBindings[bindingStart + moduleBinding->binding] = moduleBinding;
 			}
-			else //Existing binding
+			else
 			{
-				UpdateValidateDescriptorSetBinding(moduleBinding, bindingToUpdate, stageFlags);
+				assert(strcmp(bindingToUpdate->name, moduleBinding->name) == 0);
+
+				assert(bindingToUpdate->binding         == moduleBinding->binding);
+				assert(bindingToUpdate->descriptor_type == moduleBinding->descriptor_type);
+				assert(bindingToUpdate->count           == moduleBinding->count);
 			}
 		}
 	}
 }
 
-void Vulkan::ShaderDatabase::AddNewSets(const std::vector<std::pair<SpvReflectDescriptorSet*, uint32_t>> newSets, std::vector<VkDescriptorSetLayoutBinding>& inoutBindings, std::vector<Span<uint32_t>>& inoutSetSpans, VkShaderStageFlags stageFlags)
+void Vulkan::ShaderDatabase::AddNewSets(const std::span<SpvReflectDescriptorSet*> newSets, std::vector<SpvReflectDescriptorBinding*>& inoutBindings, std::vector<Span<uint32_t>>& inoutSetSpans)
 {
 	uint32_t oldBindingCount = (uint32_t)inoutBindings.size();
 	uint32_t newBindingCount = std::accumulate(newSets.begin(), newSets.end(), oldBindingCount);
-	inoutBindings.resize(newBindingCount, VkDescriptorSetLayoutBinding{.stageFlags = 0});
+	inoutBindings.resize(newBindingCount, nullptr);
 
 	uint32_t oldSetCount = (uint32_t)inoutSetSpans.size();
 	uint32_t newSetCount = oldSetCount;
 	for(auto newSet: newSets)
 	{
-		newSetCount = std::max(newSetCount, newSet.first->set + 1);
+		newSetCount = std::max(newSetCount, newSet->set + 1);
 	}
 
 	inoutSetSpans.resize(newSetCount, Span<uint32_t>{.Begin = 0, .End = 0});
 	for(auto newSet: newSets)
 	{
-		SpvReflectDescriptorSet* moduleSet     = newSet.first;
-		uint32_t                 moduleSetSize = newSet.second;
+		uint32_t newSetSize = 0;
+		for(uint32_t bindingIndex = 0; bindingIndex < newSet->binding_count; bindingIndex++)
+		{
+			newSetSize = std::max(newSetSize, newSet->bindings[bindingIndex]->binding + 1);
+		}
 
 		Span<uint32_t> bindingSpan = Span<uint32_t>
 		{
 			.Begin = oldBindingCount,
-			.End   = oldBindingCount + moduleSetSize
+			.End   = oldBindingCount + newSetSize
 		};
 
-		inoutSetSpans[moduleSet->set] = bindingSpan;
+		inoutSetSpans[newSet->set] = bindingSpan;
 	}
 
 	uint32_t spanOffset = oldBindingCount;
@@ -380,62 +413,19 @@ void Vulkan::ShaderDatabase::AddNewSets(const std::vector<std::pair<SpvReflectDe
 
 	for(auto newSet: newSets)
 	{
-		SpvReflectDescriptorSet* moduleSet = newSet.first;
-
-		size_t bindingStart = inoutSetSpans[moduleSet->set].Begin;
-		for(uint32_t moduleBindingIndex = 0; moduleBindingIndex < moduleSet->binding_count; moduleBindingIndex++)
+		size_t bindingStart = inoutSetSpans[newSet->set].Begin;
+		for(uint32_t moduleBindingIndex = 0; moduleBindingIndex < newSet->binding_count; moduleBindingIndex++)
 		{
-			SpvReflectDescriptorBinding* moduleBinding = moduleSet->bindings[moduleBindingIndex];
-			InitializeDescriptorSetBinding(moduleBinding, &inoutBindings[bindingStart + moduleBinding->binding], stageFlags);
+			SpvReflectDescriptorBinding* moduleBinding = newSet->bindings[moduleBindingIndex];
+			inoutBindings[bindingStart + moduleBinding->binding] = moduleBinding;
 		}
 	}
 }
 
-void Vulkan::ShaderDatabase::InitializeDescriptorSetBinding(SpvReflectDescriptorBinding* moduleBinding, VkDescriptorSetLayoutBinding* bindingToInitialize, VkShaderStageFlags shaderStage)
+Vulkan::ShaderDatabase::SetLayoutRecord Vulkan::ShaderDatabase::AddSet(std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<std::string_view> bindingNames)
 {
-	assert(bindingToInitialize != nullptr);
-
-	bindingToInitialize->binding            = moduleBinding->binding;
-	bindingToInitialize->descriptorType     = SpvToVkDescriptorType(moduleBinding->descriptor_type);
-	bindingToInitialize->stageFlags         = shaderStage;
-	bindingToInitialize->pImmutableSamplers = nullptr;
-
-	if(moduleBinding->type_description->op == SpvOpTypeRuntimeArray)
-	{
-		bindingToInitialize->descriptorCount = (uint32_t)(-1); //Mark the variable descriptor count
-	}
-	else
-	{
-		bindingToInitialize->descriptorCount = moduleBinding->count;
-	}
-}
-
-void Vulkan::ShaderDatabase::UpdateValidateDescriptorSetBinding(SpvReflectDescriptorBinding* moduleBinding, VkDescriptorSetLayoutBinding* bindingToUpdate, VkShaderStageFlags shaderStage)
-{
-	assert(bindingToUpdate != nullptr);
-
-	assert(bindingToUpdate->binding        == moduleBinding->binding);
-	assert(bindingToUpdate->descriptorType == SpvToVkDescriptorType(moduleBinding->descriptor_type));
-
-	if(moduleBinding->type_description->op == SpvOpTypeRuntimeArray)
-	{
-		assert(bindingToUpdate->descriptorCount == (uint32_t)(-1));
-	}
-	else
-	{
-		assert(bindingToUpdate->descriptorCount == moduleBinding->count);
-	}
-
-	bindingToUpdate->stageFlags |= shaderStage;
-}
-
-uint16_t Vulkan::ShaderDatabase::TryRegisterSet(std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<std::string> bindingNames)
-{
-	//Assume empty set is invalid
-	if(bindingNames.size() == 0)
-	{
-		return 0xff;
-	}
+	//Find the type of the set
+	uint16_t setType = 0xff;
 
 	uint32_t matchingLayoutIndex = (uint32_t)(-1);
 	for(size_t layoutIndex = 0; layoutIndex < mSharedSetBindingSpansPerLayout.size(); layoutIndex++)
@@ -453,7 +443,7 @@ uint16_t Vulkan::ShaderDatabase::TryRegisterSet(std::span<VkDescriptorSetLayoutB
 				if(bindingTypeIt == mSharedBindingTypes.end())
 				{
 					//All binding names should match
-					return 0xff;
+					return false;
 				}
 
 				if(mSharedSetLayoutBindingTypesFlat[(size_t)layoutBindingSpan.Begin + layoutBindingIndex] != bindingTypeIt->second)

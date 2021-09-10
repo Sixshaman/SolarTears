@@ -26,6 +26,8 @@ namespace Vulkan
 
 	class ShaderDatabase
 	{
+		static constexpr uint16_t SharedSetType = 0xff;
+
 		//The data structure needed to store information about which passes use which set layouts
 		struct SetLayoutRecord
 		{
@@ -54,25 +56,26 @@ namespace Vulkan
 		void FlushSharedSetLayoutInfos(SharedDescriptorDatabase* databaseToBuild);
 
 	private:
+		//Functions for collecting bindings and push constants
 		void CollectBindings(const std::span<std::wstring> shaderModuleNames);
 		void CollectPushConstants(const std::span<std::wstring> shaderModuleNames);
 
+		//Divides inoutSpvSets into two parts: already known sets and new sets
 		void SplitNewAndExistingSets(uint32_t existingSetCount, std::vector<SpvReflectDescriptorSet*>& inoutSpvSets, std::span<SpvReflectDescriptorSet*>* outExistingSetSpan, std::span<SpvReflectDescriptorSet*>* outNewSetSpan);
-		void CalculateExistingSetSizePairs(const std::span<SpvReflectDescriptorSet*> moduleExistingSetSpan, std::vector<Span<uint32_t>> existingBindingSpansPerSet, std::vector<std::pair<SpvReflectDescriptorSet*, uint32_t>>& outExistingSetsWithSizes);
-		void CalculateNewSetSizePairs(const std::span<SpvReflectDescriptorSet*> moduleNewSetSpan, std::vector<std::pair<SpvReflectDescriptorSet*, uint32_t>>& outNewSetsWithSizes);
 
-		void UpdateExistingSets(const std::vector<std::pair<SpvReflectDescriptorSet*, uint32_t>> setUpdates, std::vector<VkDescriptorSetLayoutBinding>& inoutBindings, std::vector<Span<uint32_t>>& inoutSetSpans, VkShaderStageFlags stageFlags);
-		void AddNewSets(const std::vector<std::pair<SpvReflectDescriptorSet*, uint32_t>> newSets, std::vector<VkDescriptorSetLayoutBinding>& inoutBindings, std::vector<Span<uint32_t>>& inoutSetSpans, VkShaderStageFlags stageFlags);
+		//Finds the necessary set sizes for each of moduleUpdatedSets
+		void CalculateUpdatedSetSizes(const std::span<SpvReflectDescriptorSet*> moduleUpdatedSets, const std::vector<Span<uint32_t>>& existingBindingSpansPerSet, std::vector<uint32_t>& outUpdatedSetSizes);
 
-		void InitializeDescriptorSetBinding(SpvReflectDescriptorBinding* moduleBinding, VkDescriptorSetLayoutBinding* bindingToInitialize, VkShaderStageFlags shaderStage);
-		void UpdateValidateDescriptorSetBinding(SpvReflectDescriptorBinding* moduleBinding, VkDescriptorSetLayoutBinding* bindingToUpdate, VkShaderStageFlags shaderStage);
+		//Updates inoutBindings with new set data
+		void UpdateExistingSets(const std::span<SpvReflectDescriptorSet*> setUpdates, std::vector<SpvReflectDescriptorBinding*>& inoutBindings, std::vector<Span<uint32_t>>& inoutSetSpans);
+		void AddNewSets(const std::span<SpvReflectDescriptorSet*> newSets, std::vector<SpvReflectDescriptorBinding*>& inoutBindings, std::vector<Span<uint32_t>>& inoutSetSpans);
 
+		//Transform SPIR-V Reflect variables to Vulkan variables
 		VkShaderStageFlagBits SpvToVkShaderStage(SpvReflectShaderStageFlagBits spvShaderStage)  const;
 		VkDescriptorType      SpvToVkDescriptorType(SpvReflectDescriptorType spvDescriptorType) const;
 
 	private:
-		//Tries to register a descriptor set in the database, updating the used shader stage flags for it. Returns the set id on success and 0xff if no corresponding set was found.
-		uint16_t TryRegisterSet(std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<std::string> bindingNames);
+		SetLayoutRecord AddSet(std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<std::string_view> bindingNames);
 
 		void BuildSetLayouts();
 
