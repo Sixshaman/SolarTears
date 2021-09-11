@@ -20,7 +20,7 @@ namespace Vulkan
 		friend class ShaderDatabase;
 
 		//Shared descriptor binding type
-		enum class SharedDescriptorBindingType: uint32_t
+		enum class SharedDescriptorBindingType: uint16_t
 		{
 			SamplerList,           //The variable sized list of all scene samplers. Named "Samplers" in shaders
 			TextureList,           //The variable sized list of all scene textures. Named "SceneTextures" in shaders

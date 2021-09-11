@@ -12,10 +12,14 @@
 
 Vulkan::ShaderDatabase::ShaderDatabase(VkDevice device, SamplerManager* samplerManager, LoggerQueue* logger): mLogger(logger), mDeviceRef(device), mSamplerManagerRef(samplerManager)
 {
-	for(uint32_t bindingTypeIndex = 0; bindingTypeIndex < SharedDescriptorDatabase::TotalBindings; bindingTypeIndex++)
+	for(uint16_t bindingTypeIndex = 0; bindingTypeIndex < SharedDescriptorDatabase::TotalBindings; bindingTypeIndex++)
 	{
 		std::string_view bindingName = SharedDescriptorDatabase::DescriptorBindingNames[bindingTypeIndex];
-		mSharedBindingTypes[bindingName] = (SharedDescriptorDatabase::SharedDescriptorBindingType)bindingTypeIndex;
+		mBindingRecordMap[bindingName] = BindingRecord
+		{
+			.Domain = SharedSetDomain,
+			.Id     = bindingTypeIndex
+		};
 	}
 }
 
@@ -422,12 +426,18 @@ void Vulkan::ShaderDatabase::AddNewSets(const std::span<SpvReflectDescriptorSet*
 	}
 }
 
-Vulkan::ShaderDatabase::SetLayoutRecord Vulkan::ShaderDatabase::AddSet(std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<std::string_view> bindingNames)
+void Vulkan::ShaderDatabase::AddSetLayout(std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<std::string_view> bindingNames)
 {
-	//Find the type of the set
-	uint16_t setType = 0xff;
+	uint16_t setDomain = DetectSetDomain(bindingNames);
 
 	uint32_t matchingLayoutIndex = (uint32_t)(-1);
+
+	//Linked list of spans!
+	//(Pool-allocated)
+	//Node* firstDomainNode = mSetBinding;
+
+
+
 	for(size_t layoutIndex = 0; layoutIndex < mSharedSetBindingSpansPerLayout.size(); layoutIndex++)
 	{
 		Span<uint32_t> layoutBindingSpan = mSharedSetBindingSpansPerLayout[layoutIndex];
@@ -518,6 +528,25 @@ Vulkan::ShaderDatabase::SetLayoutRecord Vulkan::ShaderDatabase::AddSet(std::span
 	}
 
 	return (uint32_t)(matchingLayoutIndex);
+}
+
+uint16_t Vulkan::ShaderDatabase::DetectSetDomain(std::span<std::string_view> bindingNames)
+{
+	if(bindingNames.size() == 0)
+	{
+		return UndefinedSetDomain;
+	}
+
+	uint16_t setType = mBindingRecordMap[bindingNames[0]].Domain;
+	for(size_t bindingIndex = 1; bindingIndex < bindingNames.size(); bindingIndex++)
+	{
+		if(mBindingRecordMap[bindingNames[bindingIndex]].Domain != setType)
+		{
+			return UndefinedSetDomain;
+		}
+	}
+
+	return setType;
 }
 
 void Vulkan::ShaderDatabase::BuildSetLayouts()

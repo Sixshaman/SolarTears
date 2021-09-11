@@ -10,8 +10,8 @@ public:
 	static constexpr RenderPassType  PassType  = RenderPassType::CopyImage;
 
 public: 
-	static constexpr std::string_view SrcImageId = "SrcImage";
-	static constexpr std::string_view DstImageId = "DstImage";
+	static constexpr std::string_view SrcImageId = "CopySrcImage";
+	static constexpr std::string_view DstImageId = "CopyDstImage";
 
 public:
 	static void RegisterResources(ModernFrameGraphBuilder* frameGraphBuilder, const std::string& passName);

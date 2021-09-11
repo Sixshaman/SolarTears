@@ -26,13 +26,20 @@ namespace Vulkan
 
 	class ShaderDatabase
 	{
-		static constexpr uint16_t SharedSetType = 0xff;
+		static constexpr uint16_t UndefinedSetDomain = 0xffff;
+		static constexpr uint16_t SharedSetDomain    = 0x0000;
 
 		//The data structure needed to store information about which passes use which set layouts
 		struct SetLayoutRecord
 		{
-			uint16_t Type; //Type of the pass that uses the set (Shared, Pass 1, Pass 2, etc.)
-			uint16_t Id;   //Per-type set layout id
+			uint16_t Domain; //Type of the pass that uses the set (Shared, Pass 1, Pass 2, etc.)
+			uint16_t Id;     //Per-type set layout id
+		};
+
+		struct BindingRecord
+		{
+			uint16_t Domain; //Type of the pass that uses the set (Shared, Pass 1, Pass 2, etc.)
+			uint16_t Id;     //Per-type binding id
 		};
 
 		//The data structure to store information about pass constants used by a shader group
@@ -75,11 +82,19 @@ namespace Vulkan
 		VkDescriptorType      SpvToVkDescriptorType(SpvReflectDescriptorType spvDescriptorType) const;
 
 	private:
-		SetLayoutRecord AddSet(std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<std::string_view> bindingNames);
+		//Add set layout to the database
+		void AddSetLayout(std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<std::string_view> bindingNames);
 
+		//Detect set domain for binding name list
+		uint16_t DetectSetDomain(std::span<std::string_view> bindingNames);
+
+		//Create set layouts from the database infos
 		void BuildSetLayouts();
 
-		bool ValidateNewBinding(const VkDescriptorSetLayoutBinding& bindingInfo, SharedDescriptorDatabase::SharedDescriptorBindingType bindingType) const;
+		//Validate a new binding against the database reference binding with the same name
+		bool ValidateNewBinding(const VkDescriptorSetLayoutBinding& bindingInfo, uint16_t bindingType) const;
+
+		//Validate a new binding against an already registered binding
 		bool ValidateExistingBinding(const VkDescriptorSetLayoutBinding& newBindingInfo, const VkDescriptorSetLayoutBinding& existingBindingInfo) const;
 
 	private:
@@ -88,10 +103,12 @@ namespace Vulkan
 		const VkDevice        mDeviceRef;
 		const SamplerManager* mSamplerManagerRef;
 
+		//Loaded shader modules per shader path
 		std::unordered_map<std::wstring, spv_reflect::ShaderModule> mLoadedShaderModules;
 
 		//Set layout records for each shader group
 		std::vector<SetLayoutRecord>                         mSetLayoutRecords;
+		std::vector<VkDescriptorSetLayout>                   mSetLayouts;
 		std::unordered_map<std::string_view, Span<uint32_t>> mSetLayoutSpansPerShaderGroup;
 
 		//Push constants for each shader group
@@ -99,12 +116,13 @@ namespace Vulkan
 		std::vector<PushConstantRecord>                      mPushConstantRecords;
 		std::unordered_map<std::string_view, Span<uint32_t>> mPushConstantSpansPerShaderGroup;
 
-
-		std::vector<Span<uint32_t>>                                        mSharedSetBindingSpansPerLayout;
-		std::vector<VkDescriptorSetLayoutBinding>                          mSharedSetLayoutBindingsFlat;
-		std::vector<SharedDescriptorDatabase::SharedDescriptorBindingType> mSharedSetLayoutBindingTypesFlat;
-
-		std::vector<VkDescriptorSetLayout> mSharedSetLayouts;
-		std::unordered_map<std::string_view, SharedDescriptorDatabase::SharedDescriptorBindingType> mSharedBindingTypes;
+		//Bindings per layout
+		std::vector<Span<uint32_t>>               mLayoutSpansPerDomain;
+		std::vector<Span<uint32_t>>               mBindingSpansPerLayout;
+		std::vector<VkDescriptorSetLayoutBinding> mLayoutBindingsFlat;
+		std::vector<uint16_t>                     mLayoutBindingTypesFlat;
+		
+		//Binding types and per-type ids per binding name
+		std::unordered_map<std::string_view, BindingRecord> mBindingRecordMap;
 	};
 }

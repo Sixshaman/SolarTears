@@ -41,8 +41,6 @@ namespace Vulkan
 		std::vector<VkDescriptorSetLayoutBinding> mSetLayoutBindingsFlat;
 		std::vector<uint32_t>                     mSetLayoutBindingTypesFlat;
 
-		std::unordered_map<std::string_view, uint32_t> mBindingTypeIndices;
-
 		std::vector<VkDescriptorType>         mDescriptorTypePerBindingType;
 		std::vector<VkDescriptorBindingFlags> mDescriptorFlagsPerBindingType;
 	};
