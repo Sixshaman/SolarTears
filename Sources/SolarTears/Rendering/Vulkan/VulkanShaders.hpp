@@ -29,17 +29,26 @@ namespace Vulkan
 		static constexpr uint16_t UndefinedSetDomain = 0xffff;
 		static constexpr uint16_t SharedSetDomain    = 0x0000;
 
-		//The data structure needed to store information about which passes use which set layouts
+		//The data structure to store information about which passes use which set layouts
 		struct SetLayoutRecord
 		{
 			uint16_t Domain; //Type of the pass that uses the set (Shared, Pass 1, Pass 2, etc.)
 			uint16_t Id;     //Per-type set layout id
 		};
 
+		//The data structure to store information about which passes use which bindings
 		struct BindingRecord
 		{
 			uint16_t Domain; //Type of the pass that uses the set (Shared, Pass 1, Pass 2, etc.)
-			uint16_t Id;     //Per-type binding id
+			uint16_t Type;   //Per-domain binding type
+		};
+
+		//The node of the binding span for the particular set in the flat binding list
+		//All sets for a domain are stored in an array-backed linked list
+		struct SetBindingNode
+		{
+			Span<uint32_t> BindingSpan;   //Binding span for the set
+			uint32_t       NextNodeIndex; //The index of the next binding span node for the same domain
 		};
 
 		//The data structure to store information about pass constants used by a shader group
@@ -117,8 +126,8 @@ namespace Vulkan
 		std::unordered_map<std::string_view, Span<uint32_t>> mPushConstantSpansPerShaderGroup;
 
 		//Bindings per layout
-		std::vector<Span<uint32_t>>               mLayoutSpansPerDomain;
-		std::vector<Span<uint32_t>>               mBindingSpansPerLayout;
+		std::vector<uint32_t>                     mBindingSpanHeadNodeIndicesPerDomain;
+		std::vector<SetBindingNode>               mBindingSpanNodesPerLayout;
 		std::vector<VkDescriptorSetLayoutBinding> mLayoutBindingsFlat;
 		std::vector<uint16_t>                     mLayoutBindingTypesFlat;
 		

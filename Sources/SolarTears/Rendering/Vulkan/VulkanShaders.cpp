@@ -429,34 +429,25 @@ void Vulkan::ShaderDatabase::AddNewSets(const std::span<SpvReflectDescriptorSet*
 void Vulkan::ShaderDatabase::AddSetLayout(std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<std::string_view> bindingNames)
 {
 	uint16_t setDomain = DetectSetDomain(bindingNames);
+	assert(setDomain != UndefinedSetDomain);
 
-	uint32_t matchingLayoutIndex = (uint32_t)(-1);
-
-	//Linked list of spans!
-	//(Pool-allocated)
-	//Node* firstDomainNode = mSetBinding;
-
-
-
-	for(size_t layoutIndex = 0; layoutIndex < mSharedSetBindingSpansPerLayout.size(); layoutIndex++)
+	//Traverse the linked list of binding spans for the domain
+	uint32_t spanNodeIndex = mBindingSpanHeadNodeIndicesPerDomain[setDomain];
+	while(spanNodeIndex != (uint32_t)(-1))
 	{
-		Span<uint32_t> layoutBindingSpan = mSharedSetBindingSpansPerLayout[layoutIndex];
+		SetBindingNode setBindingNode = mBindingSpanNodesPerLayout[spanNodeIndex];
 
-		uint32_t layoutBindingCount = layoutBindingSpan.Begin - layoutBindingSpan.End;
+		uint32_t layoutBindingCount = setBindingNode.BindingSpan.Begin - setBindingNode.BindingSpan.End;
 		if(layoutBindingCount == (uint32_t)setBindings.size())
 		{
 			//Try to match the set
 			uint32_t layoutBindingIndex = 0;
 			while(layoutBindingIndex < layoutBindingCount)
 			{
-				auto bindingTypeIt = mSharedBindingTypes.find(bindingNames[layoutBindingIndex]);
-				if(bindingTypeIt == mSharedBindingTypes.end())
-				{
-					//All binding names should match
-					return false;
-				}
+				auto bindingTypeIt = mBindingRecordMap.find(bindingNames[layoutBindingIndex]);
+				assert(bindingTypeIt != mBindingRecordMap.end());
 
-				if(mSharedSetLayoutBindingTypesFlat[(size_t)layoutBindingSpan.Begin + layoutBindingIndex] != bindingTypeIt->second)
+				if(mLayoutBindingTypesFlat[(size_t)setBindingNode.BindingSpan.Begin + layoutBindingIndex] != bindingTypeIt->second.Type)
 				{
 					//Binding types don't match
 					break;
@@ -466,13 +457,12 @@ void Vulkan::ShaderDatabase::AddSetLayout(std::span<VkDescriptorSetLayoutBinding
 			if(layoutBindingIndex == layoutBindingCount)
 			{
 				//All binding types matched
-				matchingLayoutIndex = layoutIndex;
 				break;
 			}
 		}
 	}
 	
-	if(matchingLayoutIndex == (uint32_t)-1)
+	if(spanNodeIndex == (uint32_t)-1)
 	{
 		//Allocate the space for bindings if needed
 		size_t registeredBindingCount = mSharedSetLayoutBindingsFlat.size();
@@ -526,8 +516,6 @@ void Vulkan::ShaderDatabase::AddSetLayout(std::span<VkDescriptorSetLayoutBinding
 			existingBindingInfo.stageFlags |= newBindingInfo.stageFlags;
 		}
 	}
-
-	return (uint32_t)(matchingLayoutIndex);
 }
 
 uint16_t Vulkan::ShaderDatabase::DetectSetDomain(std::span<std::string_view> bindingNames)
