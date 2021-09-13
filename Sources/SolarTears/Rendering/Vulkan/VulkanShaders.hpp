@@ -39,8 +39,10 @@ namespace Vulkan
 		//The data structure to store information about which passes use which bindings
 		struct BindingRecord
 		{
-			uint16_t Domain; //Type of the pass that uses the set (Shared, Pass 1, Pass 2, etc.)
-			uint16_t Type;   //Per-domain binding type
+			uint16_t         Domain;          //Type of the pass that uses the set (Shared, Pass 1, Pass 2, etc.)
+			uint16_t         Type;            //Per-domain binding type
+			VkDescriptorType DescriptorType;  //Expected descriptor type for the binding (for validation purposes)
+			uint32_t         DescriptorFlags; //Expected descriptor flags for the binding (for validation purposes)
 		};
 
 		//The node of the binding span for the particular set in the flat binding list
@@ -73,8 +75,8 @@ namespace Vulkan
 
 	private:
 		//Functions for collecting bindings and push constants
-		void CollectBindings(const std::span<std::wstring> shaderModuleNames);
-		void CollectPushConstants(const std::span<std::wstring> shaderModuleNames);
+		void RegisterBindings(const std::string_view groupName, const std::span<std::wstring> shaderModuleNames);
+		void RegisterPushConstants(const std::span<std::wstring> shaderModuleNames);
 
 		//Divides inoutSpvSets into two parts: already known sets and new sets
 		void SplitNewAndExistingSets(uint32_t existingSetCount, std::vector<SpvReflectDescriptorSet*>& inoutSpvSets, std::span<SpvReflectDescriptorSet*>* outExistingSetSpan, std::span<SpvReflectDescriptorSet*>* outNewSetSpan);
@@ -92,16 +94,16 @@ namespace Vulkan
 
 	private:
 		//Add set layout to the database
-		void AddSetLayout(std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<std::string_view> bindingNames);
+		uint32_t AddSetLayout(uint16_t setDomain, std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<BindingRecord> setBindingRecords);
 
 		//Detect set domain for binding name list
-		uint16_t DetectSetDomain(std::span<std::string_view> bindingNames);
+		uint16_t DetectSetDomain(std::span<std::string_view> bindingNames, std::span<BindingRecord> outSetBindingRecords);
 
 		//Create set layouts from the database infos
 		void BuildSetLayouts();
 
 		//Validate a new binding against the database reference binding with the same name
-		bool ValidateNewBinding(const VkDescriptorSetLayoutBinding& bindingInfo, uint16_t bindingType) const;
+		bool ValidateNewBinding(const VkDescriptorSetLayoutBinding& bindingInfo, VkDescriptorType expectedDescriptorType, VkDescriptorBindingFlags expectedDescriptorFlags) const;
 
 		//Validate a new binding against an already registered binding
 		bool ValidateExistingBinding(const VkDescriptorSetLayoutBinding& newBindingInfo, const VkDescriptorSetLayoutBinding& existingBindingInfo) const;
@@ -116,9 +118,9 @@ namespace Vulkan
 		std::unordered_map<std::wstring, spv_reflect::ShaderModule> mLoadedShaderModules;
 
 		//Set layout records for each shader group
-		std::vector<SetLayoutRecord>                         mSetLayoutRecords;
 		std::vector<VkDescriptorSetLayout>                   mSetLayouts;
-		std::unordered_map<std::string_view, Span<uint32_t>> mSetLayoutSpansPerShaderGroup;
+		std::vector<uint32_t>                                mSetLayoutInfoIndices;
+		std::unordered_map<std::string_view, Span<uint32_t>> mSetLayoutIndexSpansPerShaderGroup;
 
 		//Push constants for each shader group
 		//Each push constant span is lexicographically sorted by name

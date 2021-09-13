@@ -12,13 +12,16 @@
 
 Vulkan::ShaderDatabase::ShaderDatabase(VkDevice device, SamplerManager* samplerManager, LoggerQueue* logger): mLogger(logger), mDeviceRef(device), mSamplerManagerRef(samplerManager)
 {
+	//Initialize shared binding records
 	for(uint16_t bindingTypeIndex = 0; bindingTypeIndex < SharedDescriptorDatabase::TotalBindings; bindingTypeIndex++)
 	{
 		std::string_view bindingName = SharedDescriptorDatabase::DescriptorBindingNames[bindingTypeIndex];
 		mBindingRecordMap[bindingName] = BindingRecord
 		{
-			.Domain = SharedSetDomain,
-			.Id     = bindingTypeIndex
+			.Domain          = SharedSetDomain,
+			.Type            = bindingTypeIndex,
+			.DescriptorType  = SharedDescriptorDatabase::DescriptorTypesPerBinding[bindingTypeIndex],
+			.DescriptorFlags = SharedDescriptorDatabase::DescriptorFlagsPerBinding[bindingTypeIndex]
 		};
 	}
 }
@@ -26,7 +29,7 @@ Vulkan::ShaderDatabase::ShaderDatabase(VkDevice device, SamplerManager* samplerM
 Vulkan::ShaderDatabase::~ShaderDatabase()
 {
 	//Destroy the non-flushed layouts
-	for(VkDescriptorSetLayout setLayout: mSharedSetLayouts)
+	for(VkDescriptorSetLayout setLayout: mSetLayouts)
 	{
 		SafeDestroyObject(vkDestroyDescriptorSetLayout, mDeviceRef, setLayout);
 	}
@@ -34,7 +37,7 @@ Vulkan::ShaderDatabase::~ShaderDatabase()
 
 void Vulkan::ShaderDatabase::RegisterShaderGroup(std::string_view groupName, std::span<std::wstring> shaderPaths)
 {
-	assert(!mSetLayoutSpansPerShaderGroup.contains(groupName));
+	assert(!mSetLayoutIndexSpansPerShaderGroup.contains(groupName));
 
 	for(const std::wstring& shaderPath: shaderPaths)
 	{
@@ -47,35 +50,7 @@ void Vulkan::ShaderDatabase::RegisterShaderGroup(std::string_view groupName, std
 		}
 	}
 
-	CollectBindings(shaderPaths);
-
-	//Span<uint32_t> layoutRecordSpan = 
-	//{
-	//	.Begin = (uint32_t)mSetLayoutRecords.size(),
-	//	.End   = (uint32_t)(mSetLayoutRecords.size() + setSpans.size())
-	//};
-
-	//for(TypedSpan<uint32_t, VkShaderStageFlags> setSpan: setSpans)
-	//{
-	//	std::span<VkDescriptorSetLayoutBinding> bindingSpan = {setBindings.begin()     + setSpan.Begin, setBindings.begin()     + setSpan.End};
-	//	std::span<std::string>                  nameSpan    = {setBindingNames.begin() + setSpan.Begin, setBindingNames.begin() + setSpan.End};
-
-	//	uint16_t setDatabaseType   = 0xff; //Try shared set first
-	//	uint16_t setRegisterResult = TryRegisterSet(bindingSpan, nameSpan);
-	//	if(setRegisterResult == 0xff)
-	//	{
-	//		setRegisterResult = passDescriptorDatabaseBuilder->TryRegisterSet(bindingSpan, nameSpan);
-	//		setDatabaseType   = passDescriptorDatabaseBuilder->GetPassTypeId();
-	//	}
-
-	//	mSetLayoutRecords.push_back(SetLayoutRecord
-	//	{
-	//		.Type = setDatabaseType,
-	//		.Id   = setRegisterResult
-	//	});
-	//}
-
-	//mSetLayoutSpansPerShaderGroup[groupName] = layoutRecordSpan;
+	RegisterBindings(groupName, shaderPaths);
 }
 
 void Vulkan::ShaderDatabase::GetRegisteredShaderInfo(const std::wstring& path, const uint32_t** outShaderData, uint32_t* outShaderSize) const
@@ -114,7 +89,6 @@ void Vulkan::ShaderDatabase::GetPushConstantInfo(std::string_view groupName, std
 	}
 }
 
-
 void Vulkan::ShaderDatabase::FlushSharedSetLayoutInfos(SharedDescriptorDatabase* databaseToBuild)
 {
 	size_t layoutCount = mSharedSetBindingSpansPerLayout.size();
@@ -151,7 +125,7 @@ void Vulkan::ShaderDatabase::FlushSharedSetLayoutInfos(SharedDescriptorDatabase*
 	databaseToBuild->mSets.resize(totalSetCount);
 }
 
-void Vulkan::ShaderDatabase::CollectBindings(const std::span<std::wstring> shaderModuleNames)
+void Vulkan::ShaderDatabase::RegisterBindings(const std::string_view groupName, const std::span<std::wstring> shaderModuleNames)
 {
 	std::vector<Span<uint32_t>> bindingSpansPerSet;
 
@@ -216,12 +190,30 @@ void Vulkan::ShaderDatabase::CollectBindings(const std::span<std::wstring> shade
 		setLayoutBindingNames.push_back(bindingName);
 	}
 
-	for(Span<uint32_t> bindingSpan: bindingSpansPerSet)
-	{
-		std::span<VkDescriptorSetLayoutBinding> bindingInfoSpan = std::span(setLayoutBindings.begin()     + bindingSpan.Begin, setLayoutBindings.begin()     + bindingSpan.End);
-		std::span<std::string_view>             bindingNameSpan = std::span(setLayoutBindingNames.begin() + bindingSpan.Begin, setLayoutBindingNames.begin() + bindingSpan.End);
 
-		AddSet(bindingInfoSpan, bindingNameSpan);
+	Span<uint32_t> groupSetSpan =
+	{
+		.Begin = (uint32_t)mSetLayoutInfoIndices.size(),
+		.End   = (uint32_t)(mSetLayoutInfoIndices.size() + bindingSpansPerSet.size())
+	};
+
+	mSetLayoutIndexSpansPerShaderGroup[groupName] = groupSetSpan;
+	mSetLayoutInfoIndices.resize(mSetLayoutInfoIndices.size() + bindingSpansPerSet.size());
+
+
+	std::vector<BindingRecord> setLayoutBindingRecords(setLayoutBindingNames.size());
+	for(uint32_t bindingSpanIndex = 0; bindingSpanIndex < (uint32_t)bindingSpansPerSet.size(); bindingSpanIndex++)
+	{
+		Span<uint32_t> bindingSpan = bindingSpansPerSet[bindingSpanIndex];
+
+		std::span<std::string_view> bindingNameSpan   = std::span(setLayoutBindingNames.begin()   + bindingSpan.Begin, setLayoutBindingNames.begin()   + bindingSpan.End);
+		std::span<BindingRecord>    bindingRecordSpan = std::span(setLayoutBindingRecords.begin() + bindingSpan.Begin, setLayoutBindingRecords.begin() + bindingSpan.End);
+
+		uint16_t setDomain = DetectSetDomain(bindingNameSpan, bindingRecordSpan);
+		assert(setDomain != UndefinedSetDomain);
+
+		std::span<VkDescriptorSetLayoutBinding> bindingInfoSpan = std::span(setLayoutBindings.begin() + bindingSpan.Begin, setLayoutBindings.begin() + bindingSpan.End);
+		mSetLayoutInfoIndices[groupSetSpan.Begin + bindingSpanIndex] = AddSetLayout(setDomain, bindingInfoSpan, bindingRecordSpan);
 	}
 }
 
@@ -426,28 +418,22 @@ void Vulkan::ShaderDatabase::AddNewSets(const std::span<SpvReflectDescriptorSet*
 	}
 }
 
-void Vulkan::ShaderDatabase::AddSetLayout(std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<std::string_view> bindingNames)
+uint32_t Vulkan::ShaderDatabase::AddSetLayout(uint16_t setDomain, std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<BindingRecord> setBindingRecords)
 {
-	uint16_t setDomain = DetectSetDomain(bindingNames);
-	assert(setDomain != UndefinedSetDomain);
-
 	//Traverse the linked list of binding spans for the domain
-	uint32_t spanNodeIndex = mBindingSpanHeadNodeIndicesPerDomain[setDomain];
-	while(spanNodeIndex != (uint32_t)(-1))
+	uint32_t* layoutNodeIndex = &mBindingSpanHeadNodeIndicesPerDomain[setDomain];
+	while(*layoutNodeIndex != (uint32_t)(-1))
 	{
-		SetBindingNode setBindingNode = mBindingSpanNodesPerLayout[spanNodeIndex];
+		SetBindingNode layoutNode = mBindingSpanNodesPerLayout[*layoutNodeIndex];
 
-		uint32_t layoutBindingCount = setBindingNode.BindingSpan.Begin - setBindingNode.BindingSpan.End;
+		uint32_t layoutBindingCount = layoutNode.BindingSpan.Begin - layoutNode.BindingSpan.End;
 		if(layoutBindingCount == (uint32_t)setBindings.size())
 		{
 			//Try to match the set
 			uint32_t layoutBindingIndex = 0;
 			while(layoutBindingIndex < layoutBindingCount)
 			{
-				auto bindingTypeIt = mBindingRecordMap.find(bindingNames[layoutBindingIndex]);
-				assert(bindingTypeIt != mBindingRecordMap.end());
-
-				if(mLayoutBindingTypesFlat[(size_t)setBindingNode.BindingSpan.Begin + layoutBindingIndex] != bindingTypeIt->second.Type)
+				if(mLayoutBindingTypesFlat[(size_t)layoutNode.BindingSpan.Begin + layoutBindingIndex] != setBindingRecords[layoutBindingIndex].Type)
 				{
 					//Binding types don't match
 					break;
@@ -460,55 +446,59 @@ void Vulkan::ShaderDatabase::AddSetLayout(std::span<VkDescriptorSetLayoutBinding
 				break;
 			}
 		}
+
+		layoutNodeIndex = &layoutNode.NextNodeIndex;
 	}
 	
-	if(spanNodeIndex == (uint32_t)-1)
+	if(*layoutNodeIndex == (uint32_t)-1)
 	{
-		//Allocate the space for bindings if needed
-		size_t registeredBindingCount = mSharedSetLayoutBindingsFlat.size();
+		//Allocate the space for new bindings
+		size_t registeredBindingCount = mLayoutBindingTypesFlat.size();
 		size_t addedBindingCount      = setBindings.size();
 
-		Span<uint32_t> newLayoutSpan = 
-		{
-			.Begin = (uint32_t)registeredBindingCount,
-			.End   = (uint32_t)(registeredBindingCount + addedBindingCount)
-		};
+		SetBindingNode newSetBindingNode;
+		newSetBindingNode.BindingSpan.Begin = (uint32_t)registeredBindingCount;
+		newSetBindingNode.BindingSpan.End   = (uint32_t)(registeredBindingCount + addedBindingCount);
+		newSetBindingNode.NextNodeIndex     = (uint16_t)-1;
 
-		mSharedSetBindingSpansPerLayout.push_back(newLayoutSpan);
-		mSharedSetLayoutBindingsFlat.resize(registeredBindingCount + addedBindingCount);
+		mBindingSpanNodesPerLayout.push_back(newSetBindingNode);
+		
+		uint32_t newNodeIndex = (mBindingSpanNodesPerLayout.size() - 1);
+		*layoutNodeIndex = newNodeIndex;
+		
+		mLayoutBindingsFlat.resize(registeredBindingCount + addedBindingCount);
+		mLayoutBindingTypesFlat.resize(registeredBindingCount + addedBindingCount);
 
 		//Validate bindings
-		for(uint32_t bindingIndex = newLayoutSpan.Begin; bindingIndex < newLayoutSpan.End; bindingIndex++)
+		for(uint32_t bindingIndex = newSetBindingNode.BindingSpan.Begin; bindingIndex < newSetBindingNode.BindingSpan.End; bindingIndex++)
 		{
-			uint32_t layoutBindingIndex = bindingIndex - newLayoutSpan.Begin;
+			uint32_t layoutBindingIndex = bindingIndex - newSetBindingNode.BindingSpan.Begin;
 	
-			const VkDescriptorSetLayoutBinding&                   bindingInfo = setBindings[layoutBindingIndex];
-			SharedDescriptorDatabase::SharedDescriptorBindingType bindingType = mSharedBindingTypes.at(bindingNames[layoutBindingIndex]);
+			const VkDescriptorSetLayoutBinding& bindingInfo   = setBindings[layoutBindingIndex];
+			const BindingRecord&                bindingRecord = setBindingRecords[layoutBindingIndex];
 
-			assert(ValidateNewBinding(bindingInfo, bindingType));
+			assert(ValidateNewBinding(bindingInfo, bindingRecord.DescriptorType, bindingRecord.DescriptorFlags));
 			assert(bindingInfo.descriptorCount != (uint32_t)(-1) || bindingInfo.binding == (setBindings.size() - 1)); //Only the last binding can be variable sized
 			assert(bindingInfo.binding == layoutBindingIndex);
 
-			mSharedSetLayoutBindingTypesFlat[layoutBindingIndex] = bindingType;
-			mSharedSetLayoutBindingsFlat[layoutBindingIndex]     = bindingInfo;
+			mLayoutBindingsFlat[layoutBindingIndex]     = bindingInfo;
+			mLayoutBindingTypesFlat[layoutBindingIndex] = bindingRecord.Type;
 
-			if(bindingType == SharedDescriptorDatabase::SharedDescriptorBindingType::SamplerList)
+			if(setDomain == SharedSetDomain && bindingRecord.Type == (uint16_t)SharedDescriptorDatabase::SharedDescriptorBindingType::SamplerList)
 			{
-				mSharedSetLayoutBindingsFlat[layoutBindingIndex].pImmutableSamplers = mSamplerManagerRef->GetSamplerVariableArray();
+				mLayoutBindingsFlat[layoutBindingIndex].pImmutableSamplers = mSamplerManagerRef->GetSamplerVariableArray();
 			}
 		}
-
-		matchingLayoutIndex = (uint32_t)(mSharedSetBindingSpansPerLayout.size() - 1);
 	}
 	else
 	{
-		Span<uint32_t> layoutBindingSpan = mSharedSetBindingSpansPerLayout[matchingLayoutIndex];
+		Span<uint32_t> layoutBindingSpan = mBindingSpanNodesPerLayout[*layoutNodeIndex].BindingSpan;
 
 		VkShaderStageFlags setStageFlags;
 		for(uint32_t bindingIndex = 0; bindingIndex < setBindings.size(); bindingIndex++)
 		{
 			const VkDescriptorSetLayoutBinding& newBindingInfo = setBindings[bindingIndex];
-			VkDescriptorSetLayoutBinding& existingBindingInfo  = mSharedSetLayoutBindingsFlat[(size_t)layoutBindingSpan.Begin + bindingIndex];
+			VkDescriptorSetLayoutBinding& existingBindingInfo  = mLayoutBindingsFlat[(size_t)layoutBindingSpan.Begin + bindingIndex];
 
 			assert(ValidateExistingBinding(newBindingInfo, existingBindingInfo));
 			assert(newBindingInfo.binding == bindingIndex);
@@ -516,25 +506,34 @@ void Vulkan::ShaderDatabase::AddSetLayout(std::span<VkDescriptorSetLayoutBinding
 			existingBindingInfo.stageFlags |= newBindingInfo.stageFlags;
 		}
 	}
+
+	return *layoutNodeIndex;
 }
 
-uint16_t Vulkan::ShaderDatabase::DetectSetDomain(std::span<std::string_view> bindingNames)
+uint16_t Vulkan::ShaderDatabase::DetectSetDomain(std::span<std::string_view> bindingNames, std::span<BindingRecord> outSetBindingRecords)
 {
+	assert(bindingNames.size() == outSetBindingRecords.size());
 	if(bindingNames.size() == 0)
 	{
 		return UndefinedSetDomain;
 	}
 
-	uint16_t setType = mBindingRecordMap[bindingNames[0]].Domain;
+	outSetBindingRecords[0] = mBindingRecordMap[bindingNames[0]];
 	for(size_t bindingIndex = 1; bindingIndex < bindingNames.size(); bindingIndex++)
 	{
-		if(mBindingRecordMap[bindingNames[bindingIndex]].Domain != setType)
+		BindingRecord bindingRecord = mBindingRecordMap[bindingNames[bindingIndex]];
+		if(bindingRecord.Domain != outSetBindingRecords[0].Domain)
 		{
+			//All bindings in the set should belong to the same domain
 			return UndefinedSetDomain;
+		}
+		else
+		{
+			outSetBindingRecords[bindingIndex] = bindingRecord;
 		}
 	}
 
-	return setType;
+	return outSetBindingRecords[0].Domain;
 }
 
 void Vulkan::ShaderDatabase::BuildSetLayouts()
@@ -575,15 +574,14 @@ void Vulkan::ShaderDatabase::BuildSetLayouts()
 	}
 }
 
-bool Vulkan::ShaderDatabase::ValidateNewBinding(const VkDescriptorSetLayoutBinding& bindingInfo, SharedDescriptorDatabase::SharedDescriptorBindingType bindingType) const
+bool Vulkan::ShaderDatabase::ValidateNewBinding(const VkDescriptorSetLayoutBinding& bindingInfo, VkDescriptorType expectedDescriptorType, VkDescriptorBindingFlags expectedDescriptorFlags) const
 {
-	uint32_t bindingTypeIndex = (uint32_t)(bindingType);
-	if(bindingInfo.descriptorType != SharedDescriptorDatabase::DescriptorTypesPerBinding[bindingTypeIndex])
+	if(bindingInfo.descriptorType != expectedDescriptorType)
 	{
 		return false;
 	}
 
-	if(bindingInfo.descriptorCount == (uint32_t)(-1) && SharedDescriptorDatabase::DescriptorFlagsPerBinding[bindingTypeIndex] != VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT)
+	if(bindingInfo.descriptorCount == (uint32_t)(-1) && (expectedDescriptorFlags & VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT) == 0)
 	{
 		return false;
 	}
