@@ -16,5 +16,7 @@ enum class RenderPassType: uint32_t
 {
 	GBufferGenerate,
 	GBufferDraw,
-	CopyImage
+	CopyImage,
+
+	None = 0xffffffff
 };
