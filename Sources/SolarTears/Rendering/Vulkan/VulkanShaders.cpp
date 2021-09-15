@@ -113,7 +113,7 @@ void Vulkan::ShaderDatabase::GetPushConstantInfo(std::string_view groupName, std
 
 	const auto rangeBegin = mPushConstantRecords.begin() + pushConstantSpan.Begin;
 	const auto rangeEnd   = mPushConstantRecords.begin() + pushConstantSpan.End;
-	auto pushConstantRecord = std::find(rangeBegin, rangeEnd, [pushConstantName](const PushConstantRecord& rec)
+	auto pushConstantRecord = std::lower_bound(rangeBegin, rangeEnd, [pushConstantName](const PushConstantRecord& rec)
 	{
 		return pushConstantName == rec.Name;
 	});
@@ -270,6 +270,7 @@ void Vulkan::ShaderDatabase::RegisterBindings(const std::string_view groupName, 
 
 void Vulkan::ShaderDatabase::RegisterPushConstants(std::string_view groupName, const std::span<std::wstring> shaderModuleNames)
 {
+	std::vector<PushConstantRecord> pushConstantRecords;
 	for(const std::wstring& shaderModuleName: shaderModuleNames)
 	{
 		const spv_reflect::ShaderModule& shaderModule = mLoadedShaderModules.at(shaderModuleName);
@@ -280,10 +281,56 @@ void Vulkan::ShaderDatabase::RegisterPushConstants(std::string_view groupName, c
 		std::vector<SpvReflectBlockVariable*> pushConstantBlocks(pushConstantBlockCount);
 		shaderModule.EnumeratePushConstantBlocks(&pushConstantBlockCount, pushConstantBlocks.data());
 
-		for(SpvReflectBlockVariable* blockVariable: pushConstantBlocks)
+		VkShaderStageFlags moduleStageFlags = SpvToVkShaderStage(shaderModule.GetShaderStage());
+
+		uint32_t oldPushConstantsCount = (uint32_t)pushConstantRecords.size();
+		for(SpvReflectBlockVariable* pushConstantBlock: pushConstantBlocks)
 		{
-			
+			for(uint32_t memberIndex = 0; memberIndex < pushConstantBlock->member_count; pushConstantBlock++)
+			{
+				const SpvReflectBlockVariable& memberBlock = pushConstantBlock->members[memberIndex];
+				auto foundPushConstant = std::lower_bound(pushConstantRecords.begin(), pushConstantRecords.end(), [&memberBlock](const PushConstantRecord& pushConstantRecord)
+				{
+					return pushConstantRecord.Name == memberBlock.name;
+				});
+
+				if(foundPushConstant == pushConstantRecords.end())
+				{
+					pushConstantRecords.push_back(PushConstantRecord
+					{
+						.Name         = memberBlock.name,
+						.Offset       = memberBlock.offset,
+						.ShaderStages = moduleStageFlags
+					});
+				}
+				else
+				{
+					assert(foundPushConstant->Offset == memberBlock.offset);
+
+					foundPushConstant->ShaderStages |= moduleStageFlags;
+				}
+			}
+
+			//Merge-sort old and new push constants
+			uint32_t oldPushConstantIndex   = 0;
+			uint32_t addedPushConstantIndex = oldPushConstantsCount;
+			while()
+			{
+				PushConstantRecord& oldRecord   = pushConstantRecords[oldPushConstantIndex];
+				PushConstantRecord& addedRecord = pushConstantRecords[addedPushConstantIndex];
+				if(std::lexicographical_compare(oldRecord.Name.begin(), oldRecord.Name.end(), addedRecord.Name.begin(), addedRecord.Name.end()))
+				{
+					oldPushConstantIndex++;
+				}
+				else
+				{
+
+				}
+			}
 		}
+
+		//Merge added blocks with old blocks
+		for(size_t )
 	}
 }
 
