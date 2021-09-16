@@ -64,6 +64,13 @@ namespace Vulkan
 			VkShaderStageFlags ShaderStages;
 		};
 
+		//The data structure to refer to ranges of push constant infos
+		struct PushConstantSpans
+		{
+			Span<uint32_t> RecordSpan; //Span of PushConstantRecords
+			Span<uint32_t> RangeSpan;  //Span of VkPushConstantRanges
+		};
+
 	public:
 		ShaderDatabase(VkDevice device, SamplerManager* samplerManager, LoggerQueue* logger);
 		~ShaderDatabase();
@@ -96,6 +103,9 @@ namespace Vulkan
 		//Updates inoutBindings with new set data
 		void MergeExistingSetBindings(const std::span<SpvReflectDescriptorSet*> setUpdates, std::vector<SpvReflectDescriptorBinding*>& inoutBindings, std::vector<Span<uint32_t>>& inoutSetSpans);
 		void MergeNewSetBindings(const std::span<SpvReflectDescriptorSet*> newSets, std::vector<SpvReflectDescriptorBinding*>& inoutBindings, std::vector<Span<uint32_t>>& inoutSetSpans);
+
+	private:
+		void CollectPushConstantRecords(const std::span<std::wstring> shaderModuleNames);
 
 	private:
 		//Add set layout to the database
@@ -133,8 +143,9 @@ namespace Vulkan
 
 		//Push constants for each shader group
 		//Each push constant span is lexicographically sorted by name
-		std::vector<PushConstantRecord>                      mPushConstantRecords;
-		std::unordered_map<std::string_view, Span<uint32_t>> mPushConstantSpansPerShaderGroup;
+		std::vector<PushConstantRecord>                         mPushConstantRecords;
+		std::vector<VkPushConstantRange>                        mPushConstantRanges;
+		std::unordered_map<std::string_view, PushConstantSpans> mPushConstantSpansPerShaderGroup;
 
 		//Bindings per layout
 		//A lot of data is stored separately because it's needed at completely different times

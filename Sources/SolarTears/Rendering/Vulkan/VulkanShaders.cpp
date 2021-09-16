@@ -109,7 +109,7 @@ void Vulkan::ShaderDatabase::GetRegisteredShaderInfo(const std::wstring& path, c
 
 void Vulkan::ShaderDatabase::GetPushConstantInfo(std::string_view groupName, std::string_view pushConstantName, uint32_t* outPushConstantOffset, VkShaderStageFlags* outShaderStages)
 {
-	Span<uint32_t> pushConstantSpan = mPushConstantSpansPerShaderGroup.at(groupName);
+	Span<uint32_t> pushConstantSpan = mPushConstantSpansPerShaderGroup.at(groupName).RecordSpan;
 
 	const auto rangeBegin = mPushConstantRecords.begin() + pushConstantSpan.Begin;
 	const auto rangeEnd   = mPushConstantRecords.begin() + pushConstantSpan.End;
@@ -283,55 +283,184 @@ void Vulkan::ShaderDatabase::RegisterPushConstants(std::string_view groupName, c
 
 		VkShaderStageFlags moduleStageFlags = SpvToVkShaderStage(shaderModule.GetShaderStage());
 
-		uint32_t oldPushConstantsCount = (uint32_t)pushConstantRecords.size();
+		pushConstantRecords.reserve(pushConstantRecords.size() + pushConstantBlockCount);
 		for(SpvReflectBlockVariable* pushConstantBlock: pushConstantBlocks)
 		{
 			for(uint32_t memberIndex = 0; memberIndex < pushConstantBlock->member_count; pushConstantBlock++)
 			{
 				const SpvReflectBlockVariable& memberBlock = pushConstantBlock->members[memberIndex];
-				auto foundPushConstant = std::lower_bound(pushConstantRecords.begin(), pushConstantRecords.end(), [&memberBlock](const PushConstantRecord& pushConstantRecord)
+				assert(memberBlock.size == sizeof(uint32_t)); //We only support 32-bit constants atm
+
+				pushConstantRecords.push_back(PushConstantRecord
 				{
-					return pushConstantRecord.Name == memberBlock.name;
+					.Name         = memberBlock.name,
+					.Offset       = memberBlock.offset,
+					.ShaderStages = moduleStageFlags
 				});
+			}
+		}
+	}
 
-				if(foundPushConstant == pushConstantRecords.end())
-				{
-					pushConstantRecords.push_back(PushConstantRecord
-					{
-						.Name         = memberBlock.name,
-						.Offset       = memberBlock.offset,
-						.ShaderStages = moduleStageFlags
-					});
-				}
-				else
-				{
-					assert(foundPushConstant->Offset == memberBlock.offset);
+	std::sort(pushConstantRecords.begin(), pushConstantRecords.end(), [](const PushConstantRecord& left, const PushConstantRecord& right)
+	{
+		return std::lexicographical_compare(left.Name.begin(), left.Name.end(), right.Name.begin(), right.Name.end());
+	});
 
-					foundPushConstant->ShaderStages |= moduleStageFlags;
-				}
+	uint32_t oldPushConstantCount = (uint32_t)mPushConstantRecords.size();
+	
+	std::string_view currName = "";
+	for(const PushConstantRecord& pushConstantRecord: pushConstantRecords)
+	{
+		if(currName == pushConstantRecord.Name)
+		{
+			//Merge and validate push constant record
+			assert(mPushConstantRecords.back().Offset == pushConstantRecord.Offset);
+			mPushConstantRecords.back().ShaderStages |= pushConstantRecord.ShaderStages;
+		}
+		else
+		{
+			mPushConstantRecords.push_back(pushConstantRecord);
+		}
+	}
+
+	std::sort(pushConstantRecords.begin(), pushConstantRecords.end(), [](const PushConstantRecord& left, const PushConstantRecord& right)
+	{
+		return left.ShaderStages < right.ShaderStages;
+	});
+
+	//Create a list of VkShaderStageFlags for each push constant range. 
+	//Since no two ranges can overlap in shader stages, there's no more stages then the maximum different shader types
+	uint32_t pushConstantRangeCount = 0;
+	std::array<VkShaderStageFlags, std::bit_width((uint32_t)VK_SHADER_STAGE_CALLABLE_BIT_KHR)> pushConstantShaderStages;
+	std::fill(pushConstantShaderStages.begin(), pushConstantShaderStages.end(), 0);
+
+	for(const PushConstantRecord& pushConstantRecord: pushConstantRecords)
+	{
+		//Going through pushConstantShaderStages is as efficient as going through bits of VkShaderStage
+		uint32_t rangeIndex = 0;
+		while(rangeIndex < pushConstantRangeCount)
+		{
+			//Propagate the range
+			if(pushConstantShaderStages[rangeIndex] & pushConstantRecord.ShaderStages)
+			{
+				pushConstantShaderStages[rangeIndex] |= pushConstantRecord.ShaderStages;
 			}
 
-			//Merge-sort old and new push constants
-			uint32_t oldPushConstantIndex   = 0;
-			uint32_t addedPushConstantIndex = oldPushConstantsCount;
-			while()
-			{
-				PushConstantRecord& oldRecord   = pushConstantRecords[oldPushConstantIndex];
-				PushConstantRecord& addedRecord = pushConstantRecords[addedPushConstantIndex];
-				if(std::lexicographical_compare(oldRecord.Name.begin(), oldRecord.Name.end(), addedRecord.Name.begin(), addedRecord.Name.end()))
-				{
-					oldPushConstantIndex++;
-				}
-				else
-				{
+			rangeIndex++;
+		}
+	}
 
-				}
+	//There can be no more than bits(VkShaderStageFlagBits) of push constant ranges, 
+	//since VkPipelineLayoutCreateInfo requires ranges to have non-overlapping shader stages
+	uint32_t pushConstantRangeCount = 0;
+	std::array<VkPushConstantRange, sizeof(VkShaderStageFlagBits) * CHAR_BIT> pushConstantRanges;
+
+	//Range - A number of constants with overlapping shaders
+	for(const PushConstantRecord& pushConstantRecord: pushConstantRecords)
+	{
+		VkPushConstantRange* rangeToChange = nullptr;
+		for(uint32_t rangeIndex = 0; rangeIndex < pushConstantRangeCount; rangeIndex++)
+		{
+			if(pushConstantRanges[rangeIndex].stageFlags == pushConstantRecord.ShaderStages)
+			{
+				rangeToChange = &pushConstantRanges[rangeIndex];
 			}
 		}
 
-		//Merge added blocks with old blocks
-		for(size_t )
+		if(rangeToChange == nullptr) //No exact match found, try to merge
+		{
+			uint32_t firstOverlapIndex = 0;
+			while(firstOverlapIndex < pushConstantRangeCount)
+			{
+				if(pushConstantRanges[firstOverlapIndex].stageFlags & pushConstantRecord.ShaderStages)
+				{
+					break;
+				}
+
+				firstOverlapIndex++;
+			}
+
+			if(firstOverlapIndex != pushConstantRangeCount)
+			{
+				rangeToChange = &pushConstantRanges[firstOverlapIndex];
+				rangeToChange->stageFlags |= pushConstantRecord.ShaderStages;
+
+				//Merge all overlapping ranges starting at firstOverlapIndex, deleting overlapping ones and shifting remaining ones
+				//Only check for stage flags to overlap
+				uint32_t shiftCount = 0;
+				for(uint32_t rangeIndex = firstOverlapIndex + 1; rangeIndex < pushConstantRangeCount; rangeIndex++)
+				{
+					if(rangeToChange->stageFlags & pushConstantRanges[rangeIndex].stageFlags)
+					{
+						uint32_t fixedRangeBegin = rangeToChange->offset;
+						uint32_t fixedRangeEnd   = rangeToChange->offset + rangeToChange->size;
+						
+						uint32_t mergedRangeBegin = pushConstantRanges[rangeIndex].offset;
+						uint32_t mergedRangeEnd   = pushConstantRanges[rangeIndex].offset + pushConstantRanges[rangeIndex].size;
+
+						uint32_t newBegin = std::min(fixedRangeBegin, mergedRangeBegin);
+						uint32_t newEnd   = std::max(fixedRangeEnd,   mergedRangeEnd);
+
+						rangeToChange->stageFlags |= pushConstantRanges[rangeIndex].stageFlags;
+						rangeToChange->offset      = newBegin;
+						rangeToChange->size        = newEnd - newBegin;
+
+						shiftCount++;
+					}
+
+					pushConstantRanges[rangeIndex - shiftCount] = pushConstantRanges[rangeIndex];
+				}
+
+				pushConstantRangeCount -= shiftCount;
+			}
+			else
+			{
+				//Add a new range
+				pushConstantRanges[pushConstantRangeCount] = VkPushConstantRange
+				{
+					.stageFlags = pushConstantRecord.ShaderStages,
+					.offset     = pushConstantRecord.Offset,
+					.size       = sizeof(uint32_t)
+				};
+
+				rangeToChange = &pushConstantRanges[pushConstantRangeCount];
+
+				pushConstantRangeCount++;
+			}
+		}
+
+		assert(rangeToChange != nullptr);
+
+		uint32_t rangeBegin = rangeToChange->offset;
+		uint32_t rangeEnd   = rangeToChange->offset + rangeToChange->size;
+						
+		uint32_t recordBegin = pushConstantRecord.Offset;
+		uint32_t recordEnd   = pushConstantRecord.Offset + sizeof(uint32_t);
+
+		uint32_t newRangeBegin = std::min(rangeBegin, recordBegin);
+		uint32_t newRangeEnd   = std::max(rangeEnd,   recordEnd);
+
+		rangeToChange->offset = newRangeBegin;
+		rangeToChange->size   = newRangeEnd;
 	}
+
+	uint32_t oldRangeCount = (uint32_t)mPushConstantRanges.size();
+	mPushConstantRanges.insert(mPushConstantRanges.end(), pushConstantRanges.begin(), pushConstantRanges.begin() + pushConstantRangeCount);
+
+	mPushConstantSpansPerShaderGroup[groupName] = PushConstantSpans
+	{
+		.RecordSpan =
+		{
+			.Begin = oldPushConstantCount,
+			.End   = (uint32_t)mPushConstantRecords.size()
+		},
+
+		.RangeSpan =
+		{
+			.Begin = oldRangeCount,
+			.End   = (uint32_t)mPushConstantRanges.size()
+		}
+	};
 }
 
 void Vulkan::ShaderDatabase::SplitSetsByPivot(uint32_t existingSetCount, std::vector<SpvReflectDescriptorSet*>& inoutSpvSets, std::span<SpvReflectDescriptorSet*>* outExistingSetSpan, std::span<SpvReflectDescriptorSet*>* outNewSetSpan)
