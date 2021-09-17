@@ -51,9 +51,9 @@ namespace Vulkan
 		//All layouts for a domain are stored in an array-backed linked list
 		struct SetLayoutRecordNode
 		{
-			Span<uint32_t>        BindingSpan;   //Binding span for the set
 			VkDescriptorSetLayout SetLayout;     //Set layout object
-			uint32_t              NextNodeIndex; //The index of the next binding span node for the same domain
+			Span<uint32_t>        BindingSpan;   //Binding span for the set
+			uint32_t              NextNodeIndex; //The index of the next binding span node in the same domain
 		};
 
 		//The data structure to store information about pass constants used by a shader group
@@ -75,17 +75,28 @@ namespace Vulkan
 		ShaderDatabase(VkDevice device, SamplerManager* samplerManager, LoggerQueue* logger);
 		~ShaderDatabase();
 
+		//Registers a render pass in the database
 		void RegisterPass(RenderPassType passType);
 		void RegisterPassBinding(RenderPassType passType, std::string_view bindingName, VkDescriptorType descriptorType);
 		void SetPassBindingFlags(std::string_view bindingName, VkDescriptorBindingFlags descriptorFlags);
 		void SetPassBindingFrameCount(std::string_view bindingName, uint32_t frameCount);
 
+		//Registers a shader group in the database
 		void RegisterShaderGroup(std::string_view groupName, std::span<std::wstring> shaderPaths);
 
+		//Get the byte-code and byte-code size of the registered shader in path
 		void GetRegisteredShaderInfo(const std::wstring& path, const uint32_t** outShaderData, uint32_t* outShaderSize) const;
 
+		//Get the offset + shader stages for the registered push constant pushConstantName in shader group groupName
 		void GetPushConstantInfo(std::string_view groupName, std::string_view pushConstantName, uint32_t* outPushConstantOffset, VkShaderStageFlags* outShaderStages);
 
+		//Creates a pipeline layout compatible for multiple shader groups
+		//The set layouts in the pipeline layout are minimal matching set in groupNamesForSets
+		//The push constants are minimal matching set in groupNamesForPushConstants
+		//Returns nullptr if no matching pipeline layout can be created
+		VkPipelineLayout CreateMatchingPipelineLayout(std::span<std::string_view> groupNamesForSets, std::span<std::string_view> groupNamesForPushConstants);
+
+		//Transfers the ownership of all set layouts from shared domain to shared descriptor database, also saving the information about layouts
 		void FlushSharedSetLayouts(SharedDescriptorDatabase* databaseToBuild);
 
 	private:
@@ -105,10 +116,7 @@ namespace Vulkan
 		void MergeNewSetBindings(const std::span<SpvReflectDescriptorSet*> newSets, std::vector<SpvReflectDescriptorBinding*>& inoutBindings, std::vector<Span<uint32_t>>& inoutSetSpans);
 
 	private:
-		void CollectPushConstantRecords(const std::span<std::wstring> shaderModuleNames);
-
-	private:
-		//Add set layout to the database
+		//Add set layout info to the database
 		uint32_t RegisterSetLayout(uint16_t setDomain, std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<BindingRecord> setBindingRecords);
 
 		//Detect set domain for binding name list
@@ -116,6 +124,23 @@ namespace Vulkan
 
 		//Create set layouts from the database infos
 		void BuildSetLayouts();
+
+	private:
+		//Collects all push constant records from shader modules
+		void CollectPushConstantRecords(const std::span<std::wstring> shaderModuleNames, std::vector<PushConstantRecord>& outPushConstantRecords);
+
+		//Registers push constant records in the database
+		//The records are expected to be lexicographically sorted
+		//Returns the span of the new records
+		Span<uint32_t> RegisterPushConstantRecords(const std::span<PushConstantRecord> lexicographicallySortedRecords);
+
+		//Registers push constant ranges in the database, created from provided push constant records
+		//Returns the span of the new ranges
+		Span<uint32_t> RegisterPushConstantRanges(const std::span<PushConstantRecord> records);
+
+	private:
+		//Finds a span in mSetLayoutsFlat
+		Span<uint32_t> FindMatchingSetLayoutSpan(std::span<std::string_view> groupNames);
 
 	private:
 		//Transform SPIR-V Reflect types to Vulkan types
@@ -138,8 +163,10 @@ namespace Vulkan
 		std::unordered_map<std::wstring, spv_reflect::ShaderModule> mLoadedShaderModules;
 
 		//Set layout records for each shader group
-		std::vector<uint32_t>                                mSetLayoutIndices;
-		std::unordered_map<std::string_view, Span<uint32_t>> mSetLayoutIndexSpansPerShaderGroup;
+		//The list of set layouts is non-owning
+		std::vector<VkDescriptorSetLayout>                   mSetLayoutsFlat;
+		std::vector<uint32_t>                                mSetLayoutRecordIndicesFlat;
+		std::unordered_map<std::string_view, Span<uint32_t>> mSetLayoutSpansPerShaderGroup;
 
 		//Push constants for each shader group
 		//Each push constant span is lexicographically sorted by name
@@ -148,9 +175,9 @@ namespace Vulkan
 		std::unordered_map<std::string_view, PushConstantSpans> mPushConstantSpansPerShaderGroup;
 
 		//Bindings per layout
-		//A lot of data is stored separately because it's needed at completely different times
+		//A lot of data is stored separately because it's needed at different times
 		std::vector<uint32_t>                     mLayoutHeadNodeIndicesPerDomain;
-		std::vector<SetLayoutRecordNode>          mSetLayoutNodes;
+		std::vector<SetLayoutRecordNode>          mSetLayoutRecordNodes;
 		std::vector<VkDescriptorSetLayoutBinding> mLayoutBindingsFlat;
 		std::vector<VkDescriptorBindingFlags>     mLayoutBindingFlagsFlat;
 		std::vector<uint16_t>                     mLayoutBindingTypesFlat;
