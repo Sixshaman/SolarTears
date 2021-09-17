@@ -24,7 +24,7 @@ namespace Vulkan
 
 	public:
 		static void RegisterResources(FrameGraphBuilder* frameGraphBuilder, const std::string& passName);
-		static void RegisterShaders(ShaderDatabase* shaderDatabase, SharedDescriptorDatabaseBuilder* sharedDescriptorDatabaseBuilder, PassDescriptorDatabaseBuilder* passDescriptorDatabaseBuilder);
+		static void RegisterShaders(ShaderDatabase* shaderDatabase);
 
 	private:
 		void CreateRenderPass(const FrameGraphBuilder* frameGraphBuilder, const DeviceParameters* deviceParameters, const std::string& currentPassName);

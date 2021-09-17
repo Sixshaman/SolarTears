@@ -34,6 +34,11 @@ void Vulkan::CopyImagePass::RegisterResources(FrameGraphBuilder* frameGraphBuild
 	frameGraphBuilder->SetPassSubresourceAccessFlags(passName, DstImageId, VK_ACCESS_TRANSFER_WRITE_BIT);
 }
 
+void Vulkan::CopyImagePass::RegisterShaders([[maybe_unused]] ShaderDatabase* shaderDatabase)
+{
+	//Nothing
+}
+
 void Vulkan::CopyImagePass::RecordExecution(VkCommandBuffer commandBuffer, [[maybe_unused]] const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig) const
 {
 	VkImageCopy imageCopyInfo;

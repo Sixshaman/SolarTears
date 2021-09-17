@@ -42,10 +42,15 @@ Vulkan::GBufferPass::GBufferPass(VkDevice device, const FrameGraphBuilder* frame
 	uint32_t  fragmentShaderSize = 0;
 	shaderDatabase->GetRegisteredShaderInfo(shaderFolder + L"GBufferDraw.frag.spv", &fragmentShaderCode, &fragmentShaderSize);
 
+	std::array staticGroupNames = {std::string_view("GBufferStaticShaders"), "GBufferStaticInstancedShaders"};
+	std::array rigidGroupNames  = {std::string_view("GBufferRigisShaders")};
+	std::array allGroupNames    = {std::string_view("GBufferStaticShaders"), "GBufferStaticInstancedShaders", "GBufferRigisShaders"};
 
+	shaderDatabase->CreateMatchingPipelineLayout(staticGroupNames, allGroupNames, &mStaticPipelineLayout);
+	shaderDatabase->CreateMatchingPipelineLayout(rigidGroupNames,  allGroupNames, &mRigidPipelineLayout);
 
-	shaderDatabase->GetRegisteredPushConstant(passName, "MaterialIndex", &mMaterialIndexPushConstantOffset, &mMaterialIndexPushConstantStages);
-	shaderDatabase->GetRegisteredPushConstant(passName, "ObjectIndex",   &mObjectIndexPushConstantOffset,   &mObjectIndexPushConstantStages);
+	shaderDatabase->GetPushConstantInfo(passName, "MaterialIndex", &mMaterialIndexPushConstantOffset, &mMaterialIndexPushConstantStages);
+	shaderDatabase->GetPushConstantInfo(passName, "ObjectIndex",   &mObjectIndexPushConstantOffset,   &mObjectIndexPushConstantStages);
 
 	//Create pipelines
 	CreateGBufferPipeline(staticVertexShaderCode,          staticVertexShaderSize,          fragmentShaderCode, fragmentShaderSize, mStaticPipelineLayout, frameGraphBuilder->GetConfig(), &mStaticPipeline);
@@ -81,7 +86,7 @@ void Vulkan::GBufferPass::RegisterResources(FrameGraphBuilder* frameGraphBuilder
 	frameGraphBuilder->SetPassSubresourceAccessFlags(passName, ColorBufferImageId, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
 }
 
-void Vulkan::GBufferPass::RegisterShaders(ShaderDatabase* shaderDatabase, SharedDescriptorDatabaseBuilder* sharedDescriptorDatabaseBuilder, PassDescriptorDatabaseBuilder* passDescriptorDatabaseBuilder)
+void Vulkan::GBufferPass::RegisterShaders(ShaderDatabase* shaderDatabase)
 {
 	//Load shaders in advance to process all bindings common for all passes (scene, samplers)
 	const std::wstring shaderFolder = Utils::GetMainDirectory() + L"Shaders/Vulkan/GBuffer/";
@@ -95,9 +100,9 @@ void Vulkan::GBufferPass::RegisterShaders(ShaderDatabase* shaderDatabase, Shared
 	std::array staticInstancedShaders = {staticInstancedShaderFilename, fragmentShaderFilename};
 	std::array rigidShaders           = {rigidShaderFilename,           fragmentShaderFilename};
 
-	shaderDatabase->RegisterShaderGroup(staticShaders,          sharedDescriptorDatabaseBuilder, passDescriptorDatabaseBuilder);
-	shaderDatabase->RegisterShaderGroup(staticInstancedShaders, sharedDescriptorDatabaseBuilder, passDescriptorDatabaseBuilder);
-	shaderDatabase->RegisterShaderGroup(rigidShaders,           sharedDescriptorDatabaseBuilder, passDescriptorDatabaseBuilder);
+	shaderDatabase->RegisterShaderGroup("GBufferStaticShaders",          staticShaders);
+	shaderDatabase->RegisterShaderGroup("GBufferStaticInstancedShaders", staticInstancedShaders);
+	shaderDatabase->RegisterShaderGroup("GBufferRigidShaders",           rigidShaders);
 }
 
 void Vulkan::GBufferPass::RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig) const

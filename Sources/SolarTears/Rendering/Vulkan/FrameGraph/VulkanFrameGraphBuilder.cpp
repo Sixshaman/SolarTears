@@ -7,8 +7,6 @@
 #include "../VulkanSwapChain.hpp"
 #include "../VulkanDeviceQueues.hpp"
 #include "../VulkanShaders.hpp"
-#include "../VulkanSharedDescriptorDatabaseBuilder.hpp"
-#include "VulkanPassDescriptorDatabaseBuilder.hpp"
 #include <VulkanGenericStructures.h>
 #include <algorithm>
 #include <numeric>
@@ -94,6 +92,11 @@ const Vulkan::SwapChain* Vulkan::FrameGraphBuilder::GetSwapChain() const
 const Vulkan::DeviceParameters* Vulkan::FrameGraphBuilder::GetDeviceParameters() const
 {
 	return mDeviceParameters;
+}
+
+Vulkan::ShaderDatabase* Vulkan::FrameGraphBuilder::GetShaderDatabase() const
+{
+	return mShaderDatabase.get();
 }
 
 VkImage Vulkan::FrameGraphBuilder::GetRegisteredResource(const std::string_view passName, const std::string_view subresourceId, uint32_t frame) const
@@ -298,8 +301,7 @@ void Vulkan::FrameGraphBuilder::Build(const FrameGraphBuildInfo& buildInfo)
 	mDeviceQueues         = buildInfo.Queues;
 	mWorkerCommandBuffers = buildInfo.CommandBuffers;
 
-	mShaderDatabase                  = std::make_unique<ShaderDatabase>(mLogger);
-	mSharedDescriptorDatabaseBuilder = std::make_unique<SharedDescriptorDatabaseBuilder>();
+	mShaderDatabase = std::make_unique<ShaderDatabase>(mLogger);
 
 	ModernFrameGraphBuilder::Build();
 }
@@ -512,50 +514,11 @@ uint32_t Vulkan::FrameGraphBuilder::AddPresentSubresourceMetadata()
 
 void Vulkan::FrameGraphBuilder::RegisterPassInGraph(RenderPassType passType, const FrameGraphDescription::RenderPassName& passName)
 {
-	const auto& metadataMap = mRenderPassesSubresourceMetadatas.at(passName);
-
-	std::vector<PassDescriptorDatabaseBuilder::PassBindingInfo> passDescriptorBindingInfos;
-	passDescriptorBindingInfos.reserve(metadataMap.size());
-	for(const auto& idWithMetadata: metadataMap)
-	{
-		const SubresourceInfo& subresourceInfo = mSubresourceInfos[idWithMetadata.second.SubresourceInfoIndex];
-
-		VkDescriptorType bindingDescriptorType = VK_DESCRIPTOR_TYPE_MAX_ENUM;
-		if(subresourceInfo.Usage == VK_IMAGE_USAGE_SAMPLED_BIT)
-		{
-			bindingDescriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-		}
-		else if(subresourceInfo.Usage == VK_IMAGE_USAGE_STORAGE_BIT)
-		{
-			bindingDescriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-		}
-		else if(subresourceInfo.Usage == VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)
-		{
-			bindingDescriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
-		}
-
-		if(bindingDescriptorType == VK_DESCRIPTOR_TYPE_MAX_ENUM)
-		{
-			continue;
-		}
-
-		PassDescriptorDatabaseBuilder::PassBindingInfo passBindingInfo;
-		passBindingInfo.BindingName           = idWithMetadata.first;
-		passBindingInfo.BindingDescriptorType = bindingDescriptorType;
-		passBindingInfo.BindingFlags          = 0;
-
-		passDescriptorBindingInfos.push_back(passBindingInfo);
-	}
-
-	PassDescriptorDatabaseBuilder passDescriptorDatabaseBuilder(mVulkanGraphToBuild->mDeviceRef, passDescriptorBindingInfos);
-
 	auto passResourceRegisterFunc = mPassAddFuncTable.at(passType);
 	passResourceRegisterFunc(this, passName);
 
 	auto passShaderRegisterFunc = mPassRegisterShadersFuncTable.at(passType);
-	passShaderRegisterFunc(mShaderDatabase.get(), mSharedDescriptorDatabaseBuilder.get(), &passDescriptorDatabaseBuilder);
-
-	passDescriptorDatabaseBuilder.BuildSetLayouts();
+	passShaderRegisterFunc(mShaderDatabase.get(), mSharedDescriptorDatabaseBuilder.get());
 }
 
 void Vulkan::FrameGraphBuilder::CreatePassObject(const FrameGraphDescription::RenderPassName& passName, RenderPassType passType, uint32_t frame)

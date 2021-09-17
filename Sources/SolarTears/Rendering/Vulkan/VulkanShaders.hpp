@@ -88,13 +88,13 @@ namespace Vulkan
 		void GetRegisteredShaderInfo(const std::wstring& path, const uint32_t** outShaderData, uint32_t* outShaderSize) const;
 
 		//Get the offset + shader stages for the registered push constant pushConstantName in shader group groupName
-		void GetPushConstantInfo(std::string_view groupName, std::string_view pushConstantName, uint32_t* outPushConstantOffset, VkShaderStageFlags* outShaderStages);
+		void GetPushConstantInfo(std::string_view groupName, std::string_view pushConstantName, uint32_t* outPushConstantOffset, VkShaderStageFlags* outShaderStages) const;
 
 		//Creates a pipeline layout compatible for multiple shader groups
 		//The set layouts in the pipeline layout are minimal matching set in groupNamesForSets
 		//The push constants are minimal matching set in groupNamesForPushConstants
 		//Returns nullptr if no matching pipeline layout can be created
-		VkPipelineLayout CreateMatchingPipelineLayout(std::span<std::string_view> groupNamesForSets, std::span<std::string_view> groupNamesForPushConstants);
+		void CreateMatchingPipelineLayout(std::span<std::string_view> groupNamesForSets, std::span<std::string_view> groupNamesForPushConstants, VkPipelineLayout* outPipelineLayout) const;
 
 		//Transfers the ownership of all set layouts from shared domain to shared descriptor database, also saving the information about layouts
 		void FlushSharedSetLayouts(SharedDescriptorDatabase* databaseToBuild);
@@ -140,7 +140,10 @@ namespace Vulkan
 
 	private:
 		//Finds a span in mSetLayoutsFlat
-		Span<uint32_t> FindMatchingSetLayoutSpan(std::span<std::string_view> groupNames);
+		Span<uint32_t> FindMatchingSetLayoutSpan(std::span<std::string_view> groupNames) const;
+
+		//Finds a span in mPushConstantRanges
+		Span<uint32_t> FindMatchingPushConstantRangeSpan(std::span<std::string_view> groupNames) const;
 
 	private:
 		//Transform SPIR-V Reflect types to Vulkan types

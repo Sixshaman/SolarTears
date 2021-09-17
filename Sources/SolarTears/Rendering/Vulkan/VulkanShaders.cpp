@@ -3,7 +3,7 @@
 #include "VulkanFunctions.hpp"
 #include "VulkanSamplers.hpp"
 #include "../../Core/Util.hpp"
-#include "../../Logging/Logger.hpp"
+#include "../../Logging/LoggerQueue.hpp"
 #include <VulkanGenericStructures.h>
 #include <cassert>
 #include <unordered_map>
@@ -107,7 +107,7 @@ void Vulkan::ShaderDatabase::GetRegisteredShaderInfo(const std::wstring& path, c
 	*outShaderSize = shaderModule.GetCodeSize();
 }
 
-void Vulkan::ShaderDatabase::GetPushConstantInfo(std::string_view groupName, std::string_view pushConstantName, uint32_t* outPushConstantOffset, VkShaderStageFlags* outShaderStages)
+void Vulkan::ShaderDatabase::GetPushConstantInfo(std::string_view groupName, std::string_view pushConstantName, uint32_t* outPushConstantOffset, VkShaderStageFlags* outShaderStages) const
 {
 	Span<uint32_t> pushConstantSpan = mPushConstantSpansPerShaderGroup.at(groupName).RecordSpan;
 
@@ -132,18 +132,32 @@ void Vulkan::ShaderDatabase::GetPushConstantInfo(std::string_view groupName, std
 	}
 }
 
-VkPipelineLayout Vulkan::ShaderDatabase::CreateMatchingPipelineLayout(std::span<std::string_view> groupNamesForSets, std::span<std::string_view> groupNamesForPushConstants)
+void Vulkan::ShaderDatabase::CreateMatchingPipelineLayout(std::span<std::string_view> groupNamesForSets, std::span<std::string_view> groupNamesForPushConstants, VkPipelineLayout* outPipelineLayout) const
 {
+	assert(outPipelineLayout != nullptr);
+
 	Span<uint32_t> matchingSetLayoutSpan         = FindMatchingSetLayoutSpan(groupNamesForSets);
 	Span<uint32_t> matchingPushConstantRangeSpan = FindMatchingPushConstantRangeSpan(groupNamesForPushConstants);
 
 	if(matchingSetLayoutSpan.End != matchingSetLayoutSpan.Begin && matchingPushConstantRangeSpan.End != matchingPushConstantRangeSpan.Begin)
 	{
-		//Create pipeline layout
+		std::span setLayouts    = {mSetLayoutsFlat.begin()     + matchingSetLayoutSpan.Begin,         mSetLayoutsFlat.begin()     + matchingSetLayoutSpan.End};
+		std::span pushConstants = {mPushConstantRanges.begin() + matchingPushConstantRangeSpan.Begin, mPushConstantRanges.begin() + matchingPushConstantRangeSpan.End};
+
+		VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo;
+		pipelineLayoutCreateInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+		pipelineLayoutCreateInfo.pNext                  = nullptr;
+		pipelineLayoutCreateInfo.flags                  = 0;
+		pipelineLayoutCreateInfo.setLayoutCount         = (uint32_t)setLayouts.size();
+		pipelineLayoutCreateInfo.pSetLayouts            = setLayouts.data();
+		pipelineLayoutCreateInfo.pushConstantRangeCount = (uint32_t)pushConstants.size();
+		pipelineLayoutCreateInfo.pPushConstantRanges    = pushConstants.data();
+
+		ThrowIfFailed(vkCreatePipelineLayout(mDeviceRef, &pipelineLayoutCreateInfo, nullptr, outPipelineLayout));
 	}
 	else
 	{
-		return VK_NULL_HANDLE;
+		*outPipelineLayout = VK_NULL_HANDLE;
 	}
 }
 
@@ -681,7 +695,7 @@ Span<uint32_t> Vulkan::ShaderDatabase::RegisterPushConstantRanges(const std::spa
 	};
 }
 
-Span<uint32_t> Vulkan::ShaderDatabase::FindMatchingSetLayoutSpan(std::span<std::string_view> groupNames)
+Span<uint32_t> Vulkan::ShaderDatabase::FindMatchingSetLayoutSpan(std::span<std::string_view> groupNames) const
 {
 	if(groupNames.size() == 0)
 	{
@@ -692,28 +706,33 @@ Span<uint32_t> Vulkan::ShaderDatabase::FindMatchingSetLayoutSpan(std::span<std::
 		};
 	}
 
-	Span<uint32_t> matchingLayoutSpan = mSetLayoutSpansPerShaderGroup[groupNames[0]];
+	Span<uint32_t> handledLayoutSpan = mSetLayoutSpansPerShaderGroup.at(groupNames[0]);
 	for(size_t groupIndex = 1; groupIndex < groupNames.size(); groupIndex++)
 	{
 		std::string_view groupName = groupNames[groupIndex];
 
-		Span<uint32_t> layoutSpan = mSetLayoutSpansPerShaderGroup[groupName];
-		if(layoutSpan.Begin == matchingLayoutSpan.Begin)
+		Span<uint32_t> testLayoutSpan = mSetLayoutSpansPerShaderGroup.at(groupName);
+		if(testLayoutSpan.Begin == handledLayoutSpan.Begin)
 		{
 			//The layout objects themselves match, just create the minimal span satisfying both
-			matchingLayoutSpan.End = std::max(matchingLayoutSpan.End, layoutSpan.End);
+			handledLayoutSpan.End = std::max(handledLayoutSpan.End, testLayoutSpan.End);
 		}
 		else
 		{
+			//Either allow all layouts of handledLayoutSpan be included in layouts of testLayoutSpan, or the other way around
+			//Allowing partial intersection (some are included one way, some the other way) will require creating new set layout spans
+			enum class LayoutAffinity {NoAffinity, HandledAffinity, TestAffinity};
+			LayoutAffinity affinity = LayoutAffinity::NoAffinity;
+
 			//Try to match the layouts by checking the binding infos
-			uint32_t handledLayoutCount = matchingLayoutSpan.End - matchingLayoutSpan.Begin;
-			uint32_t testLayoutCount    = layoutSpan.End         - layoutSpan.Begin;
+			uint32_t handledLayoutCount = handledLayoutSpan.End - handledLayoutSpan.Begin;
+			uint32_t testLayoutCount    = testLayoutSpan.End    - testLayoutSpan.Begin;
 
 			uint32_t layoutsToTest = std::min(handledLayoutCount, testLayoutCount);
 			for(uint32_t layoutIndex = 0; layoutIndex < layoutsToTest; layoutIndex++)
 			{
-				uint32_t handledLayoutIndex = matchingLayoutSpan.Begin + layoutIndex;
-				uint32_t testLayoutIndex    = layoutSpan.Begin + layoutIndex;
+				uint32_t handledLayoutIndex = handledLayoutSpan.Begin + layoutIndex;
+				uint32_t testLayoutIndex    = testLayoutSpan.Begin    + layoutIndex;
 
 				if(handledLayoutIndex == testLayoutIndex)
 				{
@@ -725,11 +744,171 @@ Span<uint32_t> Vulkan::ShaderDatabase::FindMatchingSetLayoutSpan(std::span<std::
 				Span<uint32_t> testLayoutBindingSpan    = mSetLayoutRecordNodes[handledLayoutIndex].BindingSpan;
 				if(handledLayoutBindingSpan.Begin == testLayoutBindingSpan.Begin)
 				{
-					//Here...
+					if(handledLayoutBindingSpan.End > testLayoutBindingSpan.End)
+					{
+						//All bindings of testLayoutBindingSpan are contained in handledLayoutBindingSpan (handled affinity)
+						if(affinity == LayoutAffinity::TestAffinity)
+						{
+							//Can't change the affinity
+							mLogger->PostLogMessage("Error trying to merge the layouts for shader groups {" + Utils::ToString(groupNames) + "}: interleaving inclusive layouts\n");
+							return Span<uint32_t>
+							{
+								.Begin = 0,
+								.End   = 0
+							};
+						}
+
+						affinity = LayoutAffinity::HandledAffinity;
+						continue;
+					}
+					else
+					{
+						//All bindings of handledLayoutBindingSpan are contained in testLayoutBindingSpan (test affinity)
+						if(affinity == LayoutAffinity::HandledAffinity)
+						{
+							//Can't change the affinity
+							mLogger->PostLogMessage("Error trying to merge the layouts for shader groups {" + Utils::ToString(groupNames) + "}: interleaving inclusive layouts\n");
+							return Span<uint32_t>
+							{
+								.Begin = 0,
+								.End   = 0
+							};
+						}
+
+						affinity = LayoutAffinity::TestAffinity;
+						continue;
+					}
 				}
+				else
+				{
+					//Try to check the bindings themselves
+					uint32_t handledBindingCount = handledLayoutBindingSpan.End - handledLayoutBindingSpan.Begin;
+					uint32_t testBingingCount    = testLayoutBindingSpan.End    - testLayoutBindingSpan.Begin;
+
+					uint32_t bindingsToTest = std::min(handledBindingCount, testBingingCount);
+					for(uint32_t bindingIndex = 0; bindingIndex < bindingsToTest; bindingIndex++)
+					{
+						uint32_t handledBindingIndex = handledLayoutBindingSpan.Begin + bindingIndex;
+						uint32_t testBindingIndex    = testLayoutBindingSpan.Begin    + bindingIndex;
+
+						if(mLayoutBindingsFlat[handledBindingIndex].binding         != mLayoutBindingsFlat[testBindingIndex].binding
+						|| mLayoutBindingsFlat[handledBindingIndex].descriptorType  != mLayoutBindingsFlat[testBindingIndex].descriptorType
+						|| mLayoutBindingsFlat[handledBindingIndex].descriptorCount != mLayoutBindingsFlat[testBindingIndex].descriptorCount
+						|| mLayoutBindingsFlat[handledBindingIndex].stageFlags      != mLayoutBindingsFlat[testBindingIndex].stageFlags)
+						{
+							mLogger->PostLogMessage("Error trying to merge the layouts for shader groups {" + Utils::ToString(groupNames) + "}: bindings don't match\n");
+							return Span<uint32_t>
+							{
+								.Begin = 0,
+								.End   = 0
+							};
+						}
+					}
+
+					//At this point all the common bindings match
+					if(handledBindingCount > testBingingCount)
+					{
+						//All bindings of testLayoutBindingSpan are contained in handledLayoutBindingSpan (handled affinity)
+						if(affinity == LayoutAffinity::TestAffinity)
+						{
+							//Can't change the affinity
+							mLogger->PostLogMessage("Error trying to merge the layouts for shader groups {" + Utils::ToString(groupNames) + "}: interleaving inclusive layouts\n");
+							return Span<uint32_t>
+							{
+								.Begin = 0,
+								.End   = 0
+							};
+						}
+
+						affinity = LayoutAffinity::HandledAffinity;
+						continue;
+					}
+					else
+					{
+						//All bindings of handledLayoutBindingSpan are contained in testLayoutBindingSpan (test affinity)
+						if(affinity == LayoutAffinity::HandledAffinity)
+						{
+							//Can't change the affinity
+							mLogger->PostLogMessage("Error trying to merge the layouts for shader groups {" + Utils::ToString(groupNames) + "}: interleaving inclusive layouts\n");
+							return Span<uint32_t>
+							{
+								.Begin = 0,
+								.End   = 0
+							};
+						}
+
+						affinity = LayoutAffinity::TestAffinity;
+						continue;
+					}
+				}
+			}
+
+			if(affinity == LayoutAffinity::TestAffinity)
+			{
+				handledLayoutSpan = testLayoutSpan;
 			}
 		}
 	}
+
+	return handledLayoutSpan;
+}
+
+Span<uint32_t> Vulkan::ShaderDatabase::FindMatchingPushConstantRangeSpan(std::span<std::string_view> groupNames) const
+{
+	if(groupNames.size() == 0)
+	{
+		return Span<uint32_t>
+		{
+			.Begin = 0,
+			.End   = 0
+		};
+	}
+
+	Span<uint32_t> handledRangeSpan = mPushConstantSpansPerShaderGroup.at(groupNames[0]).RangeSpan;
+	for(size_t groupIndex = 1; groupIndex < groupNames.size(); groupIndex++)
+	{
+		std::string_view groupName = groupNames[groupIndex];
+
+		Span<uint32_t> testRangeSpan = mPushConstantSpansPerShaderGroup.at(groupName).RangeSpan;
+		if(testRangeSpan.Begin == handledRangeSpan.Begin)
+		{
+			//The push constant ranges match, just create the minimal span satisfying both
+			handledRangeSpan.End = std::max(handledRangeSpan.End, testRangeSpan.End);
+		}
+		else
+		{
+			//Try to match the range structs of both spans
+			uint32_t handledRangeCount = handledRangeSpan.End - handledRangeSpan.Begin;
+			uint32_t testRangeCount    = testRangeSpan.End    - testRangeSpan.Begin;
+
+			uint32_t rangesToTest = std::min(handledRangeCount, testRangeCount);
+			for(uint32_t rangeIndex = 0; rangeIndex < rangesToTest; rangeIndex++)
+			{
+				VkPushConstantRange handledRange = mPushConstantRanges[handledRangeSpan.Begin + rangeIndex];
+				VkPushConstantRange testRange    = mPushConstantRanges[testRangeSpan.Begin    + rangeIndex];
+
+				if(handledRange.stageFlags != testRange.stageFlags
+				|| handledRange.size       != testRange.size
+				|| handledRange.offset     != testRange.offset)
+				{
+					mLogger->PostLogMessage("Error trying to merge the push constant ranges for shader groups {" + Utils::ToString(groupNames) + "}: ranges don't match\n");
+					return Span<uint32_t>
+					{
+						.Begin = 0,
+						.End   = 0
+					};
+				}
+			}
+
+			//At this point all ranges up to rangesToTest match
+			if(testRangeCount > handledRangeCount)
+			{
+				handledRangeSpan = testRangeSpan;
+			}
+		}
+	}
+
+	return handledRangeSpan;
 }
 
 uint32_t Vulkan::ShaderDatabase::RegisterSetLayout(uint16_t setDomain, std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<BindingRecord> setBindingRecords)

@@ -8,7 +8,6 @@
 #include <span>
 #include "../../../Core/DataStructures/Span.hpp"
 #include "../../Common/FrameGraph/ModernFrameGraphBuilder.hpp"
-#include "../VulkanDescriptorDatabaseCommon.hpp"
 
 namespace Vulkan
 {
@@ -19,12 +18,10 @@ namespace Vulkan
 	class RenderableScene;
 	class DeviceParameters;
 	class ShaderDatabase;
-	class SharedDescriptorDatabaseBuilder;
-	class PassDescriptorDatabaseBuilder;
 
 	using RenderPassCreateFunc         = std::unique_ptr<RenderPass>(*)(VkDevice, const FrameGraphBuilder*, const std::string&, uint32_t);
 	using RenderPassAddFunc            = void(*)(FrameGraphBuilder*, const std::string&);
-	using RenderPassShaderRegisterFunc = void(*)(ShaderDatabase*, SharedDescriptorDatabaseBuilder*, PassDescriptorDatabaseBuilder*);
+	using RenderPassShaderRegisterFunc = void(*)(ShaderDatabase*);
 
 	struct FrameGraphBuildInfo
 	{
@@ -61,6 +58,8 @@ namespace Vulkan
 		const DeviceParameters* GetDeviceParameters() const;
 		const DeviceQueues*     GetDeviceQueues()     const;
 		const SwapChain*        GetSwapChain()        const;
+		
+		ShaderDatabase* GetShaderDatabase() const;
 
 		VkImage              GetRegisteredResource(const std::string_view passName,    const std::string_view subresourceId, uint32_t frame) const;
 		VkImageView          GetRegisteredSubresource(const std::string_view passName, const std::string_view subresourceId, uint32_t frame) const;
