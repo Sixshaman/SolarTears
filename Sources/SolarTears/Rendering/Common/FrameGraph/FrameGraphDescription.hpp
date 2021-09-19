@@ -13,9 +13,9 @@ class FrameGraphDescription
 	constexpr static std::string_view BackbufferPresentPassId = "SpecialPresentAcquirePass-Backbuffer";
 
 public:
-	using RenderPassName  = std::string;
-	using SubresourceId   = std::string;
-	using SubresourceName = std::string;
+	using RenderPassName  = std::string; //Render pass names (chosen by the user)
+	using SubresourceId   = std::string; //Subresource ids, unique for the whole frame graph
+	using SubresourceName = std::string; //The names assigned to subresources, allowing to bind several subresource ids to a single subresource
 
 public:
 	FrameGraphDescription();
@@ -23,7 +23,7 @@ public:
 
 	void AddRenderPass(RenderPassType passType, const std::string_view passName);
 
-	void AssignSubresourceName(const std::string_view passName, const std::string_view subresourceId, const std::string_view subresourceName);
+	void AssignSubresourceName(const std::string_view subresourceId, const std::string_view subresourceName);
 	void AssignBackbufferName(const std::string_view backbufferName);
 
 private:
@@ -31,7 +31,7 @@ private:
 
 	std::unordered_map<RenderPassName, RenderPassType> mRenderPassTypes;
 
-	std::unordered_map<RenderPassName, std::unordered_map<SubresourceName, SubresourceId>> mRenderPassesSubresourceNameIds;
+	std::unordered_map<SubresourceId, SubresourceName> mSubresourceIdNames;
 
 	SubresourceName mBackbufferName;
 };

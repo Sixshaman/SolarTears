@@ -8,6 +8,7 @@
 #include "ModernFrameGraphMisc.hpp"
 #include "FrameGraphDescription.hpp"
 #include "../../../Core/DataStructures/Span.hpp"
+#include <span>
 
 class FrameGraphConfig;
 
@@ -21,14 +22,16 @@ protected:
 
 	struct SubresourceMetadataNode
 	{
-		SubresourceMetadataNode* PrevPassNode;
-		SubresourceMetadataNode* NextPassNode;
+		std::string_view SubresourceName;
+
+		uint32_t PrevPassNodeIndex;
+		uint32_t NextPassNodeIndex;
 
 		//In case of ping-pong or swapchain images the images are stored in a range. ImageIndex and ImageViewIndex point to the first image/view in the range
 		uint32_t        FirstFrameHandle;      //The id of the first frame in the list of frame graph textures. Common for all nodes in the resource
 		uint32_t        FirstFrameViewHandle;  //The id of the first frame in the frame graph texture views
-		uint32_t        FrameCount;            //The number of different frames in the resource. Common for all nodes in the resource
-		uint32_t        SubresourceInfoIndex;  //The id of the API-specific subresource data
+		uint16_t        PerPassSubresourceId;  //Pass-specific number unique for each subresource in a pass
+		uint16_t        FrameCount;            //The number of different frames in the resource. Common for all nodes in the resource
 		uint32_t        Flags;                 //Per-subresource flags
 		RenderPassClass PassClass;             //The pass class (Graphics/Compute/Copy) that uses the node
 
@@ -37,8 +40,8 @@ protected:
 
 	struct TextureResourceCreateInfo
 	{
-		std::string_view         Name;
-		SubresourceMetadataNode* MetadataHead;
+		std::string_view Name;
+		uint32_t         MetadataHeadIndex;
 	};
 
 	struct TextureSubresourceCreateInfo
@@ -52,11 +55,10 @@ public:
 	ModernFrameGraphBuilder(ModernFrameGraph* graphToBuild, FrameGraphDescription&& frameGraphDescription);
 	~ModernFrameGraphBuilder();
 
-	void RegisterReadSubresource(const std::string_view passName, const std::string_view subresourceId);
-	void RegisterWriteSubresource(const std::string_view passName, const std::string_view subresourceId);
+	void RegisterSubresource(const std::string_view passName, const std::string_view subresourceId);
 
-	void EnableSubresourceAutoBeforeBarrier(const std::string_view passName, const std::string_view subresourceId, bool autoBarrier = true);
-	void EnableSubresourceAutoAfterBarrier(const std::string_view passName, const std::string_view subresourceId,  bool autoBarrier = true);
+	void EnableSubresourceAutoBeforeBarrier(const std::string_view subresourceId, bool autoBarrier = true);
+	void EnableSubresourceAutoAfterBarrier(const std::string_view subresourceId,  bool autoBarrier = true);
 
 	void Build();
 
@@ -69,14 +71,17 @@ private:
 	//Creates present pass
 	void CreatePresentPass();
 
+	//Sorts passes by dependency level and by topological order
+	void SortPasses();
+
 	//Builds frame graph adjacency list
-	void BuildAdjacencyList(std::unordered_map<FrameGraphDescription::RenderPassName, std::unordered_set<FrameGraphDescription::RenderPassName>>& adjacencyList);
+	void BuildAdjacencyList(std::unordered_map<FrameGraphDescription::RenderPassName, std::span<FrameGraphDescription::RenderPassName>>& outAdjacencyList, std::vector<FrameGraphDescription::RenderPassName>& outPassNamesFlat);
 
 	//Sorts frame graph passes topologically
-	void BuildSortedRenderPassesTopological(const std::unordered_map<FrameGraphDescription::RenderPassName, std::unordered_set<FrameGraphDescription::RenderPassName>>& adjacencyList);
+	void BuildSortedRenderPassesTopological(const std::unordered_map<FrameGraphDescription::RenderPassName, std::span<FrameGraphDescription::RenderPassName>>& adjacencyList);
 
 	//Sorts frame graph passes (already sorted topologically) by dependency level
-	void BuildSortedRenderPassesDependency(const std::unordered_map<FrameGraphDescription::RenderPassName, std::unordered_set<FrameGraphDescription::RenderPassName>>& adjacencyList);
+	void BuildSortedRenderPassesDependency(const std::unordered_map<FrameGraphDescription::RenderPassName, std::span<FrameGraphDescription::RenderPassName>>& adjacencyList);
 
 	//Builds render pass dependency levels
 	void BuildDependencyLevels();
@@ -130,10 +135,10 @@ private:
 	void ValidateImageAndViewIndicesInResource(TextureResourceCreateInfo* createInfo, uint32_t imageIndex);
 
 	//Recursively sort subtree topologically
-	void TopologicalSortNode(const std::unordered_map<FrameGraphDescription::RenderPassName, std::unordered_set<FrameGraphDescription::RenderPassName>>& adjacencyList, std::unordered_set<FrameGraphDescription::RenderPassName>& visited, std::unordered_set<FrameGraphDescription::RenderPassName>& onStack, const FrameGraphDescription::RenderPassName& renderPassName);
+	void TopologicalSortNode(const std::unordered_map<FrameGraphDescription::RenderPassName, std::span<FrameGraphDescription::RenderPassName>>& adjacencyList, std::unordered_set<FrameGraphDescription::RenderPassName>& visited, std::unordered_set<FrameGraphDescription::RenderPassName>& onStack, const FrameGraphDescription::RenderPassName& renderPassName);
 
-	//Test if two writingPass writes to readingPass
-	bool PassesIntersect(const FrameGraphDescription::RenderPassName& writingPass, const FrameGraphDescription::RenderPassName& readingPass);
+	//Test if readSortedSubresourceNames intersects with writeSortedSubresourceNames, assuming both spans are sorted lexicographically
+	bool PassesIntersect(const std::span<FrameGraphDescription::SubresourceName> readSortedSubresourceNames, const std::span<FrameGraphDescription::SubresourceName> writeSortedSubresourceNames);
 
 protected:
 	const Span<uint32_t> GetBackbufferImageSpan() const;
@@ -191,8 +196,7 @@ protected:
 	std::unordered_map<FrameGraphDescription::RenderPassName, uint32_t>        mRenderPassDependencyLevels;
 	std::unordered_map<FrameGraphDescription::RenderPassName, uint32_t>        mRenderPassOwnPeriods;
 
-	std::unordered_map<FrameGraphDescription::RenderPassName, std::unordered_set<FrameGraphDescription::SubresourceId>> mRenderPassesReadSubresourceIds;
-	std::unordered_map<FrameGraphDescription::RenderPassName, std::unordered_set<FrameGraphDescription::SubresourceId>> mRenderPassesWriteSubresourceIds;
-
-	std::unordered_map<FrameGraphDescription::RenderPassName, std::unordered_map<FrameGraphDescription::SubresourceId, SubresourceMetadataNode>> mRenderPassesSubresourceMetadatas;
+	std::vector<SubresourceMetadataNode>                                      mSubresourceMetadataNodesFlat;
+	std::unordered_map<FrameGraphDescription::RenderPassName, Span<uint32_t>> mSubresourceMetadataSpansPerPass;
+	std::unordered_map<FrameGraphDescription::SubresourceId,  uint32_t>       mMetadataNodeIndicesPerSubresourceIds;
 };
