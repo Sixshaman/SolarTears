@@ -85,6 +85,8 @@ namespace Vulkan
 
 		void Build(const FrameGraphBuildInfo& buildInfo);
 
+		void BuildPassDescriptorSets();
+
 	private:
 		//Adds a render pass of type Pass to the frame graph pass table
 		template<typename Pass>
@@ -160,8 +162,7 @@ namespace Vulkan
 		const DeviceParameters*     mDeviceParameters;
 		const MemoryManager*        mMemoryManager;
 
-		std::unique_ptr<ShaderDatabase>                  mShaderDatabase;
-		std::unique_ptr<SharedDescriptorDatabaseBuilder> mSharedDescriptorDatabaseBuilder;
+		std::unique_ptr<ShaderDatabase> mShaderDatabase;
 	};
 }
 

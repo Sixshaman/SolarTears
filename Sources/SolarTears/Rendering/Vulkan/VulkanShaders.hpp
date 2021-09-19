@@ -7,7 +7,7 @@
 #include "../../Core/DataStructures/Span.hpp"
 #include "../Common/FrameGraph/ModernFrameGraphMisc.hpp"
 #include "FrameGraph/VulkanRenderPass.hpp"
-#include "VulkanSharedDescriptorDatabase.hpp"
+#include "FrameGraph/VulkanSharedDescriptorDatabase.hpp"
 
 class LoggerQueue;
 
@@ -25,26 +25,36 @@ namespace Vulkan
 
 	class SamplerManager;
 
+	struct PassSetInfo
+	{
+		VkDescriptorSetLayout SetLayout;
+		Span<uint32_t>        BindingSpan;
+		RenderPassType        PassType;
+	};
+
 	class ShaderDatabase
 	{
-		static constexpr uint16_t UndefinedSetDomain = 0xffff;
-		static constexpr uint16_t SharedSetDomain    = 0x0000;
+		using BindingDomain = uint16_t;
+		using BindingType   = uint16_t; 
+
+		static constexpr BindingDomain UndefinedSetDomain = 0xffff;
+		static constexpr BindingDomain SharedSetDomain    = 0x0000;
 
 		//The data structure to store information about the binding domain (Shared, Pass 1, Pass 2, etc)
 		struct DomainRecord
 		{
-			uint16_t Domain;
-			uint16_t RegisteredBindingCount;
+			RenderPassType PassType;
+			uint32_t       FirstLayoutNodeIndex;
 		};
 
 		//The data structure to store information about which passes use which bindings
 		struct BindingRecord
 		{
-			uint16_t         Domain;          //Type of the pass that uses the set (Shared, Pass 1, Pass 2, etc.)
-			uint16_t         Type;            //Per-domain binding type
-			VkDescriptorType DescriptorType;  //Expected descriptor type for the binding (for validation purposes)
-			uint32_t         DescriptorFlags; //Expected descriptor flags for the binding (for validation purposes)
-			uint32_t         FrameCount;      //The frame count for binding (ping-pong resources, etc)
+			uint16_t Domain; //Type of the pass that uses the set (Shared, Pass 1, Pass 2, etc.)
+			uint16_t Type;   //Per-domain binding type
+
+			//VkDescriptorType DescriptorType;  //Expected descriptor type for the binding (for validation purposes)
+			//uint32_t         DescriptorFlags; //Expected descriptor flags for the binding (for validation purposes)
 		};
 
 		//The node of a set layout information for a particular domain
@@ -77,9 +87,9 @@ namespace Vulkan
 
 		//Registers a render pass in the database
 		void RegisterPass(RenderPassType passType);
-		void RegisterPassBinding(RenderPassType passType, std::string_view bindingName, VkDescriptorType descriptorType);
+		void RegisterPassBinding(RenderPassType passType, std::string_view bindingName, uint16_t passBindingType);
+		void SetPassBindingValidateInfo(VkDescriptorType descriptorType);
 		void SetPassBindingFlags(std::string_view bindingName, VkDescriptorBindingFlags descriptorFlags);
-		void SetPassBindingFrameCount(std::string_view bindingName, uint32_t frameCount);
 
 		//Registers a shader group in the database
 		void RegisterShaderGroup(std::string_view groupName, std::span<std::wstring> shaderPaths);
@@ -98,6 +108,8 @@ namespace Vulkan
 
 		//Transfers the ownership of all set layouts from shared domain to shared descriptor database, also saving the information about layouts
 		void FlushSharedSetLayouts(SharedDescriptorDatabase* databaseToBuild);
+
+		void BuildUniquePassSetInfos(std::vector<PassSetInfo>& outPassSetInfos, std::vector<uint16_t>& outPassBindingTypes) const;
 
 	private:
 		//Functions for collecting bindings and push constants
@@ -178,16 +190,15 @@ namespace Vulkan
 		std::unordered_map<std::string_view, PushConstantSpans> mPushConstantSpansPerShaderGroup;
 
 		//Bindings per layout
-		//A lot of data is stored separately because it's needed at different times
-		std::vector<uint32_t>                     mLayoutHeadNodeIndicesPerDomain;
+		//A lot of data is stored separately because mLayoutBindingsFlat and mLayoutBindingFlagsFlat are needed as separate arrays
+		std::vector<DomainRecord>                 mDomainRecords;
 		std::vector<SetLayoutRecordNode>          mSetLayoutRecordNodes;
 		std::vector<VkDescriptorSetLayoutBinding> mLayoutBindingsFlat;
 		std::vector<VkDescriptorBindingFlags>     mLayoutBindingFlagsFlat;
 		std::vector<uint16_t>                     mLayoutBindingTypesFlat;
-		std::vector<uint32_t>                     mLayoutBindingFrameCountsFlat;
 		
 		//Domain records per pass name
-		std::unordered_map<RenderPassType, DomainRecord> mDomainRecordMap;
+		std::unordered_map<RenderPassType, BindingDomain> mPassDomainMap;
 
 		//Binding records per binding name
 		std::unordered_map<std::string_view, BindingRecord> mBindingRecordMap;

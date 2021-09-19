@@ -150,7 +150,7 @@ void Vulkan::GBufferPass::RecordExecution(VkCommandBuffer commandBuffer, const R
 	};
 
 	//Prepare to first drawing
-	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, currentPipelineLayout, 0, (uint32_t)mSceneCommonAndStaticDescriptorSets.size(), mSceneCommonAndStaticDescriptorSets.data(), 0, nullptr);
+	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, currentPipelineLayout, mStaticDrawSetBindOffset, mStaticDrawChangedSetSpan.End - mStaticDrawChangedSetSpan.Begin, mDescriptorSets.data() + mStaticDrawChangedSetSpan.Begin, 0, nullptr);
 	scene->PrepareDrawBuffers(commandBuffer);
 	
 	//Draw static meshes
@@ -163,10 +163,9 @@ void Vulkan::GBufferPass::RecordExecution(VkCommandBuffer commandBuffer, const R
 
 	//Change pipeline layout and descriptor bindings
 	currentPipelineLayout = mRigidPipelineLayout;
-	const uint32_t bindOffset = mCommonDescriptorSetCount;
 
 	//Draw rigid meshes
-	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, currentPipelineLayout, bindOffset, (uint32_t)mSceneRigidDescriptorSets.size(), mSceneRigidDescriptorSets.data(), 0, nullptr);
+	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, currentPipelineLayout, mRigidDrawSetBindOffset, mRigidDrawChangedSetSpan.End - mRigidDrawChangedSetSpan.Begin, mDescriptorSets.data() + mRigidDrawChangedSetSpan.Begin, 0, nullptr);
 	scene->DrawRigidObjects(commandBuffer, meshCallback, submeshCallback);
 
 	vkCmdEndRenderPass(commandBuffer);

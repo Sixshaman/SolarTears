@@ -12,15 +12,15 @@ layout(location = 0) out vec2 outTexCoord;
 
 //================================================================
 
-layout(set = 3, binding = 0) uniform ObjectConstants
-{
-	mat4 ModelMatrix;
-} SceneStaticObjectDatas[];
-
-layout(set = 4, binding = 0) uniform FrameConstants
+layout(set = 3, binding = 0) uniform FrameConstants
 {
 	mat4 ViewProjMatrix;
 } SceneFrameData;
+
+layout(set = 3, binding = 1) uniform ObjectConstants
+{
+	mat4 ModelMatrix;
+} SceneStaticObjectDatas[];
 
 layout(push_constant) uniform ObjectPushConstants
 {

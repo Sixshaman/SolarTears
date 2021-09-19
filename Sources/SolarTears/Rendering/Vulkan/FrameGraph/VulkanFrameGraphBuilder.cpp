@@ -19,6 +19,8 @@ Vulkan::FrameGraphBuilder::FrameGraphBuilder(LoggerQueue* logger, FrameGraph* gr
 	mImageViewCount = 0;
 
 	InitPassTable();
+
+	mShaderDatabase = std::make_unique<ShaderDatabase>(mLogger);
 }
 
 Vulkan::FrameGraphBuilder::~FrameGraphBuilder()
@@ -301,9 +303,27 @@ void Vulkan::FrameGraphBuilder::Build(const FrameGraphBuildInfo& buildInfo)
 	mDeviceQueues         = buildInfo.Queues;
 	mWorkerCommandBuffers = buildInfo.CommandBuffers;
 
-	mShaderDatabase = std::make_unique<ShaderDatabase>(mLogger);
-
 	ModernFrameGraphBuilder::Build();
+}
+
+void Vulkan::FrameGraphBuilder::BuildPassDescriptorSets()
+{
+	std::vector<PassSetInfo> uniquePassSetInfos;
+	std::vector<uint16_t>    passSetBindingTypes;
+	mShaderDatabase->BuildUniquePassSetInfos(uniquePassSetInfos, passSetBindingTypes);
+
+
+	//At this point we have the RenderPassType -> {layout, bindings} infos
+	//We only need to know how many
+
+	//for(PassSetInfo& passSetInfo: uniquePassSetInfos)
+	//{
+	//	
+	//}
+
+
+
+	//mVulkanGraphToBuild->mDescriptorSets.resize(descriptorSetCount, VK_NULL_HANDLE);
 }
 
 void Vulkan::FrameGraphBuilder::CreateTextures(const std::vector<TextureResourceCreateInfo>& textureCreateInfos, const std::vector<TextureResourceCreateInfo>& backbufferCreateInfos, uint32_t totalTextureCount) const
@@ -518,7 +538,7 @@ void Vulkan::FrameGraphBuilder::RegisterPassInGraph(RenderPassType passType, con
 	passResourceRegisterFunc(this, passName);
 
 	auto passShaderRegisterFunc = mPassRegisterShadersFuncTable.at(passType);
-	passShaderRegisterFunc(mShaderDatabase.get(), mSharedDescriptorDatabaseBuilder.get());
+	passShaderRegisterFunc(mShaderDatabase.get());
 }
 
 void Vulkan::FrameGraphBuilder::CreatePassObject(const FrameGraphDescription::RenderPassName& passName, RenderPassType passType, uint32_t frame)

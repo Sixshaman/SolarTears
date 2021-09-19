@@ -6,8 +6,8 @@
 #include <span>
 #include <string>
 #include <numeric>
-#include "../Common/RenderingUtils.hpp"
-#include "../../Core/DataStructures/Span.hpp"
+#include "../../Common/RenderingUtils.hpp"
+#include "../../../Core/DataStructures/Span.hpp"
 
 namespace Vulkan
 {
@@ -96,8 +96,5 @@ namespace Vulkan
 
 		std::vector<Span<uint32_t>>              mSetFormatsPerLayout; //Registered set format spans, <binding count> size each
 		std::vector<SharedDescriptorBindingType> mSetFormatsFlat;
-
-		std::vector<Span<uint32_t>>  mSetsPerLayout; //Set spans, <frame count> size each
-		std::vector<VkDescriptorSet> mSets;
 	};
 }

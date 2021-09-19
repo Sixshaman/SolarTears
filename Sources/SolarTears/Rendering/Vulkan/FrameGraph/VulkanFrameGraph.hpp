@@ -46,6 +46,8 @@ namespace Vulkan
 
 		std::vector<VkImageMemoryBarrier> mImageBarriers;
 
+		std::vector<VkDescriptorSet> mDescriptorSets;
+
 		VkDeviceMemory mImageMemory;
 
 		VkSemaphore mAcquireSemaphores[Utils::InFlightFrameCount];

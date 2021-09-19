@@ -16,6 +16,7 @@ namespace Vulkan
 
 	class GBufferPass: public RenderPass, public GBufferPassBase
 	{
+
 	public:
 		GBufferPass(VkDevice device, const FrameGraphBuilder* frameGraphBuilder, const std::string& passName, uint32_t frame);
 		~GBufferPass();
@@ -43,8 +44,11 @@ namespace Vulkan
 		VkPipeline mStaticInstancedPipeline;
 		VkPipeline mRigidPipeline;
 
-		std::span<VkDescriptorSet> mStaticDescriptorSets;
-		std::span<VkDescriptorSet> mRigidDescriptorSets;
+		std::span<VkDescriptorSet> mDescriptorSets;
+		Span<uint32_t>             mStaticDrawChangedSetSpan;
+		Span<uint32_t>             mRigidDrawChangedSetSpan;
+		uint32_t                   mStaticDrawSetBindOffset;
+		uint32_t                   mRigidDrawSetBindOffset;
 
 		uint32_t           mMaterialIndexPushConstantOffset;
 		VkShaderStageFlags mMaterialIndexPushConstantStages;

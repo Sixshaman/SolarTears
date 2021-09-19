@@ -17,6 +17,8 @@ protected:
 	constexpr static uint32_t TextureFlagAutoBeforeBarrier = 0x01; //A before-barrier is handled by render pass itself
 	constexpr static uint32_t TextureFlagAutoAfterBarrier  = 0x02; //An after-barrier is handled by render pass itself
 
+	using PassSubresourceId = uint16_t;
+
 	struct SubresourceMetadataNode
 	{
 		SubresourceMetadataNode* PrevPassNode;

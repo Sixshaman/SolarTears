@@ -1,8 +1,8 @@
 #include "VulkanSharedDescriptorDatabase.hpp"
-#include "VulkanUtils.hpp"
-#include "VulkanFunctions.hpp"
-#include "VulkanSamplers.hpp"
-#include "Scene/VulkanScene.hpp"
+#include "../VulkanUtils.hpp"
+#include "../VulkanFunctions.hpp"
+#include "../VulkanSamplers.hpp"
+#include "../Scene/VulkanScene.hpp"
 #include <VulkanGenericStructures.h>
 
 Vulkan::SharedDescriptorDatabase::SharedDescriptorDatabase(const VkDevice device): mDeviceRef(device)

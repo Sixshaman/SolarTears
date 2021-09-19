@@ -97,6 +97,7 @@
     <ClInclude Include="Rendering\Vulkan\FrameGraph\VulkanFrameGraph.hpp" />
     <ClInclude Include="Rendering\Vulkan\FrameGraph\VulkanFrameGraphBuilder.hpp" />
     <ClInclude Include="Rendering\Vulkan\FrameGraph\VulkanRenderPass.hpp" />
+    <ClInclude Include="Rendering\Vulkan\FrameGraph\VulkanSharedDescriptorDatabase.hpp" />
     <ClInclude Include="Rendering\Vulkan\Scene\VulkanScene.hpp" />
     <ClInclude Include="Rendering\Vulkan\Scene\VulkanSceneBuilder.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanDeviceParameters.hpp" />
@@ -108,7 +109,6 @@
     <ClInclude Include="Rendering\Vulkan\VulkanRenderer.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanSamplers.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanShaders.hpp" />
-    <ClInclude Include="Rendering\Vulkan\VulkanSharedDescriptorDatabase.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanSwapChain.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanUtils.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanWorkerCommandBuffers.hpp" />
@@ -176,6 +176,7 @@
     <ClCompile Include="Rendering\Vulkan\FrameGraph\VulkanFrameGraph.cpp" />
     <ClCompile Include="Rendering\Vulkan\FrameGraph\VulkanFrameGraphBuilder.cpp" />
     <ClCompile Include="Rendering\Vulkan\FrameGraph\VulkanRenderPass.cpp" />
+    <ClCompile Include="Rendering\Vulkan\FrameGraph\VulkanSharedDescriptorDatabase.cpp" />
     <ClCompile Include="Rendering\Vulkan\Scene\VulkanScene.cpp" />
     <ClCompile Include="Rendering\Vulkan\Scene\VulkanSceneBuilder.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanDeviceParameters.cpp" />
@@ -187,7 +188,6 @@
     <ClCompile Include="Rendering\Vulkan\VulkanRenderer.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanSamplers.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanShaders.cpp" />
-    <ClCompile Include="Rendering\Vulkan\VulkanSharedDescriptorDatabase.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanSwapChain.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanUtils.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanWorkerCommandBuffers.cpp" />
