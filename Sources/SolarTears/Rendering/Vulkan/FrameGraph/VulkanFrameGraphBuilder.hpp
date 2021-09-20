@@ -48,12 +48,12 @@ namespace Vulkan
 		FrameGraphBuilder(LoggerQueue* logger, FrameGraph* graphToBuild, FrameGraphDescription&& frameGraphDescription, const SwapChain* swapchain);
 		~FrameGraphBuilder();
 
-		void SetPassSubresourceFormat(const std::string_view passName,      const std::string_view subresourceId, VkFormat format);
-		void SetPassSubresourceLayout(const std::string_view passName,      const std::string_view subresourceId, VkImageLayout layout);
-		void SetPassSubresourceUsage(const std::string_view passName,       const std::string_view subresourceId, VkImageUsageFlags usage);
-		void SetPassSubresourceAspectFlags(const std::string_view passName, const std::string_view subresourceId, VkImageAspectFlags aspect);
-		void SetPassSubresourceStageFlags(const std::string_view passName,  const std::string_view subresourceId, VkPipelineStageFlags stage);
-		void SetPassSubresourceAccessFlags(const std::string_view passName, const std::string_view subresourceId, VkAccessFlags accessFlags);
+		void SetPassSubresourceFormat(const std::string_view subresourceId, VkFormat format);
+		void SetPassSubresourceLayout(const std::string_view subresourceId, VkImageLayout layout);
+		void SetPassSubresourceUsage(const std::string_view subresourceId, VkImageUsageFlags usage);
+		void SetPassSubresourceAspectFlags(const std::string_view subresourceId, VkImageAspectFlags aspect);
+		void SetPassSubresourceStageFlags(const std::string_view subresourceId, VkPipelineStageFlags stage);
+		void SetPassSubresourceAccessFlags(const std::string_view subresourceId, VkAccessFlags accessFlags);
 
 		const DeviceParameters* GetDeviceParameters() const;
 		const DeviceQueues*     GetDeviceQueues()     const;
@@ -64,24 +64,24 @@ namespace Vulkan
 		VkImage              GetRegisteredResource(const std::string_view passName,    const std::string_view subresourceId, uint32_t frame) const;
 		VkImageView          GetRegisteredSubresource(const std::string_view passName, const std::string_view subresourceId, uint32_t frame) const;
 
-		VkFormat             GetRegisteredSubresourceFormat(const std::string_view passName,      const std::string_view subresourceId) const;
-		VkImageLayout        GetRegisteredSubresourceLayout(const std::string_view passName,      const std::string_view subresourceId) const;
-		VkImageUsageFlags    GetRegisteredSubresourceUsage(const std::string_view passName,       const std::string_view subresourceId) const;
-		VkPipelineStageFlags GetRegisteredSubresourceStageFlags(const std::string_view passName,  const std::string_view subresourceId) const;
-		VkImageAspectFlags   GetRegisteredSubresourceAspectFlags(const std::string_view passName, const std::string_view subresourceId) const;
-		VkAccessFlags        GetRegisteredSubresourceAccessFlags(const std::string_view passName, const std::string_view subresourceId) const;
+		VkFormat             GetRegisteredSubresourceFormat(const std::string_view subresourceId) const;
+		VkImageLayout        GetRegisteredSubresourceLayout(const std::string_view subresourceId) const;
+		VkImageUsageFlags    GetRegisteredSubresourceUsage(const std::string_view subresourceId) const;
+		VkPipelineStageFlags GetRegisteredSubresourceStageFlags(const std::string_view subresourceId) const;
+		VkImageAspectFlags   GetRegisteredSubresourceAspectFlags(const std::string_view subresourceId) const;
+		VkAccessFlags        GetRegisteredSubresourceAccessFlags(const std::string_view subresourceId) const;
 
-		VkImageLayout        GetPreviousPassSubresourceLayout(const std::string_view passName,      const std::string_view subresourceId) const;
-		VkImageUsageFlags    GetPreviousPassSubresourceUsage(const std::string_view passName,       const std::string_view subresourceId) const;
-		VkPipelineStageFlags GetPreviousPassSubresourceStageFlags(const std::string_view passName,  const std::string_view subresourceId) const;
-		VkImageAspectFlags   GetPreviousPassSubresourceAspectFlags(const std::string_view passName, const std::string_view subresourceId) const;
-		VkAccessFlags        GetPreviousPassSubresourceAccessFlags(const std::string_view passName, const std::string_view subresourceId) const;
+		VkImageLayout        GetPreviousPassSubresourceLayout(const std::string_view subresourceId) const;
+		VkImageUsageFlags    GetPreviousPassSubresourceUsage(const std::string_view subresourceId) const;
+		VkPipelineStageFlags GetPreviousPassSubresourceStageFlags(const std::string_view subresourceId) const;
+		VkImageAspectFlags   GetPreviousPassSubresourceAspectFlags(const std::string_view subresourceId) const;
+		VkAccessFlags        GetPreviousPassSubresourceAccessFlags(const std::string_view subresourceId) const;
 
-		VkImageLayout        GetNextPassSubresourceLayout(const std::string_view passName,      const std::string_view subresourceId) const;
-		VkImageUsageFlags    GetNextPassSubresourceUsage(const std::string_view passName,       const std::string_view subresourceId) const;
-		VkPipelineStageFlags GetNextPassSubresourceStageFlags(const std::string_view passName,  const std::string_view subresourceId) const;
-		VkImageAspectFlags   GetNextPassSubresourceAspectFlags(const std::string_view passName, const std::string_view subresourceId) const;
-		VkAccessFlags        GetNextPassSubresourceAccessFlags(const std::string_view passName, const std::string_view subresourceId) const;
+		VkImageLayout        GetNextPassSubresourceLayout(const std::string_view subresourceId) const;
+		VkImageUsageFlags    GetNextPassSubresourceUsage(const std::string_view subresourceId) const;
+		VkPipelineStageFlags GetNextPassSubresourceStageFlags(const std::string_view subresourceId) const;
+		VkImageAspectFlags   GetNextPassSubresourceAspectFlags(const std::string_view subresourceId) const;
+		VkAccessFlags        GetNextPassSubresourceAccessFlags(const std::string_view subresourceId) const;
 
 		void Build(const FrameGraphBuildInfo& buildInfo);
 
@@ -124,7 +124,7 @@ namespace Vulkan
 		uint32_t NextPassSpanId() override final;
 
 		//Propagates subresource info (format, access flags, etc.) to a node from the previous one. Also initializes view key. Returns true if propagation succeeded or wasn't needed
-		bool ValidateSubresourceViewParameters(SubresourceMetadataNode* currNode, SubresourceMetadataNode* prevNode) override final;
+		bool ValidateSubresourceViewParameters(uint32_t currNodeIndex, uint32_t prevNodeIndex) override final;
 
 		//Allocates the storage for image views defined by sort keys
 		void AllocateImageViews(const std::vector<uint64_t>& sortKeys, uint32_t frameCount, std::vector<uint32_t>& outViewIds) override final;
@@ -136,10 +136,10 @@ namespace Vulkan
 		void CreateTextureViews(const std::vector<TextureSubresourceCreateInfo>& textureViewCreateInfos) const override final;
 
 		//Adds a barrier to execute before a pass
-		uint32_t AddBeforePassBarrier(uint32_t imageIndex, RenderPassClass prevPassClass, uint32_t prevPassSubresourceInfoIndex, RenderPassClass currPassClass, uint32_t currPassSubresourceInfoIndex) override final;
+		uint32_t AddBeforePassBarrier(uint32_t metadataIndex) override final;
 
 		//Adds a barrier to execute before a pass
-		uint32_t AddAfterPassBarrier(uint32_t imageIndex, RenderPassClass currPassClass, uint32_t currPassSubresourceInfoIndex, RenderPassClass nextPassClass, uint32_t nextPassSubresourceInfoIndex) override final;
+		uint32_t AddAfterPassBarrier(uint32_t metadataIndex) override final;
 
 		//Initializes per-traverse command buffer info
 		void InitializeTraverseData() const override final;

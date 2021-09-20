@@ -26,21 +26,17 @@ D3D12::FrameGraphBuilder::~FrameGraphBuilder()
 {
 }
 
-void D3D12::FrameGraphBuilder::SetPassSubresourceFormat(const std::string_view passName, const std::string_view subresourceId, DXGI_FORMAT format)
+void D3D12::FrameGraphBuilder::SetPassSubresourceFormat(const std::string_view subresourceId, DXGI_FORMAT format)
 {
-	FrameGraphDescription::RenderPassName passNameStr(passName);
-	FrameGraphDescription::SubresourceId  subresourceIdStr(subresourceId);
-
-	uint32_t subresourceInfoIndex = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr).SubresourceInfoIndex;
+	FrameGraphDescription::SubresourceId subresourceIdStr(subresourceId);
+	uint32_t subresourceInfoIndex = mMetadataNodeIndicesPerSubresourceIds.at(subresourceIdStr);
 	mSubresourceInfos[subresourceInfoIndex].Format = format;
 }
 
-void D3D12::FrameGraphBuilder::SetPassSubresourceState(const std::string_view passName, const std::string_view subresourceId, D3D12_RESOURCE_STATES state)
+void D3D12::FrameGraphBuilder::SetPassSubresourceState(const std::string_view subresourceId, D3D12_RESOURCE_STATES state)
 {
-	FrameGraphDescription::RenderPassName passNameStr(passName);
-	FrameGraphDescription::SubresourceId  subresourceIdStr(subresourceId);
-
-	uint32_t subresourceInfoIndex = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr).SubresourceInfoIndex;
+	FrameGraphDescription::SubresourceId subresourceIdStr(subresourceId);
+	uint32_t subresourceInfoIndex = mMetadataNodeIndicesPerSubresourceIds.at(subresourceIdStr);
 	mSubresourceInfos[subresourceInfoIndex].State = state;
 }
 
@@ -51,10 +47,10 @@ const D3D12::ShaderManager* D3D12::FrameGraphBuilder::GetShaderManager() const
 
 ID3D12Resource2* D3D12::FrameGraphBuilder::GetRegisteredResource(const std::string_view passName, const std::string_view subresourceId, uint32_t frame) const
 {
-	const FrameGraphDescription::RenderPassName passNameStr(passName);
-	const FrameGraphDescription::SubresourceId  subresourceIdStr(subresourceId);
+	FrameGraphDescription::SubresourceId subresourceIdStr(subresourceId);
+	uint32_t subresourceInfoIndex = mMetadataNodeIndicesPerSubresourceIds.at(subresourceIdStr);
 
-	const SubresourceMetadataNode& metadataNode = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr);
+	const SubresourceMetadataNode& metadataNode = mSubresourceMetadataNodesFlat[subresourceInfoIndex];
 	if(metadataNode.FirstFrameHandle == (uint32_t)(-1))
 	{
 		return nullptr;
@@ -63,12 +59,11 @@ ID3D12Resource2* D3D12::FrameGraphBuilder::GetRegisteredResource(const std::stri
 	{
 		if(metadataNode.FirstFrameHandle == GetBackbufferImageSpan().Begin)
 		{
-			uint32_t passPeriod = mRenderPassOwnPeriods.at(std::string(passName));
+			uint32_t passPeriod = mRenderPassOwnPeriods.at(FrameGraphDescription::RenderPassName(passName));
 			return mD3d12GraphToBuild->mTextures[metadataNode.FirstFrameHandle + frame / passPeriod];
 		}
 		else
 		{
-			
 			return mD3d12GraphToBuild->mTextures[metadataNode.FirstFrameHandle + frame % metadataNode.FrameCount];
 		}
 	}
@@ -76,11 +71,11 @@ ID3D12Resource2* D3D12::FrameGraphBuilder::GetRegisteredResource(const std::stri
 
 D3D12_GPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceSrvUav(const std::string_view passName, const std::string_view subresourceId, uint32_t frame) const
 {
-	const FrameGraphDescription::RenderPassName passNameStr(passName);
-	const FrameGraphDescription::SubresourceId  subresourceIdStr(subresourceId);
+	FrameGraphDescription::SubresourceId subresourceIdStr(subresourceId);
+	uint32_t subresourceInfoIndex = mMetadataNodeIndicesPerSubresourceIds.at(subresourceIdStr);
 
-	const SubresourceMetadataNode& metadataNode = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr);
-	const SubresourceInfo& subresourceInfo = mSubresourceInfos[metadataNode.SubresourceInfoIndex];
+	const SubresourceMetadataNode& metadataNode    = mSubresourceMetadataNodesFlat[subresourceInfoIndex];
+	const SubresourceInfo&         subresourceInfo = mSubresourceInfos[subresourceInfoIndex];
 
 	const D3D12_RESOURCE_STATES resourceState = (D3D12_RESOURCE_STATE_UNORDERED_ACCESS | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	assert((subresourceInfo.State & resourceState) && (metadataNode.FirstFrameViewHandle != (uint32_t)(-1)));
@@ -88,7 +83,7 @@ D3D12_GPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceSr
 	D3D12_GPU_DESCRIPTOR_HANDLE descriptorHandle = GetFrameGraphSrvHeapStart();
 	if(metadataNode.FirstFrameHandle == GetBackbufferImageSpan().Begin)
 	{
-		uint32_t passPeriod = mRenderPassOwnPeriods.at(std::string(passName));
+		uint32_t passPeriod = mRenderPassOwnPeriods.at(FrameGraphDescription::RenderPassName(passName));
 		descriptorHandle.ptr += (metadataNode.FirstFrameViewHandle + frame / passPeriod) * mSrvUavCbvDescriptorSize;
 	}
 	else
@@ -101,11 +96,11 @@ D3D12_GPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceSr
 
 D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceRtv(const std::string_view passName, const std::string_view subresourceId, uint32_t frame) const
 {
-	const FrameGraphDescription::RenderPassName passNameStr(passName);
-	const FrameGraphDescription::SubresourceId  subresourceIdStr(subresourceId);
+	FrameGraphDescription::SubresourceId subresourceIdStr(subresourceId);
+	uint32_t subresourceInfoIndex = mMetadataNodeIndicesPerSubresourceIds.at(subresourceIdStr);
 
-	const SubresourceMetadataNode& metadataNode = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr);
-	const SubresourceInfo& subresourceInfo = mSubresourceInfos[metadataNode.SubresourceInfoIndex];
+	const SubresourceMetadataNode& metadataNode    = mSubresourceMetadataNodesFlat[subresourceInfoIndex];
+	const SubresourceInfo&         subresourceInfo = mSubresourceInfos[subresourceInfoIndex];
 
 	const D3D12_RESOURCE_STATES resourceState = D3D12_RESOURCE_STATE_RENDER_TARGET;
 	assert((subresourceInfo.State & resourceState) && (metadataNode.FirstFrameViewHandle != (uint32_t)(-1)));
@@ -113,7 +108,7 @@ D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceRt
 	D3D12_CPU_DESCRIPTOR_HANDLE descriptorHandle = GetFrameGraphRtvHeapStart();
 	if(metadataNode.FirstFrameHandle == GetBackbufferImageSpan().Begin)
 	{
-		uint32_t passPeriod = mRenderPassOwnPeriods.at(std::string(passName));
+		uint32_t passPeriod = mRenderPassOwnPeriods.at(FrameGraphDescription::RenderPassName(passName));
 		descriptorHandle.ptr += (metadataNode.FirstFrameViewHandle + frame / passPeriod) * mRtvDescriptorSize;
 	}
 	else
@@ -126,11 +121,11 @@ D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceRt
 
 D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceDsv(const std::string_view passName, const std::string_view subresourceId, uint32_t frame) const
 {
-	const FrameGraphDescription::RenderPassName passNameStr(passName);
-	const FrameGraphDescription::SubresourceId  subresourceIdStr(subresourceId);
+	FrameGraphDescription::SubresourceId subresourceIdStr(subresourceId);
+	uint32_t subresourceInfoIndex = mMetadataNodeIndicesPerSubresourceIds.at(subresourceIdStr);
 
-	const SubresourceMetadataNode& metadataNode = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr);
-	const SubresourceInfo& subresourceInfo = mSubresourceInfos[metadataNode.SubresourceInfoIndex];
+	const SubresourceMetadataNode& metadataNode    = mSubresourceMetadataNodesFlat[subresourceInfoIndex];
+	const SubresourceInfo&         subresourceInfo = mSubresourceInfos[subresourceInfoIndex];
 
 	const D3D12_RESOURCE_STATES resourceState = (D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_DEPTH_WRITE);
 	assert((subresourceInfo.State & resourceState) && (metadataNode.FirstFrameViewHandle != (uint32_t)(-1)));
@@ -138,7 +133,7 @@ D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceDs
 	D3D12_CPU_DESCRIPTOR_HANDLE descriptorHandle = GetFrameGraphDsvHeapStart();
 	if(metadataNode.FirstFrameHandle == GetBackbufferImageSpan().Begin)
 	{
-		uint32_t passPeriod = mRenderPassOwnPeriods.at(std::string(passName));
+		uint32_t passPeriod = mRenderPassOwnPeriods.at(FrameGraphDescription::RenderPassName(passName));
 		descriptorHandle.ptr += (metadataNode.FirstFrameViewHandle + frame / passPeriod) * mDsvDescriptorSize;
 	}
 	else
@@ -149,39 +144,31 @@ D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceDs
 	return descriptorHandle;
 }
 
-DXGI_FORMAT D3D12::FrameGraphBuilder::GetRegisteredSubresourceFormat(const std::string_view passName, const std::string_view subresourceId) const
+DXGI_FORMAT D3D12::FrameGraphBuilder::GetRegisteredSubresourceFormat(const std::string_view subresourceId) const
 {
-	const FrameGraphDescription::RenderPassName passNameStr(passName);
-	const FrameGraphDescription::SubresourceId  subresourceIdStr(subresourceId);
-
-	uint32_t subresourceInfoIndex = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr).SubresourceInfoIndex;
+	FrameGraphDescription::SubresourceId subresourceIdStr(subresourceId);
+	uint32_t subresourceInfoIndex = mMetadataNodeIndicesPerSubresourceIds.at(subresourceIdStr);
 	return mSubresourceInfos[subresourceInfoIndex].Format;
 }
 
-D3D12_RESOURCE_STATES D3D12::FrameGraphBuilder::GetRegisteredSubresourceState(const std::string_view passName, const std::string_view subresourceId) const
+D3D12_RESOURCE_STATES D3D12::FrameGraphBuilder::GetRegisteredSubresourceState(const std::string_view subresourceId) const
 {
-	const FrameGraphDescription::RenderPassName passNameStr(passName);
-	const FrameGraphDescription::SubresourceId  subresourceIdStr(subresourceId);
-
-	uint32_t subresourceInfoIndex = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr).SubresourceInfoIndex;
+	FrameGraphDescription::SubresourceId subresourceIdStr(subresourceId);
+	uint32_t subresourceInfoIndex = mMetadataNodeIndicesPerSubresourceIds.at(subresourceIdStr);
 	return mSubresourceInfos[subresourceInfoIndex].State;
 }
 
-D3D12_RESOURCE_STATES D3D12::FrameGraphBuilder::GetPreviousPassSubresourceState(const std::string_view passName, const std::string_view subresourceId) const
+D3D12_RESOURCE_STATES D3D12::FrameGraphBuilder::GetPreviousPassSubresourceState(const std::string_view subresourceId) const
 {
-	const FrameGraphDescription::RenderPassName passNameStr(passName);
-	const FrameGraphDescription::SubresourceId  subresourceIdStr(subresourceId);
-
-	uint32_t subresourceInfoIndex = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr).PrevPassNode->SubresourceInfoIndex;
+	FrameGraphDescription::SubresourceId subresourceIdStr(subresourceId);
+	uint32_t subresourceInfoIndex = mMetadataNodeIndicesPerSubresourceIds.at(subresourceIdStr);
 	return mSubresourceInfos[subresourceInfoIndex].State;
 }
 
-D3D12_RESOURCE_STATES D3D12::FrameGraphBuilder::GetNextPassSubresourceState(const std::string_view passName, const std::string_view subresourceId) const
+D3D12_RESOURCE_STATES D3D12::FrameGraphBuilder::GetNextPassSubresourceState(const std::string_view subresourceId) const
 {
-	const FrameGraphDescription::RenderPassName passNameStr(passName);
-	const FrameGraphDescription::SubresourceId  subresourceIdStr(subresourceId);
-
-	uint32_t subresourceInfoIndex = mRenderPassesSubresourceMetadatas.at(passNameStr).at(subresourceIdStr).NextPassNode->SubresourceInfoIndex;
+	FrameGraphDescription::SubresourceId subresourceIdStr(subresourceId);
+	uint32_t subresourceInfoIndex = mMetadataNodeIndicesPerSubresourceIds.at(subresourceIdStr);
 	return mSubresourceInfos[subresourceInfoIndex].State;
 }
 
@@ -226,17 +213,17 @@ void D3D12::FrameGraphBuilder::CreateTextures(const std::vector<TextureResourceC
 
 	for(const TextureResourceCreateInfo& textureCreateInfo: textureCreateInfos)
 	{
-		SubresourceMetadataNode* headNode    = textureCreateInfo.MetadataHead;
-		SubresourceMetadataNode* currentNode = headNode;
+		uint32_t headNodeIndex    = textureCreateInfo.MetadataHeadIndex;
+		uint32_t currentNodeIndex = headNodeIndex;
 
-		DXGI_FORMAT headFormat     = mSubresourceInfos[headNode->SubresourceInfoIndex].Format;
+		DXGI_FORMAT headFormat     = mSubresourceInfos[headNodeIndex].Format;
 		DXGI_FORMAT format         = headFormat;
 		DXGI_FORMAT formatForClear = DXGI_FORMAT_UNKNOWN;
 
 		D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
 		do
 		{
-			const SubresourceInfo& subresourceInfo = mSubresourceInfos[currentNode->SubresourceInfoIndex];
+			const SubresourceInfo& subresourceInfo = mSubresourceInfos[currentNodeIndex];
 			if(subresourceInfo.Format != headFormat)
 			{
 				format = D3D12Utils::ConvertToTypeless(headFormat);
@@ -264,9 +251,9 @@ void D3D12::FrameGraphBuilder::CreateTextures(const std::vector<TextureResourceC
 				resourceFlags &= ~D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
 			}
 
-			currentNode = currentNode->NextPassNode;
+			currentNodeIndex = mSubresourceMetadataNodesFlat[currentNodeIndex].NextPassNodeIndex;
 
-		} while(currentNode != headNode);
+		} while(currentNodeIndex != headNodeIndex);
 
 		//D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE is only allowed with D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL
 		if((resourceFlags & D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE) && !(resourceFlags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL))
@@ -276,7 +263,7 @@ void D3D12::FrameGraphBuilder::CreateTextures(const std::vector<TextureResourceC
 
 		if(D3D12Utils::IsTypelessFormat(format) && !(resourceFlags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL) && (resourceFlags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET))
 		{
-			optimizedClearFormats[headNode->FirstFrameHandle] = formatForClear;
+			optimizedClearFormats[mSubresourceMetadataNodesFlat[headNodeIndex].FirstFrameHandle] = formatForClear;
 		}
 
 		D3D12_RESOURCE_DESC1 resourceDesc;
@@ -295,7 +282,7 @@ void D3D12::FrameGraphBuilder::CreateTextures(const std::vector<TextureResourceC
 		resourceDesc.SamplerFeedbackMipRegion.Height = 0;
 		resourceDesc.SamplerFeedbackMipRegion.Depth  = 0;
 
-		for(uint32_t frame = 0; frame < textureCreateInfo.MetadataHead->FrameCount; frame++)
+		for(uint32_t frame = 0; frame < mSubresourceMetadataNodesFlat[headNodeIndex].FrameCount; frame++)
 		{
 			textureDescs.push_back(resourceDesc);
 		}
@@ -308,7 +295,9 @@ void D3D12::FrameGraphBuilder::CreateTextures(const std::vector<TextureResourceC
 	for(size_t createInfoIndex = 0; createInfoIndex < textureCreateInfos.size(); createInfoIndex++)
 	{
 		const TextureResourceCreateInfo& textureCreateInfo = textureCreateInfos[createInfoIndex];
-		const D3D12_RESOURCE_DESC1&      baseResourceDesc  = textureDescs[textureCreateInfo.MetadataHead->FirstFrameHandle];
+		const SubresourceMetadataNode& headNode = mSubresourceMetadataNodesFlat[textureCreateInfo.MetadataHeadIndex];
+
+		const D3D12_RESOURCE_DESC1& baseResourceDesc = textureDescs[headNode.FirstFrameHandle];
 
 		D3D12_CLEAR_VALUE  clearValue;
 		D3D12_CLEAR_VALUE* clearValuePtr = nullptr;
@@ -316,7 +305,7 @@ void D3D12::FrameGraphBuilder::CreateTextures(const std::vector<TextureResourceC
 		{
 			if(D3D12Utils::IsTypelessFormat(baseResourceDesc.Format))
 			{
-				clearValue.Format = optimizedClearFormats[textureCreateInfo.MetadataHead->FirstFrameHandle];
+				clearValue.Format = optimizedClearFormats[headNode.FirstFrameHandle];
 			}
 			else
 			{
@@ -339,12 +328,12 @@ void D3D12::FrameGraphBuilder::CreateTextures(const std::vector<TextureResourceC
 			clearValuePtr = &clearValue;
 		}
 
-		uint32_t lastSubresourceIndex = textureCreateInfo.MetadataHead->PrevPassNode->SubresourceInfoIndex;
+		uint32_t lastSubresourceIndex = headNode.PrevPassNodeIndex;
 		D3D12_RESOURCE_STATES lastState = mSubresourceInfos[lastSubresourceIndex].State;
 
-		for(uint32_t frame = 0; frame < textureCreateInfo.MetadataHead->FrameCount; frame++)
+		for(uint32_t frame = 0; frame < headNode.FrameCount; frame++)
 		{
-			uint32_t imageIndex = textureCreateInfo.MetadataHead->FirstFrameHandle + frame;
+			uint32_t imageIndex = headNode.FirstFrameHandle + frame;
 			const D3D12_RESOURCE_DESC1& resourceDesc = textureDescs[imageIndex];
 
 			mD3d12GraphToBuild->mOwnedResources.emplace_back();
@@ -353,7 +342,7 @@ void D3D12::FrameGraphBuilder::CreateTextures(const std::vector<TextureResourceC
 			mD3d12GraphToBuild->mTextures[imageIndex] = mD3d12GraphToBuild->mOwnedResources.back().get();
 
 #if defined(DEBUG) || defined(_DEBUG)
-			if(textureCreateInfo.MetadataHead->FrameCount == 1)
+			if(headNode.FrameCount == 1)
 			{
 				D3D12Utils::SetDebugObjectName(mD3d12GraphToBuild->mTextures[imageIndex], textureCreateInfo.Name);
 			}
@@ -367,9 +356,11 @@ void D3D12::FrameGraphBuilder::CreateTextures(const std::vector<TextureResourceC
 
 	for(const TextureResourceCreateInfo& backbufferCreateInfo: backbufferCreateInfos)
 	{
-		for(uint32_t frame = 0; frame < backbufferCreateInfo.MetadataHead->FrameCount; frame++)
+		const SubresourceMetadataNode& headNode = mSubresourceMetadataNodesFlat[backbufferCreateInfo.MetadataHeadIndex];
+
+		for(uint32_t frame = 0; frame < headNode.FrameCount; frame++)
 		{
-			uint32_t imageIndex = backbufferCreateInfo.MetadataHead->FirstFrameHandle + frame;
+			uint32_t imageIndex = headNode.FirstFrameHandle + frame;
 
 			ID3D12Resource* swapchainImage = mSwapChain->GetSwapchainImage(frame);
 
@@ -443,10 +434,13 @@ uint32_t D3D12::FrameGraphBuilder::NextPassSpanId()
 	return (uint32_t)mD3d12GraphToBuild->mRenderPasses.size();
 }
 
-bool D3D12::FrameGraphBuilder::ValidateSubresourceViewParameters(SubresourceMetadataNode* currNode, SubresourceMetadataNode* prevNode)
+bool D3D12::FrameGraphBuilder::ValidateSubresourceViewParameters(uint32_t currNodeIndex, uint32_t prevNodeIndex)
 {
-	SubresourceInfo& prevPassSubresourceInfo = mSubresourceInfos[prevNode->SubresourceInfoIndex];
-	SubresourceInfo& thisPassSubresourceInfo = mSubresourceInfos[currNode->SubresourceInfoIndex];
+	const SubresourceMetadataNode& prevPassNode = mSubresourceMetadataNodesFlat[prevNodeIndex];
+	SubresourceMetadataNode& currPassNode = mSubresourceMetadataNodesFlat[currNodeIndex];
+
+	SubresourceInfo& prevPassSubresourceInfo = mSubresourceInfos[prevNodeIndex];
+	SubresourceInfo& thisPassSubresourceInfo = mSubresourceInfos[currNodeIndex];
 
 	bool dataPropagated = false;
 
@@ -467,7 +461,7 @@ bool D3D12::FrameGraphBuilder::ValidateSubresourceViewParameters(SubresourceMeta
 
 			dataPropagated = true;
 		}
-		else if(prevNode->PassClass == currNode->PassClass) //Queue hasn't changed => ExecuteCommandLists wasn't called => No decay happened
+		else if(prevPassNode.PassClass == currPassNode.PassClass) //Queue hasn't changed => ExecuteCommandLists wasn't called => No decay happened
 		{
 			if (prevPassSubresourceInfo.State == thisPassSubresourceInfo.State) //Propagation of state promotion
 			{
@@ -498,7 +492,7 @@ bool D3D12::FrameGraphBuilder::ValidateSubresourceViewParameters(SubresourceMeta
 	const uint32_t stateKey  = (uint32_t)thisPassSubresourceInfo.State & (srvStateMask | uavStateMask | rtvStateMask | dsvStateMask); //Other states are not needed for separate views (i.e. descriptors)
 	const uint32_t formatKey = (uint32_t)thisPassSubresourceInfo.Format * (stateKey != 0); //Creating the view is only needed if the state is descriptorable
 
-	currNode->ViewSortKey = ((uint64_t)stateKey << 32) | formatKey;
+	currPassNode.ViewSortKey = ((uint64_t)stateKey << 32) | formatKey;
 
 	return dataPropagated; //Only the format should be propagated. But if common promotion flag has changed, the propagation has to start again
 }
@@ -631,7 +625,7 @@ void D3D12::FrameGraphBuilder::CreateTextureViews(const std::vector<TextureSubre
 	}
 }
 
-uint32_t D3D12::FrameGraphBuilder::AddBeforePassBarrier(uint32_t imageIndex, RenderPassClass prevPassClass, uint32_t prevPassSubresourceInfoIndex, RenderPassClass currPassClass, uint32_t currPassSubresourceInfoIndex)
+uint32_t D3D12::FrameGraphBuilder::AddBeforePassBarrier(uint32_t metadataIndex)
 {
 	/*
 	*    1.  Same queue, state unchanged:                                 No barrier needed
@@ -657,14 +651,17 @@ uint32_t D3D12::FrameGraphBuilder::AddBeforePassBarrier(uint32_t imageIndex, Ren
 	*    17. Copy -> Graphics/Compute, state non-promoted:           Need a barrier COMMON -> New state
 	*/
 
-	const SubresourceInfo& prevPassInfo = mSubresourceInfos[prevPassSubresourceInfoIndex];
-	const SubresourceInfo& currPassInfo = mSubresourceInfos[currPassSubresourceInfoIndex];
+	const SubresourceMetadataNode& currMetadataNode = mSubresourceMetadataNodesFlat[metadataIndex];
+	const SubresourceMetadataNode& prevMetadataNode = mSubresourceMetadataNodesFlat[currMetadataNode.PrevPassNodeIndex];
+
+	const SubresourceInfo& prevPassInfo = mSubresourceInfos[currMetadataNode.PrevPassNodeIndex];
+	const SubresourceInfo& currPassInfo = mSubresourceInfos[metadataIndex];
 
 	bool barrierNeeded = false;
 	D3D12_RESOURCE_STATES prevPassState = prevPassInfo.State;
 	D3D12_RESOURCE_STATES currPassState = currPassInfo.State;
 
-	if(PassClassToListType(prevPassClass) == PassClassToListType(currPassClass)) //Rules 1, 2, 3, 4
+	if(PassClassToListType(prevMetadataNode.PassClass) == PassClassToListType(currMetadataNode.PassClass)) //Rules 1, 2, 3, 4
 	{
 		if(prevPassState == D3D12_RESOURCE_STATE_PRESENT) //Rule 2 or 4
 		{
@@ -675,7 +672,7 @@ uint32_t D3D12::FrameGraphBuilder::AddBeforePassBarrier(uint32_t imageIndex, Ren
 			barrierNeeded = (currPassState != D3D12_RESOURCE_STATE_PRESENT) && (prevPassState != currPassState);
 		}
 	}
-	else if(PassClassToListType(prevPassClass) == D3D12_COMMAND_LIST_TYPE_DIRECT && PassClassToListType(currPassClass) == D3D12_COMMAND_LIST_TYPE_COMPUTE) //Rules 5, 6, 7, 8
+	else if(PassClassToListType(prevMetadataNode.PassClass) == D3D12_COMMAND_LIST_TYPE_DIRECT && PassClassToListType(currMetadataNode.PassClass) == D3D12_COMMAND_LIST_TYPE_COMPUTE) //Rules 5, 6, 7, 8
 	{
 		if(prevPassInfo.BarrierPromotedFromCommon && !D3D12Utils::IsStateWriteable(prevPassState)) //Rule 6
 		{
@@ -687,7 +684,7 @@ uint32_t D3D12::FrameGraphBuilder::AddBeforePassBarrier(uint32_t imageIndex, Ren
 			barrierNeeded = false;
 		}
 	}
-	else if(PassClassToListType(prevPassClass) == D3D12_COMMAND_LIST_TYPE_COMPUTE && PassClassToListType(currPassClass) == D3D12_COMMAND_LIST_TYPE_DIRECT) //Rules 9, 10, 11, 12, 13
+	else if(PassClassToListType(prevMetadataNode.PassClass) == D3D12_COMMAND_LIST_TYPE_COMPUTE && PassClassToListType(currMetadataNode.PassClass) == D3D12_COMMAND_LIST_TYPE_DIRECT) //Rules 9, 10, 11, 12, 13
 	{
 		if(prevPassInfo.BarrierPromotedFromCommon && !D3D12Utils::IsStateWriteable(prevPassState)) //Rule 10
 		{
@@ -699,11 +696,11 @@ uint32_t D3D12::FrameGraphBuilder::AddBeforePassBarrier(uint32_t imageIndex, Ren
 			barrierNeeded = !currPassInfo.BarrierPromotedFromCommon && (prevPassState != currPassState) && !D3D12Utils::IsStateComputeFriendly(currPassState);
 		}
 	}
-	else if(PassClassToListType(currPassClass) == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 14, 15
+	else if(PassClassToListType(currMetadataNode.PassClass) == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 14, 15
 	{
 		barrierNeeded = false;
 	}
-	else if(PassClassToListType(prevPassClass) == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 16, 17
+	else if(PassClassToListType(prevMetadataNode.PassClass) == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 16, 17
 	{
 		barrierNeeded = !currPassInfo.BarrierPromotedFromCommon;
 	}
@@ -712,7 +709,7 @@ uint32_t D3D12::FrameGraphBuilder::AddBeforePassBarrier(uint32_t imageIndex, Ren
 	{
 		D3D12_RESOURCE_BARRIER textureTransitionBarrier;
 		textureTransitionBarrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		textureTransitionBarrier.Transition.pResource   = mD3d12GraphToBuild->mTextures[imageIndex];
+		textureTransitionBarrier.Transition.pResource   = mD3d12GraphToBuild->mTextures[currMetadataNode.FirstFrameHandle];
 		textureTransitionBarrier.Transition.Subresource = 0;
 		textureTransitionBarrier.Transition.StateBefore = prevPassState;
 		textureTransitionBarrier.Transition.StateAfter  = currPassState;
@@ -726,7 +723,7 @@ uint32_t D3D12::FrameGraphBuilder::AddBeforePassBarrier(uint32_t imageIndex, Ren
 	return (uint32_t)(-1);
 }
 
-uint32_t D3D12::FrameGraphBuilder::AddAfterPassBarrier(uint32_t imageIndex, RenderPassClass currPassClass, uint32_t currPassSubresourceInfoIndex, RenderPassClass nextPassClass, uint32_t nextPassSubresourceInfoIndex)
+uint32_t D3D12::FrameGraphBuilder::AddAfterPassBarrier(uint32_t metadataIndex)
 {
 	/*
 	*    1.  Same queue, state unchanged:                                           No barrier needed
@@ -753,14 +750,17 @@ uint32_t D3D12::FrameGraphBuilder::AddAfterPassBarrier(uint32_t imageIndex, Rend
 	*    18. Copy -> Graphics/Compute, state will not be promoted:           No barrier needed, will be handled by the next state's barrier
 	*/
 
-	const SubresourceInfo& currPassInfo = mSubresourceInfos[currPassSubresourceInfoIndex];
-	const SubresourceInfo& nextPassInfo = mSubresourceInfos[nextPassSubresourceInfoIndex];
+	const SubresourceMetadataNode& currMetadataNode = mSubresourceMetadataNodesFlat[metadataIndex];
+	const SubresourceMetadataNode& nextMetadataNode = mSubresourceMetadataNodesFlat[currMetadataNode.NextPassNodeIndex];
+
+	const SubresourceInfo& currPassInfo = mSubresourceInfos[metadataIndex];
+	const SubresourceInfo& nextPassInfo = mSubresourceInfos[currMetadataNode.NextPassNodeIndex];
 
 	bool barrierNeeded = false;
 	D3D12_RESOURCE_STATES currPassState = currPassInfo.State;
 	D3D12_RESOURCE_STATES nextPassState = nextPassInfo.State;
 
-	if(PassClassToListType(currPassClass) == PassClassToListType(nextPassClass)) //Rules 1, 2, 3, 4
+	if(PassClassToListType(currMetadataNode.PassClass) == PassClassToListType(nextMetadataNode.PassClass)) //Rules 1, 2, 3, 4
 	{
 		if(nextPassState == D3D12_RESOURCE_STATE_PRESENT) //Rules 2, 3
 		{
@@ -771,7 +771,7 @@ uint32_t D3D12::FrameGraphBuilder::AddAfterPassBarrier(uint32_t imageIndex, Rend
 			barrierNeeded = false;
 		}
 	}
-	else if(PassClassToListType(currPassClass) == D3D12_COMMAND_LIST_TYPE_DIRECT && PassClassToListType(nextPassClass) == D3D12_COMMAND_LIST_TYPE_COMPUTE) //Rules 5, 6, 7, 8
+	else if(PassClassToListType(currMetadataNode.PassClass) == D3D12_COMMAND_LIST_TYPE_DIRECT && PassClassToListType(nextMetadataNode.PassClass) == D3D12_COMMAND_LIST_TYPE_COMPUTE) //Rules 5, 6, 7, 8
 	{
 		if(currPassInfo.BarrierPromotedFromCommon && !D3D12Utils::IsStateWriteable(currPassState)) //Rule 6
 		{
@@ -782,7 +782,7 @@ uint32_t D3D12::FrameGraphBuilder::AddAfterPassBarrier(uint32_t imageIndex, Rend
 			barrierNeeded = !nextPassInfo.BarrierPromotedFromCommon && (currPassState != nextPassState);
 		}
 	}
-	else if(PassClassToListType(currPassClass) == D3D12_COMMAND_LIST_TYPE_COMPUTE && PassClassToListType(nextPassClass) == D3D12_COMMAND_LIST_TYPE_DIRECT) //Rules 9, 10, 11, 12, 13, 14
+	else if(PassClassToListType(currMetadataNode.PassClass) == D3D12_COMMAND_LIST_TYPE_COMPUTE && PassClassToListType(nextMetadataNode.PassClass) == D3D12_COMMAND_LIST_TYPE_DIRECT) //Rules 9, 10, 11, 12, 13, 14
 	{
 		if(currPassInfo.BarrierPromotedFromCommon && !D3D12Utils::IsStateWriteable(currPassState)) //Rule 10, 11
 		{
@@ -793,11 +793,11 @@ uint32_t D3D12::FrameGraphBuilder::AddAfterPassBarrier(uint32_t imageIndex, Rend
 			barrierNeeded = !nextPassInfo.BarrierPromotedFromCommon && (currPassState != nextPassState) && D3D12Utils::IsStateComputeFriendly(nextPassState);
 		}
 	}
-	else if(PassClassToListType(nextPassClass) == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 15, 16
+	else if(PassClassToListType(nextMetadataNode.PassClass) == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 15, 16
 	{
 		barrierNeeded = !currPassInfo.BarrierPromotedFromCommon || D3D12Utils::IsStateWriteable(currPassState);
 	}
-	else if(PassClassToListType(currPassClass) == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 17, 18
+	else if(PassClassToListType(currMetadataNode.PassClass) == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 17, 18
 	{
 		barrierNeeded = false;
 	}
@@ -806,7 +806,7 @@ uint32_t D3D12::FrameGraphBuilder::AddAfterPassBarrier(uint32_t imageIndex, Rend
 	{
 		D3D12_RESOURCE_BARRIER textureTransitionBarrier;
 		textureTransitionBarrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		textureTransitionBarrier.Transition.pResource   = mD3d12GraphToBuild->mTextures[imageIndex];
+		textureTransitionBarrier.Transition.pResource   = mD3d12GraphToBuild->mTextures[currMetadataNode.FirstFrameHandle];
 		textureTransitionBarrier.Transition.Subresource = 0;
 		textureTransitionBarrier.Transition.StateBefore = currPassState;
 		textureTransitionBarrier.Transition.StateAfter  = nextPassState;

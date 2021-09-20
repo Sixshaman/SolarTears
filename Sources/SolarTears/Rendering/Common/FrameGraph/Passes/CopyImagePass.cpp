@@ -2,6 +2,6 @@
 
 void CopyImagePassBase::RegisterResources(ModernFrameGraphBuilder* frameGraphBuilder, const std::string& passName)
 {
-	frameGraphBuilder->RegisterReadSubresource(passName,  SrcImageId);
-	frameGraphBuilder->RegisterWriteSubresource(passName, DstImageId);
+	frameGraphBuilder->RegisterSubresource(passName, SrcImageId);
+	frameGraphBuilder->RegisterSubresource(passName, DstImageId);
 }

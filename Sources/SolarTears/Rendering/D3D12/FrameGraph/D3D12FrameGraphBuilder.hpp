@@ -31,8 +31,8 @@ namespace D3D12
 		FrameGraphBuilder(FrameGraph* graphToBuild, FrameGraphDescription&& frameGraphDescription, const SwapChain* swapChain);
 		~FrameGraphBuilder();
 
-		void SetPassSubresourceFormat(const std::string_view passName, const std::string_view subresourceId, DXGI_FORMAT format);
-		void SetPassSubresourceState(const std::string_view passName,  const std::string_view subresourceId, D3D12_RESOURCE_STATES state);
+		void SetPassSubresourceFormat(const std::string_view subresourceId, DXGI_FORMAT format);
+		void SetPassSubresourceState(const std::string_view subresourceId, D3D12_RESOURCE_STATES state);
 
 		const ShaderManager* GetShaderManager() const;
 
@@ -41,11 +41,11 @@ namespace D3D12
 		D3D12_CPU_DESCRIPTOR_HANDLE GetRegisteredSubresourceRtv(const std::string_view passName,    const std::string_view subresourceId, uint32_t frame) const;
 		D3D12_CPU_DESCRIPTOR_HANDLE GetRegisteredSubresourceDsv(const std::string_view passName,    const std::string_view subresourceId, uint32_t frame) const;
 
-		DXGI_FORMAT           GetRegisteredSubresourceFormat(const std::string_view passName, const std::string_view subresourceId) const;
-		D3D12_RESOURCE_STATES GetRegisteredSubresourceState(const std::string_view passName,  const std::string_view subresourceId) const;
+		DXGI_FORMAT           GetRegisteredSubresourceFormat(const std::string_view subresourceId) const;
+		D3D12_RESOURCE_STATES GetRegisteredSubresourceState(const std::string_view subresourceId)  const;
 
-		D3D12_RESOURCE_STATES GetPreviousPassSubresourceState(const std::string_view passName, const std::string_view subresourceId) const;
-		D3D12_RESOURCE_STATES GetNextPassSubresourceState(const std::string_view passName,     const std::string_view subresourceId) const;
+		D3D12_RESOURCE_STATES GetPreviousPassSubresourceState(const std::string_view subresourceId) const;
+		D3D12_RESOURCE_STATES GetNextPassSubresourceState(const std::string_view subresourceId)     const;
 
 		D3D12_GPU_DESCRIPTOR_HANDLE GetFrameGraphSrvHeapStart() const;
 		D3D12_CPU_DESCRIPTOR_HANDLE GetFrameGraphRtvHeapStart() const;
@@ -86,7 +86,7 @@ namespace D3D12
 		uint32_t NextPassSpanId() override final;
 
 		//Propagates subresource info (format, access flags, etc.) to a node from the previous one. Also initializes view key. Returns true if propagation succeeded or wasn't needed
-		bool ValidateSubresourceViewParameters(SubresourceMetadataNode* currNode, SubresourceMetadataNode* prevNode) override final;
+		bool ValidateSubresourceViewParameters(uint32_t currNodeIndex, uint32_t prevNodeIndex) override final;
 
 		//Allocates the storage for image views defined by sort keys
 		void AllocateImageViews(const std::vector<uint64_t>& sortKeys, uint32_t frameCount, std::vector<uint32_t>& outViewIds) override final;
@@ -98,10 +98,10 @@ namespace D3D12
 		void CreateTextureViews(const std::vector<TextureSubresourceCreateInfo>& textureViewCreateInfos) const override final;
 
 		//Add a barrier to execute before a pass
-		uint32_t AddBeforePassBarrier(uint32_t imageIndex, RenderPassClass prevPassClass, uint32_t prevPassSubresourceInfoIndex, RenderPassClass currPassClass, uint32_t currPassSubresourceInfoIndex) override final;
+		uint32_t AddBeforePassBarrier(uint32_t metadataIndex) override final;
 
 		//Add a barrier to execute before a pass
-		uint32_t AddAfterPassBarrier(uint32_t imageIndex, RenderPassClass currPassClass, uint32_t currPassSubresourceInfoIndex, RenderPassClass nextPassClasse, uint32_t nextPassSubresourceInfoIndex) override final;
+		uint32_t AddAfterPassBarrier(uint32_t metadataIndex) override final;
 
 		//Initializes per-traverse command buffer info
 		void InitializeTraverseData() const override final;

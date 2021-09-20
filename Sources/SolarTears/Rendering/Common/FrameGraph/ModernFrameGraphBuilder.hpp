@@ -95,8 +95,8 @@ private:
 	//Validates PrevPassMetadata and NextPassMetadata links in each subresource info
 	void ValidateSubresourceLinks();
 
-	//Validates pass classes in each subresource info
-	void ValidateSubresourcePassClasses();
+	//Propagates pass classes in each subresource info
+	void PropagateSubresourcePassClasses();
 
 	//Finds all passes that use swapchain images. Such passes need to be swapped every frame
 	void FindBackbufferPasses(std::unordered_set<FrameGraphDescription::RenderPassName>& swapchainPassNames);
@@ -169,7 +169,7 @@ protected:
 	virtual uint32_t NextPassSpanId() = 0;
 
 	//Propagates info (format, access flags, etc.) from one SubresourceInfo to another. Returns true if propagation succeeded or wasn't needed
-	virtual bool ValidateSubresourceViewParameters(SubresourceMetadataNode* currNode, SubresourceMetadataNode* prevNode) = 0;
+	virtual bool ValidateSubresourceViewParameters(uint32_t currNodeIndex, uint32_t prevNodeIndex) = 0;
 		
 	//Allocates the storage for image views defined by sort keys
 	virtual void AllocateImageViews(const std::vector<uint64_t>& sortKeys, uint32_t frameCount, std::vector<uint32_t>& outViewIds) = 0;
@@ -181,10 +181,10 @@ protected:
 	virtual void CreateTextureViews(const std::vector<TextureSubresourceCreateInfo>& textureViewCreateInfos) const = 0;
 
 	//Add a barrier to execute before a pass
-	virtual uint32_t AddBeforePassBarrier(uint32_t imageIndex, RenderPassClass prevPassClass, uint32_t prevPassSubresourceInfoIndex, RenderPassClass currPassClass, uint32_t currPassSubresourceInfoIndex) = 0;
+	virtual uint32_t AddBeforePassBarrier(uint32_t metadataIndex) = 0;
 
 	//Add a barrier to execute before a pass
-	virtual uint32_t AddAfterPassBarrier(uint32_t imageIndex, RenderPassClass currPassClass, uint32_t currPassSubresourceInfoIndex, RenderPassClass nextPassClass, uint32_t nextPassSubresourceInfoIndex) = 0;
+	virtual uint32_t AddAfterPassBarrier(uint32_t metadataIndex) = 0;
 
 	//Initializes command buffer, job info, etc. for the frame graph
 	virtual void InitializeTraverseData() const = 0;

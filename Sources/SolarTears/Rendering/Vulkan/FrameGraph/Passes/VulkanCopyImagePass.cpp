@@ -9,8 +9,8 @@ Vulkan::CopyImagePass::CopyImagePass(VkDevice device, const FrameGraphBuilder* f
 	mSrcImageRef = frameGraphBuilder->GetRegisteredResource(currentPassName, SrcImageId, frame);
 	mDstImageRef = frameGraphBuilder->GetRegisteredResource(currentPassName, DstImageId, frame);
 
-	mSrcImageAspectFlags = frameGraphBuilder->GetRegisteredSubresourceAspectFlags(currentPassName, SrcImageId);
-	mDstImageAspectFlags = frameGraphBuilder->GetRegisteredSubresourceAspectFlags(currentPassName, DstImageId);
+	mSrcImageAspectFlags = frameGraphBuilder->GetRegisteredSubresourceAspectFlags(SrcImageId);
+	mDstImageAspectFlags = frameGraphBuilder->GetRegisteredSubresourceAspectFlags(DstImageId);
 }
 
 Vulkan::CopyImagePass::~CopyImagePass()
@@ -21,17 +21,17 @@ void Vulkan::CopyImagePass::RegisterResources(FrameGraphBuilder* frameGraphBuild
 {
 	CopyImagePassBase::RegisterResources(frameGraphBuilder, passName);
 
-	frameGraphBuilder->SetPassSubresourceAspectFlags(passName, SrcImageId, 0);
-	frameGraphBuilder->SetPassSubresourceStageFlags(passName, SrcImageId, VK_PIPELINE_STAGE_TRANSFER_BIT);
-	frameGraphBuilder->SetPassSubresourceLayout(passName, SrcImageId, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-	frameGraphBuilder->SetPassSubresourceUsage(passName, SrcImageId, VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
-	frameGraphBuilder->SetPassSubresourceAccessFlags(passName, SrcImageId, VK_ACCESS_TRANSFER_READ_BIT);
+	frameGraphBuilder->SetPassSubresourceAspectFlags(SrcImageId, 0);
+	frameGraphBuilder->SetPassSubresourceStageFlags(SrcImageId, VK_PIPELINE_STAGE_TRANSFER_BIT);
+	frameGraphBuilder->SetPassSubresourceLayout(SrcImageId, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+	frameGraphBuilder->SetPassSubresourceUsage(SrcImageId, VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+	frameGraphBuilder->SetPassSubresourceAccessFlags(SrcImageId, VK_ACCESS_TRANSFER_READ_BIT);
 
-	frameGraphBuilder->SetPassSubresourceAspectFlags(passName, DstImageId, 0);
-	frameGraphBuilder->SetPassSubresourceStageFlags(passName, DstImageId, VK_PIPELINE_STAGE_TRANSFER_BIT);
-	frameGraphBuilder->SetPassSubresourceLayout(passName, DstImageId, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	frameGraphBuilder->SetPassSubresourceUsage(passName, DstImageId, VK_IMAGE_USAGE_TRANSFER_DST_BIT);
-	frameGraphBuilder->SetPassSubresourceAccessFlags(passName, DstImageId, VK_ACCESS_TRANSFER_WRITE_BIT);
+	frameGraphBuilder->SetPassSubresourceAspectFlags(DstImageId, 0);
+	frameGraphBuilder->SetPassSubresourceStageFlags(DstImageId, VK_PIPELINE_STAGE_TRANSFER_BIT);
+	frameGraphBuilder->SetPassSubresourceLayout(DstImageId, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	frameGraphBuilder->SetPassSubresourceUsage(DstImageId, VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+	frameGraphBuilder->SetPassSubresourceAccessFlags(DstImageId, VK_ACCESS_TRANSFER_WRITE_BIT);
 }
 
 void Vulkan::CopyImagePass::RegisterShaders([[maybe_unused]] ShaderDatabase* shaderDatabase)
