@@ -74,8 +74,11 @@ private:
 	//Sorts passes by dependency level and by topological order
 	void SortPasses();
 
+	//Creates lists of written subresource names and read subresource names for each pass
+	void BuildReadWriteSubresourceSpans(std::unordered_map<FrameGraphDescription::RenderPassName, std::span<std::string_view>>& outReadSpans, std::unordered_map<FrameGraphDescription::RenderPassName, std::span<std::string_view>>& outWriteSpans, std::vector<std::string_view>& outNamesFlat);
+
 	//Builds frame graph adjacency list
-	void BuildAdjacencyList(std::unordered_map<FrameGraphDescription::RenderPassName, std::span<FrameGraphDescription::RenderPassName>>& outAdjacencyList, std::vector<FrameGraphDescription::RenderPassName>& outPassNamesFlat);
+	void BuildAdjacencyList(const std::unordered_map<FrameGraphDescription::RenderPassName, std::span<std::string_view>>& sortedReadNameSpans, const std::unordered_map<FrameGraphDescription::RenderPassName, std::span<std::string_view>>& sortedwriteNameSpans, std::unordered_map<FrameGraphDescription::RenderPassName, std::span<FrameGraphDescription::RenderPassName>>& outAdjacencyList, std::vector<FrameGraphDescription::RenderPassName>& outPassNamesFlat);
 
 	//Sorts frame graph passes topologically
 	void BuildSortedRenderPassesTopological(const std::unordered_map<FrameGraphDescription::RenderPassName, std::span<FrameGraphDescription::RenderPassName>>& adjacencyList);
@@ -138,7 +141,7 @@ private:
 	void TopologicalSortNode(const std::unordered_map<FrameGraphDescription::RenderPassName, std::span<FrameGraphDescription::RenderPassName>>& adjacencyList, std::unordered_set<FrameGraphDescription::RenderPassName>& visited, std::unordered_set<FrameGraphDescription::RenderPassName>& onStack, const FrameGraphDescription::RenderPassName& renderPassName);
 
 	//Test if readSortedSubresourceNames intersects with writeSortedSubresourceNames, assuming both spans are sorted lexicographically
-	bool PassesIntersect(const std::span<FrameGraphDescription::SubresourceName> readSortedSubresourceNames, const std::span<FrameGraphDescription::SubresourceName> writeSortedSubresourceNames);
+	bool PassesIntersect(const std::span<std::string_view> readSortedSubresourceNames, const std::span<std::string_view> writeSortedSubresourceNames);
 
 protected:
 	const Span<uint32_t> GetBackbufferImageSpan() const;
@@ -149,6 +152,12 @@ protected:
 
 	//Creates a new subresource info record for present pass
 	virtual uint32_t AddPresentSubresourceMetadata() = 0;
+
+	//Checks if the usage of the subresource with subresourceInfoIndex includes reading
+	virtual bool IsReadSubresource(uint32_t subresourceInfoIndex) = 0;
+
+	//Checks if the usage of the subresource with subresourceInfoIndex includes writing
+	virtual bool IsWriteSubresource(uint32_t subresourceInfoIndex) = 0;
 
 	//Registers render pass related data in the graph (inputs, outputs, possibly shader bindings, etc)
 	virtual void RegisterPassInGraph(RenderPassType passType, const FrameGraphDescription::RenderPassName& passName) = 0;

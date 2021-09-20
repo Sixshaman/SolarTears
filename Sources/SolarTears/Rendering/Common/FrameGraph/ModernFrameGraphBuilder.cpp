@@ -176,42 +176,67 @@ void ModernFrameGraphBuilder::CreatePresentPass()
 
 void ModernFrameGraphBuilder::SortPasses()
 {
-	std::vector<uint32_t>                                                          subresourceIdsFlat;
-	std::unordered_map<FrameGraphDescription::RenderPassName, std::span<uint32_t>> readSubresourceIdSpans;
-	std::unordered_map<FrameGraphDescription::RenderPassName, std::span<uint32_t>> writeSubresourceIdSpans;
-	BuildReadWriteSubresourceSpans(subresourceIdsFlat, readSubresourceIdSpans, writeSubresourceIdSpans);;
+	std::vector<std::string_view>                                                          subresourceNamesFlat;
+	std::unordered_map<FrameGraphDescription::RenderPassName, std::span<std::string_view>> readSubresourceNameSpans;
+	std::unordered_map<FrameGraphDescription::RenderPassName, std::span<std::string_view>> writeSubresourceNameSpans;
+	BuildReadWriteSubresourceSpans(readSubresourceNameSpans, writeSubresourceNameSpans, subresourceNamesFlat);
 
 	std::vector<FrameGraphDescription::RenderPassName>                                                          adjacencyPassNamesFlat;
 	std::unordered_map<FrameGraphDescription::RenderPassName, std::span<FrameGraphDescription::RenderPassName>> adjacencyList;
-	BuildAdjacencyList(readSubresourceIdSpans, writeSubresourceIdSpans, adjacencyList, adjacencyPassNamesFlat);
+	BuildAdjacencyList(readSubresourceNameSpans, writeSubresourceNameSpans, adjacencyList, adjacencyPassNamesFlat);
 
 	BuildSortedRenderPassesTopological(adjacencyList);
 	BuildSortedRenderPassesDependency(adjacencyList);
 }
 
-void ModernFrameGraphBuilder::BuildAdjacencyList(std::unordered_map<FrameGraphDescription::RenderPassName, std::span<FrameGraphDescription::RenderPassName>>& outAdjacencyList, std::vector<FrameGraphDescription::RenderPassName>& outPassNamesFlat)
+void ModernFrameGraphBuilder::BuildReadWriteSubresourceSpans(std::unordered_map<FrameGraphDescription::RenderPassName, std::span<std::string_view>>& outReadSpans, std::unordered_map<FrameGraphDescription::RenderPassName, std::span<std::string_view>>& outWriteSpans, std::vector<std::string_view>& outNamesFlat)
+{
+	for(const FrameGraphDescription::RenderPassName& renderPassName: mFrameGraphDescription.mRenderPassNames)
+	{
+		std::span<std::string_view> readSpan  = {outNamesFlat.end(), outNamesFlat.end()};
+		std::span<std::string_view> writeSpan = {outNamesFlat.end(), outNamesFlat.end()};
+
+		Span<uint32_t> metadataSpan = mSubresourceMetadataSpansPerPass.at(renderPassName);
+		for(uint32_t metadataIndex = metadataSpan.Begin; metadataIndex < metadataSpan.End; metadataIndex++)
+		{
+			std::string_view subresourceName = mSubresourceMetadataNodesFlat[metadataIndex].SubresourceName;
+
+			if(IsReadSubresource(metadataIndex))
+			{
+				outNamesFlat.push_back(subresourceName);
+
+				std::swap(writeSpan.back(), writeSpan.front());
+
+				readSpan  = std::span<std::string_view>(readSpan.begin(),      readSpan.end()  + 1);
+				writeSpan = std::span<std::string_view>(writeSpan.begin() + 1, writeSpan.end() + 1);
+			}
+
+			if(IsWriteSubresource(metadataIndex))
+			{
+				outNamesFlat.push_back(subresourceName);
+
+				writeSpan = std::span<std::string_view>(writeSpan.begin(), writeSpan.end() + 1);
+			}		
+		}
+
+		std::sort(readSpan.begin(),  readSpan.end());
+		std::sort(writeSpan.begin(), writeSpan.end());
+	}
+}
+
+void ModernFrameGraphBuilder::BuildAdjacencyList(const std::unordered_map<FrameGraphDescription::RenderPassName, std::span<std::string_view>>& sortedReadNameSpans, const std::unordered_map<FrameGraphDescription::RenderPassName, std::span<std::string_view>>& sortedwriteNameSpans, std::unordered_map<FrameGraphDescription::RenderPassName, std::span<FrameGraphDescription::RenderPassName>>& outAdjacencyList, std::vector<FrameGraphDescription::RenderPassName>& outPassNamesFlat)
 {
 	outAdjacencyList.clear();
 	outPassNamesFlat.clear();
 
 	for(const FrameGraphDescription::RenderPassName& renderPassName: mFrameGraphDescription.mRenderPassNames)
 	{
-		Span<uint32_t> writeSpan = mRenderPassSubresourceWriteNameSpans[renderPassName];
-		std::span<FrameGraphDescription::SubresourceName> writePassNames = {mRenderPassSubresourceNames.begin() + writeSpan.Begin, mRenderPassSubresourceNames.begin() + writeSpan.End};
-		std::sort(writePassNames.begin(), writePassNames.end(), [](const FrameGraphDescription::SubresourceName& left, const FrameGraphDescription::SubresourceName& right)
-		{
-			return std::lexicographical_compare(left.begin(), left.end(), right.begin(), right.end());
-		});
+		std::span<std::string_view> writePassNames = sortedwriteNameSpans.at(renderPassName);
 
 		auto spanStart = outPassNamesFlat.end();
 		for(const FrameGraphDescription::RenderPassName& otherPassName: mFrameGraphDescription.mRenderPassNames)
 		{
-			Span<uint32_t> readSpan = mRenderPassSubresourceReadNameSpans[renderPassName];
-			std::span<FrameGraphDescription::SubresourceName> readPassNames = {mRenderPassSubresourceNames.begin() + readSpan.Begin, mRenderPassSubresourceNames.begin() + readSpan.End};
-			std::sort(readPassNames.begin(), readPassNames.end(), [](const FrameGraphDescription::SubresourceName& left, const FrameGraphDescription::SubresourceName& right)
-			{
-				return std::lexicographical_compare(left.begin(), left.end(), right.begin(), right.end());
-			});
+			std::span<std::string_view> readPassNames = sortedReadNameSpans.at(renderPassName);
 
 			if(renderPassName == otherPassName)
 			{
@@ -819,14 +844,14 @@ void ModernFrameGraphBuilder::TopologicalSortNode(const std::unordered_map<Frame
 	mSortedRenderPassNames.push_back(renderPassName);
 }
 
-bool ModernFrameGraphBuilder::PassesIntersect(const std::span<FrameGraphDescription::SubresourceName> readSortedSubresourceNames, const std::span<FrameGraphDescription::SubresourceName> writeSortedSubresourceNames)
+bool ModernFrameGraphBuilder::PassesIntersect(const std::span<std::string_view> readSortedSubresourceNames, const std::span<std::string_view> writeSortedSubresourceNames)
 {
 	uint32_t readIndex  = 0;
 	uint32_t writeIndex = 0;
 	while(readIndex < readSortedSubresourceNames.size() && writeIndex < writeSortedSubresourceNames.size())
 	{
-		const FrameGraphDescription::SubresourceName& readName  = readSortedSubresourceNames[readIndex];
-		const FrameGraphDescription::SubresourceName& writeName = writeSortedSubresourceNames[readIndex];
+		std::string_view readName  = readSortedSubresourceNames[readIndex];
+		std::string_view writeName = writeSortedSubresourceNames[readIndex];
 
 		std::strong_ordering order = std::lexicographical_compare_three_way(readName.begin(), readName.end(), writeName.begin(), writeName.end());
 		if(order == std::strong_ordering::less)

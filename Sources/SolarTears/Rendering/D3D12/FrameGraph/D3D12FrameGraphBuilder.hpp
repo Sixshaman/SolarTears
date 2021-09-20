@@ -70,6 +70,12 @@ namespace D3D12
 		//Creates a new subresource info record for present pass
 		uint32_t AddPresentSubresourceMetadata() override final;
 
+		//Checks if the usage of the subresource with subresourceInfoIndex includes reading
+		bool IsReadSubresource(uint32_t subresourceInfoIndex) override final;
+
+		//Checks if the usage of the subresource with subresourceInfoIndex includes writing
+		bool IsWriteSubresource(uint32_t subresourceInfoIndex) override final;
+
 		//Registers render pass related data in the graph (inputs, outputs, possibly shader bindings, etc)
 		void RegisterPassInGraph(RenderPassType passType, const FrameGraphDescription::RenderPassName& passName) override final;
 
