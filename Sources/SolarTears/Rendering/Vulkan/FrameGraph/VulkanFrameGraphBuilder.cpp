@@ -268,6 +268,16 @@ void Vulkan::FrameGraphBuilder::BuildPassDescriptorSets()
 	std::vector<uint16_t>    passSetBindingTypes;
 	mShaderDatabase->BuildUniquePassSetInfos(uniquePassSetInfos, passSetBindingTypes);
 
+	for(size_t i = 0; i < uniquePassSetInfos.size(); i++)
+	{
+
+	}
+
+	for(const FrameGraphDescription::RenderPassName& passName: mSortedRenderPassNames)
+	{
+		RenderPassType passType = mFrameGraphDescription.GetPassType(passName);
+
+	}
 
 	//At this point we have the RenderPassType -> {layout, bindings} infos
 	//We only need to know how many

@@ -33,3 +33,23 @@ void FrameGraphDescription::AssignBackbufferName(const std::string_view backbuff
 
 	AssignSubresourceName(BackbufferPresentPassId, mBackbufferName);
 }
+
+std::string_view FrameGraphDescription::GetSubresourceName(const SubresourceId& subresourceId) const
+{
+	return mSubresourceIdNames.at(subresourceId);
+}
+
+std::string_view FrameGraphDescription::GetBackbufferName() const
+{
+	return mBackbufferName;
+}
+
+RenderPassType FrameGraphDescription::GetPassType(const RenderPassName& passName) const
+{
+	return mRenderPassTypes.at(passName);
+}
+
+void FrameGraphDescription::GetPassNameList(std::span<const RenderPassName>* outRenderPassNameSpan) const
+{
+	*outRenderPassNameSpan = {mRenderPassNames.cbegin(), mRenderPassNames.cend()};
+}

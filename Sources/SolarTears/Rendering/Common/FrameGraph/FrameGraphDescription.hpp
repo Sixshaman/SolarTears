@@ -3,12 +3,12 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <span>
 #include "ModernFrameGraphMisc.hpp"
 
 class FrameGraphDescription
 {
-	friend class ModernFrameGraphBuilder;
-
+public:
 	constexpr static std::string_view PresentPassName         = "SPECIAL_PRESENT_ACQUIRE_PASS";
 	constexpr static std::string_view BackbufferPresentPassId = "SpecialPresentAcquirePass-Backbuffer";
 
@@ -25,6 +25,13 @@ public:
 
 	void AssignSubresourceName(const std::string_view subresourceId, const std::string_view subresourceName);
 	void AssignBackbufferName(const std::string_view backbufferName);
+
+	std::string_view GetSubresourceName(const SubresourceId& subresourceId) const;
+	std::string_view GetBackbufferName() const;
+
+	RenderPassType GetPassType(const RenderPassName& passName) const;
+
+	void GetPassNameList(std::span<const RenderPassName>* outRenderPassNameSpan) const;
 
 private:
 	std::vector<RenderPassName> mRenderPassNames;

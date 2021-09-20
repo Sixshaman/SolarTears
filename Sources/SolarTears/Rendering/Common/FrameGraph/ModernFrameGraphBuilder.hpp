@@ -68,20 +68,20 @@ private:
 	void RegisterRenderPass(RenderPassType passType, const std::string_view passName);
 
 private:
+	//Fills the initial pass info, sorted by dependency level and by topological order
+	void RegisterAndSortPasses();
+
 	//Creates present pass
 	void CreatePresentPass();
 
-	//Sorts passes by dependency level and by topological order
-	void SortPasses();
-
 	//Creates lists of written subresource names and read subresource names for each pass
-	void BuildReadWriteSubresourceSpans(std::unordered_map<FrameGraphDescription::RenderPassName, std::span<std::string_view>>& outReadSpans, std::unordered_map<FrameGraphDescription::RenderPassName, std::span<std::string_view>>& outWriteSpans, std::vector<std::string_view>& outNamesFlat);
+	void BuildReadWriteSubresourceSpans(std::span<const FrameGraphDescription::RenderPassName> passes, std::unordered_map<FrameGraphDescription::RenderPassName, std::span<std::string_view>>& outReadSpans, std::unordered_map<FrameGraphDescription::RenderPassName, std::span<std::string_view>>& outWriteSpans, std::vector<std::string_view>& outNamesFlat);
 
 	//Builds frame graph adjacency list
 	void BuildAdjacencyList(const std::unordered_map<FrameGraphDescription::RenderPassName, std::span<std::string_view>>& sortedReadNameSpans, const std::unordered_map<FrameGraphDescription::RenderPassName, std::span<std::string_view>>& sortedwriteNameSpans, std::unordered_map<FrameGraphDescription::RenderPassName, std::span<FrameGraphDescription::RenderPassName>>& outAdjacencyList, std::vector<FrameGraphDescription::RenderPassName>& outPassNamesFlat);
 
 	//Sorts frame graph passes topologically
-	void BuildSortedRenderPassesTopological(const std::unordered_map<FrameGraphDescription::RenderPassName, std::span<FrameGraphDescription::RenderPassName>>& adjacencyList);
+	void BuildSortedRenderPassesTopological(std::span<const FrameGraphDescription::RenderPassName> passes, const std::unordered_map<FrameGraphDescription::RenderPassName, std::span<FrameGraphDescription::RenderPassName>>& adjacencyList);
 
 	//Sorts frame graph passes (already sorted topologically) by dependency level
 	void BuildSortedRenderPassesDependency(const std::unordered_map<FrameGraphDescription::RenderPassName, std::span<FrameGraphDescription::RenderPassName>>& adjacencyList);
