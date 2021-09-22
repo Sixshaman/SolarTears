@@ -34,6 +34,9 @@ namespace Vulkan
 
 	class FrameGraphBuilder final: public ModernFrameGraphBuilder
 	{
+		constexpr static uint32_t TextureFlagAutoBeforeBarrier = 0x01; //A before-barrier is handled by render pass itself
+		constexpr static uint32_t TextureFlagAutoAfterBarrier  = 0x02; //An after-barrier is handled by render pass itself
+
 		struct SubresourceInfo
 		{
 			VkFormat             Format;
@@ -54,6 +57,9 @@ namespace Vulkan
 		void SetPassSubresourceAspectFlags(const std::string_view subresourceId, VkImageAspectFlags aspect);
 		void SetPassSubresourceStageFlags(const std::string_view subresourceId, VkPipelineStageFlags stage);
 		void SetPassSubresourceAccessFlags(const std::string_view subresourceId, VkAccessFlags accessFlags);
+
+		void EnableSubresourceAutoBeforeBarrier(const std::string_view subresourceId, bool autoBarrier = true);
+		void EnableSubresourceAutoAfterBarrier(const std::string_view subresourceId,  bool autoBarrier = true);
 
 		const DeviceParameters* GetDeviceParameters() const;
 		const DeviceQueues*     GetDeviceQueues()     const;
@@ -156,7 +162,7 @@ namespace Vulkan
 		std::unordered_map<RenderPassType, RenderPassShaderRegisterFunc> mPassRegisterShadersFuncTable;
 		std::unordered_map<RenderPassType, RenderPassCreateFunc>         mPassCreateFuncTable;
 
-		std::vector<SubresourceInfo> mSubresourceInfos;
+		std::vector<SubresourceInfo> mSubresourceInfosFlat;
 
 		uint32_t mImageViewCount;
 

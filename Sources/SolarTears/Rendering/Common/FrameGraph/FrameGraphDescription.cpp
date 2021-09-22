@@ -13,43 +13,28 @@ void FrameGraphDescription::AddRenderPass(RenderPassType passType, const std::st
 {
 	FrameGraphDescription::RenderPassName renderPassName(passName);
 	assert(!mRenderPassTypes.contains(renderPassName));
-
-	mRenderPassNames.push_back(renderPassName);
 	mRenderPassTypes[renderPassName] = passType;
 }
 
-void FrameGraphDescription::AssignSubresourceName(const std::string_view subresourceId, const std::string_view subresourceName)
+void FrameGraphDescription::AssignSubresourceName(const std::string_view passName, const std::string_view subresourceId, const std::string_view subresourceName)
 {
-	FrameGraphDescription::SubresourceId   subresourceIdStr(subresourceName);
-	FrameGraphDescription::SubresourceName subresourceNameStr(subresourceName);
+	FrameGraphDescription::RenderPassName renderPassName(passName);
+	assert(mRenderPassTypes.contains(renderPassName));
 
-	assert(!mSubresourceIdNames.contains(subresourceNameStr));
-	mSubresourceIdNames[subresourceNameStr] = subresourceIdStr;
+	mSubresourceNames.push_back(SubresourceNamingInfo
+	{
+		.PassName            = renderPassName,
+		.PassSubresourceId   = FrameGraphDescription::SubresourceId(subresourceId),
+		.PassSubresourceName = FrameGraphDescription::ResourceName(subresourceName)
+	});
 }
 
 void FrameGraphDescription::AssignBackbufferName(const std::string_view backbufferName)
 {
-	mBackbufferName = backbufferName;
-
-	AssignSubresourceName(BackbufferPresentPassId, mBackbufferName);
-}
-
-std::string_view FrameGraphDescription::GetSubresourceName(const SubresourceId& subresourceId) const
-{
-	return mSubresourceIdNames.at(subresourceId);
-}
-
-std::string_view FrameGraphDescription::GetBackbufferName() const
-{
-	return mBackbufferName;
-}
-
-RenderPassType FrameGraphDescription::GetPassType(const RenderPassName& passName) const
-{
-	return mRenderPassTypes.at(passName);
-}
-
-void FrameGraphDescription::GetPassNameList(std::span<const RenderPassName>* outRenderPassNameSpan) const
-{
-	*outRenderPassNameSpan = {mRenderPassNames.cbegin(), mRenderPassNames.cend()};
+	mSubresourceNames.push_back(SubresourceNamingInfo
+	{
+		.PassName            = FrameGraphDescription::RenderPassName(PresentPassName),
+		.PassSubresourceId   = FrameGraphDescription::SubresourceId(BackbufferPresentPassId),
+		.PassSubresourceName = FrameGraphDescription::ResourceName(backbufferName)
+	});
 }

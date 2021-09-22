@@ -20,11 +20,12 @@ namespace D3D12
 
 	class FrameGraphBuilder final: public ModernFrameGraphBuilder
 	{
+		constexpr static uint32_t TextureFlagBarrierCommonPromoted = 0x01; //The barrier is automatically promoted from COMMON state
+
 		struct SubresourceInfo
 		{
 			DXGI_FORMAT           Format;
 			D3D12_RESOURCE_STATES State;
-			bool                  BarrierPromotedFromCommon;
 		};
 
 	public:

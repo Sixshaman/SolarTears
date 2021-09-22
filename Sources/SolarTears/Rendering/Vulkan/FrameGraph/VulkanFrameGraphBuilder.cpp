@@ -69,6 +69,36 @@ void Vulkan::FrameGraphBuilder::SetPassSubresourceAccessFlags(const std::string_
 	mSubresourceInfos[subresourceInfoIndex].Access = accessFlags;
 }
 
+void Vulkan::FrameGraphBuilder::EnableSubresourceAutoBeforeBarrier(const std::string_view subresourceId, bool autoBarrier)
+{
+	FrameGraphDescription::SubresourceId subresourceIdStr(subresourceId);
+
+	SubresourceMetadataNode& metadataNode = mSubresourceMetadataNodesFlat[mMetadataNodeIndicesPerSubresourceIds.at(subresourceIdStr)];
+	if(autoBarrier)
+	{
+		metadataNode.Flags |= TextureFlagAutoBeforeBarrier;
+	}
+	else
+	{
+		metadataNode.Flags &= ~TextureFlagAutoBeforeBarrier;
+	}
+}
+
+void Vulkan::FrameGraphBuilder::EnableSubresourceAutoAfterBarrier(const std::string_view subresourceId, bool autoBarrier)
+{
+	FrameGraphDescription::SubresourceId subresourceIdStr(subresourceId);
+
+	SubresourceMetadataNode& metadataNode = mSubresourceMetadataNodesFlat[mMetadataNodeIndicesPerSubresourceIds.at(subresourceIdStr)];
+	if(autoBarrier)
+	{
+		metadataNode.Flags |= TextureFlagAutoAfterBarrier;
+	}
+	else
+	{
+		metadataNode.Flags &= ~TextureFlagAutoAfterBarrier;
+	}
+}
+
 const Vulkan::DeviceQueues* Vulkan::FrameGraphBuilder::GetDeviceQueues() const
 {
 	return mDeviceQueues;

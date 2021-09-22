@@ -75,36 +75,6 @@ void ModernFrameGraphBuilder::RegisterSubresource(const std::string_view passNam
 	mMetadataNodeIndicesPerSubresourceIds[subresId] = newSubresourceIndex;
 }
 
-void ModernFrameGraphBuilder::EnableSubresourceAutoBeforeBarrier(const std::string_view subresourceId, bool autoBarrier)
-{
-	FrameGraphDescription::SubresourceId subresourceIdStr(subresourceId);
-
-	SubresourceMetadataNode& metadataNode = mSubresourceMetadataNodesFlat[mMetadataNodeIndicesPerSubresourceIds.at(subresourceIdStr)];
-	if(autoBarrier)
-	{
-		metadataNode.Flags |= TextureFlagAutoBeforeBarrier;
-	}
-	else
-	{
-		metadataNode.Flags &= ~TextureFlagAutoBeforeBarrier;
-	}
-}
-
-void ModernFrameGraphBuilder::EnableSubresourceAutoAfterBarrier(const std::string_view subresourceId, bool autoBarrier)
-{
-	FrameGraphDescription::SubresourceId subresourceIdStr(subresourceId);
-
-	SubresourceMetadataNode& metadataNode = mSubresourceMetadataNodesFlat[mMetadataNodeIndicesPerSubresourceIds.at(subresourceIdStr)];
-	if(autoBarrier)
-	{
-		metadataNode.Flags |= TextureFlagAutoAfterBarrier;
-	}
-	else
-	{
-		metadataNode.Flags &= ~TextureFlagAutoAfterBarrier;
-	}
-}
-
 void ModernFrameGraphBuilder::Build()
 {
 	RegisterAndSortPasses();

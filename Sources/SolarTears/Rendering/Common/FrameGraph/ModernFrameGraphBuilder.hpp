@@ -15,40 +15,45 @@ class FrameGraphConfig;
 class ModernFrameGraphBuilder
 {
 protected:
-	constexpr static uint32_t TextureFlagAutoBeforeBarrier = 0x01; //A before-barrier is handled by render pass itself
-	constexpr static uint32_t TextureFlagAutoAfterBarrier  = 0x02; //An after-barrier is handled by render pass itself
+	using PassSubresourceIndex = uint16_t;
 
-	using PassSubresourceId = uint16_t;
+	//Describes a single render pass
+	struct PassMetadata
+	{
+		FrameGraphDescription::RenderPassName Name; //The name of the pass
 
+		RenderPassClass PassClass; //The class (graphics/compute/copy) of the pass
+		RenderPassType  PassType;  //The type of the pass
+
+		uint32_t DependencyLevel; //The dependendency level of the pass
+		uint32_t OwnPeriod;       //The period of the pass' own subresources, excluding swapchain images
+
+		Span<uint32_t> SubresourceMetadataSpans; //The indices of pass subresource metadatas
+	};
+
+	//Describes a single resource
+	struct ResourceMetadata
+	{
+		std::string_view Name; //The name of the resource
+
+		uint32_t HeadNodeIndex;    //The index of the head SubresourceMetadataNode
+		uint32_t FirstFrameHandle; //The id of the first frame of the resource in the frame graph texture list
+		uint32_t FrameCount;       //The number of different frames in the resource
+	};
+
+	//Describes a particular pass usage of the resource
 	struct SubresourceMetadataNode
 	{
-		std::string_view SubresourceName;
+		uint32_t PrevPassNodeIndex;     //The index of the same resources metadata used in the previous pass
+		uint32_t NextPassNodeIndex;     //The index of the same resources metadata used in the next pass
+		uint32_t ResourceMetadataIndex; //The index of ResourceMetadata associated with the subresource
 
-		uint32_t PrevPassNodeIndex;
-		uint32_t NextPassNodeIndex;
+		uint32_t        FirstFrameViewHandle; //The id of the first frame of the subresource in the frame graph texture view list
+		uint32_t        SubresourceInfoIndex; //The id of the api-specific data associated with the resource (state, image layout, etc.)
+		RenderPassClass PassClass;            //The pass class (Graphics/Compute/Copy) that uses the node
 
-		//In case of ping-pong or swapchain images the images are stored in a range. ImageIndex and ImageViewIndex point to the first image/view in the range
-		uint32_t        FirstFrameHandle;      //The id of the first frame in the list of frame graph textures. Common for all nodes in the resource
-		uint32_t        FirstFrameViewHandle;  //The id of the first frame in the frame graph texture views
-		uint16_t        PerPassSubresourceId;  //Pass-specific number unique for each subresource in a pass
-		uint16_t        FrameCount;            //The number of different frames in the resource. Common for all nodes in the resource
-		uint32_t        Flags;                 //Per-subresource flags
-		RenderPassClass PassClass;             //The pass class (Graphics/Compute/Copy) that uses the node
-
-		uint64_t ViewSortKey; //The key to determine unique image views for subresource
-	};
-
-	struct TextureResourceCreateInfo
-	{
-		std::string_view Name;
-		uint32_t         MetadataHeadIndex;
-	};
-
-	struct TextureSubresourceCreateInfo
-	{
-		uint32_t SubresourceInfoIndex;
-		uint32_t ImageIndex;
-		uint32_t ImageViewIndex;
+		uint32_t ApiSpecificFlags; //Per-subresource flags
+		uint64_t ViewKey;          //Api-specific per-resource key defining a unique image view
 	};
 
 public:
@@ -56,9 +61,6 @@ public:
 	~ModernFrameGraphBuilder();
 
 	void RegisterSubresource(const std::string_view passName, const std::string_view subresourceId);
-
-	void EnableSubresourceAutoBeforeBarrier(const std::string_view subresourceId, bool autoBarrier = true);
-	void EnableSubresourceAutoAfterBarrier(const std::string_view subresourceId,  bool autoBarrier = true);
 
 	void Build();
 
@@ -195,17 +197,11 @@ protected:
 protected:
 	ModernFrameGraph* mGraphToBuild;
 
-	FrameGraphDescription mFrameGraphDescription;
+	std::vector<SubresourceMetadataNode> mSubresourceMetadataNodesFlat;
+	std::vector<PassMetadata>            mPassMetadatas;
 
-	std::vector<FrameGraphDescription::RenderPassName> mSortedRenderPassNames;
+	std::unordered_map<FrameGraphDescription::ResourceName, ResourceMetadata> mPerResourceMetadatas;
 
-	std::unordered_map<RenderPassType, RenderPassClass> mRenderPassClassTable;
-	
-	std::unordered_map<FrameGraphDescription::RenderPassName, RenderPassClass> mRenderPassClasses;
-	std::unordered_map<FrameGraphDescription::RenderPassName, uint32_t>        mRenderPassDependencyLevels;
-	std::unordered_map<FrameGraphDescription::RenderPassName, uint32_t>        mRenderPassOwnPeriods;
-
-	std::vector<SubresourceMetadataNode>                                      mSubresourceMetadataNodesFlat;
-	std::unordered_map<FrameGraphDescription::RenderPassName, Span<uint32_t>> mSubresourceMetadataSpansPerPass;
-	std::unordered_map<FrameGraphDescription::SubresourceId,  uint32_t>       mMetadataNodeIndicesPerSubresourceIds;
+	std::unordered_map<RenderPassType, Span<uint32_t>>                 mRenderPassSubresourceInfoSpans;
+	std::unordered_map<FrameGraphDescription::SubresourceId, uint32_t> mSubresourceInfoIndicesPerId;
 };
