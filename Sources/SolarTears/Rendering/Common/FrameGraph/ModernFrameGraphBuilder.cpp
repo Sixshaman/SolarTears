@@ -21,12 +21,6 @@ void ModernFrameGraphBuilder::RegisterRenderPass(RenderPassType passType, const 
 	RegisterPassInGraph(passType, renderPassName);
 }
 
-void RegisterSubresource(const std::string_view passName, const std::string_view subresourceId)
-{
-	FrameGraphDescription::RenderPassName renderPassName(passName);
-	FrameGraphDescription::SubresourceId  subresId(subresourceId);
-}
-
 void ModernFrameGraphBuilder::RegisterSubresource(const std::string_view passName, const std::string_view subresourceId)
 {
 	FrameGraphDescription::RenderPassName renderPassName(passName);

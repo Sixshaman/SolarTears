@@ -39,10 +39,11 @@ namespace Vulkan
 
 		struct SubresourceInfo
 		{
-			VkFormat             Format;
+			VkFormat           Format;
+			VkImageAspectFlags Aspect;
+
 			VkImageLayout        Layout;
 			VkImageUsageFlags    Usage;
-			VkImageAspectFlags   Aspect;
 			VkPipelineStageFlags Stage;
 			VkAccessFlags        Access;
 		};
