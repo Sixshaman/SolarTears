@@ -86,17 +86,11 @@ namespace D3D12
 		//Gives a free render pass span id
 		uint32_t NextPassSpanId() override final;
 
-		//Propagates subresource info (format, access flags, etc.) to a node from the previous one. Also initializes view key. Returns true if propagation succeeded or wasn't needed
-		bool ValidateSubresourceViewParameters(uint32_t currNodeIndex, uint32_t prevNodeIndex) override final;
-
-		//Allocates the storage for image views defined by sort keys
-		void AllocateImageViews(const std::vector<uint64_t>& sortKeys, uint32_t frameCount, std::vector<uint32_t>& outViewIds) override final;
-
 		//Creates image objects
-		void CreateTextures(const std::vector<TextureResourceCreateInfo>& textureCreateInfos, const std::vector<TextureResourceCreateInfo>& backbufferCreateInfos, uint32_t totalTextureCount) const override final;
+		void CreateTextures() override final;
 
 		//Creates image view objects
-		void CreateTextureViews(const std::vector<TextureSubresourceCreateInfo>& textureViewCreateInfos) const override final;
+		void CreateTextureViews() override final;
 
 		//Add a barrier to execute before a pass
 		uint32_t AddBeforePassBarrier(uint32_t metadataIndex) override final;
@@ -116,11 +110,7 @@ namespace D3D12
 		std::unordered_map<RenderPassType, RenderPassAddFunc>    mPassAddFuncTable;
 		std::unordered_map<RenderPassType, RenderPassCreateFunc> mPassCreateFuncTable;
 
-		std::vector<SubresourceInfo> mSubresourceInfos;
-
-		UINT mSrvUavCbvDescriptorCount;
-		UINT mRtvDescriptorCount;
-		UINT mDsvDescriptorCount;
+		std::vector<SubresourceInfo> mSubresourceInfosFlat;
 
 		UINT mSrvUavCbvDescriptorSize;
 		UINT mRtvDescriptorSize;

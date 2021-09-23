@@ -402,6 +402,9 @@
     <ClInclude Include="Rendering\Vulkan\FrameGraph\VulkanSharedDescriptorDatabase.hpp">
       <Filter>Rendering\Vulkan\FrameGraph</Filter>
     </ClInclude>
+    <ClInclude Include="Rendering\Common\FrameGraph\RenderPassDispatchFuncs.hpp">
+      <Filter>Rendering\Common\FrameGraph</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Platform\Win32\Win32Application.cpp">

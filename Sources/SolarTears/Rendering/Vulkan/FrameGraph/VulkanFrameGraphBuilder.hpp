@@ -106,7 +106,7 @@ namespace Vulkan
 		uint32_t PassClassToQueueIndex(RenderPassClass passClass) const;
 
 		//Creates an image view
-		VkImageView CreateImageView(VkImage image, uint32_t subresourceInfoIndex) const;
+		VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspect) const;
 
 	private:
 		//Creates a new subresource info record
@@ -130,17 +130,11 @@ namespace Vulkan
 		//Gives a free render pass span id
 		uint32_t NextPassSpanId() override final;
 
-		//Propagates subresource info (format, access flags, etc.) to a node from the previous one. Also initializes view key. Returns true if propagation succeeded or wasn't needed
-		bool ValidateSubresourceViewParameters(uint32_t currNodeIndex, uint32_t prevNodeIndex) override final;
-
-		//Allocates the storage for image views defined by sort keys
-		void AllocateImageViews(const std::vector<uint64_t>& sortKeys, uint32_t frameCount, std::vector<uint32_t>& outViewIds) override final;
-
 		//Creates image objects
-		void CreateTextures(const std::vector<TextureResourceCreateInfo>& textureCreateInfos, const std::vector<TextureResourceCreateInfo>& backbufferCreateInfos, uint32_t totalTextureCount) const override final;
+		void CreateTextures() override final;
 
 		//Creates image view objects
-		void CreateTextureViews(const std::vector<TextureSubresourceCreateInfo>& textureViewCreateInfos) const override final;
+		void CreateTextureViews() override final;
 
 		//Adds a barrier to execute before a pass
 		uint32_t AddBeforePassBarrier(uint32_t metadataIndex) override final;
@@ -164,8 +158,6 @@ namespace Vulkan
 		std::unordered_map<RenderPassType, RenderPassCreateFunc>         mPassCreateFuncTable;
 
 		std::vector<SubresourceInfo> mSubresourceInfosFlat;
-
-		uint32_t mImageViewCount;
 
 		//Several things that might be needed during build
 		const DeviceQueues*         mDeviceQueues;

@@ -15,8 +15,6 @@ class FrameGraphConfig;
 class ModernFrameGraphBuilder
 {
 protected:
-	using PassSubresourceIndex = uint16_t;
-
 	//Describes a single render pass
 	struct PassMetadata
 	{
@@ -53,7 +51,6 @@ protected:
 		RenderPassClass PassClass;            //The pass class (Graphics/Compute/Copy) that uses the node
 
 		uint32_t ApiSpecificFlags; //Per-subresource flags
-		uint64_t ViewKey;          //Api-specific per-resource key defining a unique image view
 	};
 
 public:
@@ -133,12 +130,6 @@ private:
 	//Validates the location for each resource and subresource. Returns the total count of resources
 	uint32_t PrepareResourceLocations(std::vector<TextureResourceCreateInfo>& textureCreateInfos, std::vector<TextureResourceCreateInfo>& backbufferCreateInfos);
 
-	//Initializes ImageIndex and ImageViewIndex fields of nodes. Returns image view count written
-	uint32_t ValidateImageAndViewIndices(std::vector<TextureResourceCreateInfo>& textureResourceCreateInfos, uint32_t imageIndexOffset);
-
-	//Initializes ImageIndex and ImageViewIndex fields of nodes in a single resource. Returns image view count per resource in a single frame
-	void ValidateImageAndViewIndicesInResource(TextureResourceCreateInfo* createInfo, uint32_t imageIndex);
-
 	//Recursively sort subtree topologically
 	void TopologicalSortNode(const std::unordered_map<FrameGraphDescription::RenderPassName, std::span<FrameGraphDescription::RenderPassName>>& adjacencyList, std::unordered_set<FrameGraphDescription::RenderPassName>& visited, std::unordered_set<FrameGraphDescription::RenderPassName>& onStack, const FrameGraphDescription::RenderPassName& renderPassName);
 
@@ -170,17 +161,11 @@ protected:
 	//Gives a free render pass span id
 	virtual uint32_t NextPassSpanId() = 0;
 
-	//Propagates info (format, access flags, etc.) from one SubresourceInfo to another. Returns true if propagation succeeded or wasn't needed
-	virtual bool ValidateSubresourceViewParameters(uint32_t currNodeIndex, uint32_t prevNodeIndex) = 0;
-		
-	//Allocates the storage for image views defined by sort keys
-	virtual void AllocateImageViews(const std::vector<uint64_t>& sortKeys, uint32_t frameCount, std::vector<uint32_t>& outViewIds) = 0;
-
 	//Creates image objects
-	virtual void CreateTextures(const std::vector<TextureResourceCreateInfo>& textureCreateInfos, const std::vector<TextureResourceCreateInfo>& backbufferCreateInfos, uint32_t totalTextureCount) const = 0;
+	virtual void CreateTextures() = 0;
 
 	//Creates image view objects
-	virtual void CreateTextureViews(const std::vector<TextureSubresourceCreateInfo>& textureViewCreateInfos) const = 0;
+	virtual void CreateTextureViews() = 0;
 
 	//Add a barrier to execute before a pass
 	virtual uint32_t AddBeforePassBarrier(uint32_t metadataIndex) = 0;
@@ -200,7 +185,7 @@ protected:
 	std::vector<SubresourceMetadataNode> mSubresourceMetadataNodesFlat;
 	std::vector<PassMetadata>            mPassMetadatas;
 
-	std::unordered_map<FrameGraphDescription::ResourceName, ResourceMetadata> mPerResourceMetadatas;
+	std::unordered_map<FrameGraphDescription::ResourceName, ResourceMetadata> mResourceMetadatas;
 
 	std::unordered_map<RenderPassType, Span<uint32_t>>                 mRenderPassSubresourceInfoSpans;
 	std::unordered_map<FrameGraphDescription::SubresourceId, uint32_t> mSubresourceInfoIndicesPerId;

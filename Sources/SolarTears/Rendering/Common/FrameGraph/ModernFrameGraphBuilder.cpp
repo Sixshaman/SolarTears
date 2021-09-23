@@ -618,6 +618,8 @@ void ModernFrameGraphBuilder::BuildSubresources()
 
 void ModernFrameGraphBuilder::BuildResourceCreateInfos(std::vector<TextureResourceCreateInfo>& outTextureCreateInfos, std::vector<TextureResourceCreateInfo>& outBackbufferCreateInfos)
 {
+	//Change this to filling mResourceMetadatas
+
 	std::unordered_set<std::string_view> processedSubresourceNames;
 
 	TextureResourceCreateInfo backbufferCreateInfo;
@@ -731,20 +733,6 @@ uint32_t ModernFrameGraphBuilder::PrepareResourceLocations(std::vector<TextureRe
 	return imageCount;
 }
 
-uint32_t ModernFrameGraphBuilder::ValidateImageAndViewIndices(std::vector<TextureResourceCreateInfo>& textureResourceCreateInfos, uint32_t imageIndexOffset)
-{
-	uint32_t imageCount = 0;
-	for(TextureResourceCreateInfo& textureCreateInfo: textureResourceCreateInfos)
-	{
-		ValidateImageAndViewIndicesInResource(&textureCreateInfo, imageIndexOffset + imageCount);
-
-		const SubresourceMetadataNode& headNode = mSubresourceMetadataNodesFlat[textureCreateInfo.MetadataHeadIndex];
-		imageCount += headNode.FrameCount;
-	}
-
-	return imageCount;
-}
-
 void ModernFrameGraphBuilder::ValidateImageAndViewIndicesInResource(TextureResourceCreateInfo* createInfo, uint32_t imageIndex)
 {
 	std::vector<uint32_t> resourceMetadataNodeIndices;
@@ -788,10 +776,12 @@ void ModernFrameGraphBuilder::ValidateImageAndViewIndicesInResource(TextureResou
 
 	differentImageViewSpans.back().End = (uint32_t)resourceMetadataNodeIndices.size();
 
+	//Remove this
 	std::vector<uint32_t> assignedImageViewIds;
 	AllocateImageViews(differentSortKeys, mSubresourceMetadataNodesFlat[headNodeIndex].FrameCount, assignedImageViewIds);
 
 
+	//Remove this too
 	for(size_t spanIndex = 0; spanIndex < differentImageViewSpans.size(); spanIndex++)
 	{
 		Span<uint32_t> nodeSpan = differentImageViewSpans[spanIndex];

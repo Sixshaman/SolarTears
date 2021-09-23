@@ -65,6 +65,7 @@
     <ClInclude Include="Rendering\Common\FrameGraph\ModernFrameGraphMisc.hpp" />
     <ClInclude Include="Rendering\Common\FrameGraph\Passes\CopyImagePass.hpp" />
     <ClInclude Include="Rendering\Common\FrameGraph\Passes\GBufferPass.hpp" />
+    <ClInclude Include="Rendering\Common\FrameGraph\RenderPassDispatchFuncs.hpp" />
     <ClInclude Include="Rendering\Common\Renderer.hpp" />
     <ClInclude Include="Rendering\Common\RenderingUtils.hpp" />
     <ClInclude Include="Rendering\Common\Scene\BaseRenderableScene.hpp" />
