@@ -110,7 +110,7 @@ namespace Vulkan
 
 	private:
 		//Creates a new subresource info record
-		uint32_t AddSubresourceMetadata() override final;
+		void RegisterPassTypes(const std::vector<RenderPassType>& passTypes) override final;
 
 		//Creates a new subresource info record for present pass
 		uint32_t AddPresentSubresourceMetadata() override final;

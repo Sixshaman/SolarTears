@@ -540,6 +540,22 @@ uint32_t Vulkan::FrameGraphBuilder::AddSubresourceMetadata()
 	return (uint32_t)(mSubresourceInfos.size() - 1);
 }
 
+void Vulkan::FrameGraphBuilder::RegisterPassTypes(const std::vector<RenderPassType>& passTypes)
+{
+	for(RenderPassType passType: passTypes)
+	{
+		uint32_t passSubresourceCount = PassSubresourceTypeCount(passType);
+		Span<uint32_t> passSubresourceInfoSpan =
+		{
+			.Begin = (uint32_t)mSubresourceInfosFlat.size(),
+			.End   = (uint32_t)(mSubresourceInfosFlat.size() + passSubresourceCount)
+		};
+
+		mRenderPassSubresourceInfoSpans[passType] = passSubresourceInfoSpan;
+		mSubresourceInfosFlat.resize(mSubresourceInfosFlat.size() + passSubresourceCount);
+	}
+}
+
 uint32_t Vulkan::FrameGraphBuilder::AddPresentSubresourceMetadata()
 {
 	SubresourceInfo subresourceInfo;
