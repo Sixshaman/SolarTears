@@ -2,6 +2,8 @@
 
 #include "../VulkanRenderPass.hpp"
 #include "../../../Common/FrameGraph/Passes/GBufferPass.hpp"
+#include "../../../../Core/DataStructures/Span.hpp"
+#include "../VulkanFrameGraphMisc.hpp"
 #include <span>
 
 namespace Vulkan
@@ -16,16 +18,25 @@ namespace Vulkan
 
 	class GBufferPass: public RenderPass, public GBufferPassBase
 	{
+		constexpr static std::string_view StaticShaderGroup          = "GBufferStaticShaders";
+		constexpr static std::string_view StaticInstancedShaderGroup = "GBufferStaticInstancedShaders";
+		constexpr static std::string_view RigidShaderGroup           = "GBufferRigidShaders";
 
 	public:
-		GBufferPass(VkDevice device, const FrameGraphBuilder* frameGraphBuilder, const std::string& passName, uint32_t frame);
+		constexpr inline static VkFormat             GetSubresourceFormat(PassSubresourceId subresourceId);
+		constexpr inline static VkImageAspectFlags   GetSubresourceAspect(PassSubresourceId subresourceId);
+		constexpr inline static VkPipelineStageFlags GetSubresourceStage(PassSubresourceId subresourceId);
+		constexpr inline static VkImageLayout        GetSubresourceLayout(PassSubresourceId subresourceId);
+		constexpr inline static VkImageUsageFlags    GetSubresourceUsage(PassSubresourceId subresourceId);
+		constexpr inline static VkAccessFlags        GetSubresourceAccess(PassSubresourceId subresourceId);
+
+		inline static void RegisterShaders(ShaderDatabase* shaderDatabase);
+
+	public:
+		GBufferPass(const FrameGraphBuilder* frameGraphBuilder, const std::string& passName, uint32_t frame);
 		~GBufferPass();
 
 		void RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* renderableScene, const FrameGraphConfig& frameGraphConfig) const override;
-
-	public:
-		static void RegisterResources(FrameGraphBuilder* frameGraphBuilder, const std::string& passName);
-		static void RegisterShaders(ShaderDatabase* shaderDatabase);
 
 	private:
 		void CreateRenderPass(const FrameGraphBuilder* frameGraphBuilder, const DeviceParameters* deviceParameters, const std::string& currentPassName);
@@ -57,3 +68,5 @@ namespace Vulkan
 		VkShaderStageFlags mObjectIndexPushConstantStages;
 	};
 }
+
+#include "VulkanGBufferPass.inl"

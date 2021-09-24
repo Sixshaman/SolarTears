@@ -62,6 +62,7 @@ namespace Vulkan
 		void EnableSubresourceAutoBeforeBarrier(const std::string_view subresourceId, bool autoBarrier = true);
 		void EnableSubresourceAutoAfterBarrier(const std::string_view subresourceId,  bool autoBarrier = true);
 
+		const VkDevice          GetDevice()           const;
 		const DeviceParameters* GetDeviceParameters() const;
 		const DeviceQueues*     GetDeviceQueues()     const;
 		const SwapChain*        GetSwapChain()        const;
@@ -109,11 +110,8 @@ namespace Vulkan
 		VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspect) const;
 
 	private:
-		//Creates a new subresource info record
-		void RegisterPassTypes(const std::vector<RenderPassType>& passTypes) override final;
-
-		//Creates a new subresource info record for present pass
-		uint32_t AddPresentSubresourceMetadata() override final;
+		//Registers subresource ids for pass types
+		void RegisterPassTypes(const std::span<RenderPassType>& passTypes) override final;
 
 		//Checks if the usage of the subresource with subresourceInfoIndex includes reading
 		bool IsReadSubresource(uint32_t subresourceInfoIndex) override final;
@@ -152,10 +150,6 @@ namespace Vulkan
 		FrameGraph* mVulkanGraphToBuild;
 
 		LoggerQueue* mLogger;
-
-		std::unordered_map<RenderPassType, RenderPassAddFunc>            mPassAddFuncTable;
-		std::unordered_map<RenderPassType, RenderPassShaderRegisterFunc> mPassRegisterShadersFuncTable;
-		std::unordered_map<RenderPassType, RenderPassCreateFunc>         mPassCreateFuncTable;
 
 		std::vector<SubresourceInfo> mSubresourceInfosFlat;
 

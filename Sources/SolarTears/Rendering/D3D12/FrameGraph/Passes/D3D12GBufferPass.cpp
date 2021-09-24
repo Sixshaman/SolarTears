@@ -8,14 +8,14 @@
 #include "../../../../Core/Util.hpp"
 #include <array>
 
-D3D12::GBufferPass::GBufferPass(ID3D12Device8* device, const FrameGraphBuilder* frameGraphBuilder, const std::string& passName, uint32_t frame)
+D3D12::GBufferPass::GBufferPass(const FrameGraphBuilder* frameGraphBuilder, const std::string& passName, uint32_t frame)
 {
 	wil::com_ptr_t<IDxcBlobEncoding> staticVertexShaderBlob;
 	wil::com_ptr_t<IDxcBlobEncoding> rigidVertexShaderBlob;
 	wil::com_ptr_t<IDxcBlobEncoding> pixelShaderBlob;
 	LoadShaders(frameGraphBuilder->GetShaderManager(), staticVertexShaderBlob.put(), rigidVertexShaderBlob.put(), pixelShaderBlob.put());
 
-	CreateRootSignature(frameGraphBuilder->GetShaderManager(), device, rigidVertexShaderBlob.get(), pixelShaderBlob.get());
+	CreateRootSignature(frameGraphBuilder->GetShaderManager(), frameGraphBuilder->GetDevice(), rigidVertexShaderBlob.get(), pixelShaderBlob.get());
 
 	//TODO: bundles
 	CreateGBufferPipelineState(device, staticVertexShaderBlob.get(), pixelShaderBlob.get(), mStaticPipelineState.put());

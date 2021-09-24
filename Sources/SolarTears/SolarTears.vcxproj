@@ -98,6 +98,7 @@
     <ClInclude Include="Rendering\Vulkan\FrameGraph\VulkanFrameGraph.hpp" />
     <ClInclude Include="Rendering\Vulkan\FrameGraph\VulkanFrameGraphBuilder.hpp" />
     <ClInclude Include="Rendering\Vulkan\FrameGraph\VulkanRenderPass.hpp" />
+    <ClInclude Include="Rendering\Vulkan\FrameGraph\VulkanRenderPassDispatchFuncs.hpp" />
     <ClInclude Include="Rendering\Vulkan\FrameGraph\VulkanSharedDescriptorDatabase.hpp" />
     <ClInclude Include="Rendering\Vulkan\Scene\VulkanScene.hpp" />
     <ClInclude Include="Rendering\Vulkan\Scene\VulkanSceneBuilder.hpp" />
@@ -146,8 +147,6 @@
     <ClCompile Include="Rendering\Common\FrameGraph\FrameGraphDescription.cpp" />
     <ClCompile Include="Rendering\Common\FrameGraph\ModernFrameGraph.cpp" />
     <ClCompile Include="Rendering\Common\FrameGraph\ModernFrameGraphBuilder.cpp" />
-    <ClCompile Include="Rendering\Common\FrameGraph\Passes\CopyImagePass.cpp" />
-    <ClCompile Include="Rendering\Common\FrameGraph\Passes\GBufferPass.cpp" />
     <ClCompile Include="Rendering\Common\Renderer.cpp" />
     <ClCompile Include="Rendering\Common\RenderingUtils.cpp" />
     <ClCompile Include="Rendering\Common\Scene\BaseRenderableScene.cpp" />
@@ -208,6 +207,8 @@
     <None Include="Rendering\D3D12\D3D12Utils.inl" />
     <None Include="Rendering\D3D12\FrameGraph\D3D12FrameGraphBuilder.inl" />
     <None Include="Rendering\D3D12\Scene\D3D12Scene.inl" />
+    <None Include="Rendering\Vulkan\FrameGraph\Passes\VulkanCopyImagePass.inl" />
+    <None Include="Rendering\Vulkan\FrameGraph\Passes\VulkanGBufferPass.inl" />
     <None Include="Rendering\Vulkan\FrameGraph\VulkanFrameGraphBuilder.inl" />
     <None Include="Rendering\Vulkan\Scene\VulkanScene.inl" />
     <None Include="Rendering\Vulkan\Scene\VulkanSceneBuilder.inl" />

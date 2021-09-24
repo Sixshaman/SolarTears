@@ -35,6 +35,8 @@ namespace D3D12
 		void SetPassSubresourceFormat(const std::string_view subresourceId, DXGI_FORMAT format);
 		void SetPassSubresourceState(const std::string_view subresourceId, D3D12_RESOURCE_STATES state);
 
+		ID3D12Device8* GetDevice() const;
+
 		const ShaderManager* GetShaderManager() const;
 
 		ID3D12Resource2*            GetRegisteredResource(const std::string_view passName,          const std::string_view subresourceId, uint32_t frame) const;
@@ -65,11 +67,8 @@ namespace D3D12
 		D3D12_COMMAND_LIST_TYPE PassClassToListType(RenderPassClass passType);
 
 	private:
-		//Creates a new subresource info record
-		uint32_t AddSubresourceMetadata() override final;
-
-		//Creates a new subresource info record for present pass
-		uint32_t AddPresentSubresourceMetadata() override final;
+		//Registers subresource ids for pass types
+		void RegisterPassTypes(const std::span<RenderPassType>& passTypes) override final;
 
 		//Checks if the usage of the subresource with subresourceInfoIndex includes reading
 		bool IsReadSubresource(uint32_t subresourceInfoIndex) override final;

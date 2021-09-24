@@ -12,7 +12,7 @@ namespace D3D12
 	class CopyImagePass: public RenderPass, public CopyImagePassBase
 	{
 	public:
-		CopyImagePass(ID3D12Device8* device, const FrameGraphBuilder* frameGraphBuilder, const std::string& currentPassName, uint32_t frame);
+		CopyImagePass(const FrameGraphBuilder* frameGraphBuilder, const std::string& currentPassName, uint32_t frame);
 		~CopyImagePass();
 
 		ID3D12PipelineState* FirstPipeline() const override;

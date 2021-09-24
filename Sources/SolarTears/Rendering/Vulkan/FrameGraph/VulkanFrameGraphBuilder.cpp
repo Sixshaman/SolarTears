@@ -99,6 +99,11 @@ void Vulkan::FrameGraphBuilder::EnableSubresourceAutoAfterBarrier(const std::str
 	}
 }
 
+const VkDevice Vulkan::FrameGraphBuilder::GetDevice() const
+{
+	return mVulkanGraphToBuild->mDeviceRef;
+}
+
 const Vulkan::DeviceQueues* Vulkan::FrameGraphBuilder::GetDeviceQueues() const
 {
 	return mDeviceQueues;
@@ -526,25 +531,11 @@ void Vulkan::FrameGraphBuilder::CreateTextures()
 	mDeviceQueues->GraphicsQueueWait(); //TODO: may wait after build finished
 }
 
-uint32_t Vulkan::FrameGraphBuilder::AddSubresourceMetadata()
-{
-	SubresourceInfo subresourceInfo;
-	subresourceInfo.Format = VK_FORMAT_UNDEFINED;
-	subresourceInfo.Layout = VK_IMAGE_LAYOUT_UNDEFINED;
-	subresourceInfo.Usage  = 0;
-	subresourceInfo.Aspect = 0;
-	subresourceInfo.Stage  = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-	subresourceInfo.Access = 0;
-
-	mSubresourceInfos.push_back(subresourceInfo);
-	return (uint32_t)(mSubresourceInfos.size() - 1);
-}
-
-void Vulkan::FrameGraphBuilder::RegisterPassTypes(const std::vector<RenderPassType>& passTypes)
+void Vulkan::FrameGraphBuilder::RegisterPassTypes(const std::span<RenderPassType>& passTypes)
 {
 	for(RenderPassType passType: passTypes)
 	{
-		uint32_t passSubresourceCount = PassSubresourceTypeCount(passType);
+		uint32_t passSubresourceCount = GetPassSubresourceTypeCount(passType);
 		Span<uint32_t> passSubresourceInfoSpan =
 		{
 			.Begin = (uint32_t)mSubresourceInfosFlat.size(),
@@ -553,21 +544,19 @@ void Vulkan::FrameGraphBuilder::RegisterPassTypes(const std::vector<RenderPassTy
 
 		mRenderPassSubresourceInfoSpans[passType] = passSubresourceInfoSpan;
 		mSubresourceInfosFlat.resize(mSubresourceInfosFlat.size() + passSubresourceCount);
+
+		for(size_t subresourceIndex = passSubresourceInfoSpan.Begin; subresourceIndex < passSubresourceInfoSpan.End; subresourceIndex++)
+		{
+			uint32_t passSubresourceIndex = subresourceIndex - passSubresourceInfoSpan.Begin;
+
+			mSubresourceInfosFlat[subresourceIndex].Format = GetPassSubresourceFormat(passType, passSubresourceIndex);
+			mSubresourceInfosFlat[subresourceIndex].Aspect = GetPassSubresourceAspect(passType, passSubresourceIndex);
+			mSubresourceInfosFlat[subresourceIndex].Layout = GetPassSubresourceLayout(passType, passSubresourceIndex);
+			mSubresourceInfosFlat[subresourceIndex].Usage  = GetPassSubresourceUsage(passType,  passSubresourceIndex);
+			mSubresourceInfosFlat[subresourceIndex].Stage  = GetPassSubresourceStage(passType,  passSubresourceIndex);
+			mSubresourceInfosFlat[subresourceIndex].Access = GetPassSubresourceAccess(passType, passSubresourceIndex);
+		}
 	}
-}
-
-uint32_t Vulkan::FrameGraphBuilder::AddPresentSubresourceMetadata()
-{
-	SubresourceInfo subresourceInfo;
-	subresourceInfo.Format = mSwapChain->GetBackbufferFormat();
-	subresourceInfo.Layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-	subresourceInfo.Usage  = 0;
-	subresourceInfo.Aspect = VK_IMAGE_ASPECT_COLOR_BIT;
-	subresourceInfo.Stage  = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-	subresourceInfo.Access = 0;
-
-	mSubresourceInfos.push_back(subresourceInfo);
-	return (uint32_t)(mSubresourceInfos.size() - 1);
 }
 
 bool Vulkan::FrameGraphBuilder::IsReadSubresource(uint32_t subresourceInfoIndex)

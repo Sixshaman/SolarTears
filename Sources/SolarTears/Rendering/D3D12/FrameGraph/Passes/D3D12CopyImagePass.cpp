@@ -3,7 +3,7 @@
 #include "../D3D12FrameGraphBuilder.hpp"
 #include <array>
 
-D3D12::CopyImagePass::CopyImagePass([[maybe_unused]] ID3D12Device8* device, const FrameGraphBuilder* frameGraphBuilder, const std::string& currentPassName, uint32_t frame)
+D3D12::CopyImagePass::CopyImagePass(const FrameGraphBuilder* frameGraphBuilder, const std::string& currentPassName, uint32_t frame)
 {
 	mSrcImageRef = frameGraphBuilder->GetRegisteredResource(currentPassName, SrcImageId, frame);
 	mDstImageRef = frameGraphBuilder->GetRegisteredResource(currentPassName, DstImageId, frame);

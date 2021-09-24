@@ -4,7 +4,7 @@
 #include "../VulkanFrameGraphBuilder.hpp"
 #include <array>
 
-Vulkan::CopyImagePass::CopyImagePass(VkDevice device, const FrameGraphBuilder* frameGraphBuilder, const std::string& currentPassName, uint32_t frame): RenderPass(device)
+Vulkan::CopyImagePass::CopyImagePass(const FrameGraphBuilder* frameGraphBuilder, const std::string& currentPassName, uint32_t frame): RenderPass(frameGraphBuilder->GetDevice())
 {
 	mSrcImageRef = frameGraphBuilder->GetRegisteredResource(currentPassName, SrcImageId, frame);
 	mDstImageRef = frameGraphBuilder->GetRegisteredResource(currentPassName, DstImageId, frame);
@@ -15,28 +15,6 @@ Vulkan::CopyImagePass::CopyImagePass(VkDevice device, const FrameGraphBuilder* f
 
 Vulkan::CopyImagePass::~CopyImagePass()
 {
-}
-
-void Vulkan::CopyImagePass::RegisterResources(FrameGraphBuilder* frameGraphBuilder, const std::string& passName)
-{
-	CopyImagePassBase::RegisterResources(frameGraphBuilder, passName);
-
-	frameGraphBuilder->SetPassSubresourceAspectFlags(SrcImageId, 0);
-	frameGraphBuilder->SetPassSubresourceStageFlags(SrcImageId, VK_PIPELINE_STAGE_TRANSFER_BIT);
-	frameGraphBuilder->SetPassSubresourceLayout(SrcImageId, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-	frameGraphBuilder->SetPassSubresourceUsage(SrcImageId, VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
-	frameGraphBuilder->SetPassSubresourceAccessFlags(SrcImageId, VK_ACCESS_TRANSFER_READ_BIT);
-
-	frameGraphBuilder->SetPassSubresourceAspectFlags(DstImageId, 0);
-	frameGraphBuilder->SetPassSubresourceStageFlags(DstImageId, VK_PIPELINE_STAGE_TRANSFER_BIT);
-	frameGraphBuilder->SetPassSubresourceLayout(DstImageId, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	frameGraphBuilder->SetPassSubresourceUsage(DstImageId, VK_IMAGE_USAGE_TRANSFER_DST_BIT);
-	frameGraphBuilder->SetPassSubresourceAccessFlags(DstImageId, VK_ACCESS_TRANSFER_WRITE_BIT);
-}
-
-void Vulkan::CopyImagePass::RegisterShaders([[maybe_unused]] ShaderDatabase* shaderDatabase)
-{
-	//Nothing
 }
 
 void Vulkan::CopyImagePass::RecordExecution(VkCommandBuffer commandBuffer, [[maybe_unused]] const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig) const

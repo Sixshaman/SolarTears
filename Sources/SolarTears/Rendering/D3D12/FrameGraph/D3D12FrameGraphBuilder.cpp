@@ -15,10 +15,6 @@
 
 D3D12::FrameGraphBuilder::FrameGraphBuilder(FrameGraph* graphToBuild, FrameGraphDescription&& frameGraphDescription, const SwapChain* swapChain): ModernFrameGraphBuilder(graphToBuild, std::move(frameGraphDescription)), mD3d12GraphToBuild(graphToBuild), mSwapChain(swapChain)
 {
-	mSrvUavCbvDescriptorCount = 0;
-	mRtvDescriptorCount       = 0;
-	mDsvDescriptorCount       = 0;
-
 	InitPassTable();
 }
 
@@ -38,6 +34,11 @@ void D3D12::FrameGraphBuilder::SetPassSubresourceState(const std::string_view su
 	FrameGraphDescription::SubresourceId subresourceIdStr(subresourceId);
 	uint32_t subresourceInfoIndex = mMetadataNodeIndicesPerSubresourceIds.at(subresourceIdStr);
 	mSubresourceInfos[subresourceInfoIndex].State = state;
+}
+
+ID3D12Device8* D3D12::FrameGraphBuilder::GetDevice() const
+{
+	return mDevice;
 }
 
 const D3D12::ShaderManager* D3D12::FrameGraphBuilder::GetShaderManager() const
@@ -395,27 +396,22 @@ void D3D12::FrameGraphBuilder::CreateTextures()
 	}
 }
 
-uint32_t D3D12::FrameGraphBuilder::AddSubresourceMetadata()
+void D3D12::FrameGraphBuilder::RegisterPassTypes(const std::span<RenderPassType>& passTypes)
 {
-	SubresourceInfo subresourceInfo;
-	subresourceInfo.Format                    = DXGI_FORMAT_UNKNOWN;
-	subresourceInfo.State                     = D3D12_RESOURCE_STATE_COMMON;
-	subresourceInfo.BarrierPromotedFromCommon = false;
+	for(RenderPassType passType: passTypes)
+	{
+		uint32_t passSubresourceCount = PassSubresourceTypeCount(passType);
+		Span<uint32_t> passSubresourceInfoSpan =
+		{
+			.Begin = (uint32_t)mSubresourceInfosFlat.size(),
+			.End   = (uint32_t)(mSubresourceInfosFlat.size() + passSubresourceCount)
+		};
 
-	mSubresourceInfos.push_back(subresourceInfo);
-	return (uint32_t)(mSubresourceInfos.size() - 1);
+		mRenderPassSubresourceInfoSpans[passType] = passSubresourceInfoSpan;
+		mSubresourceInfosFlat.resize(mSubresourceInfosFlat.size() + passSubresourceCount);
+	}
 }
 
-uint32_t D3D12::FrameGraphBuilder::AddPresentSubresourceMetadata()
-{
-	SubresourceInfo subresourceInfo;
-	subresourceInfo.Format                    = mSwapChain->GetBackbufferFormat();
-	subresourceInfo.State                     = D3D12_RESOURCE_STATE_PRESENT;
-	subresourceInfo.BarrierPromotedFromCommon = false;
-
-	mSubresourceInfos.push_back(subresourceInfo);
-	return (uint32_t)(mSubresourceInfos.size() - 1);
-}
 
 bool D3D12::FrameGraphBuilder::IsReadSubresource(uint32_t subresourceInfoIndex)
 {

@@ -137,6 +137,8 @@ void ModernFrameGraphBuilder::RegisterAndSortPasses()
 	std::span<const FrameGraphDescription::RenderPassName> renderPassNameSpan;
 	mFrameGraphDescription.GetPassNameList(&renderPassNameSpan);
 
+	RegisterPassTypes(mFrameGraphDescription.PassTypes());
+
 	CreatePresentPass();
 	for (const auto& passName: renderPassNameSpan)
 	{

@@ -140,11 +140,8 @@ protected:
 	const Span<uint32_t> GetBackbufferImageSpan() const;
 
 protected:
-	//Creates a new subresource info record
-	virtual uint32_t AddSubresourceMetadata() = 0;
-
-	//Creates a new subresource info record for present pass
-	virtual uint32_t AddPresentSubresourceMetadata() = 0;
+	//Registers subresource ids for pass types
+	virtual void RegisterPassTypes(const std::span<RenderPassType>& passTypes) = 0;
 
 	//Checks if the usage of the subresource with subresourceInfoIndex includes reading
 	virtual bool IsReadSubresource(uint32_t subresourceInfoIndex) = 0;

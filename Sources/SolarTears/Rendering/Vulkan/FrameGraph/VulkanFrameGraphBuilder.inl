@@ -6,8 +6,5 @@ inline void Vulkan::FrameGraphBuilder::AddPassToTable()
 	mPassAddFuncTable[Pass::PassType]    = Pass::RegisterResources;
 	mPassCreateFuncTable[Pass::PassType] = Pass::RegisterShaders;
 
-	mPassCreateFuncTable[Pass::PassType] = [](VkDevice device, const FrameGraphBuilder* builder, const std::string& passName, uint32_t frame) -> std::unique_ptr<RenderPass> 
-	{
-		return std::make_unique<Pass>(device, builder, passName, frame);
-	};
+
 }
