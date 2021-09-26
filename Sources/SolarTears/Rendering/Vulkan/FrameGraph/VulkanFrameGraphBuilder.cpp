@@ -525,32 +525,19 @@ void Vulkan::FrameGraphBuilder::CreateTextures()
 	mDeviceQueues->GraphicsQueueWait(); //TODO: may wait after build finished
 }
 
-void Vulkan::FrameGraphBuilder::RegisterPassTypes(const std::span<RenderPassType>& passTypes)
+void Vulkan::FrameGraphBuilder::InitMetadataPayloads()
 {
-	for(RenderPassType passType: passTypes)
+	mSubresourceMetadataPayloads.resize(mSubresourceMetadataNodesFlat.size(), SubresourceMetadataPayload());
+
+	for(const PassMetadata& passMetadata: mPassMetadatas)
 	{
-		uint32_t passSubresourceCount = GetPassSubresourceTypeCount(passType);
-		Span<uint32_t> passSubresourceInfoSpan =
-		{
-			.Begin = (uint32_t)mSubresourceInfosFlat.size(),
-			.End   = (uint32_t)(mSubresourceInfosFlat.size() + passSubresourceCount)
-		};
+		Span<uint32_t> passMetadataSpan = passMetadata.SubresourceMetadataSpan;
+		std::span<SubresourceMetadataPayload> payloadSpan = {mSubresourceMetadataPayloads.begin() + passMetadataSpan.Begin, mSubresourceMetadataPayloads.begin() + passMetadataSpan.End};
 
-		mRenderPassSubresourceInfoSpans[passType] = passSubresourceInfoSpan;
-		mSubresourceInfosFlat.resize(mSubresourceInfosFlat.size() + passSubresourceCount);
-
-		for(size_t subresourceIndex = passSubresourceInfoSpan.Begin; subresourceIndex < passSubresourceInfoSpan.End; subresourceIndex++)
-		{
-			uint32_t passSubresourceIndex = subresourceIndex - passSubresourceInfoSpan.Begin;
-
-			mSubresourceInfosFlat[subresourceIndex].Format = GetPassSubresourceFormat(passType, passSubresourceIndex);
-			mSubresourceInfosFlat[subresourceIndex].Aspect = GetPassSubresourceAspect(passType, passSubresourceIndex);
-			mSubresourceInfosFlat[subresourceIndex].Layout = GetPassSubresourceLayout(passType, passSubresourceIndex);
-			mSubresourceInfosFlat[subresourceIndex].Usage  = GetPassSubresourceUsage(passType,  passSubresourceIndex);
-			mSubresourceInfosFlat[subresourceIndex].Stage  = GetPassSubresourceStage(passType,  passSubresourceIndex);
-			mSubresourceInfosFlat[subresourceIndex].Access = GetPassSubresourceAccess(passType, passSubresourceIndex);
-		}
+		RegisterPassSubresources(passMetadata.Type, payloadSpan);
 	}
+
+	assert(mPresentPassMetadata.SubresourceMetadataSpan.End - mPresentPassMetadata.SubresourceMetadataSpan.Begin == 1); //Only one present pass backbuffer is supported
 }
 
 bool Vulkan::FrameGraphBuilder::IsReadSubresource(uint32_t subresourceInfoIndex)

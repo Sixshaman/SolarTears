@@ -1,5 +1,6 @@
 #include "D3D12FrameGraphBuilder.hpp"
 #include "D3D12FrameGraph.hpp"
+#include "D3D12RenderPassDispatchFuncs.hpp"
 #include "../D3D12DeviceFeatures.hpp"
 #include "../D3D12WorkerCommandLists.hpp"
 #include "../D3D12Memory.hpp"
@@ -10,29 +11,12 @@
 #include <algorithm>
 #include <numeric>
 
-#include "Passes/D3D12GBufferPass.hpp"
-#include "Passes/D3D12CopyImagePass.hpp"
-
 D3D12::FrameGraphBuilder::FrameGraphBuilder(FrameGraph* graphToBuild, FrameGraphDescription&& frameGraphDescription, const SwapChain* swapChain): ModernFrameGraphBuilder(graphToBuild, std::move(frameGraphDescription)), mD3d12GraphToBuild(graphToBuild), mSwapChain(swapChain)
 {
 }
 
 D3D12::FrameGraphBuilder::~FrameGraphBuilder()
 {
-}
-
-void D3D12::FrameGraphBuilder::SetPassSubresourceFormat(const std::string_view subresourceId, DXGI_FORMAT format)
-{
-	FrameGraphDescription::SubresourceId subresourceIdStr(subresourceId);
-	uint32_t subresourceInfoIndex = mMetadataNodeIndicesPerSubresourceIds.at(subresourceIdStr);
-	mSubresourceInfos[subresourceInfoIndex].Format = format;
-}
-
-void D3D12::FrameGraphBuilder::SetPassSubresourceState(const std::string_view subresourceId, D3D12_RESOURCE_STATES state)
-{
-	FrameGraphDescription::SubresourceId subresourceIdStr(subresourceId);
-	uint32_t subresourceInfoIndex = mMetadataNodeIndicesPerSubresourceIds.at(subresourceIdStr);
-	mSubresourceInfos[subresourceInfoIndex].State = state;
 }
 
 ID3D12Device8* D3D12::FrameGraphBuilder::GetDevice() const
@@ -395,22 +379,18 @@ void D3D12::FrameGraphBuilder::CreateTextures()
 	}
 }
 
-void D3D12::FrameGraphBuilder::RegisterPassTypes(const std::span<RenderPassType>& passTypes)
+void D3D12::FrameGraphBuilder::InitMetadataPayloads()
 {
-	for(RenderPassType passType: passTypes)
-	{
-		uint32_t passSubresourceCount = PassSubresourceTypeCount(passType);
-		Span<uint32_t> passSubresourceInfoSpan =
-		{
-			.Begin = (uint32_t)mSubresourceInfosFlat.size(),
-			.End   = (uint32_t)(mSubresourceInfosFlat.size() + passSubresourceCount)
-		};
+	mSubresourceMetadataPayloads.resize(mSubresourceMetadataNodesFlat.size(), SubresourceMetadataPayload());
 
-		mRenderPassSubresourceInfoSpans[passType] = passSubresourceInfoSpan;
-		mSubresourceInfosFlat.resize(mSubresourceInfosFlat.size() + passSubresourceCount);
+	for(const PassMetadata& passMetadata: mPassMetadatas)
+	{
+		Span<uint32_t> passMetadataSpan = passMetadata.SubresourceMetadataSpan;
+		std::span<SubresourceMetadataPayload> payloadSpan = { mSubresourceMetadataPayloads.begin() + passMetadataSpan.Begin, mSubresourceMetadataPayloads.begin() + passMetadataSpan.End};
+
+		RegisterPassSubresources(passMetadata.Type, payloadSpan);
 	}
 }
-
 
 bool D3D12::FrameGraphBuilder::IsReadSubresource(uint32_t subresourceInfoIndex)
 {

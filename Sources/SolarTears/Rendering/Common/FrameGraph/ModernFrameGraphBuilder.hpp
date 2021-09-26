@@ -18,13 +18,15 @@ protected:
 	//Describes a single render pass
 	struct PassMetadata
 	{
-		RenderPassClass PassClass; //The class (graphics/compute/copy) of the pass
-		RenderPassType  PassType;  //The type of the pass
+		RenderPassName Name; //The name of the pass
+
+		RenderPassClass Class; //The class (graphics/compute/copy) of the pass
+		RenderPassType  Type;  //The type of the pass
 
 		uint32_t DependencyLevel; //The dependendency level of the pass
 		uint32_t OwnPeriod;       //The period of the pass' own subresources, excluding swapchain images
 
-		Span<uint32_t> SubresourceMetadataSpans; //The indices of pass subresource metadatas
+		Span<uint32_t> SubresourceMetadataSpan; //The indices of pass subresource metadatas
 	};
 
 	//Describes a single resource
@@ -58,10 +60,13 @@ public:
 
 private:
 	//Fills the initial pass info, sorted by dependency level and by topological order
-	void RegisterAndSortPasses();
+	void RegisterAndSortPasses(const std::unordered_map<RenderPassName, RenderPassType>& renderPassTypes, const std::vector<SubresourceNamingInfo>& subresourceNames, const ResourceName& backbufferName);
 
-	//Creates present pass
-	void CreatePresentPass();
+	//Fills the initial pass info from the description data
+	void InitPassList(const std::unordered_map<RenderPassName, RenderPassType>& renderPassTypes);
+
+	//Fills the initial pass info from the description data
+	void InitSubresourceList(const std::vector<SubresourceNamingInfo>& subresourceNames, const ResourceName& backbufferName);
 
 	//Creates lists of written subresource names and read subresource names for each pass
 	void BuildReadWriteSubresourceSpans(std::span<const RenderPassName> passes, std::unordered_map<RenderPassName, std::span<std::string_view>>& outReadSpans, std::unordered_map<RenderPassName, std::span<std::string_view>>& outWriteSpans, std::vector<std::string_view>& outNamesFlat);
@@ -130,8 +135,8 @@ protected:
 	const Span<uint32_t> GetBackbufferImageSpan() const;
 
 protected:
-	//Registers subresource ids for pass types
-	virtual void RegisterPasses() = 0;
+	//Registers subresource api-specific metadata
+	virtual void InitMetadataPayloads() = 0;
 
 	//Checks if the usage of the subresource with subresourceInfoIndex includes reading
 	virtual bool IsReadSubresource(uint32_t subresourceInfoIndex) = 0;
@@ -169,4 +174,6 @@ protected:
 	std::vector<SubresourceMetadataNode> mSubresourceMetadataNodesFlat;
 	std::vector<PassMetadata>            mPassMetadatas;
 	std::vector<ResourceMetadata>        mResourceMetadatas;
+
+	PassMetadata mPresentPassMetadata;
 };

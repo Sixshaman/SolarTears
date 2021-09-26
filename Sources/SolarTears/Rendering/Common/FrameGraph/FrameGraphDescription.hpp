@@ -17,6 +17,7 @@ struct FrameGraphDescription
 {
 	std::unordered_map<RenderPassName, RenderPassType> mRenderPassTypes;
 	std::vector<SubresourceNamingInfo>                 mSubresourceNames;
+	ResourceName                                       mBackbufferName;
 
 	//Helper functions
 	void AddRenderPass(RenderPassType passType, const std::string_view passName);

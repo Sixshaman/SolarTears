@@ -2,6 +2,7 @@
 
 #include "VulkanRenderPass.hpp"
 #include "VulkanFrameGraph.hpp"
+#include "VulkanFrameGraphMisc.hpp"
 #include <unordered_map>
 #include <memory>
 #include <array>
@@ -33,16 +34,6 @@ namespace Vulkan
 	public:
 		FrameGraphBuilder(LoggerQueue* logger, FrameGraph* graphToBuild, FrameGraphDescription&& frameGraphDescription, const SwapChain* swapchain);
 		~FrameGraphBuilder();
-
-		void SetPassSubresourceFormat(const std::string_view subresourceId, VkFormat format);
-		void SetPassSubresourceLayout(const std::string_view subresourceId, VkImageLayout layout);
-		void SetPassSubresourceUsage(const std::string_view subresourceId, VkImageUsageFlags usage);
-		void SetPassSubresourceAspectFlags(const std::string_view subresourceId, VkImageAspectFlags aspect);
-		void SetPassSubresourceStageFlags(const std::string_view subresourceId, VkPipelineStageFlags stage);
-		void SetPassSubresourceAccessFlags(const std::string_view subresourceId, VkAccessFlags accessFlags);
-
-		void EnableSubresourceAutoBeforeBarrier(const std::string_view subresourceId, bool autoBarrier = true);
-		void EnableSubresourceAutoAfterBarrier(const std::string_view subresourceId,  bool autoBarrier = true);
 
 		const VkDevice          GetDevice()           const;
 		const DeviceParameters* GetDeviceParameters() const;
@@ -85,8 +76,8 @@ namespace Vulkan
 		VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspect) const;
 
 	private:
-		//Registers subresource ids for pass types
-		void RegisterPassTypes(const std::span<RenderPassType>& passTypes) override final;
+		//Registers subresource api-specific metadata
+		void InitMetadataPayloads() override final;
 
 		//Checks if the usage of the subresource with subresourceInfoIndex includes reading
 		bool IsReadSubresource(uint32_t subresourceInfoIndex) override final;
@@ -136,5 +127,3 @@ namespace Vulkan
 		std::unique_ptr<ShaderDatabase> mShaderDatabase;
 	};
 }
-
-#include "VulkanFrameGraphBuilder.inl"

@@ -9,7 +9,7 @@ using ResourceName   = std::string; //The names defining a unique resource. Seve
 using SubresourceId  = std::string; //Subresource ids, unique for all render pass types
 
 constexpr static std::string_view PresentPassName         = "SPECIAL_PRESENT_ACQUIRE_PASS";
-constexpr static std::string_view BackbufferPresentPassId = "SpecialPresentAcquirePass-Backbuffer";
+constexpr static std::string_view PresentPassBackbufferId = "SpecialPresentAcquirePass-Backbuffer";
 
 enum class RenderPassClass: uint32_t
 {

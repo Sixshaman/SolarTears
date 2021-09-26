@@ -1,5 +1,6 @@
 #include "ModernFrameGraphBuilder.hpp"
 #include "ModernFrameGraph.hpp"
+#include "RenderPassDispatchFuncs.hpp"
 #include <algorithm>
 #include <cassert>
 #include <array>
@@ -63,36 +64,7 @@ void ModernFrameGraphBuilder::RegisterSubresource(const std::string_view passNam
 
 void ModernFrameGraphBuilder::Build(FrameGraphDescription&& frameGraphDescription)
 {
-	mPassMetadatas.reserve(frameGraphDescription.mRenderPassTypes.size());
-	for(const auto& passNameWithType: frameGraphDescription.mRenderPassTypes)
-	{
-		mPassMetadatas.push_back(PassMetadata
-		{
-			.PassClass = RenderPassClass::Graphics,
-			.PassType  = passNameWithType.second,
-
-			.DependencyLevel = 0,
-			.OwnPeriod       = 1,
-
-			.SubresourceMetadataSpans =
-			{
-				.Begin = 0,
-				.End   = 0
-			}
-		});
-	}
-
-	for(int i 
-
-	RegisterPasses();
-
-
-
-
-
-
-
-	RegisterAndSortPasses();
+	RegisterAndSortPasses(frameGraphDescription.mRenderPassTypes, frameGraphDescription.mSubresourceNames);
 
 	BuildDependencyLevels();
 	AdjustPassClasses();
@@ -118,53 +90,11 @@ const Span<uint32_t> ModernFrameGraphBuilder::GetBackbufferImageSpan() const
 	return mGraphToBuild->mBackbufferImageSpan;
 }
 
-void ModernFrameGraphBuilder::CreatePresentPass()
+void ModernFrameGraphBuilder::RegisterAndSortPasses(const std::unordered_map<RenderPassName, RenderPassType>& renderPassTypes, const std::vector<SubresourceNamingInfo>& subresourceNames, const ResourceName& backbufferName)
 {
-	//Create present quasi-pass
-	FrameGraphDescription::RenderPassName presentPassName(FrameGraphDescription::PresentPassName);
-	mRenderPassClasses[presentPassName] = RenderPassClass::Present;
-
-	assert(!mSubresourceMetadataSpansPerPass.contains(presentPassName));
-	uint32_t newSubresourceIndex = (uint32_t)mSubresourceMetadataNodesFlat.size();
-
-	FrameGraphDescription::SubresourceId backbufferId(FrameGraphDescription::BackbufferPresentPassId);
-	assert(!mMetadataNodeIndicesPerSubresourceIds.contains(backbufferId));
-	mMetadataNodeIndicesPerSubresourceIds[backbufferId] = newSubresourceIndex;
-
-	uint32_t subresourceInfoIndex = AddPresentSubresourceMetadata();
-	assert(subresourceInfoIndex == newSubresourceIndex);
-
-	SubresourceMetadataNode presentAcquireMetadataNode;
-	presentAcquireMetadataNode.SubresourceName      = mFrameGraphDescription.GetBackbufferName();
-	presentAcquireMetadataNode.PrevPassNodeIndex    = (uint32_t)(-1);
-	presentAcquireMetadataNode.NextPassNodeIndex    = (uint32_t)(-1);
-	presentAcquireMetadataNode.FirstFrameHandle     = (uint32_t)(-1);
-	presentAcquireMetadataNode.FirstFrameViewHandle = (uint32_t)(-1);
-	presentAcquireMetadataNode.PerPassSubresourceId = 0;
-	presentAcquireMetadataNode.FrameCount           = (uint16_t)GetSwapchainImageCount();
-	presentAcquireMetadataNode.Flags                = 0;
-	presentAcquireMetadataNode.PassClass            = RenderPassClass::Present;
-
-	mSubresourceMetadataNodesFlat.push_back(presentAcquireMetadataNode);
-	mSubresourceMetadataSpansPerPass[presentPassName] = Span<uint32_t>
-	{
-		.Begin = newSubresourceIndex,
-		.End   = newSubresourceIndex + 1
-	};
-}
-
-void ModernFrameGraphBuilder::RegisterAndSortPasses()
-{
-	std::span<const FrameGraphDescription::RenderPassName> renderPassNameSpan;
-	mFrameGraphDescription.GetPassNameList(&renderPassNameSpan);
-
-	RegisterPasses(mFrameGraphDescription.PassTypes());
-
-	CreatePresentPass();
-	for (const auto& passName: renderPassNameSpan)
-	{
-		RegisterRenderPass(mFrameGraphDescription.GetPassType(passName), passName);
-	}
+	InitPassList(renderPassTypes);
+	InitSubresourceList(subresourceNames, backbufferName);
+	InitMetadataPayloads();
 
 	std::vector<std::string_view>                                                          subresourceNamesFlat;
 	std::unordered_map<FrameGraphDescription::RenderPassName, std::span<std::string_view>> readSubresourceNameSpans;
@@ -177,6 +107,128 @@ void ModernFrameGraphBuilder::RegisterAndSortPasses()
 
 	BuildSortedRenderPassesTopological(renderPassNameSpan, adjacencyList);
 	BuildSortedRenderPassesDependency(adjacencyList);
+}
+
+void ModernFrameGraphBuilder::InitPassList(const std::unordered_map<RenderPassName, RenderPassType>& renderPassTypes)
+{
+	mPassMetadatas.reserve(renderPassTypes.size());
+	for(const auto& passNameWithType: renderPassTypes)
+	{
+		uint32_t currentMetadataNodeCount = (uint32_t)mSubresourceMetadataNodesFlat.size();
+		uint32_t newMetadataNodeCount     = currentMetadataNodeCount + GetPassSubresourceCount(passNameWithType.second);
+
+		mPassMetadatas.push_back(PassMetadata
+		{
+			.Name = passNameWithType.first,
+
+			.Class = GetPassClass(passNameWithType.second),
+			.Type  = passNameWithType.second,
+
+			.DependencyLevel = 0,
+			.OwnPeriod       = 1,
+
+			.SubresourceMetadataSpan =
+			{
+				.Begin = currentMetadataNodeCount,
+				.End   = newMetadataNodeCount
+			}
+		});
+
+		mSubresourceMetadataNodesFlat.resize(newMetadataNodeCount, SubresourceMetadataNode
+		{
+			.PrevPassNodeIndex     = (uint32_t)(-1),
+			.NextPassNodeIndex     = (uint32_t)(-1),
+			.ResourceMetadataIndex = (uint32_t)(-1),
+
+			.FirstFrameViewHandle = (uint32_t)(-1),
+			.PassClass            = RenderPassClass::Graphics,
+		});
+	}
+
+	mPresentPassMetadata = PassMetadata
+	{
+		.Name = RenderPassName(PresentPassName),
+
+		.Class = RenderPassClass::Present,
+		.Type  = RenderPassType::None,
+
+		.DependencyLevel = 0,
+		.OwnPeriod       = 1,
+
+		.SubresourceMetadataSpan =
+		{
+			.Begin = (uint32_t)mSubresourceMetadataNodesFlat.size(),
+			.End   = (uint32_t)(mSubresourceMetadataNodesFlat.size() + 1)
+		}
+	};
+
+	mSubresourceMetadataNodesFlat.push_back(SubresourceMetadataNode
+	{
+		.PrevPassNodeIndex     = (uint32_t)(-1),
+		.NextPassNodeIndex     = (uint32_t)(-1),
+		.ResourceMetadataIndex = (uint32_t)(-1),
+
+		.FirstFrameViewHandle = (uint32_t)(-1),
+		.PassClass            = RenderPassClass::Present,
+	});
+}
+
+void ModernFrameGraphBuilder::InitSubresourceList(const std::vector<SubresourceNamingInfo>& subresourceNames, const ResourceName& backbufferName)
+{
+	std::unordered_set<RenderPassType> uniquePassTypes;
+	for(const PassMetadata& passMetadata: mPassMetadatas)
+	{
+		uniquePassTypes.insert(passMetadata.Type);
+	}
+
+	std::unordered_map<std::string_view, uint_fast16_t> passSubresourceIndices;
+	for(RenderPassType passType: uniquePassTypes)
+	{
+		uint_fast16_t passSubresourceCount = GetPassSubresourceCount(passType);
+		for(uint_fast16_t passSubresourceIndex = 0; passSubresourceIndex < passSubresourceCount; passSubresourceIndex++)
+		{
+			passSubresourceIndices[GetPassSubresourceStringId(passType, passSubresourceIndex)] = passSubresourceIndex;
+		}
+	}
+
+	std::unordered_map<std::string_view, uint32_t> resourceMetadataIndices;
+	for(const auto& subresourceNaming: subresourceNames)
+	{
+		uint_fast16_t passSubresourceIndex = passSubresourceIndices.at(subresourceNaming.PassSubresourceId);
+		uint32_t      flatMetadataIndex    = mPassMetadatas[passIndex].SubresourceMetadataSpan.Begin + passSubresourceIndex;
+		
+		auto resourceMetadataIt = resourceMetadataIndices.find(subresourceNaming.PassSubresourceName);
+		if(resourceMetadataIt != resourceMetadataIndices.end())
+		{
+			mSubresourceMetadataNodesFlat[flatMetadataIndex].ResourceMetadataIndex = resourceMetadataIt->second;
+		}
+		else
+		{
+			resourceMetadataIndices[subresourceNaming.PassSubresourceName] = (uint32_t)mResourceMetadatas.size();
+			mResourceMetadatas.push_back(ResourceMetadata
+			{
+				.Name = subresourceNaming.PassSubresourceName,
+
+				.HeadNodeIndex    = (uint32_t)(-1),
+				.FirstFrameHandle = (uint32_t)(-1),
+				.FrameCount       = 1
+			});
+
+			mSubresourceMetadataNodesFlat[flatMetadataIndex].ResourceMetadataIndex = (uint32_t)(mResourceMetadatas.size() - 1);
+		}
+	}
+
+	assert(mPresentPassMetadata.SubresourceMetadataSpan.End - mPresentPassMetadata.SubresourceMetadataSpan.Begin == 1); //Only one present pass backbuffer is supported
+	mResourceMetadatas.push_back(ResourceMetadata
+	{
+		.Name = backbufferName,
+
+		.HeadNodeIndex    = (uint32_t)(-1),
+		.FirstFrameHandle = (uint32_t)(-1),
+		.FrameCount       = GetSwapchainImageCount()
+	});
+
+	mSubresourceMetadataNodesFlat[mPresentPassMetadata.SubresourceMetadataSpan.Begin].ResourceMetadataIndex = (uint32_t)(mResourceMetadatas.size() - 1);
 }
 
 void ModernFrameGraphBuilder::BuildReadWriteSubresourceSpans(std::span<const FrameGraphDescription::RenderPassName> passes, std::unordered_map<FrameGraphDescription::RenderPassName, std::span<std::string_view>>& outReadSpans, std::unordered_map<FrameGraphDescription::RenderPassName, std::span<std::string_view>>& outWriteSpans, std::vector<std::string_view>& outNamesFlat)

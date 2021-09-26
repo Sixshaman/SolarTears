@@ -12,6 +12,23 @@ switch(PassType)                                                                
 }                                                                                                    \
 
 template<typename Pass>
+constexpr RenderPassClass GetPassClass()
+{
+	return Pass::PassClass;
+}
+
+constexpr RenderPassClass GetPassClass(RenderPassType passType)
+{
+	using GetPassClassFunc = RenderPassClass(*)();
+
+	GetPassClassFunc GetClass = nullptr;
+	CHOOSE_PASS_FUNCTION(passType, GetPassClass, GetClass, Base);
+
+	assert(GetClass != nullptr);
+	return GetClass();
+}
+
+template<typename Pass>
 constexpr uint_fast16_t GetPassSubresourceCount()
 {
 	return (uint_fast16_t)Pass::PassSubresourceId::Count;

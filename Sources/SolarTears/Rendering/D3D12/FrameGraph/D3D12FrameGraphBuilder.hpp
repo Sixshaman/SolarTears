@@ -46,8 +46,8 @@ namespace D3D12
 		D3D12_COMMAND_LIST_TYPE PassClassToListType(RenderPassClass passType);
 
 	private:
-		//Registers subresource ids for pass types
-		void RegisterPassTypes(const std::span<RenderPassType>& passTypes) override final;
+		//Registers subresource api-specific metadata
+		void InitMetadataPayloads() override final;
 
 		//Checks if the usage of the subresource with subresourceInfoIndex includes reading
 		bool IsReadSubresource(uint32_t subresourceInfoIndex) override final;
@@ -91,5 +91,3 @@ namespace D3D12
 		const ShaderManager*   mShaderManager;
 	};
 }
-
-#include "D3D12FrameGraphBuilder.inl"
