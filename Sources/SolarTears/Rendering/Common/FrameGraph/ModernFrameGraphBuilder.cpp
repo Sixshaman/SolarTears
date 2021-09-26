@@ -5,7 +5,7 @@
 #include <array>
 #include <numeric>
 
-ModernFrameGraphBuilder::ModernFrameGraphBuilder(ModernFrameGraph* graphToBuild, FrameGraphDescription&& frameGraphDescription): mGraphToBuild(graphToBuild), mFrameGraphDescription(frameGraphDescription)
+ModernFrameGraphBuilder::ModernFrameGraphBuilder(ModernFrameGraph* graphToBuild): mGraphToBuild(graphToBuild)
 {
 }
 
@@ -61,8 +61,28 @@ void ModernFrameGraphBuilder::RegisterSubresource(const std::string_view passNam
 	mMetadataNodeIndicesPerSubresourceIds[subresId] = newSubresourceIndex;
 }
 
-void ModernFrameGraphBuilder::Build()
+void ModernFrameGraphBuilder::Build(FrameGraphDescription&& frameGraphDescription)
 {
+	mPassMetadatas.reserve(frameGraphDescription.mRenderPassTypes.size());
+	for(const auto& passNameWithType: frameGraphDescription.mRenderPassTypes)
+	{
+		mPassMetadatas.push_back(PassMetadata
+		{
+			.PassClass = RenderPassClass::Graphics,
+			.PassType  = passNameWithType.second,
+
+			.DependencyLevel = 0,
+			.OwnPeriod       = 1,
+
+			.SubresourceMetadataSpans =
+			{
+				.Begin = 0,
+				.End   = 0
+			}
+		});
+	}
+
+	for(int i 
 
 	RegisterPasses();
 

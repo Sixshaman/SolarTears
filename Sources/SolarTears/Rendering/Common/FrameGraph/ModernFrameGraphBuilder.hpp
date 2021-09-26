@@ -30,7 +30,7 @@ protected:
 	//Describes a single resource
 	struct ResourceMetadata
 	{
-		std::string_view Name; //The name of the resource
+		ResourceName Name; //The name of the resource
 
 		uint32_t HeadNodeIndex;    //The index of the head SubresourceMetadataNode
 		uint32_t FirstFrameHandle; //The id of the first frame of the resource in the frame graph texture list
@@ -49,12 +49,12 @@ protected:
 	};
 
 public:
-	ModernFrameGraphBuilder(ModernFrameGraph* graphToBuild, FrameGraphDescription&& frameGraphDescription);
+	ModernFrameGraphBuilder(ModernFrameGraph* graphToBuild);
 	~ModernFrameGraphBuilder();
 
 	const FrameGraphConfig* GetConfig() const;
 
-	void Build();
+	void Build(FrameGraphDescription&& frameGraphDescription);
 
 private:
 	//Fills the initial pass info, sorted by dependency level and by topological order
