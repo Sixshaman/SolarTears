@@ -15,7 +15,6 @@
 
 D3D12::FrameGraphBuilder::FrameGraphBuilder(FrameGraph* graphToBuild, FrameGraphDescription&& frameGraphDescription, const SwapChain* swapChain): ModernFrameGraphBuilder(graphToBuild, std::move(frameGraphDescription)), mD3d12GraphToBuild(graphToBuild), mSwapChain(swapChain)
 {
-	InitPassTable();
 }
 
 D3D12::FrameGraphBuilder::~FrameGraphBuilder()
@@ -430,12 +429,6 @@ bool D3D12::FrameGraphBuilder::IsWriteSubresource(uint32_t subresourceInfoIndex)
 			                          | D3D12_RESOURCE_STATE_VIDEO_DECODE_WRITE | D3D12_RESOURCE_STATE_VIDEO_PROCESS_WRITE | D3D12_RESOURCE_STATE_VIDEO_ENCODE_WRITE;
 
 	return mSubresourceInfos[subresourceInfoIndex].State & writeStates;
-}
-
-void D3D12::FrameGraphBuilder::RegisterPassInGraph(RenderPassType passType, const FrameGraphDescription::RenderPassName& passName)
-{
-	auto passRegisterFunc = mPassAddFuncTable.at(passType);
-	passRegisterFunc(this, passName);
 }
 
 void D3D12::FrameGraphBuilder::CreatePassObject(const FrameGraphDescription::RenderPassName& passName, RenderPassType passType, uint32_t frame)
@@ -967,15 +960,6 @@ void D3D12::FrameGraphBuilder::InitializeTraverseData() const
 uint32_t D3D12::FrameGraphBuilder::GetSwapchainImageCount() const
 {
 	return mSwapChain->SwapchainImageCount;
-}
-
-void D3D12::FrameGraphBuilder::InitPassTable()
-{
-	mPassAddFuncTable.clear();
-	mPassCreateFuncTable.clear();
-
-	AddPassToTable<GBufferPass>();
-	AddPassToTable<CopyImagePass>();
 }
 
 D3D12_COMMAND_LIST_TYPE D3D12::FrameGraphBuilder::PassClassToListType(RenderPassClass passClass)

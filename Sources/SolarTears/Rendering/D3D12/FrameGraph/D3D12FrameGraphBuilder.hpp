@@ -15,25 +15,11 @@ namespace D3D12
 	class DeviceQueues;
 	class DeviceFeatures;
 
-	using RenderPassCreateFunc = std::unique_ptr<RenderPass>(*)(ID3D12Device8*, const FrameGraphBuilder*, const std::string&, uint32_t);
-	using RenderPassAddFunc    = void(*)(FrameGraphBuilder* frameGraphBuilder, const std::string& passName);
-
 	class FrameGraphBuilder final: public ModernFrameGraphBuilder
 	{
-		constexpr static uint32_t TextureFlagBarrierCommonPromoted = 0x01; //The barrier is automatically promoted from COMMON state
-
-		struct SubresourceInfo
-		{
-			DXGI_FORMAT           Format;
-			D3D12_RESOURCE_STATES State;
-		};
-
 	public:
 		FrameGraphBuilder(FrameGraph* graphToBuild, FrameGraphDescription&& frameGraphDescription, const SwapChain* swapChain);
 		~FrameGraphBuilder();
-
-		void SetPassSubresourceFormat(const std::string_view subresourceId, DXGI_FORMAT format);
-		void SetPassSubresourceState(const std::string_view subresourceId, D3D12_RESOURCE_STATES state);
 
 		ID3D12Device8* GetDevice() const;
 
@@ -57,13 +43,6 @@ namespace D3D12
 		void Build(ID3D12Device8* device, const ShaderManager* shaderManager, const MemoryManager* memoryManager);
 
 	private:
-		//Adds a render pass of type Pass to the frame graph pass table
-		template<typename Pass>
-		void AddPassToTable();
-
-		//Initializes frame graph pass table
-		void InitPassTable();
-
 		D3D12_COMMAND_LIST_TYPE PassClassToListType(RenderPassClass passType);
 
 	private:
@@ -75,9 +54,6 @@ namespace D3D12
 
 		//Checks if the usage of the subresource with subresourceInfoIndex includes writing
 		bool IsWriteSubresource(uint32_t subresourceInfoIndex) override final;
-
-		//Registers render pass related data in the graph (inputs, outputs, possibly shader bindings, etc)
-		void RegisterPassInGraph(RenderPassType passType, const FrameGraphDescription::RenderPassName& passName) override final;
 
 		//Creates a new render pass
 		void CreatePassObject(const FrameGraphDescription::RenderPassName& passName, RenderPassType passType, uint32_t frame) override final;
@@ -106,14 +82,7 @@ namespace D3D12
 	private:
 		FrameGraph* mD3d12GraphToBuild;
 
-		std::unordered_map<RenderPassType, RenderPassAddFunc>    mPassAddFuncTable;
-		std::unordered_map<RenderPassType, RenderPassCreateFunc> mPassCreateFuncTable;
-
-		std::vector<SubresourceInfo> mSubresourceInfosFlat;
-
-		UINT mSrvUavCbvDescriptorSize;
-		UINT mRtvDescriptorSize;
-		UINT mDsvDescriptorSize;
+		std::vector<SubresourceMetadataPayload> mSubresourceMetadataPayloads;
 
 		//Several things that might be needed to create some of the passes
 		ID3D12Device8*         mDevice;

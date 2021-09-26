@@ -4,6 +4,13 @@
 #include "Passes/CopyImagePass.hpp"
 #include <cassert>
 
+#define CHOOSE_PASS_FUNCTION(PassType, FuncName, FuncVariable, TypeMangle)                           \
+switch(PassType)                                                                                     \
+{                                                                                                    \
+	case RenderPassType::GBufferGenerate: FuncVariable = FuncName<GBufferPass##TypeMangle>;   break; \
+	case RenderPassType::CopyImage:       FuncVariable = FuncName<CopyImagePass##TypeMangle>; break; \
+}                                                                                                    \
+
 template<typename Pass>
 constexpr uint_fast16_t GetPassSubresourceCount()
 {
@@ -12,33 +19,30 @@ constexpr uint_fast16_t GetPassSubresourceCount()
 
 constexpr uint_fast16_t GetPassSubresourceCount(RenderPassType passType)
 {
-	switch(passType)
-	{
-		case RenderPassType::GBufferGenerate: return GetPassSubresourceCount<GBufferPassBase>();
-		case RenderPassType::CopyImage:       return GetPassSubresourceCount<CopyImagePassBase>();
-	}
+	using GetSubresourceCountFunc = uint_fast16_t(*)();
 
-	assert(false);
-	return 0;
+	GetSubresourceCountFunc GetSubresourceCount = nullptr;
+	CHOOSE_PASS_FUNCTION(passType, GetPassSubresourceCount, GetSubresourceCount, Base);
+
+	assert(GetSubresourceCount != nullptr);
+	return GetSubresourceCount();
 }
 
-#define DEFINE_GET_PASS_SUBRESOURCE_INFO_TEMPLATE(ReturnType, SubresourceInfo)                    \
-template<typename Pass>                                                                           \
-constexpr ReturnType GetPassSubresource##SubresourceInfo(uint_fast16_t passSubresourceIndex)      \
-{                                                                                                 \
-	assert(passSubresourceIndex < GetPassSubresourceCount<Pass>());                               \
-	return Pass::GetSubresource##SubresourceInfo((Pass::PassSubresourceId)passSubresourceIndex);  \
+template<typename Pass>
+constexpr std::string_view GetPassSubresourceStringId(uint_fast16_t passSubresourceIndex)
+{
+	assert(passSubresourceIndex < GetPassSubresourceCount<Pass>());
+	return Pass::GetSubresourceStringId((Pass::PassSubresourceId)passSubresourceIndex);
 }
 
-#define DEFINE_GET_PASS_SUBRESOURCE_INFO(ReturnType, SubresourceInfo, DefaultReturn)                                           \
-constexpr ReturnType GetPassSubresource##SubresourceInfo(RenderPassType passType, uint_fast16_t passSubresourceIndex)          \
-{                                                                                                                              \
-	switch(passType)                                                                                                           \
-	{                                                                                                                          \
-		case RenderPassType::GBufferGenerate: return GetPassSubresource##SubresourceInfo<GBufferPass>(passSubresourceIndex);   \
-		case RenderPassType::CopyImage:       return GetPassSubresource##SubresourceInfo<CopyImagePass>(passSubresourceIndex); \
-	}                                                                                                                          \
-                                                                                                                               \
-	assert(false);                                                                                                             \
-	return DefaultReturn;                                                                                                      \
+constexpr std::string_view GetPassSubresourceStringId(RenderPassType passType, uint_fast16_t passSubresourceIndex)
+{ 
+	using GetSubresourceIdFunc = std::string_view(*)(uint_fast16_t);
+	assert(passSubresourceIndex < GetPassSubresourceCount(passType));
+
+	GetSubresourceIdFunc GetSubresourceStringId = nullptr;
+	CHOOSE_PASS_FUNCTION(passType, GetPassSubresourceStringId, GetSubresourceStringId, Base);
+
+	assert(GetSubresourceStringId != nullptr);
+	return GetSubresourceStringId(passSubresourceIndex);
 }

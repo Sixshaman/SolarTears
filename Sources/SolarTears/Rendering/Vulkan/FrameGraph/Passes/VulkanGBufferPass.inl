@@ -1,67 +1,13 @@
-constexpr inline VkFormat Vulkan::GBufferPass::GetSubresourceFormat(PassSubresourceId subresourceId)
+inline void Vulkan::GBufferPass::RegisterSubresources(std::span<SubresourceMetadataPayload> inoutMetadataPayloads)
 {
-	switch(subresourceId)
-	{
-		case PassSubresourceId::ColorBufferImage: return VK_FORMAT_B8G8R8A8_UNORM; //TODO: maybe parametrize the format somehow?
-	}
+	assert(inoutMetadataPayloads.size() == (size_t)PassSubresourceId::Count);
 
-	assert(false); 
-	return VK_FORMAT_UNDEFINED;
-}
-
-VkImageAspectFlags Vulkan::GBufferPass::GetSubresourceAspect(PassSubresourceId subresourceId)
-{
-	switch(subresourceId)
-	{
-		case PassSubresourceId::ColorBufferImage: return VK_IMAGE_ASPECT_COLOR_BIT;
-	}
-
-	assert(false);
-	return 0;
-}
-
-VkPipelineStageFlags Vulkan::GBufferPass::GetSubresourceStage(PassSubresourceId subresourceId)
-{
-	switch(subresourceId)
-	{
-		case PassSubresourceId::ColorBufferImage: return VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	}
-
-	assert(false);
-	return 0;
-}
-
-VkImageLayout Vulkan::GBufferPass::GetSubresourceLayout(PassSubresourceId subresourceId)
-{
-	switch(subresourceId)
-	{
-		case PassSubresourceId::ColorBufferImage: return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	}
-
-	assert(false);
-	return VK_IMAGE_LAYOUT_UNDEFINED;
-}
-
-VkImageUsageFlags Vulkan::GBufferPass::GetSubresourceUsage(PassSubresourceId subresourceId)
-{
-	switch(subresourceId)
-	{
-		case PassSubresourceId::ColorBufferImage: return VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-	}
-
-	assert(false);
-	return (VkImageUsageFlagBits)0;
-}
-
-VkAccessFlags Vulkan::GBufferPass::GetSubresourceAccess(PassSubresourceId subresourceId)
-{
-	switch(subresourceId)
-	{
-		case PassSubresourceId::ColorBufferImage: return VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-	}
-
-	assert(false);
-	return 0;
+	inoutMetadataPayloads[(size_t)PassSubresourceId::ColorBufferImage].Aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+	inoutMetadataPayloads[(size_t)PassSubresourceId::ColorBufferImage].Layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	inoutMetadataPayloads[(size_t)PassSubresourceId::ColorBufferImage].Usage  = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+	inoutMetadataPayloads[(size_t)PassSubresourceId::ColorBufferImage].Stage  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	inoutMetadataPayloads[(size_t)PassSubresourceId::ColorBufferImage].Access = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+	inoutMetadataPayloads[(size_t)PassSubresourceId::ColorBufferImage].Flags  = (TextureFlagAutoBeforeBarrier | TextureFlagAutoBeforeBarrier);
 }
 
 void Vulkan::GBufferPass::RegisterShaders(ShaderDatabase* shaderDatabase)

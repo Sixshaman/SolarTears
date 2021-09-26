@@ -1,13 +1,12 @@
 #pragma once
 
 #include "../../Common/FrameGraph/RenderPassDispatchFuncs.hpp"
-#include "Passes/VulkanGBufferPass.hpp"
-#include "Passes/VulkanCopyImagePass.hpp"
-#include "VulkanFrameGraphMisc.hpp"
+#include "Passes/D3D12GBufferPass.hpp"
+#include "Passes/D3D12CopyImagePass.hpp"
+#include "D3D12FrameGraphMisc.hpp"
 #include <memory>
-#include <vulkan/vulkan.h>
 
-namespace Vulkan
+namespace D3D12
 {
 	class FrameGraphBuilder;
 
@@ -26,23 +25,6 @@ namespace Vulkan
 
 		assert(RegisterSubresources != nullptr);
 		RegisterSubresources(metadataPayloads);
-	}
-
-	template<typename Pass>
-	constexpr void RegisterPassShaders(ShaderDatabase* shaderDatabase)
-	{
-		return Pass::RegisterShaders(shaderDatabase);
-	}
-
-	constexpr void RegisterPassShaders(RenderPassType passType, ShaderDatabase* shaderDatabase)
-	{
-		using RegisterShadersFunc = void(*)(ShaderDatabase*);
-
-		RegisterShadersFunc RegisterShaders = nullptr;
-		CHOOSE_PASS_FUNCTION(passType, RegisterPassShaders, RegisterShaders);
-
-		assert(RegisterShaders != nullptr);
-		RegisterShaders(shaderDatabase);
 	}
 
 	template<typename Pass>

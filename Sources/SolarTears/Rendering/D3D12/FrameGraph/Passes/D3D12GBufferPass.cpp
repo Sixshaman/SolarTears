@@ -42,14 +42,6 @@ D3D12::GBufferPass::~GBufferPass()
 {
 }
 
-void D3D12::GBufferPass::RegisterResources(FrameGraphBuilder* frameGraphBuilder, const std::string& passName)
-{
-	GBufferPassBase::RegisterResources(frameGraphBuilder, passName);
-
-	frameGraphBuilder->SetPassSubresourceFormat(ColorBufferImageId, ColorOutputFormat); //TODO: maybe passing the format????
-	frameGraphBuilder->SetPassSubresourceState(ColorBufferImageId, D3D12_RESOURCE_STATE_RENDER_TARGET);
-}
-
 void D3D12::GBufferPass::RecordExecution(ID3D12GraphicsCommandList6* commandList, [[maybe_unused]] const RenderableScene* scene, [[maybe_unused]] const FrameGraphConfig& frameGraphConfig, uint32_t frameResourceIndex) const
 {
 	D3D12_RENDER_PASS_RENDER_TARGET_DESC colorsRtvDesc;

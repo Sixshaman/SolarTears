@@ -1,73 +1,16 @@
-constexpr inline VkFormat Vulkan::CopyImagePass::GetSubresourceFormat(PassSubresourceId subresourceId)
+inline void Vulkan::CopyImagePass::RegisterSubresources(std::span<SubresourceMetadataPayload> inoutMetadataPayloads)
 {
-	switch(subresourceId)
-	{
-		case PassSubresourceId::SrcImage: return VK_FORMAT_UNDEFINED;
-		case PassSubresourceId::DstImage: return VK_FORMAT_UNDEFINED;
-	}
+	assert(inoutMetadataPayloads.size() == (size_t)PassSubresourceId::Count);
 
-	assert(false); 
-	return VK_FORMAT_UNDEFINED;
-}
+	inoutMetadataPayloads[(size_t)PassSubresourceId::SrcImage].Layout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+	inoutMetadataPayloads[(size_t)PassSubresourceId::SrcImage].Usage  = VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+	inoutMetadataPayloads[(size_t)PassSubresourceId::SrcImage].Stage  = VK_PIPELINE_STAGE_TRANSFER_BIT;
+	inoutMetadataPayloads[(size_t)PassSubresourceId::SrcImage].Access = VK_ACCESS_TRANSFER_READ_BIT;
 
-VkImageAspectFlags Vulkan::CopyImagePass::GetSubresourceAspect(PassSubresourceId subresourceId)
-{
-	switch(subresourceId)
-	{
-		case PassSubresourceId::SrcImage: return 0;
-		case PassSubresourceId::DstImage: return 0;
-	}
-
-	assert(false);
-	return 0;
-}
-
-VkPipelineStageFlags Vulkan::CopyImagePass::GetSubresourceStage(PassSubresourceId subresourceId)
-{
-	switch(subresourceId)
-	{
-		case PassSubresourceId::SrcImage: return VK_PIPELINE_STAGE_TRANSFER_BIT;
-		case PassSubresourceId::DstImage: return VK_PIPELINE_STAGE_TRANSFER_BIT;
-	}
-
-	assert(false);
-	return 0;
-}
-
-VkImageLayout Vulkan::CopyImagePass::GetSubresourceLayout(PassSubresourceId subresourceId)
-{
-	switch(subresourceId)
-	{
-		case PassSubresourceId::SrcImage: return VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-		case PassSubresourceId::DstImage: return VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-	}
-
-	assert(false);
-	return VK_IMAGE_LAYOUT_UNDEFINED;
-}
-
-VkImageUsageFlags Vulkan::CopyImagePass::GetSubresourceUsage(PassSubresourceId subresourceId)
-{
-	switch(subresourceId)
-	{
-		case PassSubresourceId::SrcImage: return VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-		case PassSubresourceId::DstImage: return VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-	}
-
-	assert(false);
-	return (VkImageUsageFlagBits)0;
-}
-
-VkAccessFlags Vulkan::CopyImagePass::GetSubresourceAccess(PassSubresourceId subresourceId)
-{
-	switch(subresourceId)
-	{
-		case PassSubresourceId::SrcImage: return VK_ACCESS_TRANSFER_READ_BIT;
-		case PassSubresourceId::DstImage: return VK_ACCESS_TRANSFER_WRITE_BIT;
-	}
-
-	assert(false);
-	return 0;
+	inoutMetadataPayloads[(size_t)PassSubresourceId::DstImage].Layout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+	inoutMetadataPayloads[(size_t)PassSubresourceId::DstImage].Usage  = VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+	inoutMetadataPayloads[(size_t)PassSubresourceId::DstImage].Stage  = VK_PIPELINE_STAGE_TRANSFER_BIT;
+	inoutMetadataPayloads[(size_t)PassSubresourceId::DstImage].Access = VK_ACCESS_TRANSFER_WRITE_BIT;
 }
 
 void Vulkan::CopyImagePass::RegisterShaders([[maybe_unused]] ShaderDatabase* shaderDatabase)

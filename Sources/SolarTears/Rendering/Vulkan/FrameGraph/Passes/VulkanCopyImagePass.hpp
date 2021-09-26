@@ -2,6 +2,8 @@
 
 #include "../VulkanRenderPass.hpp"
 #include "../../../Common/FrameGraph/Passes/CopyImagePass.hpp"
+#include "../VulkanFrameGraphMisc.hpp"
+#include <span>
 
 class FrameGraphConfig;
 
@@ -13,13 +15,7 @@ namespace Vulkan
 	class CopyImagePass: public RenderPass, public CopyImagePassBase
 	{
 	public:
-		constexpr inline static VkFormat             GetSubresourceFormat(PassSubresourceId subresourceId);
-		constexpr inline static VkImageAspectFlags   GetSubresourceAspect(PassSubresourceId subresourceId);
-		constexpr inline static VkPipelineStageFlags GetSubresourceStage(PassSubresourceId subresourceId);
-		constexpr inline static VkImageLayout        GetSubresourceLayout(PassSubresourceId subresourceId);
-		constexpr inline static VkImageUsageFlags    GetSubresourceUsage(PassSubresourceId subresourceId);
-		constexpr inline static VkAccessFlags        GetSubresourceAccess(PassSubresourceId subresourceId);
-
+		inline static void RegisterSubresources(std::span<SubresourceMetadataPayload> inoutMetadataPayloads);
 		inline static void RegisterShaders(ShaderDatabase* shaderDatabase);
 
 	public:

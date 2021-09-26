@@ -2,7 +2,9 @@
 
 #include "../D3D12RenderPass.hpp"
 #include "../../../Common/FrameGraph/Passes/GBufferPass.hpp"
+#include "../D3D12FrameGraphMisc.hpp"
 #include <dxc/dxcapi.h>
+#include <span>
 
 namespace D3D12
 {
@@ -11,8 +13,6 @@ namespace D3D12
 
 	class GBufferPass: public RenderPass, public GBufferPassBase
 	{
-		constexpr static DXGI_FORMAT ColorOutputFormat = DXGI_FORMAT_B8G8R8A8_UNORM;
-
 		enum class GBufferRootBindings: UINT
 		{
 			MaterialIndex = 0,
@@ -24,6 +24,9 @@ namespace D3D12
 
 			Count
 		};
+
+	public:
+		inline static void RegisterResources(std::span<SubresourceMetadataPayload> inoutMetadataPayloads);
 
 	public:
 		GBufferPass(const FrameGraphBuilder* frameGraphBuilder, const std::string& passName, uint32_t frame);
@@ -38,9 +41,6 @@ namespace D3D12
 
 		virtual void RequestSceneDescriptors(DescriptorCreator* sceneDescriptorCreator)        override;
 		virtual void ValidateSceneDescriptors(const DescriptorCreator* sceneDescriptorCreator) override;
-
-	public:
-		static void RegisterResources(FrameGraphBuilder* frameGraphBuilder, const std::string& passName);
 
 	private:
 		void LoadShaders(const ShaderManager* shaderManager, IDxcBlobEncoding** outStaticVertexShader, IDxcBlobEncoding** outRigidVertexShader, IDxcBlobEncoding** outPixelShader);
@@ -63,3 +63,5 @@ namespace D3D12
 		wil::com_ptr_nothrow<ID3D12PipelineState> mRigidPipelineState;
 	};
 }
+
+#include "D3D12GBufferPass.inl"

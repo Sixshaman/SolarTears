@@ -13,14 +13,6 @@ ModernFrameGraphBuilder::~ModernFrameGraphBuilder()
 {
 }
 
-void ModernFrameGraphBuilder::RegisterRenderPass(RenderPassType passType, const std::string_view passName)
-{
-	FrameGraphDescription::RenderPassName renderPassName(passName);
-	mRenderPassClasses[renderPassName] = mRenderPassClassTable[passType];
-
-	RegisterPassInGraph(passType, renderPassName);
-}
-
 void ModernFrameGraphBuilder::RegisterSubresource(const std::string_view passName, const std::string_view subresourceId)
 {
 	FrameGraphDescription::RenderPassName renderPassName(passName);
@@ -71,6 +63,15 @@ void ModernFrameGraphBuilder::RegisterSubresource(const std::string_view passNam
 
 void ModernFrameGraphBuilder::Build()
 {
+
+	RegisterPasses();
+
+
+
+
+
+
+
 	RegisterAndSortPasses();
 
 	BuildDependencyLevels();
@@ -137,7 +138,7 @@ void ModernFrameGraphBuilder::RegisterAndSortPasses()
 	std::span<const FrameGraphDescription::RenderPassName> renderPassNameSpan;
 	mFrameGraphDescription.GetPassNameList(&renderPassNameSpan);
 
-	RegisterPassTypes(mFrameGraphDescription.PassTypes());
+	RegisterPasses(mFrameGraphDescription.PassTypes());
 
 	CreatePresentPass();
 	for (const auto& passName: renderPassNameSpan)

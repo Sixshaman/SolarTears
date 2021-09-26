@@ -88,7 +88,9 @@
     <ClInclude Include="Rendering\D3D12\D3D12SrvDescriptorManager.hpp" />
     <ClInclude Include="Rendering\D3D12\FrameGraph\D3D12FrameGraph.hpp" />
     <ClInclude Include="Rendering\D3D12\FrameGraph\D3D12FrameGraphBuilder.hpp" />
+    <ClInclude Include="Rendering\D3D12\FrameGraph\D3D12FrameGraphMisc.hpp" />
     <ClInclude Include="Rendering\D3D12\FrameGraph\D3D12RenderPass.hpp" />
+    <ClInclude Include="Rendering\D3D12\FrameGraph\D3D12RenderPassDispatchFuncs.hpp" />
     <ClInclude Include="Rendering\D3D12\FrameGraph\Passes\D3D12CopyImagePass.hpp" />
     <ClInclude Include="Rendering\D3D12\FrameGraph\Passes\D3D12GBufferPass.hpp" />
     <ClInclude Include="Rendering\D3D12\Scene\D3D12Scene.hpp" />
@@ -97,6 +99,7 @@
     <ClInclude Include="Rendering\Vulkan\FrameGraph\Passes\VulkanGBufferPass.hpp" />
     <ClInclude Include="Rendering\Vulkan\FrameGraph\VulkanFrameGraph.hpp" />
     <ClInclude Include="Rendering\Vulkan\FrameGraph\VulkanFrameGraphBuilder.hpp" />
+    <ClInclude Include="Rendering\Vulkan\FrameGraph\VulkanFrameGraphMisc.hpp" />
     <ClInclude Include="Rendering\Vulkan\FrameGraph\VulkanRenderPass.hpp" />
     <ClInclude Include="Rendering\Vulkan\FrameGraph\VulkanRenderPassDispatchFuncs.hpp" />
     <ClInclude Include="Rendering\Vulkan\FrameGraph\VulkanSharedDescriptorDatabase.hpp" />
@@ -205,11 +208,11 @@
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv</Outputs>
     </CustomBuild>
     <None Include="Rendering\D3D12\D3D12Utils.inl" />
-    <None Include="Rendering\D3D12\FrameGraph\D3D12FrameGraphBuilder.inl" />
+    <None Include="Rendering\D3D12\FrameGraph\Passes\D3D12CopyImagePass.inl" />
+    <None Include="Rendering\D3D12\FrameGraph\Passes\D3D12GBufferPass.inl" />
     <None Include="Rendering\D3D12\Scene\D3D12Scene.inl" />
     <None Include="Rendering\Vulkan\FrameGraph\Passes\VulkanCopyImagePass.inl" />
     <None Include="Rendering\Vulkan\FrameGraph\Passes\VulkanGBufferPass.inl" />
-    <None Include="Rendering\Vulkan\FrameGraph\VulkanFrameGraphBuilder.inl" />
     <None Include="Rendering\Vulkan\Scene\VulkanScene.inl" />
     <None Include="Rendering\Vulkan\Scene\VulkanSceneBuilder.inl" />
     <None Include="Shaders\D3D12\CommonHeader.hlsli" />

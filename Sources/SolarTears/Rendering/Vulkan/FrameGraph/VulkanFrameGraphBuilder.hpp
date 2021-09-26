@@ -19,10 +19,6 @@ namespace Vulkan
 	class DeviceParameters;
 	class ShaderDatabase;
 
-	using RenderPassCreateFunc         = std::unique_ptr<RenderPass>(*)(VkDevice, const FrameGraphBuilder*, const std::string&, uint32_t);
-	using RenderPassAddFunc            = void(*)(FrameGraphBuilder*, const std::string&);
-	using RenderPassShaderRegisterFunc = void(*)(ShaderDatabase*);
-
 	struct FrameGraphBuildInfo
 	{
 		const InstanceParameters*   InstanceParams;
@@ -34,20 +30,6 @@ namespace Vulkan
 
 	class FrameGraphBuilder final: public ModernFrameGraphBuilder
 	{
-		constexpr static uint32_t TextureFlagAutoBeforeBarrier = 0x01; //A before-barrier is handled by render pass itself
-		constexpr static uint32_t TextureFlagAutoAfterBarrier  = 0x02; //An after-barrier is handled by render pass itself
-
-		struct SubresourceInfo
-		{
-			VkFormat           Format;
-			VkImageAspectFlags Aspect;
-
-			VkImageLayout        Layout;
-			VkImageUsageFlags    Usage;
-			VkPipelineStageFlags Stage;
-			VkAccessFlags        Access;
-		};
-
 	public:
 		FrameGraphBuilder(LoggerQueue* logger, FrameGraph* graphToBuild, FrameGraphDescription&& frameGraphDescription, const SwapChain* swapchain);
 		~FrameGraphBuilder();
@@ -96,13 +78,6 @@ namespace Vulkan
 		void BuildPassDescriptorSets();
 
 	private:
-		//Adds a render pass of type Pass to the frame graph pass table
-		template<typename Pass>
-		void AddPassToTable();
-		
-		//Initializes frame graph pass table
-		void InitPassTable();
-
 		//Converts pass type to a queue family index
 		uint32_t PassClassToQueueIndex(RenderPassClass passClass) const;
 
@@ -118,9 +93,6 @@ namespace Vulkan
 
 		//Checks if the usage of the subresource with subresourceInfoIndex includes writing
 		bool IsWriteSubresource(uint32_t subresourceInfoIndex) override final;
-
-		//Registers render pass related data in the graph (inputs, outputs, possibly shader bindings, etc)
-		void RegisterPassInGraph(RenderPassType passType, const FrameGraphDescription::RenderPassName& passName) override final;
 
 		//Creates a new render pass
 		void CreatePassObject(const FrameGraphDescription::RenderPassName& passName, RenderPassType passType, uint32_t frame) override final;
@@ -151,7 +123,7 @@ namespace Vulkan
 
 		LoggerQueue* mLogger;
 
-		std::vector<SubresourceInfo> mSubresourceInfosFlat;
+		std::vector<SubresourceMetadataPayload> mSubresourceMetadataPayloads;
 
 		//Several things that might be needed during build
 		const DeviceQueues*         mDeviceQueues;

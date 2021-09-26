@@ -13,8 +13,6 @@ namespace Vulkan
 	class DescriptorManager;
 	class RenderableScene;
 	class ShaderDatabase;
-	class SharedDescriptorDatabaseBuilder;
-	class PassDescriptorDatabaseBuilder;
 
 	class GBufferPass: public RenderPass, public GBufferPassBase
 	{
@@ -23,13 +21,7 @@ namespace Vulkan
 		constexpr static std::string_view RigidShaderGroup           = "GBufferRigidShaders";
 
 	public:
-		constexpr inline static VkFormat             GetSubresourceFormat(PassSubresourceId subresourceId);
-		constexpr inline static VkImageAspectFlags   GetSubresourceAspect(PassSubresourceId subresourceId);
-		constexpr inline static VkPipelineStageFlags GetSubresourceStage(PassSubresourceId subresourceId);
-		constexpr inline static VkImageLayout        GetSubresourceLayout(PassSubresourceId subresourceId);
-		constexpr inline static VkImageUsageFlags    GetSubresourceUsage(PassSubresourceId subresourceId);
-		constexpr inline static VkAccessFlags        GetSubresourceAccess(PassSubresourceId subresourceId);
-
+		inline static void RegisterSubresources(std::span<SubresourceMetadataPayload> inoutMetadataPayloads);
 		inline static void RegisterShaders(ShaderDatabase* shaderDatabase);
 
 	public:

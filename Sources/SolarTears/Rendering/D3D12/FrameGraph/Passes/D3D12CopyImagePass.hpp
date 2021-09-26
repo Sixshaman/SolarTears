@@ -2,6 +2,8 @@
 
 #include "../D3D12RenderPass.hpp"
 #include "../../../Common/FrameGraph/Passes/CopyImagePass.hpp"
+#include "../D3D12FrameGraphMisc.hpp"
+#include <span>
 
 class FrameGraphConfig;
 
@@ -11,6 +13,9 @@ namespace D3D12
 
 	class CopyImagePass: public RenderPass, public CopyImagePassBase
 	{
+	public:
+		inline static void RegisterResources(std::span<SubresourceMetadataPayload> inoutMetadataPayloads);
+
 	public:
 		CopyImagePass(const FrameGraphBuilder* frameGraphBuilder, const std::string& currentPassName, uint32_t frame);
 		~CopyImagePass();
@@ -25,11 +30,10 @@ namespace D3D12
 		virtual void RequestSceneDescriptors(DescriptorCreator* sceneDescriptorCreator)        override;
 		virtual void ValidateSceneDescriptors(const DescriptorCreator* sceneDescriptorCreator) override;
 
-	public:
-		static void RegisterResources(FrameGraphBuilder* frameGraphBuilder, const std::string& passName);
-
 	private:
 		ID3D12Resource* mSrcImageRef;
 		ID3D12Resource* mDstImageRef;
 	};
 }
+
+#include "D3D12CopyImagePass.inl"

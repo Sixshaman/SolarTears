@@ -7,19 +7,13 @@
 #include "../VulkanSwapChain.hpp"
 #include "../VulkanDeviceQueues.hpp"
 #include "../VulkanShaders.hpp"
+#include "VulkanRenderPassDispatchFuncs.hpp"
 #include <VulkanGenericStructures.h>
 #include <algorithm>
 #include <numeric>
 
-#include "Passes/VulkanGBufferPass.hpp"
-#include "Passes/VulkanCopyImagePass.hpp"
-
 Vulkan::FrameGraphBuilder::FrameGraphBuilder(LoggerQueue* logger, FrameGraph* graphToBuild, FrameGraphDescription&& frameGraphDescription, const SwapChain* swapchain): ModernFrameGraphBuilder(graphToBuild, std::move(frameGraphDescription)), mLogger(logger), mVulkanGraphToBuild(graphToBuild), mSwapChain(swapchain)
 {
-	mImageViewCount = 0;
-
-	InitPassTable();
-
 	mShaderDatabase = std::make_unique<ShaderDatabase>(mLogger);
 }
 
@@ -579,15 +573,6 @@ bool Vulkan::FrameGraphBuilder::IsWriteSubresource(uint32_t subresourceInfoIndex
 	return mSubresourceInfosFlat[subresourceInfoIndex].Access & writeAccessFlags;
 }
 
-void Vulkan::FrameGraphBuilder::RegisterPassInGraph(RenderPassType passType, const FrameGraphDescription::RenderPassName& passName)
-{
-	auto passResourceRegisterFunc = mPassAddFuncTable.at(passType);
-	passResourceRegisterFunc(this, passName);
-
-	auto passShaderRegisterFunc = mPassRegisterShadersFuncTable.at(passType);
-	passShaderRegisterFunc(mShaderDatabase.get());
-}
-
 void Vulkan::FrameGraphBuilder::CreatePassObject(const FrameGraphDescription::RenderPassName& passName, RenderPassType passType, uint32_t frame)
 {
 	auto passCreateFunc = mPassCreateFuncTable.at(passType);
@@ -794,15 +779,6 @@ void Vulkan::FrameGraphBuilder::InitializeTraverseData() const
 uint32_t Vulkan::FrameGraphBuilder::GetSwapchainImageCount() const
 {
 	return mSwapChain->SwapchainImageCount;
-}
-
-void Vulkan::FrameGraphBuilder::InitPassTable()
-{
-	mPassAddFuncTable.clear();
-	mPassCreateFuncTable.clear();
-
-	AddPassToTable<GBufferPass>();
-	AddPassToTable<CopyImagePass>();
 }
 
 uint32_t Vulkan::FrameGraphBuilder::PassClassToQueueIndex(RenderPassClass passClass) const
