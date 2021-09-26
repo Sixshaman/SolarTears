@@ -542,22 +542,35 @@ void Vulkan::FrameGraphBuilder::InitMetadataPayloads()
 
 bool Vulkan::FrameGraphBuilder::IsReadSubresource(uint32_t subresourceInfoIndex)
 {
-	VkAccessFlags readAccessFlags = VK_ACCESS_INDIRECT_COMMAND_READ_BIT | VK_ACCESS_INDEX_READ_BIT | VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_UNIFORM_READ_BIT 
-		                          |	VK_ACCESS_INPUT_ATTACHMENT_READ_BIT | VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT 
-		                          |	VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_HOST_READ_BIT | VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT 
-		                          | VK_ACCESS_CONDITIONAL_RENDERING_READ_BIT_EXT | VK_ACCESS_COLOR_ATTACHMENT_READ_NONCOHERENT_BIT_EXT | VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR 
-		                          | VK_ACCESS_SHADING_RATE_IMAGE_READ_BIT_NV | VK_ACCESS_FRAGMENT_DENSITY_MAP_READ_BIT_EXT | VK_ACCESS_COMMAND_PREPROCESS_READ_BIT_NV;
-
-	return mSubresourceInfosFlat[subresourceInfoIndex].Access & readAccessFlags;
+	return mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_GENERAL
+		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
+		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL
+		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL
+		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL
+		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL
+		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL
+		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_STENCIL_READ_ONLY_OPTIMAL
+		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
+		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR
+		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR
+		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_FRAGMENT_DENSITY_MAP_OPTIMAL_EXT
+		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL_KHR
+		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL_KHR;
 }
 
 bool Vulkan::FrameGraphBuilder::IsWriteSubresource(uint32_t subresourceInfoIndex)
 {
-	VkAccessFlags writeAccessFlags = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT 
-		                           | VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_MEMORY_WRITE_BIT | VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT 
-		                           | VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT | VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
-
-	return mSubresourceInfosFlat[subresourceInfoIndex].Access & writeAccessFlags;
+	return mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
+		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL
+		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL
+		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL
+		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL
+		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL_KHR;
 }
 
 void Vulkan::FrameGraphBuilder::CreatePassObject(const FrameGraphDescription::RenderPassName& passName, RenderPassType passType, uint32_t frame)
