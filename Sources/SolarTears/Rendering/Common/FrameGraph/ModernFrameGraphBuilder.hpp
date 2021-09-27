@@ -104,14 +104,17 @@ private:
 	//Builds frame graph pass spans
 	void BuildPassSpans();
 
-	//Validates PrevPassMetadata and NextPassMetadata links in each subresource info
-	void ValidateSubresourceLinks();
-
 	//Finds own render pass periods, i.e. the minimum number of pass objects required for all possible non-swapchain frame combinations
 	void CalculatePassPeriods();
 
-	//Finds all passes that use swapchain images. Such passes need to be swapped every frame
-	void FindBackbufferPasses(std::unordered_set<RenderPassName>& swapchainPassNames);
+	//Validates PrevPassMetadata and NextPassMetadata links in each subresource info
+	void ValidateSubresourceLinks();
+
+	//Propagates API-specific subresource data
+	void PropagateSubresourcePayloadData();
+
+	//Creates textures and views
+	void BuildResources();
 
 	//Build the render pass objects
 	void BuildPassObjects();
@@ -120,25 +123,7 @@ private:
 	void BuildBarriers();
 
 	//Build the before- and after-pass barriers
-	uint32_t BuildPassBarriers(const RenderPassName& passName, uint32_t barrierOffset, ModernFrameGraph::BarrierSpan* outBarrierSpan);
-
-	//Create subresources
-	void BuildSubresources();
-
-	//Creates descriptions for resource creation
-	void BuildResourceCreateInfos(std::vector<TextureResourceCreateInfo>& outTextureCreateInfos, std::vector<TextureResourceCreateInfo>& outBackbufferCreateInfos);
-
-	//Creates descriptions for subresource creation
-	void BuildSubresourceCreateInfos(const std::vector<TextureResourceCreateInfo>& textureCreateInfos, std::vector<TextureSubresourceCreateInfo>& outTextureViewCreateInfos);
-
-	//Validates all uninitialized parameters in subresource infos, propagating them from passes before
-	void PropagateMetadatas(const std::vector<TextureResourceCreateInfo>& textureCreateInfos, const std::vector<TextureResourceCreateInfo>& backbufferCreateInfos);
-
-	//Propagates uninitialized parameters in a single resource
-	void PropagateMetadatasInResource(const TextureResourceCreateInfo& createInfo);
-
-	//Validates the location for each resource and subresource. Returns the total count of resources
-	uint32_t PrepareResourceLocations(std::vector<TextureResourceCreateInfo>& textureCreateInfos, std::vector<TextureResourceCreateInfo>& backbufferCreateInfos);
+	uint32_t BuildPassBarriers(const PassMetadata& passMetadata, uint32_t barrierOffset, ModernFrameGraph::BarrierSpan* outBarrierSpan);
 
 protected:
 	const Span<uint32_t> GetBackbufferImageSpan() const;
@@ -153,20 +138,20 @@ protected:
 	//Checks if the usage of the subresource with subresourceInfoIndex includes writing
 	virtual bool IsWriteSubresource(uint32_t subresourceInfoIndex) = 0;
 
-	//Propagates API-specific subresource data
-	virtual void PropagateSubresourcePayloadData() = 0;
+	//Propagates API-specific subresource data from one subresource to another, within a single resource
+	virtual bool PropagateSubresourcePayloadDataVertically(const ResourceMetadata& resourceMetadata) = 0;
 
-	//Creates a new render pass
-	virtual void CreatePassObject(const RenderPassName& passName, RenderPassType passType, uint32_t frame) = 0;
-
-	//Gives a free render pass span id
-	virtual uint32_t NextPassSpanId() = 0;
+	//Propagates API-specific subresource data from one subresource to another, within a single pass
+	virtual bool PropagateSubresourcePayloadDataHorizontally(const PassMetadata& passMetadata) = 0;
 
 	//Creates image objects
 	virtual void CreateTextures() = 0;
 
 	//Creates image view objects
 	virtual void CreateTextureViews() = 0;
+
+	//Creates render pass objects
+	virtual void CreateObjectsForPass(uint32_t passMetadataIndex, uint32_t passSwapchainImageCount) = 0;
 
 	//Add a barrier to execute before a pass
 	virtual uint32_t AddBeforePassBarrier(uint32_t metadataIndex) = 0;

@@ -23,6 +23,7 @@ namespace Vulkan
 	public:
 		inline static void RegisterSubresources(std::span<SubresourceMetadataPayload> inoutMetadataPayloads);
 		inline static void RegisterShaders(ShaderDatabase* shaderDatabase);
+		inline static bool PropagateSubresourceInfos(std::span<SubresourceMetadataPayload> inoutMetadataPayloads);
 
 	public:
 		GBufferPass(const FrameGraphBuilder* frameGraphBuilder, uint32_t frameGraphPassIndex, uint32_t frame);

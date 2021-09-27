@@ -64,7 +64,7 @@ namespace Vulkan
 		VkImageAspectFlags   GetNextPassSubresourceAspectFlags(uint32_t passIndex, uint_fast16_t subresourceIndex) const;
 		VkAccessFlags        GetNextPassSubresourceAccessFlags(uint32_t passIndex, uint_fast16_t subresourceIndex) const;
 
-		void Build(const FrameGraphBuildInfo& buildInfo);
+		void Build(FrameGraphDescription&& frameGraphDescription, const FrameGraphBuildInfo& buildInfo);
 
 		void BuildPassDescriptorSets();
 
@@ -85,20 +85,20 @@ namespace Vulkan
 		//Checks if the usage of the subresource with subresourceInfoIndex includes writing
 		bool IsWriteSubresource(uint32_t subresourceInfoIndex) override final;
 
-		//Propagates API-specific subresource data
-		void PropagateSubresourcePayloadData() override final;
+		//Propagates API-specific subresource data from one subresource to another, within a single resource
+		bool PropagateSubresourcePayloadDataVertically(const ResourceMetadata& resourceMetadata) override final;
 
-		//Creates a new render pass
-		void CreatePassObject(const FrameGraphDescription::RenderPassName& passName, RenderPassType passType, uint32_t frame) override final;
-
-		//Gives a free render pass span id
-		uint32_t NextPassSpanId() override final;
+		//Propagates API-specific subresource data from one subresource to another, within a single pass
+		bool PropagateSubresourcePayloadDataHorizontally(const PassMetadata& passMetadata) override final;
 
 		//Creates image objects
 		void CreateTextures() override final;
 
 		//Creates image view objects
 		void CreateTextureViews() override final;
+
+		//Creates a new render pass
+		void CreateObjectsForPass(uint32_t passMetadataIndex, uint32_t passSwapchainImageCount) override final;
 
 		//Adds a barrier to execute before a pass
 		uint32_t AddBeforePassBarrier(uint32_t metadataIndex) override final;

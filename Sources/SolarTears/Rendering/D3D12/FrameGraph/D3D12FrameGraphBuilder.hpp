@@ -16,6 +16,13 @@ namespace D3D12
 	class DeviceQueues;
 	class DeviceFeatures;
 
+	struct FrameGraphBuildInfo
+	{
+		ID3D12Device8*       Device; 
+		const ShaderManager* ShaderMgr;
+		const MemoryManager* MemoryAllocator;
+	};
+
 	class FrameGraphBuilder final: public ModernFrameGraphBuilder
 	{
 	public:
@@ -41,7 +48,7 @@ namespace D3D12
 		D3D12_CPU_DESCRIPTOR_HANDLE GetFrameGraphRtvHeapStart() const;
 		D3D12_CPU_DESCRIPTOR_HANDLE GetFrameGraphDsvHeapStart() const;
 
-		void Build(ID3D12Device8* device, const ShaderManager* shaderManager, const MemoryManager* memoryManager);
+		void Build(FrameGraphDescription&& frameGraphDescription, const FrameGraphBuildInfo& buildInfo);
 
 	private:
 		D3D12_COMMAND_LIST_TYPE PassClassToListType(RenderPassClass passType);
@@ -56,20 +63,20 @@ namespace D3D12
 		//Checks if the usage of the subresource with subresourceInfoIndex includes writing
 		bool IsWriteSubresource(uint32_t subresourceInfoIndex) override final;
 
-		//Propagates API-specific subresource data
-		void PropagateSubresourcePayloadData() override final;
+		//Propagates API-specific subresource data from one subresource to another, within a single resource
+		bool PropagateSubresourcePayloadDataVertically(const ResourceMetadata& resourceMetadata) override final;
 
-		//Creates a new render pass
-		void CreatePassObject(const FrameGraphDescription::RenderPassName& passName, RenderPassType passType, uint32_t frame) override final;
-
-		//Gives a free render pass span id
-		uint32_t NextPassSpanId() override final;
+		//Propagates API-specific subresource data from one subresource to another, within a single pass
+		bool PropagateSubresourcePayloadDataHorizontally(const PassMetadata& passMetadata) override final;
 
 		//Creates image objects
 		void CreateTextures() override final;
 
 		//Creates image view objects
 		void CreateTextureViews() override final;
+
+		//Creates a new render pass
+		void CreateObjectsForPass(uint32_t passMetadataIndex, uint32_t passSwapchainImageCount) override final;
 
 		//Add a barrier to execute before a pass
 		uint32_t AddBeforePassBarrier(uint32_t metadataIndex) override final;

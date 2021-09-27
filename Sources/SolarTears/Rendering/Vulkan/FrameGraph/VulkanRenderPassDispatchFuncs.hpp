@@ -46,19 +46,36 @@ namespace Vulkan
 	}
 
 	template<typename Pass>
-	std::unique_ptr<RenderPass> MakeUniquePass(const FrameGraphBuilder* builder, const std::string& passName, uint32_t frame)
+	bool PropagateSubresourceInfos(std::span<SubresourceMetadataPayload> metadataPayloads)
 	{
-		return std::make_unique<Pass>(builder, passName, frame);
+		return Pass::PropagateSubresourceInfos(metadataPayloads);
 	};
 
-	std::unique_ptr<RenderPass> MakeUniquePass(RenderPassType passType, const FrameGraphBuilder* builder, const std::string& passName, uint32_t frame)
+	constexpr bool PropagateSubresourceInfos(RenderPassType passType, std::span<SubresourceMetadataPayload> metadataPayloads)
+	{
+		using PropagateInfosFunc = bool(*)(std::span<SubresourceMetadataPayload>);
+
+		PropagateInfosFunc PropagateInfos = nullptr;
+		CHOOSE_PASS_FUNCTION(passType, PropagateSubresourceInfos, PropagateInfos);
+
+		assert(PropagateInfos != nullptr);
+		PropagateInfos(metadataPayloads);
+	}
+
+	template<typename Pass>
+	std::unique_ptr<RenderPass> MakeUniquePass(const FrameGraphBuilder* builder, uint32_t passIndex, uint32_t frame)
+	{
+		return std::make_unique<Pass>(builder, passIndex, frame);
+	};
+
+	std::unique_ptr<RenderPass> MakeUniquePass(RenderPassType passType, const FrameGraphBuilder* builder, uint32_t passIndex, uint32_t frame)
 	{ 
-		using MakePassFunc = std::unique_ptr<RenderPass>(*)(const FrameGraphBuilder*, const std::string&, uint32_t);
+		using MakePassFunc = std::unique_ptr<RenderPass>(*)(const FrameGraphBuilder*, uint32_t, uint32_t);
 
 		MakePassFunc MakePass;
 		CHOOSE_PASS_FUNCTION(passType, MakeUniquePass, MakePass);
 
 		assert(MakePass != nullptr);
-		return MakePass(builder, passName, frame);
+		return MakePass(builder, passIndex, frame);
 	}
 }

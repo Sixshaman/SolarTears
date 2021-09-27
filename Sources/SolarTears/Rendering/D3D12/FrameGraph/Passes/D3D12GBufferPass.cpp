@@ -8,7 +8,7 @@
 #include "../../../../Core/Util.hpp"
 #include <array>
 
-D3D12::GBufferPass::GBufferPass(const FrameGraphBuilder* frameGraphBuilder, const std::string& passName, uint32_t frame)
+D3D12::GBufferPass::GBufferPass(const FrameGraphBuilder* frameGraphBuilder, uint32_t passIndex, uint32_t frame)
 {
 	wil::com_ptr_t<IDxcBlobEncoding> staticVertexShaderBlob;
 	wil::com_ptr_t<IDxcBlobEncoding> rigidVertexShaderBlob;

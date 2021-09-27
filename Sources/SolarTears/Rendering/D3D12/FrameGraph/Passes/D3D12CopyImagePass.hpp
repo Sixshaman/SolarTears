@@ -14,10 +14,11 @@ namespace D3D12
 	class CopyImagePass: public RenderPass, public CopyImagePassBase
 	{
 	public:
-		inline static void RegisterResources(std::span<SubresourceMetadataPayload> inoutMetadataPayloads);
+		inline static void RegisterSubesources(std::span<SubresourceMetadataPayload> inoutMetadataPayloads);
+		inline static bool PropagateSubresourceInfos(std::span<SubresourceMetadataPayload> inoutMetadataPayloads);
 
 	public:
-		CopyImagePass(const FrameGraphBuilder* frameGraphBuilder, const std::string& currentPassName, uint32_t frame);
+		CopyImagePass(const FrameGraphBuilder* frameGraphBuilder, uint32_t passIndex, uint32_t frame);
 		~CopyImagePass();
 
 		ID3D12PipelineState* FirstPipeline() const override;

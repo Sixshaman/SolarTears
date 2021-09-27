@@ -39,6 +39,7 @@ namespace Vulkan
 	private:
 		const VkDevice mDeviceRef;
 
+		std::vector<RenderPassSpanInfo>          mPassFrameSpans;
 		std::vector<std::unique_ptr<RenderPass>> mRenderPasses; //All render passes
 
 		std::vector<VkImage>     mImages;

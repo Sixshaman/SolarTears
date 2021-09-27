@@ -39,8 +39,6 @@ protected:
 
 	std::vector<Span<uint32_t>> mGraphicsPassSpans;
 
-	std::vector<RenderPassSpanInfo> mPassFrameSpans;
-
 	std::vector<BarrierSpan>           mRenderPassBarriers; //The ith element refers to barrier spans for ith render pass. The last element refers to barrier spans for swapchain acquire-present "pass"
 	std::vector<MultiframeBarrierInfo> mMultiframeBarrierInfos;
 

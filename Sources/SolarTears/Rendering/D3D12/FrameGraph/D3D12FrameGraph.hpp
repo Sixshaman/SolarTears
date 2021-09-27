@@ -42,6 +42,7 @@ namespace D3D12
 
 		std::vector<ID3D12Resource2*> mTextures;
 
+		std::vector<RenderPassSpanInfo>          mPassFrameSpans;
 		std::vector<std::unique_ptr<RenderPass>> mRenderPasses; //All render passes (sorted by dependency level)
 
 		std::vector<wil::com_ptr_nothrow<ID3D12Resource2>> mOwnedResources; //All resources that the frame graph owns

@@ -28,3 +28,8 @@ inline void Vulkan::GBufferPass::RegisterShaders(ShaderDatabase* shaderDatabase)
 	shaderDatabase->RegisterShaderGroup(StaticInstancedShaderGroup, staticInstancedShaders);
 	shaderDatabase->RegisterShaderGroup(RigidShaderGroup,           rigidShaders);
 }
+
+inline bool Vulkan::GBufferPass::PropagateSubresourceInfos(std::span<SubresourceMetadataPayload> inoutMetadataPayloads)
+{
+	return false; //No horizontal propagation happens here
+}
