@@ -19,7 +19,7 @@ namespace Vulkan
 		inline static void RegisterShaders(ShaderDatabase* shaderDatabase);
 
 	public:
-		CopyImagePass(const FrameGraphBuilder* frameGraphBuilder, const std::string& currentPassName, uint32_t frame);
+		CopyImagePass(const FrameGraphBuilder* frameGraphBuilder, uint32_t frameGraphPassIndex, uint32_t frame);
 		~CopyImagePass();
 
 		void RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig) const override;

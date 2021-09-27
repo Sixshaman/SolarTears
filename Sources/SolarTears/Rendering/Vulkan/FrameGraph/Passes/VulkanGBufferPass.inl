@@ -10,7 +10,7 @@ inline void Vulkan::GBufferPass::RegisterSubresources(std::span<SubresourceMetad
 	inoutMetadataPayloads[(size_t)PassSubresourceId::ColorBufferImage].Flags  = (TextureFlagAutoBeforeBarrier | TextureFlagAutoBeforeBarrier);
 }
 
-void Vulkan::GBufferPass::RegisterShaders(ShaderDatabase* shaderDatabase)
+inline void Vulkan::GBufferPass::RegisterShaders(ShaderDatabase* shaderDatabase)
 {
 	//Load shaders in advance to process all bindings common for all passes (scene, samplers)
 	const std::wstring shaderFolder = Utils::GetMainDirectory() + L"Shaders/Vulkan/GBuffer/";

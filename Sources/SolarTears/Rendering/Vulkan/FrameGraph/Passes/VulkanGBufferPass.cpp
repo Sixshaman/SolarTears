@@ -7,7 +7,7 @@
 #include <array>
 #include <VulkanGenericStructures.h>
 
-Vulkan::GBufferPass::GBufferPass(const FrameGraphBuilder* frameGraphBuilder, const std::string& passName, uint32_t frame): RenderPass(frameGraphBuilder->GetDevice())
+Vulkan::GBufferPass::GBufferPass(const FrameGraphBuilder* frameGraphBuilder, uint32_t frameGraphPassIndex, uint32_t frame): RenderPass(frameGraphBuilder->GetDevice())
 {
 	mRenderPass  = VK_NULL_HANDLE;
 	mFramebuffer = VK_NULL_HANDLE;

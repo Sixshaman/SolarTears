@@ -59,8 +59,8 @@ public:
 	void Build(FrameGraphDescription&& frameGraphDescription);
 
 private:
-	//Fills the initial pass info, sorted by dependency level and by topological order
-	void RegisterAndSortPasses(const std::unordered_map<RenderPassName, RenderPassType>& renderPassTypes, const std::vector<SubresourceNamingInfo>& subresourceNames, const ResourceName& backbufferName);
+	//Fills the initial pass info
+	void RegisterPasses(const std::unordered_map<RenderPassName, RenderPassType>& renderPassTypes, const std::vector<SubresourceNamingInfo>& subresourceNames, const ResourceName& backbufferName);
 
 	//Fills the initial pass info from the description data
 	void InitPassList(const std::unordered_map<RenderPassName, RenderPassType>& renderPassTypes);
@@ -68,35 +68,50 @@ private:
 	//Fills the initial pass info from the description data
 	void InitSubresourceList(const std::vector<SubresourceNamingInfo>& subresourceNames, const ResourceName& backbufferName);
 
-	//Creates lists of written subresource names and read subresource names for each pass
-	void BuildReadWriteSubresourceSpans(std::span<const RenderPassName> passes, std::unordered_map<RenderPassName, std::span<std::string_view>>& outReadSpans, std::unordered_map<RenderPassName, std::span<std::string_view>>& outWriteSpans, std::vector<std::string_view>& outNamesFlat);
+	//Sorts passes by dependency level and by topological order
+	void SortPasses();
+
+	//Creates lists of written resource indices and read subresource indices for each pass. Used to speed up the lookup when creating the adjacency list
+	void BuildReadWriteSubresourceSpans(std::vector<std::span<std::uint32_t>>& outReadIndexSpans, std::vector<std::span<std::uint32_t>>& outWriteIndexSpans, std::vector<uint32_t>& outIndicesFlat);
 
 	//Builds frame graph adjacency list
-	void BuildAdjacencyList(const std::unordered_map<RenderPassName, std::span<std::string_view>>& sortedReadNameSpans, const std::unordered_map<RenderPassName, std::span<std::string_view>>& sortedwriteNameSpans, std::unordered_map<RenderPassName, std::span<RenderPassName>>& outAdjacencyList, std::vector<RenderPassName>& outPassNamesFlat);
+	void BuildAdjacencyList(const std::vector<std::span<uint32_t>>& sortedReadNameSpansPerPass, const std::vector<std::span<uint32_t>>& sortedwriteNameSpansPerPass, std::vector<std::span<uint32_t>>& outAdjacencyList, std::vector<uint32_t>& outAdjacentPassIndicesFlat);
+
+	//Test if sorted spans share any element
+	bool SpansIntersect(const std::span<uint32_t> leftSortedSpan, const std::span<uint32_t> rightSortedSpan);
+
+	//Assign dependency levels to the render passes
+	void AssignDependencyLevels(const std::vector<std::span<uint32_t>>& adjacencyList);
 
 	//Sorts frame graph passes topologically
-	void BuildSortedRenderPassesTopological(std::span<const RenderPassName> passes, const std::unordered_map<RenderPassName, std::span<RenderPassName>>& adjacencyList);
+	void SortRenderPassesByTopology(const std::vector<std::span<uint32_t>>& unsortedPassAdjacencyList);
+
+	//Recursively sort subtree topologically
+	void TopologicalSortNode(uint32_t passIndex, const std::vector<std::span<uint32_t>>& unsortedPassAdjacencyList, std::vector<uint8_t>& inoutTraversalMarkFlags, std::vector<PassMetadata>& inoutSortedPasses);
 
 	//Sorts frame graph passes (already sorted topologically) by dependency level
-	void BuildSortedRenderPassesDependency(const std::unordered_map<RenderPassName, std::span<RenderPassName>>& adjacencyList);
+	void SortRenderPassesByDependency();
 
-	//Builds render pass dependency levels
-	void BuildDependencyLevels();
+	//Fills in augmented render pass data (pass classes, spans, pass periods)
+	void InitAugmentedData();
 
 	//Changes pass classes according to async compute/transfer use
 	void AdjustPassClasses();
 
-	//Validates PrevPassMetadata and NextPassMetadata links in each subresource info
-	void ValidateSubresourceLinks();
-
 	//Propagates pass classes in each subresource info
 	void PropagateSubresourcePassClasses();
 
-	//Finds all passes that use swapchain images. Such passes need to be swapped every frame
-	void FindBackbufferPasses(std::unordered_set<RenderPassName>& swapchainPassNames);
+	//Builds frame graph pass spans
+	void BuildPassSpans();
+
+	//Validates PrevPassMetadata and NextPassMetadata links in each subresource info
+	void ValidateSubresourceLinks();
 
 	//Finds own render pass periods, i.e. the minimum number of pass objects required for all possible non-swapchain frame combinations
 	void CalculatePassPeriods();
+
+	//Finds all passes that use swapchain images. Such passes need to be swapped every frame
+	void FindBackbufferPasses(std::unordered_set<RenderPassName>& swapchainPassNames);
 
 	//Build the render pass objects
 	void BuildPassObjects();
@@ -125,12 +140,6 @@ private:
 	//Validates the location for each resource and subresource. Returns the total count of resources
 	uint32_t PrepareResourceLocations(std::vector<TextureResourceCreateInfo>& textureCreateInfos, std::vector<TextureResourceCreateInfo>& backbufferCreateInfos);
 
-	//Recursively sort subtree topologically
-	void TopologicalSortNode(const std::unordered_map<RenderPassName, std::span<RenderPassName>>& adjacencyList, std::unordered_set<RenderPassName>& visited, std::unordered_set<RenderPassName>& onStack, const RenderPassName& renderPassName);
-
-	//Test if readSortedSubresourceNames intersects with writeSortedSubresourceNames, assuming both spans are sorted lexicographically
-	bool PassesIntersect(const std::span<std::string_view> readSortedSubresourceNames, const std::span<std::string_view> writeSortedSubresourceNames);
-
 protected:
 	const Span<uint32_t> GetBackbufferImageSpan() const;
 
@@ -143,6 +152,9 @@ protected:
 
 	//Checks if the usage of the subresource with subresourceInfoIndex includes writing
 	virtual bool IsWriteSubresource(uint32_t subresourceInfoIndex) = 0;
+
+	//Propagates API-specific subresource data
+	virtual void PropagateSubresourcePayloadData() = 0;
 
 	//Creates a new render pass
 	virtual void CreatePassObject(const RenderPassName& passName, RenderPassType passType, uint32_t frame) = 0;

@@ -2,6 +2,7 @@
 
 #include "D3D12RenderPass.hpp"
 #include "D3D12FrameGraph.hpp"
+#include "D3D12FrameGraphMisc.hpp"
 #include <unordered_map>
 #include <unordered_set>
 #include <memory>
@@ -18,23 +19,23 @@ namespace D3D12
 	class FrameGraphBuilder final: public ModernFrameGraphBuilder
 	{
 	public:
-		FrameGraphBuilder(FrameGraph* graphToBuild, FrameGraphDescription&& frameGraphDescription, const SwapChain* swapChain);
+		FrameGraphBuilder(FrameGraph* graphToBuild, const SwapChain* swapChain);
 		~FrameGraphBuilder();
 
 		ID3D12Device8* GetDevice() const;
 
 		const ShaderManager* GetShaderManager() const;
 
-		ID3D12Resource2*            GetRegisteredResource(const std::string_view passName,          const std::string_view subresourceId, uint32_t frame) const;
-		D3D12_GPU_DESCRIPTOR_HANDLE GetRegisteredSubresourceSrvUav(const std::string_view passName, const std::string_view subresourceId, uint32_t frame) const;
-		D3D12_CPU_DESCRIPTOR_HANDLE GetRegisteredSubresourceRtv(const std::string_view passName,    const std::string_view subresourceId, uint32_t frame) const;
-		D3D12_CPU_DESCRIPTOR_HANDLE GetRegisteredSubresourceDsv(const std::string_view passName,    const std::string_view subresourceId, uint32_t frame) const;
+		ID3D12Resource2*            GetRegisteredResource(uint32_t passIndex,          uint_fast16_t subresourceIndex, uint32_t frame) const;
+		D3D12_GPU_DESCRIPTOR_HANDLE GetRegisteredSubresourceSrvUav(uint32_t passIndex, uint_fast16_t subresourceIndex, uint32_t frame) const;
+		D3D12_CPU_DESCRIPTOR_HANDLE GetRegisteredSubresourceRtv(uint32_t passIndex,    uint_fast16_t subresourceIndex, uint32_t frame) const;
+		D3D12_CPU_DESCRIPTOR_HANDLE GetRegisteredSubresourceDsv(uint32_t passIndex,    uint_fast16_t subresourceIndex, uint32_t frame) const;
 
-		DXGI_FORMAT           GetRegisteredSubresourceFormat(const std::string_view subresourceId) const;
-		D3D12_RESOURCE_STATES GetRegisteredSubresourceState(const std::string_view subresourceId)  const;
+		DXGI_FORMAT           GetRegisteredSubresourceFormat(uint32_t passIndex, uint_fast16_t subresourceIndex) const;
+		D3D12_RESOURCE_STATES GetRegisteredSubresourceState(uint32_t passIndex, uint_fast16_t subresourceIndex)  const;
 
-		D3D12_RESOURCE_STATES GetPreviousPassSubresourceState(const std::string_view subresourceId) const;
-		D3D12_RESOURCE_STATES GetNextPassSubresourceState(const std::string_view subresourceId)     const;
+		D3D12_RESOURCE_STATES GetPreviousPassSubresourceState(uint32_t passIndex, uint_fast16_t subresourceIndex) const;
+		D3D12_RESOURCE_STATES GetNextPassSubresourceState(uint32_t passIndex, uint_fast16_t subresourceIndex)     const;
 
 		D3D12_GPU_DESCRIPTOR_HANDLE GetFrameGraphSrvHeapStart() const;
 		D3D12_CPU_DESCRIPTOR_HANDLE GetFrameGraphRtvHeapStart() const;
@@ -54,6 +55,9 @@ namespace D3D12
 
 		//Checks if the usage of the subresource with subresourceInfoIndex includes writing
 		bool IsWriteSubresource(uint32_t subresourceInfoIndex) override final;
+
+		//Propagates API-specific subresource data
+		void PropagateSubresourcePayloadData() override final;
 
 		//Creates a new render pass
 		void CreatePassObject(const FrameGraphDescription::RenderPassName& passName, RenderPassType passType, uint32_t frame) override final;

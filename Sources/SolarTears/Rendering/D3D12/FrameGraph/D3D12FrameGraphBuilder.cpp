@@ -11,7 +11,7 @@
 #include <algorithm>
 #include <numeric>
 
-D3D12::FrameGraphBuilder::FrameGraphBuilder(FrameGraph* graphToBuild, FrameGraphDescription&& frameGraphDescription, const SwapChain* swapChain): ModernFrameGraphBuilder(graphToBuild, std::move(frameGraphDescription)), mD3d12GraphToBuild(graphToBuild), mSwapChain(swapChain)
+D3D12::FrameGraphBuilder::FrameGraphBuilder(FrameGraph* graphToBuild, const SwapChain* swapChain): ModernFrameGraphBuilder(graphToBuild), mD3d12GraphToBuild(graphToBuild), mSwapChain(swapChain)
 {
 }
 
@@ -29,131 +29,132 @@ const D3D12::ShaderManager* D3D12::FrameGraphBuilder::GetShaderManager() const
 	return mShaderManager;
 }
 
-ID3D12Resource2* D3D12::FrameGraphBuilder::GetRegisteredResource(const std::string_view passName, const std::string_view subresourceId, uint32_t frame) const
+ID3D12Resource2* D3D12::FrameGraphBuilder::GetRegisteredResource(uint32_t passIndex, uint_fast16_t subresourceIndex, uint32_t frame) const
 {
-	FrameGraphDescription::SubresourceId subresourceIdStr(subresourceId);
-	uint32_t subresourceInfoIndex = mMetadataNodeIndicesPerSubresourceIds.at(subresourceIdStr);
+	Span<uint32_t> metadataSpan = mPassMetadatas[passIndex].SubresourceMetadataSpan;
 
-	const SubresourceMetadataNode& metadataNode = mSubresourceMetadataNodesFlat[subresourceInfoIndex];
-	if(metadataNode.FirstFrameHandle == (uint32_t)(-1))
+	const SubresourceMetadataNode& metadataNode = mSubresourceMetadataNodesFlat[metadataSpan.Begin + subresourceIndex];
+	const ResourceMetadata& resourceMetadata = mResourceMetadatas[metadataNode.ResourceMetadataIndex];
+	if(resourceMetadata.FirstFrameHandle == (uint32_t)(-1))
 	{
 		return nullptr;
 	}
 	else
 	{
-		if(metadataNode.FirstFrameHandle == GetBackbufferImageSpan().Begin)
+		if(resourceMetadata.FirstFrameHandle == GetBackbufferImageSpan().Begin)
 		{
-			uint32_t passPeriod = mRenderPassOwnPeriods.at(FrameGraphDescription::RenderPassName(passName));
-			return mD3d12GraphToBuild->mTextures[metadataNode.FirstFrameHandle + frame / passPeriod];
+			uint32_t passPeriod = mPassMetadatas[passIndex].OwnPeriod;
+			return mD3d12GraphToBuild->mTextures[resourceMetadata.FirstFrameHandle + frame / passPeriod];
 		}
 		else
 		{
-			return mD3d12GraphToBuild->mTextures[metadataNode.FirstFrameHandle + frame % metadataNode.FrameCount];
+			return mD3d12GraphToBuild->mTextures[resourceMetadata.FirstFrameHandle + frame % resourceMetadata.FrameCount];
 		}
 	}
 }
 
-D3D12_GPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceSrvUav(const std::string_view passName, const std::string_view subresourceId, uint32_t frame) const
+D3D12_GPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceSrvUav(uint32_t passIndex, uint_fast16_t subresourceIndex, uint32_t frame) const
 {
-	FrameGraphDescription::SubresourceId subresourceIdStr(subresourceId);
-	uint32_t subresourceInfoIndex = mMetadataNodeIndicesPerSubresourceIds.at(subresourceIdStr);
+	Span<uint32_t> metadataSpan = mPassMetadatas[passIndex].SubresourceMetadataSpan;
 
-	const SubresourceMetadataNode& metadataNode    = mSubresourceMetadataNodesFlat[subresourceInfoIndex];
-	const SubresourceInfo&         subresourceInfo = mSubresourceInfos[subresourceInfoIndex];
+	const SubresourceMetadataNode&    metadataNode     = mSubresourceMetadataNodesFlat[metadataSpan.Begin + subresourceIndex];
+	const SubresourceMetadataPayload& metadataPayload  = mSubresourceMetadataPayloads[metadataSpan.Begin + subresourceIndex];
+	const ResourceMetadata&           resourceMetadata = mResourceMetadatas[metadataNode.ResourceMetadataIndex];
 
 	const D3D12_RESOURCE_STATES resourceState = (D3D12_RESOURCE_STATE_UNORDERED_ACCESS | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-	assert((subresourceInfo.State & resourceState) && (metadataNode.FirstFrameViewHandle != (uint32_t)(-1)));
+	assert((metadataPayload.State & resourceState) && (metadataNode.FirstFrameViewHandle != (uint32_t)(-1)));
 
 	D3D12_GPU_DESCRIPTOR_HANDLE descriptorHandle = GetFrameGraphSrvHeapStart();
-	if(metadataNode.FirstFrameHandle == GetBackbufferImageSpan().Begin)
+	UINT descriptorSize = mDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	if(resourceMetadata.FirstFrameHandle == GetBackbufferImageSpan().Begin)
 	{
-		uint32_t passPeriod = mRenderPassOwnPeriods.at(FrameGraphDescription::RenderPassName(passName));
-		descriptorHandle.ptr += (metadataNode.FirstFrameViewHandle + frame / passPeriod) * mSrvUavCbvDescriptorSize;
+		uint32_t passPeriod = mPassMetadatas[passIndex].OwnPeriod;
+		descriptorHandle.ptr += (metadataNode.FirstFrameViewHandle + frame / passPeriod) * descriptorSize;
 	}
 	else
 	{
-		descriptorHandle.ptr += (metadataNode.FirstFrameViewHandle + frame % metadataNode.FrameCount) * mSrvUavCbvDescriptorSize;
+		descriptorHandle.ptr += (metadataNode.FirstFrameViewHandle + frame % resourceMetadata.FrameCount) * descriptorSize;
 	}
 
 	return descriptorHandle;
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceRtv(const std::string_view passName, const std::string_view subresourceId, uint32_t frame) const
+D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceRtv(uint32_t passIndex, uint_fast16_t subresourceIndex, uint32_t frame) const
 {
-	FrameGraphDescription::SubresourceId subresourceIdStr(subresourceId);
-	uint32_t subresourceInfoIndex = mMetadataNodeIndicesPerSubresourceIds.at(subresourceIdStr);
+	Span<uint32_t> metadataSpan = mPassMetadatas[passIndex].SubresourceMetadataSpan;
 
-	const SubresourceMetadataNode& metadataNode    = mSubresourceMetadataNodesFlat[subresourceInfoIndex];
-	const SubresourceInfo&         subresourceInfo = mSubresourceInfos[subresourceInfoIndex];
+	const SubresourceMetadataNode&    metadataNode     = mSubresourceMetadataNodesFlat[metadataSpan.Begin + subresourceIndex];
+	const SubresourceMetadataPayload& metadataPayload  = mSubresourceMetadataPayloads[metadataSpan.Begin + subresourceIndex];
+	const ResourceMetadata&           resourceMetadata = mResourceMetadatas[metadataNode.ResourceMetadataIndex];
 
 	const D3D12_RESOURCE_STATES resourceState = D3D12_RESOURCE_STATE_RENDER_TARGET;
-	assert((subresourceInfo.State & resourceState) && (metadataNode.FirstFrameViewHandle != (uint32_t)(-1)));
+	assert((metadataPayload.State & resourceState) && (metadataNode.FirstFrameViewHandle != (uint32_t)(-1)));
 
 	D3D12_CPU_DESCRIPTOR_HANDLE descriptorHandle = GetFrameGraphRtvHeapStart();
-	if(metadataNode.FirstFrameHandle == GetBackbufferImageSpan().Begin)
+	UINT descriptorSize = mDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	if(resourceMetadata.FirstFrameHandle == GetBackbufferImageSpan().Begin)
 	{
-		uint32_t passPeriod = mRenderPassOwnPeriods.at(FrameGraphDescription::RenderPassName(passName));
-		descriptorHandle.ptr += (metadataNode.FirstFrameViewHandle + frame / passPeriod) * mRtvDescriptorSize;
+		uint32_t passPeriod = mPassMetadatas[passIndex].OwnPeriod;
+		descriptorHandle.ptr += (metadataNode.FirstFrameViewHandle + frame / passPeriod) * descriptorSize;
 	}
 	else
 	{
-		descriptorHandle.ptr += (metadataNode.FirstFrameViewHandle + frame % metadataNode.FrameCount) * mRtvDescriptorSize;
+		descriptorHandle.ptr += (metadataNode.FirstFrameViewHandle + frame % resourceMetadata.FrameCount) * descriptorSize;
 	}
 
 	return descriptorHandle;
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceDsv(const std::string_view passName, const std::string_view subresourceId, uint32_t frame) const
+D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceDsv(uint32_t passIndex, uint_fast16_t subresourceIndex, uint32_t frame) const
 {
-	FrameGraphDescription::SubresourceId subresourceIdStr(subresourceId);
-	uint32_t subresourceInfoIndex = mMetadataNodeIndicesPerSubresourceIds.at(subresourceIdStr);
+	Span<uint32_t> metadataSpan = mPassMetadatas[passIndex].SubresourceMetadataSpan;
 
-	const SubresourceMetadataNode& metadataNode    = mSubresourceMetadataNodesFlat[subresourceInfoIndex];
-	const SubresourceInfo&         subresourceInfo = mSubresourceInfos[subresourceInfoIndex];
+	const SubresourceMetadataNode&    metadataNode     = mSubresourceMetadataNodesFlat[metadataSpan.Begin + subresourceIndex];
+	const SubresourceMetadataPayload& metadataPayload  = mSubresourceMetadataPayloads[metadataSpan.Begin + subresourceIndex];
+	const ResourceMetadata&           resourceMetadata = mResourceMetadatas[metadataNode.ResourceMetadataIndex];
 
 	const D3D12_RESOURCE_STATES resourceState = (D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_DEPTH_WRITE);
-	assert((subresourceInfo.State & resourceState) && (metadataNode.FirstFrameViewHandle != (uint32_t)(-1)));
+	assert((metadataPayload.State & resourceState) && (metadataNode.FirstFrameViewHandle != (uint32_t)(-1)));
 
 	D3D12_CPU_DESCRIPTOR_HANDLE descriptorHandle = GetFrameGraphDsvHeapStart();
-	if(metadataNode.FirstFrameHandle == GetBackbufferImageSpan().Begin)
+	UINT descriptorSize = mDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+	if(resourceMetadata.FirstFrameHandle == GetBackbufferImageSpan().Begin)
 	{
-		uint32_t passPeriod = mRenderPassOwnPeriods.at(FrameGraphDescription::RenderPassName(passName));
-		descriptorHandle.ptr += (metadataNode.FirstFrameViewHandle + frame / passPeriod) * mDsvDescriptorSize;
+		uint32_t passPeriod = mPassMetadatas[passIndex].OwnPeriod;
+		descriptorHandle.ptr += (metadataNode.FirstFrameViewHandle + frame / passPeriod) * descriptorSize;
 	}
 	else
 	{
-		descriptorHandle.ptr += (metadataNode.FirstFrameViewHandle + frame % metadataNode.FrameCount) * mDsvDescriptorSize;
+		descriptorHandle.ptr += (metadataNode.FirstFrameViewHandle + frame % resourceMetadata.FrameCount) * descriptorSize;
 	}
 
 	return descriptorHandle;
 }
 
-DXGI_FORMAT D3D12::FrameGraphBuilder::GetRegisteredSubresourceFormat(const std::string_view subresourceId) const
+DXGI_FORMAT D3D12::FrameGraphBuilder::GetRegisteredSubresourceFormat(uint32_t passIndex, uint_fast16_t subresourceIndex) const
 {
-	FrameGraphDescription::SubresourceId subresourceIdStr(subresourceId);
-	uint32_t subresourceInfoIndex = mMetadataNodeIndicesPerSubresourceIds.at(subresourceIdStr);
-	return mSubresourceInfos[subresourceInfoIndex].Format;
+	Span<uint32_t> metadataSpan = mPassMetadatas[passIndex].SubresourceMetadataSpan;
+	return mSubresourceMetadataPayloads[metadataSpan.Begin + subresourceIndex].Format;
 }
 
-D3D12_RESOURCE_STATES D3D12::FrameGraphBuilder::GetRegisteredSubresourceState(const std::string_view subresourceId) const
+D3D12_RESOURCE_STATES D3D12::FrameGraphBuilder::GetRegisteredSubresourceState(uint32_t passIndex, uint_fast16_t subresourceIndex) const
 {
-	FrameGraphDescription::SubresourceId subresourceIdStr(subresourceId);
-	uint32_t subresourceInfoIndex = mMetadataNodeIndicesPerSubresourceIds.at(subresourceIdStr);
-	return mSubresourceInfos[subresourceInfoIndex].State;
+	Span<uint32_t> metadataSpan = mPassMetadatas[passIndex].SubresourceMetadataSpan;
+	return mSubresourceMetadataPayloads[metadataSpan.Begin + subresourceIndex].State;
 }
 
-D3D12_RESOURCE_STATES D3D12::FrameGraphBuilder::GetPreviousPassSubresourceState(const std::string_view subresourceId) const
+D3D12_RESOURCE_STATES D3D12::FrameGraphBuilder::GetPreviousPassSubresourceState(uint32_t passIndex, uint_fast16_t subresourceIndex) const
 {
-	FrameGraphDescription::SubresourceId subresourceIdStr(subresourceId);
-	uint32_t subresourceInfoIndex = mMetadataNodeIndicesPerSubresourceIds.at(subresourceIdStr);
-	return mSubresourceInfos[subresourceInfoIndex].State;
+	Span<uint32_t> metadataSpan = mPassMetadatas[passIndex].SubresourceMetadataSpan;
+	uint32_t prevNodeIndex = mSubresourceMetadataNodesFlat[metadataSpan.Begin + subresourceIndex].PrevPassNodeIndex;
+	return mSubresourceMetadataPayloads[prevNodeIndex].State;
 }
 
-D3D12_RESOURCE_STATES D3D12::FrameGraphBuilder::GetNextPassSubresourceState(const std::string_view subresourceId) const
+D3D12_RESOURCE_STATES D3D12::FrameGraphBuilder::GetNextPassSubresourceState(uint32_t passIndex, uint_fast16_t subresourceIndex) const
 {
-	FrameGraphDescription::SubresourceId subresourceIdStr(subresourceId);
-	uint32_t subresourceInfoIndex = mMetadataNodeIndicesPerSubresourceIds.at(subresourceIdStr);
-	return mSubresourceInfos[subresourceInfoIndex].State;
+	Span<uint32_t> metadataSpan = mPassMetadatas[passIndex].SubresourceMetadataSpan;
+	uint32_t nextNodeIndex = mSubresourceMetadataNodesFlat[metadataSpan.Begin + subresourceIndex].NextPassNodeIndex;
+	return mSubresourceMetadataPayloads[nextNodeIndex].State;
 }
 
 void D3D12::FrameGraphBuilder::Build(ID3D12Device8* device, const ShaderManager* shaderManager, const MemoryManager* memoryManager)
@@ -161,10 +162,6 @@ void D3D12::FrameGraphBuilder::Build(ID3D12Device8* device, const ShaderManager*
 	mDevice          = device;
 	mShaderManager   = shaderManager;
 	mMemoryAllocator = memoryManager;
-
-	mSrvUavCbvDescriptorSize = mDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-	mRtvDescriptorSize       = mDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-	mDsvDescriptorSize       = mDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 
 	ModernFrameGraphBuilder::Build();
 }
@@ -386,10 +383,16 @@ void D3D12::FrameGraphBuilder::InitMetadataPayloads()
 	for(const PassMetadata& passMetadata: mPassMetadatas)
 	{
 		Span<uint32_t> passMetadataSpan = passMetadata.SubresourceMetadataSpan;
-		std::span<SubresourceMetadataPayload> payloadSpan = { mSubresourceMetadataPayloads.begin() + passMetadataSpan.Begin, mSubresourceMetadataPayloads.begin() + passMetadataSpan.End};
+		std::span<SubresourceMetadataPayload> payloadSpan = {mSubresourceMetadataPayloads.begin() + passMetadataSpan.Begin, mSubresourceMetadataPayloads.begin() + passMetadataSpan.End};
 
 		RegisterPassSubresources(passMetadata.Type, payloadSpan);
 	}
+
+
+	uint32_t backbufferPayloadIndex = mPresentPassMetadata.SubresourceMetadataSpan.Begin + (uint32_t)PresentPassSubresourceId::Backbuffer;
+	mSubresourceMetadataPayloads[backbufferPayloadIndex].Format = mSwapChain->GetBackbufferFormat();
+	mSubresourceMetadataPayloads[backbufferPayloadIndex].State  = D3D12_RESOURCE_STATE_PRESENT;
+	mSubresourceMetadataPayloads[backbufferPayloadIndex].Flags  = 0;
 }
 
 bool D3D12::FrameGraphBuilder::IsReadSubresource(uint32_t subresourceInfoIndex)
@@ -399,16 +402,16 @@ bool D3D12::FrameGraphBuilder::IsReadSubresource(uint32_t subresourceInfoIndex)
 			                         | D3D12_RESOURCE_STATE_COPY_SOURCE | D3D12_RESOURCE_STATE_RESOLVE_SOURCE | D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE | D3D12_RESOURCE_STATE_SHADING_RATE_SOURCE
 			                         | D3D12_RESOURCE_STATE_PRESENT | D3D12_RESOURCE_STATE_PREDICATION | D3D12_RESOURCE_STATE_VIDEO_DECODE_READ | D3D12_RESOURCE_STATE_VIDEO_PROCESS_READ | D3D12_RESOURCE_STATE_VIDEO_ENCODE_READ;
 
-	return mSubresourceInfos[subresourceInfoIndex].State & readStates;
+	return mSubresourceMetadataPayloads[subresourceInfoIndex].State & readStates;
 }
 
 bool D3D12::FrameGraphBuilder::IsWriteSubresource(uint32_t subresourceInfoIndex)
 {
-	D3D12_RESOURCE_STATES writeStates = D3D12_RESOURCE_STATE_COMMON | D3D12_RESOURCE_STATE_RENDER_TARGET | D3D12_RESOURCE_STATE_UNORDERED_ACCESS | D3D12_RESOURCE_STATE_DEPTH_WRITE 
+	D3D12_RESOURCE_STATES writeStates = D3D12_RESOURCE_STATE_RENDER_TARGET | D3D12_RESOURCE_STATE_UNORDERED_ACCESS | D3D12_RESOURCE_STATE_DEPTH_WRITE 
 	                                  | D3D12_RESOURCE_STATE_STREAM_OUT | D3D12_RESOURCE_STATE_COPY_DEST | D3D12_RESOURCE_STATE_RESOLVE_DEST | D3D12_RESOURCE_STATE_PREDICATION 
 			                          | D3D12_RESOURCE_STATE_VIDEO_DECODE_WRITE | D3D12_RESOURCE_STATE_VIDEO_PROCESS_WRITE | D3D12_RESOURCE_STATE_VIDEO_ENCODE_WRITE;
 
-	return mSubresourceInfos[subresourceInfoIndex].State & writeStates;
+	return mSubresourceMetadataPayloads[subresourceInfoIndex].State & writeStates;
 }
 
 void D3D12::FrameGraphBuilder::CreatePassObject(const FrameGraphDescription::RenderPassName& passName, RenderPassType passType, uint32_t frame)

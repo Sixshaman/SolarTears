@@ -14,7 +14,7 @@ namespace Vulkan
 			Aspect = 0;
 			Layout = VK_IMAGE_LAYOUT_UNDEFINED;
 			Usage  = 0;
-			Stage  = VK_PIPELINE_STAGE_NONE_KHR;
+			Stage  = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 			Access = 0;
 			Flags  = 0;
 		}

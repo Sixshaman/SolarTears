@@ -32,7 +32,7 @@ namespace Vulkan
 	class FrameGraphBuilder final: public ModernFrameGraphBuilder
 	{
 	public:
-		FrameGraphBuilder(LoggerQueue* logger, FrameGraph* graphToBuild, FrameGraphDescription&& frameGraphDescription, const SwapChain* swapchain);
+		FrameGraphBuilder(LoggerQueue* logger, FrameGraph* graphToBuild, const SwapChain* swapchain);
 		~FrameGraphBuilder();
 
 		const VkDevice          GetDevice()           const;
@@ -42,27 +42,27 @@ namespace Vulkan
 		
 		ShaderDatabase* GetShaderDatabase() const;
 
-		VkImage              GetRegisteredResource(const std::string_view passName,    const std::string_view subresourceId, uint32_t frame) const;
-		VkImageView          GetRegisteredSubresource(const std::string_view passName, const std::string_view subresourceId, uint32_t frame) const;
+		VkImage              GetRegisteredResource(uint32_t passIndex,    uint_fast16_t subresourceIndex, uint32_t frame) const;
+		VkImageView          GetRegisteredSubresource(uint32_t passIndex, uint_fast16_t subresourceIndex, uint32_t frame) const;
 
-		VkFormat             GetRegisteredSubresourceFormat(const std::string_view subresourceId) const;
-		VkImageLayout        GetRegisteredSubresourceLayout(const std::string_view subresourceId) const;
-		VkImageUsageFlags    GetRegisteredSubresourceUsage(const std::string_view subresourceId) const;
-		VkPipelineStageFlags GetRegisteredSubresourceStageFlags(const std::string_view subresourceId) const;
-		VkImageAspectFlags   GetRegisteredSubresourceAspectFlags(const std::string_view subresourceId) const;
-		VkAccessFlags        GetRegisteredSubresourceAccessFlags(const std::string_view subresourceId) const;
+		VkFormat             GetRegisteredSubresourceFormat(uint32_t passIndex,      uint_fast16_t subresourceIndex) const;
+		VkImageLayout        GetRegisteredSubresourceLayout(uint32_t passIndex,      uint_fast16_t subresourceIndex) const;
+		VkImageUsageFlags    GetRegisteredSubresourceUsage(uint32_t passIndex,       uint_fast16_t subresourceIndex) const;
+		VkPipelineStageFlags GetRegisteredSubresourceStageFlags(uint32_t passIndex,  uint_fast16_t subresourceIndex) const;
+		VkImageAspectFlags   GetRegisteredSubresourceAspectFlags(uint32_t passIndex, uint_fast16_t subresourceIndex) const;
+		VkAccessFlags        GetRegisteredSubresourceAccessFlags(uint32_t passIndex, uint_fast16_t subresourceIndex) const;
 
-		VkImageLayout        GetPreviousPassSubresourceLayout(const std::string_view subresourceId) const;
-		VkImageUsageFlags    GetPreviousPassSubresourceUsage(const std::string_view subresourceId) const;
-		VkPipelineStageFlags GetPreviousPassSubresourceStageFlags(const std::string_view subresourceId) const;
-		VkImageAspectFlags   GetPreviousPassSubresourceAspectFlags(const std::string_view subresourceId) const;
-		VkAccessFlags        GetPreviousPassSubresourceAccessFlags(const std::string_view subresourceId) const;
+		VkImageLayout        GetPreviousPassSubresourceLayout(uint32_t passIndex,     uint_fast16_t subresourceIndex) const;
+		VkImageUsageFlags    GetPreviousPassSubresourceUsage(uint32_t passIndex,      uint_fast16_t subresourceIndex) const;
+		VkPipelineStageFlags GetPreviousPassSubresourceStageFlags(uint32_t passIndex, uint_fast16_t subresourceIndex) const;
+		VkImageAspectFlags   GetPreviousPassSubresourceAspectFlags(uint32_t passName, uint_fast16_t subresourceIndex) const;
+		VkAccessFlags        GetPreviousPassSubresourceAccessFlags(uint32_t passName, uint_fast16_t subresourceIndex) const;
 
-		VkImageLayout        GetNextPassSubresourceLayout(const std::string_view subresourceId) const;
-		VkImageUsageFlags    GetNextPassSubresourceUsage(const std::string_view subresourceId) const;
-		VkPipelineStageFlags GetNextPassSubresourceStageFlags(const std::string_view subresourceId) const;
-		VkImageAspectFlags   GetNextPassSubresourceAspectFlags(const std::string_view subresourceId) const;
-		VkAccessFlags        GetNextPassSubresourceAccessFlags(const std::string_view subresourceId) const;
+		VkImageLayout        GetNextPassSubresourceLayout(uint32_t passIndex,      uint_fast16_t subresourceIndex) const;
+		VkImageUsageFlags    GetNextPassSubresourceUsage(uint32_t passIndex,       uint_fast16_t subresourceIndex) const;
+		VkPipelineStageFlags GetNextPassSubresourceStageFlags(uint32_t passIndex,  uint_fast16_t subresourceIndex) const;
+		VkImageAspectFlags   GetNextPassSubresourceAspectFlags(uint32_t passIndex, uint_fast16_t subresourceIndex) const;
+		VkAccessFlags        GetNextPassSubresourceAccessFlags(uint32_t passIndex, uint_fast16_t subresourceIndex) const;
 
 		void Build(const FrameGraphBuildInfo& buildInfo);
 
@@ -84,6 +84,9 @@ namespace Vulkan
 
 		//Checks if the usage of the subresource with subresourceInfoIndex includes writing
 		bool IsWriteSubresource(uint32_t subresourceInfoIndex) override final;
+
+		//Propagates API-specific subresource data
+		void PropagateSubresourcePayloadData() override final;
 
 		//Creates a new render pass
 		void CreatePassObject(const FrameGraphDescription::RenderPassName& passName, RenderPassType passType, uint32_t frame) override final;

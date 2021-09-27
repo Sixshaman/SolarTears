@@ -25,7 +25,7 @@ namespace Vulkan
 		inline static void RegisterShaders(ShaderDatabase* shaderDatabase);
 
 	public:
-		GBufferPass(const FrameGraphBuilder* frameGraphBuilder, const std::string& passName, uint32_t frame);
+		GBufferPass(const FrameGraphBuilder* frameGraphBuilder, uint32_t frameGraphPassIndex, uint32_t frame);
 		~GBufferPass();
 
 		void RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* renderableScene, const FrameGraphConfig& frameGraphConfig) const override;
