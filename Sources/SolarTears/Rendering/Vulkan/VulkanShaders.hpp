@@ -27,9 +27,9 @@ namespace Vulkan
 
 	struct PassSetInfo
 	{
+		RenderPassType        PassType;
 		VkDescriptorSetLayout SetLayout;
 		Span<uint32_t>        BindingSpan;
-		RenderPassType        PassType;
 	};
 
 	class ShaderDatabase
