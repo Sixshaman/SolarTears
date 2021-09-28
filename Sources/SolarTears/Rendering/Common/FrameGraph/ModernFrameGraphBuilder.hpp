@@ -122,9 +122,6 @@ private:
 	//Build the between-pass barriers
 	void BuildBarriers();
 
-	//Build the before- and after-pass barriers
-	uint32_t BuildPassBarriers(const PassMetadata& passMetadata, uint32_t barrierOffset, ModernFrameGraph::BarrierSpan* outBarrierSpan);
-
 protected:
 	const Span<uint32_t> GetBackbufferImageSpan() const;
 
@@ -153,11 +150,11 @@ protected:
 	//Creates render pass objects
 	virtual void CreateObjectsForPass(uint32_t passMetadataIndex, uint32_t passSwapchainImageCount) = 0;
 
-	//Add a barrier to execute before a pass
-	virtual uint32_t AddBeforePassBarrier(uint32_t metadataIndex) = 0;
+	//Add barriers to execute before a pass
+	virtual void AddBeforePassBarriers(const PassMetadata& passMetadata, uint32_t barrierSpanIndex) = 0;
 
-	//Add a barrier to execute before a pass
-	virtual uint32_t AddAfterPassBarrier(uint32_t metadataIndex) = 0;
+	//Add barriers to execute before a pass
+	virtual void AddAfterPassBarriers(const PassMetadata& passMetadata, uint32_t barrierSpanIndex) = 0;
 
 	//Initializes command buffer, job info, etc. for the frame graph
 	virtual void InitializeTraverseData() const = 0;

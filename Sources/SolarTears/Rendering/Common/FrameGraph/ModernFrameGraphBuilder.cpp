@@ -576,97 +576,23 @@ void ModernFrameGraphBuilder::BuildPassObjects()
 
 void ModernFrameGraphBuilder::BuildBarriers()
 {
-	mGraphToBuild->mRenderPassBarriers.resize(mPassMetadatas.size() + 1);
 	mGraphToBuild->mMultiframeBarrierInfos.clear();
-
-	uint32_t totalBarrierCount = 0;
-	for(const PassMetadata& passMetadata: mPassMetadatas)
+	mGraphToBuild->mRenderPassBarriers.resize(mPassMetadatas.size() + 1, ModernFrameGraph::BarrierSpan
 	{
-		totalBarrierCount += BuildPassBarriers(passMetadata, totalBarrierCount, &mGraphToBuild->mRenderPassBarriers[i]);
+		.BeforePassBegin = 0,
+		.BeforePassEnd   = 0,
+		.AfterPassBegin  = 0,
+		.AfterPassEnd    = 0
+	});
+
+	for(uint32_t passIndex = 0; passIndex < mPassMetadatas.size() - 1; passIndex++)
+	{
+		const PassMetadata& passMetadata = mPassMetadatas[passIndex];
+
+		AddBeforePassBarriers(passMetadata, passIndex);
+		AddAfterPassBarriers(passMetadata,  passIndex);
 	}
 
-	BuildPassBarriers(mPresentPassMetadata, totalBarrierCount, &mGraphToBuild->mRenderPassBarriers.back());
-}
-
-uint32_t ModernFrameGraphBuilder::BuildPassBarriers(const PassMetadata& passMetadata, uint32_t barrierOffset, ModernFrameGraph::BarrierSpan* outBarrierSpan)
-{
-	Span<uint32_t> passSubresourceSpan = mSubresourceMetadataSpansPerPass.at(passName);
-
-	std::vector<uint32_t> indicesForBeforeBarriers;
-	std::vector<uint32_t> indicesForAfterBarriers;
-	for(uint32_t metadataIndex = passSubresourceSpan.Begin; metadataIndex < passSubresourceSpan.End; metadataIndex++)
-	{
-		const SubresourceMetadataNode& subresourceMetadata = mSubresourceMetadataNodesFlat[metadataIndex];
-	
-		const SubresourceMetadataNode& prevMetadata = mSubresourceMetadataNodesFlat[subresourceMetadata.PrevPassNodeIndex];
-		const SubresourceMetadataNode& nextMetadata = mSubresourceMetadataNodesFlat[subresourceMetadata.NextPassNodeIndex];
-
-		if(!(subresourceMetadata.Flags & TextureFlagAutoBeforeBarrier) && !(prevMetadata.Flags & TextureFlagAutoAfterBarrier))
-		{
-			indicesForBeforeBarriers.push_back(metadataIndex);
-		}
-
-		if(!(subresourceMetadata.Flags & TextureFlagAutoAfterBarrier) && !(nextMetadata.Flags & TextureFlagAutoBeforeBarrier))
-		{
-			indicesForAfterBarriers.push_back(metadataIndex);
-		}
-	}
-
-
-	uint32_t passBarrierCount = 0;
-
-	ModernFrameGraph::BarrierSpan barrierSpan;
-	barrierSpan.BeforePassBegin = barrierOffset + passBarrierCount;
-
-	for(uint32_t metadataIndex: indicesForBeforeBarriers)
-	{
-		uint32_t barrierId = AddBeforePassBarrier(metadataIndex);
-		if(barrierId != (uint32_t)(-1))
-		{
-			const SubresourceMetadataNode& subresourceMetadata = mSubresourceMetadataNodesFlat[metadataIndex];
-			passBarrierCount++;
-
-			if(subresourceMetadata.FrameCount > 1)
-			{
-				ModernFrameGraph::MultiframeBarrierInfo multiframeBarrierInfo;
-				multiframeBarrierInfo.BarrierIndex  = barrierId;
-				multiframeBarrierInfo.BaseTexIndex  = subresourceMetadata.FirstFrameHandle;
-				multiframeBarrierInfo.TexturePeriod = subresourceMetadata.FrameCount;
-
-				mGraphToBuild->mMultiframeBarrierInfos.push_back(multiframeBarrierInfo);
-			}
-		}
-	}
-
-	barrierSpan.BeforePassEnd  = barrierOffset + passBarrierCount;
-	barrierSpan.AfterPassBegin = barrierOffset + passBarrierCount;
-
-	for(uint32_t metadataIndex: indicesForAfterBarriers)
-	{
-		uint32_t barrierId = AddAfterPassBarrier(metadataIndex);
-		if(barrierId != (uint32_t)(-1))
-		{
-			const SubresourceMetadataNode& subresourceMetadata = mSubresourceMetadataNodesFlat[metadataIndex];
-			passBarrierCount++;
-
-			if(subresourceMetadata.FrameCount > 1)
-			{
-				ModernFrameGraph::MultiframeBarrierInfo multiframeBarrierInfo;
-				multiframeBarrierInfo.BarrierIndex  = barrierId;
-				multiframeBarrierInfo.BaseTexIndex  = subresourceMetadata.FirstFrameHandle;
-				multiframeBarrierInfo.TexturePeriod = subresourceMetadata.FrameCount;
-
-				mGraphToBuild->mMultiframeBarrierInfos.push_back(multiframeBarrierInfo);
-			}
-		}
-	}
-
-	barrierSpan.AfterPassEnd = barrierOffset + passBarrierCount;
-
-	if(outBarrierSpan)
-	{
-		*outBarrierSpan = barrierSpan;
-	}
-
-	return passBarrierCount;
+	AddBeforePassBarriers(mPresentPassMetadata, (uint32_t)(mPassMetadatas.size() - 1));
+	AddAfterPassBarriers(mPresentPassMetadata,  (uint32_t)(mPassMetadatas.size() - 1));
 }

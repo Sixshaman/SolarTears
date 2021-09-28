@@ -100,11 +100,11 @@ namespace Vulkan
 		//Creates a new render pass
 		void CreateObjectsForPass(uint32_t passMetadataIndex, uint32_t passSwapchainImageCount) override final;
 
-		//Adds a barrier to execute before a pass
-		uint32_t AddBeforePassBarrier(uint32_t metadataIndex) override final;
+		//Adds subresource barriers to execute before a pass
+		void AddBeforePassBarriers(const PassMetadata& passMetadata, uint32_t barrierSpanIndex) override final;
 
-		//Adds a barrier to execute before a pass
-		uint32_t AddAfterPassBarrier(uint32_t metadataIndex) override final;
+		//Adds subresource barriers to execute before a pass
+		void AddAfterPassBarriers(const PassMetadata& passMetadata, uint32_t barrierSpanIndex) override final;
 
 		//Initializes per-traverse command buffer info
 		void InitializeTraverseData() const override final;

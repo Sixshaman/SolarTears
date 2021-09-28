@@ -749,199 +749,233 @@ void D3D12::FrameGraphBuilder::CreateObjectsForPass(uint32_t passMetadataIndex, 
 	mD3d12GraphToBuild->mPassFrameSpans.push_back(passSpanInfo);
 }
 
-uint32_t D3D12::FrameGraphBuilder::AddBeforePassBarrier(uint32_t metadataIndex)
+void D3D12::FrameGraphBuilder::AddBeforePassBarriers(const PassMetadata& passMetadata, uint32_t barrierSpanIndex)
 {
-	/*
-	*    1.  Same queue, state unchanged:                                 No barrier needed
-	*    2.  Same queue, state changed PRESENT -> automatically promoted: No barrier needed
-	*    3.  Same queue, state changed to PRESENT:                        No barrier needed, handled by the previous state's barrier
-	*    4.  Same queue, state changed other cases:                       Need a barrier Old state -> New state
-	*
-	*    5.  Graphics -> Compute, state automatically promoted:               No barrier needed
-	*    6.  Graphics -> Compute, state non-promoted, was promoted read-only: Need a barrier COMMON -> New state
-	*    7.  Graphics -> Compute, state unchanged:                            No barrier needed
-	*    8.  Graphics -> Compute, state changed other cases:                  No barrier needed, handled by the previous state's barrier
-	* 
-	*    9.  Compute -> Graphics, state automatically promoted:                       No barrier needed, state will be promoted again
-	* 	 10. Compute -> Graphics, state non-promoted, was promoted read-only:         Need a barrier COMMON -> New state   
-	*    11. Compute -> Graphics, state changed Compute/graphics -> Compute/Graphics: No barrier needed, handled by the previous state's barrier
-	*    12. Compute -> Graphics, state changed Compute/Graphics -> Graphics:         Need a barrier Old state -> New state
-	*    13. Compute -> Graphics, state unchanged:                                    No barrier needed
-	*
-	*    14. Graphics/Compute -> Copy, was promoted read-only: No barrier needed, state decays
-	*    15. Graphics/Compute -> Copy, other cases:            No barrier needed, handled by previous state's barrier
-	* 
-	*    16. Copy -> Graphics/Compute, state automatically promoted: No barrier needed
-	*    17. Copy -> Graphics/Compute, state non-promoted:           Need a barrier COMMON -> New state
-	*/
+	mD3d12GraphToBuild->mRenderPassBarriers[barrierSpanIndex].BeforePassBegin = (uint32_t)mD3d12GraphToBuild->mResourceBarriers.size();
 
-	const SubresourceMetadataNode& currMetadataNode = mSubresourceMetadataNodesFlat[metadataIndex];
-	const SubresourceMetadataNode& prevMetadataNode = mSubresourceMetadataNodesFlat[currMetadataNode.PrevPassNodeIndex];
-
-	const SubresourceInfo& prevPassInfo = mSubresourceInfos[currMetadataNode.PrevPassNodeIndex];
-	const SubresourceInfo& currPassInfo = mSubresourceInfos[metadataIndex];
-
-	bool barrierNeeded = false;
-	D3D12_RESOURCE_STATES prevPassState = prevPassInfo.State;
-	D3D12_RESOURCE_STATES currPassState = currPassInfo.State;
-
-	if(PassClassToListType(prevMetadataNode.PassClass) == PassClassToListType(currMetadataNode.PassClass)) //Rules 1, 2, 3, 4
+	for(uint32_t metadataIndex = passMetadata.SubresourceMetadataSpan.Begin; metadataIndex < passMetadata.SubresourceMetadataSpan.End; metadataIndex++)
 	{
-		if(prevPassState == D3D12_RESOURCE_STATE_PRESENT) //Rule 2 or 4
+		/*
+		*    1.  Same queue, state unchanged:                                 No barrier needed
+		*    2.  Same queue, state changed PRESENT -> automatically promoted: No barrier needed
+		*    3.  Same queue, state changed to PRESENT:                        No barrier needed, handled by the previous state's barrier
+		*    4.  Same queue, state changed other cases:                       Need a barrier Old state -> New state
+		*
+		*    5.  Graphics -> Compute, state automatically promoted:               No barrier needed
+		*    6.  Graphics -> Compute, state non-promoted, was promoted read-only: Need a barrier COMMON -> New state
+		*    7.  Graphics -> Compute, state unchanged:                            No barrier needed
+		*    8.  Graphics -> Compute, state changed other cases:                  No barrier needed, handled by the previous state's barrier
+		* 
+		*    9.  Compute -> Graphics, state automatically promoted:                       No barrier needed, state will be promoted again
+		* 	 10. Compute -> Graphics, state non-promoted, was promoted read-only:         Need a barrier COMMON -> New state   
+		*    11. Compute -> Graphics, state changed Compute/graphics -> Compute/Graphics: No barrier needed, handled by the previous state's barrier
+		*    12. Compute -> Graphics, state changed Compute/Graphics -> Graphics:         Need a barrier Old state -> New state
+		*    13. Compute -> Graphics, state unchanged:                                    No barrier needed
+		*
+		*    14. Graphics/Compute -> Copy, was promoted read-only: No barrier needed, state decays
+		*    15. Graphics/Compute -> Copy, other cases:            No barrier needed, handled by previous state's barrier
+		* 
+		*    16. Copy -> Graphics/Compute, state automatically promoted: No barrier needed
+		*    17. Copy -> Graphics/Compute, state non-promoted:           Need a barrier COMMON -> New state
+		*/
+
+		const SubresourceMetadataNode& currMetadataNode = mSubresourceMetadataNodesFlat[metadataIndex];
+		const SubresourceMetadataNode& prevMetadataNode = mSubresourceMetadataNodesFlat[currMetadataNode.PrevPassNodeIndex];
+
+		const SubresourceMetadataPayload& currMetadataPayload = mSubresourceMetadataPayloads[metadataIndex];
+		const SubresourceMetadataPayload& prevMetadataPayload = mSubresourceMetadataPayloads[currMetadataNode.PrevPassNodeIndex];
+
+		const ResourceMetadata& resourceMetadata = mResourceMetadatas[currMetadataNode.ResourceMetadataIndex];
+
+		bool barrierNeeded = false;
+		D3D12_RESOURCE_STATES prevPassState = prevMetadataPayload.State;
+		D3D12_RESOURCE_STATES currPassState = currMetadataPayload.State;
+
+		if(PassClassToListType(prevMetadataNode.PassClass) == PassClassToListType(currMetadataNode.PassClass)) //Rules 1, 2, 3, 4
 		{
-			barrierNeeded = !currPassInfo.BarrierPromotedFromCommon;
+			if(prevPassState == D3D12_RESOURCE_STATE_PRESENT) //Rule 2 or 4
+			{
+				barrierNeeded = !(currMetadataPayload.Flags & TextureFlagBarrierCommonPromoted);
+			}
+			else //Rule 1, 3 or 4
+			{
+				barrierNeeded = (currPassState != D3D12_RESOURCE_STATE_PRESENT) && (prevPassState != currPassState);
+			}
 		}
-		else //Rule 1, 3 or 4
+		else if(PassClassToListType(prevMetadataNode.PassClass) == D3D12_COMMAND_LIST_TYPE_DIRECT && PassClassToListType(currMetadataNode.PassClass) == D3D12_COMMAND_LIST_TYPE_COMPUTE) //Rules 5, 6, 7, 8
 		{
-			barrierNeeded = (currPassState != D3D12_RESOURCE_STATE_PRESENT) && (prevPassState != currPassState);
+			if((prevMetadataPayload.Flags & TextureFlagBarrierCommonPromoted) && !D3D12Utils::IsStateWriteable(prevPassState)) //Rule 6
+			{
+				prevPassState = D3D12_RESOURCE_STATE_COMMON; //Common state decay from promoted read-only
+				barrierNeeded = !(currMetadataPayload.Flags & TextureFlagBarrierCommonPromoted);
+			}
+			else //Rules 6, 7, 8
+			{
+				barrierNeeded = false;
+			}
 		}
-	}
-	else if(PassClassToListType(prevMetadataNode.PassClass) == D3D12_COMMAND_LIST_TYPE_DIRECT && PassClassToListType(currMetadataNode.PassClass) == D3D12_COMMAND_LIST_TYPE_COMPUTE) //Rules 5, 6, 7, 8
-	{
-		if(prevPassInfo.BarrierPromotedFromCommon && !D3D12Utils::IsStateWriteable(prevPassState)) //Rule 6
+		else if(PassClassToListType(prevMetadataNode.PassClass) == D3D12_COMMAND_LIST_TYPE_COMPUTE && PassClassToListType(currMetadataNode.PassClass) == D3D12_COMMAND_LIST_TYPE_DIRECT) //Rules 9, 10, 11, 12, 13
 		{
-			prevPassState = D3D12_RESOURCE_STATE_COMMON; //Common state decay from promoted read-only
-			barrierNeeded = !currPassInfo.BarrierPromotedFromCommon;
+			if((prevMetadataPayload.Flags & TextureFlagBarrierCommonPromoted) && !D3D12Utils::IsStateWriteable(prevPassState)) //Rule 10
+			{
+				prevPassState = D3D12_RESOURCE_STATE_COMMON; //Common state decay from promoted read-only
+				barrierNeeded = !(currMetadataPayload.Flags & TextureFlagBarrierCommonPromoted);
+			}
+			else //Rules 9, 11, 12, 13
+			{
+				barrierNeeded = !(currMetadataPayload.Flags & TextureFlagBarrierCommonPromoted) && (prevPassState != currPassState) && !D3D12Utils::IsStateComputeFriendly(currPassState);
+			}
 		}
-		else //Rules 6, 7, 8
+		else if(PassClassToListType(currMetadataNode.PassClass) == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 14, 15
 		{
 			barrierNeeded = false;
 		}
-	}
-	else if(PassClassToListType(prevMetadataNode.PassClass) == D3D12_COMMAND_LIST_TYPE_COMPUTE && PassClassToListType(currMetadataNode.PassClass) == D3D12_COMMAND_LIST_TYPE_DIRECT) //Rules 9, 10, 11, 12, 13
-	{
-		if(prevPassInfo.BarrierPromotedFromCommon && !D3D12Utils::IsStateWriteable(prevPassState)) //Rule 10
+		else if(PassClassToListType(prevMetadataNode.PassClass) == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 16, 17
 		{
-			prevPassState = D3D12_RESOURCE_STATE_COMMON; //Common state decay from promoted read-only
-			barrierNeeded = !currPassInfo.BarrierPromotedFromCommon;
+			barrierNeeded = !(currMetadataPayload.Flags & TextureFlagBarrierCommonPromoted);
 		}
-		else //Rules 9, 11, 12, 13
+
+		if(barrierNeeded)
 		{
-			barrierNeeded = !currPassInfo.BarrierPromotedFromCommon && (prevPassState != currPassState) && !D3D12Utils::IsStateComputeFriendly(currPassState);
+			D3D12_RESOURCE_BARRIER textureTransitionBarrier;
+			textureTransitionBarrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+			textureTransitionBarrier.Transition.pResource   = mD3d12GraphToBuild->mTextures[resourceMetadata.FirstFrameHandle];
+			textureTransitionBarrier.Transition.Subresource = 0;
+			textureTransitionBarrier.Transition.StateBefore = prevPassState;
+			textureTransitionBarrier.Transition.StateAfter  = currPassState;
+			textureTransitionBarrier.Flags                  = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+
+			mD3d12GraphToBuild->mResourceBarriers.push_back(textureTransitionBarrier);
+
+			if(resourceMetadata.FrameCount > 1)
+			{
+				uint32_t newBarrierIndex = (uint32_t)(mD3d12GraphToBuild->mResourceBarriers.size() - 1);
+
+				ModernFrameGraph::MultiframeBarrierInfo multiframeBarrierInfo;
+				multiframeBarrierInfo.BarrierIndex  = newBarrierIndex;
+				multiframeBarrierInfo.BaseTexIndex  = resourceMetadata.FirstFrameHandle;
+				multiframeBarrierInfo.TexturePeriod = resourceMetadata.FrameCount;
+
+				mD3d12GraphToBuild->mMultiframeBarrierInfos.push_back(multiframeBarrierInfo);
+			}
 		}
 	}
-	else if(PassClassToListType(currMetadataNode.PassClass) == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 14, 15
-	{
-		barrierNeeded = false;
-	}
-	else if(PassClassToListType(prevMetadataNode.PassClass) == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 16, 17
-	{
-		barrierNeeded = !currPassInfo.BarrierPromotedFromCommon;
-	}
 
-	if(barrierNeeded)
-	{
-		D3D12_RESOURCE_BARRIER textureTransitionBarrier;
-		textureTransitionBarrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		textureTransitionBarrier.Transition.pResource   = mD3d12GraphToBuild->mTextures[currMetadataNode.FirstFrameHandle];
-		textureTransitionBarrier.Transition.Subresource = 0;
-		textureTransitionBarrier.Transition.StateBefore = prevPassState;
-		textureTransitionBarrier.Transition.StateAfter  = currPassState;
-		textureTransitionBarrier.Flags                  = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-
-		mD3d12GraphToBuild->mResourceBarriers.push_back(textureTransitionBarrier);
-
-		return (uint32_t)(mD3d12GraphToBuild->mResourceBarriers.size() - 1);
-	}
-
-	return (uint32_t)(-1);
+	mD3d12GraphToBuild->mRenderPassBarriers[barrierSpanIndex].BeforePassEnd = (uint32_t)mD3d12GraphToBuild->mResourceBarriers.size();
 }
 
-uint32_t D3D12::FrameGraphBuilder::AddAfterPassBarrier(uint32_t metadataIndex)
+void D3D12::FrameGraphBuilder::AddAfterPassBarriers(const PassMetadata& passMetadata, uint32_t barrierSpanIndex)
 {
-	/*
-	*    1.  Same queue, state unchanged:                                           No barrier needed
-	*    2.  Same queue, state changed, Promoted read-only -> PRESENT:              No barrier needed, state decays
-	*    3.  Same queue, state changed, Promoted writeable/Non-promoted -> PRESENT: Need a barrier Old State -> PRESENT
-	*    4.  Same queue, state changed, other cases:                                No barrier needed, will be handled by the next state's barrier
-	*
-	*    5.  Graphics -> Compute, state will be automatically promoted:               No barrier needed
-	*    6.  Graphics -> Compute, state will not be promoted, was promoted read-only: No barrier needed, will be handled by the next state's barrier
-	*    7.  Graphics -> Compute, state unchanged:                                    No barrier needed
-	*    8.  Graphics -> Compute, state changed other cases:                          Need a barrier Old state -> New state
-	* 
-	*    9.  Compute -> Graphics, state will be automatically promoted:                 No barrier needed
-	* 	 10. Compute -> Graphics, state will not be promoted, was promoted read-only:   No barrier needed, will be handled by the next state's barrier     
-	*    11. Compute -> Graphics, state changed Promoted read-only -> PRESENT:          No barrier needed, state will decay
-	*    12. Compute -> Graphics, state changed Compute/graphics   -> Compute/Graphics: Need a barrier Old state -> New state
-	*    13. Compute -> Graphics, state changed Compute/Graphics   -> Graphics:         No barrier needed, will be handled by the next state's barrier
-	*    14. Compute -> Graphics, state unchanged:                                      No barrier needed
-	*   
-	*    15. Graphics/Compute -> Copy, from Promoted read-only: No barrier needed
-	*    16. Graphics/Compute -> Copy, other cases:             Need a barrier Old state -> COMMON
-	* 
-	*    17. Copy -> Graphics/Compute, state will be automatically promoted: No barrier needed
-	*    18. Copy -> Graphics/Compute, state will not be promoted:           No barrier needed, will be handled by the next state's barrier
-	*/
+	mD3d12GraphToBuild->mRenderPassBarriers[barrierSpanIndex].AfterPassBegin = (uint32_t)mD3d12GraphToBuild->mResourceBarriers.size();
 
-	const SubresourceMetadataNode& currMetadataNode = mSubresourceMetadataNodesFlat[metadataIndex];
-	const SubresourceMetadataNode& nextMetadataNode = mSubresourceMetadataNodesFlat[currMetadataNode.NextPassNodeIndex];
-
-	const SubresourceInfo& currPassInfo = mSubresourceInfos[metadataIndex];
-	const SubresourceInfo& nextPassInfo = mSubresourceInfos[currMetadataNode.NextPassNodeIndex];
-
-	bool barrierNeeded = false;
-	D3D12_RESOURCE_STATES currPassState = currPassInfo.State;
-	D3D12_RESOURCE_STATES nextPassState = nextPassInfo.State;
-
-	if(PassClassToListType(currMetadataNode.PassClass) == PassClassToListType(nextMetadataNode.PassClass)) //Rules 1, 2, 3, 4
+	for(uint32_t metadataIndex = passMetadata.SubresourceMetadataSpan.Begin; metadataIndex < passMetadata.SubresourceMetadataSpan.End; metadataIndex++)
 	{
-		if(nextPassState == D3D12_RESOURCE_STATE_PRESENT) //Rules 2, 3
+		/*
+		*    1.  Same queue, state unchanged:                                           No barrier needed
+		*    2.  Same queue, state changed, Promoted read-only -> PRESENT:              No barrier needed, state decays
+		*    3.  Same queue, state changed, Promoted writeable/Non-promoted -> PRESENT: Need a barrier Old State -> PRESENT
+		*    4.  Same queue, state changed, other cases:                                No barrier needed, will be handled by the next state's barrier
+		*
+		*    5.  Graphics -> Compute, state will be automatically promoted:               No barrier needed
+		*    6.  Graphics -> Compute, state will not be promoted, was promoted read-only: No barrier needed, will be handled by the next state's barrier
+		*    7.  Graphics -> Compute, state unchanged:                                    No barrier needed
+		*    8.  Graphics -> Compute, state changed other cases:                          Need a barrier Old state -> New state
+		* 
+		*    9.  Compute -> Graphics, state will be automatically promoted:                 No barrier needed
+		* 	 10. Compute -> Graphics, state will not be promoted, was promoted read-only:   No barrier needed, will be handled by the next state's barrier     
+		*    11. Compute -> Graphics, state changed Promoted read-only -> PRESENT:          No barrier needed, state will decay
+		*    12. Compute -> Graphics, state changed Compute/graphics   -> Compute/Graphics: Need a barrier Old state -> New state
+		*    13. Compute -> Graphics, state changed Compute/Graphics   -> Graphics:         No barrier needed, will be handled by the next state's barrier
+		*    14. Compute -> Graphics, state unchanged:                                      No barrier needed
+		*   
+		*    15. Graphics/Compute -> Copy, from Promoted read-only: No barrier needed
+		*    16. Graphics/Compute -> Copy, other cases:             Need a barrier Old state -> COMMON
+		* 
+		*    17. Copy -> Graphics/Compute, state will be automatically promoted: No barrier needed
+		*    18. Copy -> Graphics/Compute, state will not be promoted:           No barrier needed, will be handled by the next state's barrier
+		*/
+
+		const SubresourceMetadataNode& currMetadataNode = mSubresourceMetadataNodesFlat[metadataIndex];
+		const SubresourceMetadataNode& nextMetadataNode = mSubresourceMetadataNodesFlat[currMetadataNode.NextPassNodeIndex];
+
+		const SubresourceMetadataPayload& currMetadataPayload = mSubresourceMetadataPayloads[metadataIndex];
+		const SubresourceMetadataPayload& nextMetadataPayload = mSubresourceMetadataPayloads[currMetadataNode.NextPassNodeIndex];
+
+		const ResourceMetadata& resourceMetadata = mResourceMetadatas[currMetadataNode.ResourceMetadataIndex];
+
+		bool barrierNeeded = false;
+		D3D12_RESOURCE_STATES currPassState = currMetadataPayload.State;
+		D3D12_RESOURCE_STATES nextPassState = nextMetadataPayload.State;
+
+		if(PassClassToListType(currMetadataNode.PassClass) == PassClassToListType(nextMetadataNode.PassClass)) //Rules 1, 2, 3, 4
 		{
-			barrierNeeded = (!currPassInfo.BarrierPromotedFromCommon || D3D12Utils::IsStateWriteable(currPassState));
+			if(nextPassState == D3D12_RESOURCE_STATE_PRESENT) //Rules 2, 3
+			{
+				barrierNeeded = (!(currMetadataPayload.Flags & TextureFlagBarrierCommonPromoted) || D3D12Utils::IsStateWriteable(currPassState));
+			}
+			else //Rules 1, 4
+			{
+				barrierNeeded = false;
+			}
 		}
-		else //Rules 1, 4
+		else if(PassClassToListType(currMetadataNode.PassClass) == D3D12_COMMAND_LIST_TYPE_DIRECT && PassClassToListType(nextMetadataNode.PassClass) == D3D12_COMMAND_LIST_TYPE_COMPUTE) //Rules 5, 6, 7, 8
+		{
+			if((currMetadataPayload.Flags & TextureFlagBarrierCommonPromoted) && !D3D12Utils::IsStateWriteable(currPassState)) //Rule 6
+			{
+				barrierNeeded = false;
+			}
+			else //Rules 5, 7, 8
+			{
+				barrierNeeded = !(nextMetadataPayload.Flags & TextureFlagBarrierCommonPromoted) && (currPassState != nextPassState);
+			}
+		}
+		else if(PassClassToListType(currMetadataNode.PassClass) == D3D12_COMMAND_LIST_TYPE_COMPUTE && PassClassToListType(nextMetadataNode.PassClass) == D3D12_COMMAND_LIST_TYPE_DIRECT) //Rules 9, 10, 11, 12, 13, 14
+		{
+			if((currMetadataPayload.Flags & TextureFlagBarrierCommonPromoted) && !D3D12Utils::IsStateWriteable(currPassState)) //Rule 10, 11
+			{
+				barrierNeeded = false;
+			}
+			else //Rules 9, 12, 13, 14
+			{
+				barrierNeeded = !(nextMetadataPayload.Flags & TextureFlagBarrierCommonPromoted) && (currPassState != nextPassState) && D3D12Utils::IsStateComputeFriendly(nextPassState);
+			}
+		}
+		else if(PassClassToListType(nextMetadataNode.PassClass) == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 15, 16
+		{
+			barrierNeeded = !(currMetadataPayload.Flags & TextureFlagBarrierCommonPromoted) || D3D12Utils::IsStateWriteable(currPassState);
+		}
+		else if(PassClassToListType(currMetadataNode.PassClass) == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 17, 18
 		{
 			barrierNeeded = false;
 		}
-	}
-	else if(PassClassToListType(currMetadataNode.PassClass) == D3D12_COMMAND_LIST_TYPE_DIRECT && PassClassToListType(nextMetadataNode.PassClass) == D3D12_COMMAND_LIST_TYPE_COMPUTE) //Rules 5, 6, 7, 8
-	{
-		if(currPassInfo.BarrierPromotedFromCommon && !D3D12Utils::IsStateWriteable(currPassState)) //Rule 6
+
+		if(barrierNeeded)
 		{
-			barrierNeeded = false;
+			D3D12_RESOURCE_BARRIER textureTransitionBarrier;
+			textureTransitionBarrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+			textureTransitionBarrier.Transition.pResource   = mD3d12GraphToBuild->mTextures[resourceMetadata.FirstFrameHandle];
+			textureTransitionBarrier.Transition.Subresource = 0;
+			textureTransitionBarrier.Transition.StateBefore = currPassState;
+			textureTransitionBarrier.Transition.StateAfter  = nextPassState;
+			textureTransitionBarrier.Flags                  = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+
+			mD3d12GraphToBuild->mResourceBarriers.push_back(textureTransitionBarrier);
+
+			if(resourceMetadata.FrameCount > 1)
+			{
+				uint32_t newBarrierIndex = (uint32_t)(mD3d12GraphToBuild->mResourceBarriers.size() - 1);
+
+				ModernFrameGraph::MultiframeBarrierInfo multiframeBarrierInfo;
+				multiframeBarrierInfo.BarrierIndex  = newBarrierIndex;
+				multiframeBarrierInfo.BaseTexIndex  = resourceMetadata.FirstFrameHandle;
+				multiframeBarrierInfo.TexturePeriod = resourceMetadata.FrameCount;
+
+				mD3d12GraphToBuild->mMultiframeBarrierInfos.push_back(multiframeBarrierInfo);
+			}
 		}
-		else //Rules 5, 7, 8
-		{
-			barrierNeeded = !nextPassInfo.BarrierPromotedFromCommon && (currPassState != nextPassState);
-		}
-	}
-	else if(PassClassToListType(currMetadataNode.PassClass) == D3D12_COMMAND_LIST_TYPE_COMPUTE && PassClassToListType(nextMetadataNode.PassClass) == D3D12_COMMAND_LIST_TYPE_DIRECT) //Rules 9, 10, 11, 12, 13, 14
-	{
-		if(currPassInfo.BarrierPromotedFromCommon && !D3D12Utils::IsStateWriteable(currPassState)) //Rule 10, 11
-		{
-			barrierNeeded = false;
-		}
-		else //Rules 9, 12, 13, 14
-		{
-			barrierNeeded = !nextPassInfo.BarrierPromotedFromCommon && (currPassState != nextPassState) && D3D12Utils::IsStateComputeFriendly(nextPassState);
-		}
-	}
-	else if(PassClassToListType(nextMetadataNode.PassClass) == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 15, 16
-	{
-		barrierNeeded = !currPassInfo.BarrierPromotedFromCommon || D3D12Utils::IsStateWriteable(currPassState);
-	}
-	else if(PassClassToListType(currMetadataNode.PassClass) == D3D12_COMMAND_LIST_TYPE_COPY) //Rules 17, 18
-	{
-		barrierNeeded = false;
 	}
 
-	if(barrierNeeded)
-	{
-		D3D12_RESOURCE_BARRIER textureTransitionBarrier;
-		textureTransitionBarrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		textureTransitionBarrier.Transition.pResource   = mD3d12GraphToBuild->mTextures[currMetadataNode.FirstFrameHandle];
-		textureTransitionBarrier.Transition.Subresource = 0;
-		textureTransitionBarrier.Transition.StateBefore = currPassState;
-		textureTransitionBarrier.Transition.StateAfter  = nextPassState;
-		textureTransitionBarrier.Flags                  = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-
-		mD3d12GraphToBuild->mResourceBarriers.push_back(textureTransitionBarrier);
-
-		return (uint32_t)(mD3d12GraphToBuild->mResourceBarriers.size() - 1);
-	}
-
-	return (uint32_t)(-1);
+	mD3d12GraphToBuild->mRenderPassBarriers[barrierSpanIndex].AfterPassEnd = (uint32_t)mD3d12GraphToBuild->mResourceBarriers.size();
 }
 
 void D3D12::FrameGraphBuilder::InitializeTraverseData() const
