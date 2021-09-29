@@ -50,11 +50,11 @@ namespace Vulkan
 		VkPipeline mStaticInstancedPipeline;
 		VkPipeline mRigidPipeline;
 
-		std::span<VkDescriptorSet> mDescriptorSets;
-		Span<uint32_t>             mStaticDrawChangedSetSpan;
-		Span<uint32_t>             mRigidDrawChangedSetSpan;
-		uint32_t                   mStaticDrawSetBindOffset;
-		uint32_t                   mRigidDrawSetBindOffset;
+		std::span<VkDescriptorSet> mDescriptorSets;           //All descriptor sets needed for pass
+		Span<uint32_t>             mStaticDrawChangedSetSpan; //The span in mDescriptorSets to bind for static mesh draw
+		Span<uint32_t>             mRigidDrawChangedSetSpan;  //The span in mDescriptorSets to bind for rigid mesh draw
+		uint32_t                   mStaticDrawSetBindOffset;  //The firstSet parameter for static mesh draw 
+		uint32_t                   mRigidDrawSetBindOffset;   //The firstSet parameter for rigid mesh draw 
 
 		uint32_t           mMaterialIndexPushConstantOffset;
 		VkShaderStageFlags mMaterialIndexPushConstantStages;
