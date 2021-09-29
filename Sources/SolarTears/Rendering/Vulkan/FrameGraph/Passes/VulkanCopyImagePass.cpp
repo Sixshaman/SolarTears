@@ -4,13 +4,13 @@
 #include "../VulkanFrameGraphBuilder.hpp"
 #include <array>
 
-Vulkan::CopyImagePass::CopyImagePass(const FrameGraphBuilder* frameGraphBuilder, const std::string& currentPassName, uint32_t frame): RenderPass(frameGraphBuilder->GetDevice())
+Vulkan::CopyImagePass::CopyImagePass(const FrameGraphBuilder* frameGraphBuilder, uint32_t frameGraphPassId, uint32_t frame): RenderPass(frameGraphBuilder->GetDevice())
 {
-	mSrcImageRef = frameGraphBuilder->GetRegisteredResource(currentPassName, SrcImageId, frame);
-	mDstImageRef = frameGraphBuilder->GetRegisteredResource(currentPassName, DstImageId, frame);
+	mSrcImageRef = frameGraphBuilder->GetRegisteredResource(frameGraphPassId, (uint_fast16_t)PassSubresourceId::SrcImage, frame);
+	mDstImageRef = frameGraphBuilder->GetRegisteredResource(frameGraphPassId, (uint_fast16_t)PassSubresourceId::DstImage, frame);
 
-	mSrcImageAspectFlags = frameGraphBuilder->GetRegisteredSubresourceAspectFlags(SrcImageId);
-	mDstImageAspectFlags = frameGraphBuilder->GetRegisteredSubresourceAspectFlags(DstImageId);
+	mSrcImageAspectFlags = frameGraphBuilder->GetRegisteredSubresourceAspectFlags(frameGraphPassId, (uint_fast16_t)PassSubresourceId::SrcImage);
+	mDstImageAspectFlags = frameGraphBuilder->GetRegisteredSubresourceAspectFlags(frameGraphPassId, (uint_fast16_t)PassSubresourceId::DstImage);
 }
 
 Vulkan::CopyImagePass::~CopyImagePass()

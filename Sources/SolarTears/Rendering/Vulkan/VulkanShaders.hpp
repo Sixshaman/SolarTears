@@ -50,11 +50,10 @@ namespace Vulkan
 		//The data structure to store information about which passes use which bindings
 		struct BindingRecord
 		{
-			uint16_t Domain; //Type of the pass that uses the set (Shared, Pass 1, Pass 2, etc.)
-			uint16_t Type;   //Per-domain binding type
-
-			//VkDescriptorType DescriptorType;  //Expected descriptor type for the binding (for validation purposes)
-			//uint32_t         DescriptorFlags; //Expected descriptor flags for the binding (for validation purposes)
+			uint16_t         Domain;          //Type of the pass that uses the set (Shared, Pass 1, Pass 2, etc.)
+			uint16_t         Type;            //Per-domain binding type
+			VkDescriptorType DescriptorType;  //Descriptor type for the binding (used for validation purposes)
+			uint32_t         DescriptorFlags; //Descriptor flags for the binding (used for validation purposes)
 		};
 
 		//The node of a set layout information for a particular domain
@@ -114,7 +113,7 @@ namespace Vulkan
 		void RegisterPushConstants(std::string_view groupName, const std::span<std::wstring> shaderModuleNames);
 
 	private:
-		//Divides inoutSpvSets into two parts: already known sets (with .set < existingSetCount) and new sets (with .set >= existingSetCount)
+		//Divides inoutSpvSets into two parts: already known sets (with .set < pivotSetIndex) and new sets (with .set >= pivotSetIndex)
 		void SplitSetsByPivot(uint32_t pivotSetIndex, std::vector<SpvReflectDescriptorSet*>& inoutSpvSets, std::span<SpvReflectDescriptorSet*>* outExistingSetSpan, std::span<SpvReflectDescriptorSet*>* outNewSetSpan);
 
 		//Finds the necessary set sizes for each of moduleUpdatedSets
@@ -126,10 +125,10 @@ namespace Vulkan
 
 	private:
 		//Add set layout info to the database
-		uint32_t RegisterSetLayout(uint16_t setDomain, std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<BindingRecord> setBindingRecords);
+		uint32_t RegisterSetLayout(uint16_t setDomain, const std::span<VkDescriptorSetLayoutBinding> setBindings, const std::span<BindingRecord> setBindingRecords);
 
-		//Detect set domain for binding name list
-		uint16_t DetectSetDomain(std::span<std::string_view> bindingNames, std::span<BindingRecord> outSetBindingRecords);
+		//Validate set domain for binding list
+		uint16_t ValidateSetDomain(const std::span<BindingRecord> setBindingRecords);
 
 		//Create set layouts from the database infos
 		void BuildSetLayouts();
@@ -177,7 +176,6 @@ namespace Vulkan
 		//Set layout records for each shader group
 		//The list of set layouts is non-owning
 		std::vector<VkDescriptorSetLayout>                   mSetLayoutsFlat;
-		std::vector<uint32_t>                                mSetLayoutRecordIndicesFlat;
 		std::unordered_map<std::string_view, Span<uint32_t>> mSetLayoutSpansPerShaderGroup;
 
 		//Push constants for each shader group
@@ -186,18 +184,19 @@ namespace Vulkan
 		std::vector<VkPushConstantRange>                        mPushConstantRanges;
 		std::unordered_map<std::string_view, PushConstantSpans> mPushConstantSpansPerShaderGroup;
 
+		std::vector<DomainRecord>        mDomainRecords;
+		std::vector<SetLayoutRecordNode> mSetLayoutRecordNodes;
+
 		//Bindings per layout
 		//A lot of data is stored separately because mLayoutBindingsFlat and mLayoutBindingFlagsFlat are needed as separate arrays
-		std::vector<DomainRecord>                 mDomainRecords;
-		std::vector<SetLayoutRecordNode>          mSetLayoutRecordNodes;
 		std::vector<VkDescriptorSetLayoutBinding> mLayoutBindingsFlat;
 		std::vector<VkDescriptorBindingFlags>     mLayoutBindingFlagsFlat;
 		std::vector<uint16_t>                     mLayoutBindingTypesFlat;
 		
-		//Domain records per pass name
+		//Domain records per pass type
 		std::unordered_map<RenderPassType, BindingDomain> mPassDomainMap;
 
-		//Binding records per binding name
+		//Indices in mLayoutBindingRecordsFlat for each binding record name
 		std::unordered_map<std::string_view, BindingRecord> mBindingRecordMap;
 	};
 }

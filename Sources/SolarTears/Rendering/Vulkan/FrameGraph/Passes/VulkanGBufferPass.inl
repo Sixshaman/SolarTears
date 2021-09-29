@@ -1,3 +1,4 @@
+#include "VulkanGBufferPass.hpp"
 inline void Vulkan::GBufferPass::RegisterSubresources(std::span<SubresourceMetadataPayload> inoutMetadataPayloads)
 {
 	assert(inoutMetadataPayloads.size() == (size_t)PassSubresourceId::Count);
@@ -32,4 +33,9 @@ inline void Vulkan::GBufferPass::RegisterShaders(ShaderDatabase* shaderDatabase)
 inline bool Vulkan::GBufferPass::PropagateSubresourceInfos(std::span<SubresourceMetadataPayload> inoutMetadataPayloads)
 {
 	return false; //No horizontal propagation happens here
+}
+
+inline VkDescriptorType Vulkan::GBufferPass::GetSubresourceDescriptorType(uint_fast16_t subresourceId)
+{
+	return VK_DESCRIPTOR_TYPE_MAX_ENUM; //No subresources in this pass have an associated descriptor type
 }

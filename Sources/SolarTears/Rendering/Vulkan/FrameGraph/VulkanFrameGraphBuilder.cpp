@@ -393,6 +393,8 @@ void Vulkan::FrameGraphBuilder::InitMetadataPayloads()
 		std::span<SubresourceMetadataPayload> payloadSpan = {mSubresourceMetadataPayloads.begin() + passMetadataSpan.Begin, mSubresourceMetadataPayloads.begin() + passMetadataSpan.End};
 
 		RegisterPassSubresources(passMetadata.Type, payloadSpan);
+
+		mShaderDatabase->RegisterPass(passMetadata.Type);
 	}
 
 	uint32_t backbufferPayloadIndex = mPresentPassMetadata.SubresourceMetadataSpan.Begin + (uint32_t)PresentPassSubresourceId::Backbuffer;

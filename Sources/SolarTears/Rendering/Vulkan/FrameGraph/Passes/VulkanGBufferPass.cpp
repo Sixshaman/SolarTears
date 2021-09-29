@@ -6,7 +6,7 @@
 #include <array>
 #include <VulkanGenericStructures.h>
 
-Vulkan::GBufferPass::GBufferPass(const FrameGraphBuilder* frameGraphBuilder, uint32_t frameGraphPassIndex, uint32_t frame): RenderPass(frameGraphBuilder->GetDevice())
+Vulkan::GBufferPass::GBufferPass(const FrameGraphBuilder* frameGraphBuilder, uint32_t frameGraphPassId, uint32_t frame): RenderPass(frameGraphBuilder->GetDevice())
 {
 	mRenderPass  = VK_NULL_HANDLE;
 	mFramebuffer = VK_NULL_HANDLE;
@@ -19,8 +19,8 @@ Vulkan::GBufferPass::GBufferPass(const FrameGraphBuilder* frameGraphBuilder, uin
 	mRigidPipeline           = VK_NULL_HANDLE;
 
 	//TODO: subpasses (AND SECONDARY COMMAND BUFFERS)
-	CreateRenderPass(frameGraphBuilder,  frameGraphBuilder->GetDeviceParameters(), passName);
-	CreateFramebuffer(frameGraphBuilder, frameGraphBuilder->GetConfig(), passName, frame);
+	CreateRenderPass(frameGraphBuilder,  frameGraphPassId, frameGraphBuilder->GetDeviceParameters());
+	CreateFramebuffer(frameGraphBuilder, frameGraphPassId, frameGraphBuilder->GetConfig(), frame);
 
 	const std::wstring    shaderFolder   = Utils::GetMainDirectory() + L"Shaders/Vulkan/GBuffer/";
 	const ShaderDatabase* shaderDatabase = frameGraphBuilder->GetShaderDatabase();
@@ -48,8 +48,8 @@ Vulkan::GBufferPass::GBufferPass(const FrameGraphBuilder* frameGraphBuilder, uin
 	shaderDatabase->CreateMatchingPipelineLayout(staticGroupNames, allGroupNames, &mStaticPipelineLayout);
 	shaderDatabase->CreateMatchingPipelineLayout(rigidGroupNames,  allGroupNames, &mRigidPipelineLayout);
 
-	shaderDatabase->GetPushConstantInfo(passName, "MaterialIndex", &mMaterialIndexPushConstantOffset, &mMaterialIndexPushConstantStages);
-	shaderDatabase->GetPushConstantInfo(passName, "ObjectIndex",   &mObjectIndexPushConstantOffset,   &mObjectIndexPushConstantStages);
+	shaderDatabase->GetPushConstantInfo("GBufferRigisShaders", "MaterialIndex", &mMaterialIndexPushConstantOffset, &mMaterialIndexPushConstantStages);
+	shaderDatabase->GetPushConstantInfo("GBufferRigisShaders", "ObjectIndex",   &mObjectIndexPushConstantOffset,   &mObjectIndexPushConstantStages);
 
 	//Create pipelines
 	CreateGBufferPipeline(staticVertexShaderCode,          staticVertexShaderSize,          fragmentShaderCode, fragmentShaderSize, mStaticPipelineLayout, frameGraphBuilder->GetConfig(), &mStaticPipeline);
@@ -136,24 +136,24 @@ void Vulkan::GBufferPass::RecordExecution(VkCommandBuffer commandBuffer, const R
 	vkCmdEndRenderPass(commandBuffer);
 }
 
-void Vulkan::GBufferPass::CreateRenderPass(const FrameGraphBuilder* frameGraphBuilder, const DeviceParameters* deviceParameters, const std::string& currentPassName)
+void Vulkan::GBufferPass::CreateRenderPass(const FrameGraphBuilder* frameGraphBuilder, uint32_t frameGraphPassId, const DeviceParameters* deviceParameters)
 {
 	//TODO: may alias?
 	//TODO: multisampling?
 	std::array<VkAttachmentDescription, 1> attachments;
 	attachments[0].flags          = 0;
-	attachments[0].format         = frameGraphBuilder->GetRegisteredSubresourceFormat(ColorBufferImageId);
+	attachments[0].format         = frameGraphBuilder->GetRegisteredSubresourceFormat(frameGraphPassId, (uint_fast16_t)PassSubresourceId::ColorBufferImage);
 	attachments[0].samples        = VK_SAMPLE_COUNT_1_BIT;
 	attachments[0].loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	attachments[0].storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
 	attachments[0].stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	attachments[0].stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	attachments[0].initialLayout  = frameGraphBuilder->GetPreviousPassSubresourceLayout(ColorBufferImageId);
-	attachments[0].finalLayout    = frameGraphBuilder->GetNextPassSubresourceLayout(ColorBufferImageId);
+	attachments[0].initialLayout  = frameGraphBuilder->GetPreviousPassSubresourceLayout(frameGraphPassId, (uint_fast16_t)PassSubresourceId::ColorBufferImage);
+	attachments[0].finalLayout    = frameGraphBuilder->GetNextPassSubresourceLayout(frameGraphPassId, (uint_fast16_t)PassSubresourceId::ColorBufferImage);
 
 	VkAttachmentReference colorBufferAttachment;
 	colorBufferAttachment.attachment = 0;
-	colorBufferAttachment.layout     = frameGraphBuilder->GetRegisteredSubresourceLayout(ColorBufferImageId);
+	colorBufferAttachment.layout     = frameGraphBuilder->GetRegisteredSubresourceLayout(frameGraphPassId, (uint_fast16_t)PassSubresourceId::ColorBufferImage);
 
 	std::array colorAttachments = {colorBufferAttachment};
 		
@@ -172,17 +172,17 @@ void Vulkan::GBufferPass::CreateRenderPass(const FrameGraphBuilder* frameGraphBu
 	std::array<VkSubpassDependency, 2> dependencies;
 	dependencies[0].srcSubpass      = VK_SUBPASS_EXTERNAL;
 	dependencies[0].dstSubpass      = 0;
-	dependencies[0].srcStageMask    = frameGraphBuilder->GetPreviousPassSubresourceStageFlags(ColorBufferImageId);
+	dependencies[0].srcStageMask    = frameGraphBuilder->GetPreviousPassSubresourceStageFlags(frameGraphPassId, (uint_fast16_t)PassSubresourceId::ColorBufferImage);
 	dependencies[0].dstStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	dependencies[0].srcAccessMask   = frameGraphBuilder->GetPreviousPassSubresourceAccessFlags(ColorBufferImageId);
+	dependencies[0].srcAccessMask   = frameGraphBuilder->GetPreviousPassSubresourceAccessFlags(frameGraphPassId, (uint_fast16_t)PassSubresourceId::ColorBufferImage);
 	dependencies[0].dstAccessMask   = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 	dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 	dependencies[1].srcSubpass      = 0;
 	dependencies[1].dstSubpass      = VK_SUBPASS_EXTERNAL;
 	dependencies[1].srcStageMask    = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	dependencies[1].dstStageMask    = frameGraphBuilder->GetNextPassSubresourceStageFlags(ColorBufferImageId);
+	dependencies[1].dstStageMask    = frameGraphBuilder->GetNextPassSubresourceStageFlags(frameGraphPassId, (uint_fast16_t)PassSubresourceId::ColorBufferImage);
 	dependencies[1].srcAccessMask   = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-	dependencies[1].dstAccessMask   = frameGraphBuilder->GetNextPassSubresourceAccessFlags(ColorBufferImageId);
+	dependencies[1].dstAccessMask   = frameGraphBuilder->GetNextPassSubresourceAccessFlags(frameGraphPassId, (uint_fast16_t)PassSubresourceId::ColorBufferImage);
 	dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
 	//TODO: multiview (VR)
@@ -206,16 +206,16 @@ void Vulkan::GBufferPass::CreateRenderPass(const FrameGraphBuilder* frameGraphBu
 	ThrowIfFailed(vkCreateRenderPass(mDeviceRef, &renderPassCreateInfo, nullptr, &mRenderPass));
 }
 
-void Vulkan::GBufferPass::CreateFramebuffer(const FrameGraphBuilder* frameGraphBuilder, const FrameGraphConfig* frameGraphConfig, const std::string& currentPassName, uint32_t frame)
+void Vulkan::GBufferPass::CreateFramebuffer(const FrameGraphBuilder* frameGraphBuilder, uint32_t frameGraphPassId, const FrameGraphConfig* frameGraphConfig, uint32_t frame)
 {
 	vgs::GenericStructureChain<VkFramebufferCreateInfo> framebufferCreateInfoChain;
 
-	std::array attachmentIds = {ColorBufferImageId};
+	std::array attachmentIds = {PassSubresourceId::ColorBufferImage};
 
 	std::array<VkImageView, attachmentIds.size()> attachments;
 	for(size_t i = 0; i < attachments.size(); i++)
 	{
-		attachments[i] = frameGraphBuilder->GetRegisteredSubresource(currentPassName, attachmentIds[i], frame);
+		attachments[i] = frameGraphBuilder->GetRegisteredSubresource(frameGraphPassId, (uint_fast16_t)attachmentIds[i], frame);
 	}
 
 	//TODO: imageless framebuffer (only if needed, set via config)

@@ -164,55 +164,49 @@ void Vulkan::ShaderDatabase::CreateMatchingPipelineLayout(std::span<std::string_
 
 void Vulkan::ShaderDatabase::FlushSharedSetLayouts(DescriptorDatabase* databaseToBuild)
 {
-	databaseToBuild->mSetFormatsPerLayout.clear();
-	databaseToBuild->mSetFormatsFlat.clear();
-	databaseToBuild->mSetLayouts.clear();
+	databaseToBuild->mSharedSetCreateMetadatas.clear();
+	databaseToBuild->mSharedSetFormatsFlat.clear();
 
 	DomainRecord sharedDomainRecord = mDomainRecords[SharedSetDomain];
 	uint32_t layoutNodeIndex = sharedDomainRecord.FirstLayoutNodeIndex;
 
-	uint32_t totalSetCount = 0;
 	while(layoutNodeIndex != (uint32_t)(-1))
 	{
 		SetLayoutRecordNode setLayoutNode      = mSetLayoutRecordNodes[layoutNodeIndex];
 		uint32_t            layoutBindingCount = setLayoutNode.BindingSpan.End - setLayoutNode.BindingSpan.Begin;
 
-		uint32_t oldFormatCount = (uint32_t)databaseToBuild->mSetFormatsFlat.size();
+		uint32_t oldFormatCount = (uint32_t)databaseToBuild->mSharedSetFormatsFlat.size();
+		databaseToBuild->mSharedSetFormatsFlat.resize(databaseToBuild->mSharedSetFormatsFlat.size() + layoutBindingCount);
+		
 		Span<uint32_t> formatSpan =
 		{
 			.Begin = oldFormatCount,
 			.End   = oldFormatCount + layoutBindingCount
 		};
 
-		databaseToBuild->mSetFormatsPerLayout.push_back(formatSpan);
-		databaseToBuild->mSetLayouts.push_back(setLayoutNode.SetLayout);
-		databaseToBuild->mSetFormatsFlat.resize(databaseToBuild->mSetFormatsFlat.size() + layoutBindingCount);
-
-		mSetLayoutRecordNodes[layoutNodeIndex].SetLayout = VK_NULL_HANDLE; //Ownership is transferred
-
-		size_t layoutSetCount = 1;
+		uint32_t layoutSetCount = 1;
 		for(uint32_t bindingIndex = setLayoutNode.BindingSpan.Begin; bindingIndex < setLayoutNode.BindingSpan.End; bindingIndex++)
 		{
 			uint32_t layoutBindingIndex = bindingIndex - setLayoutNode.BindingSpan.Begin;
-			layoutSetCount = std::lcm(layoutSetCount, mLayoutBindingFrameCountsFlat[layoutBindingIndex]);
 
-			databaseToBuild->mSetFormatsFlat[formatSpan.Begin + layoutBindingIndex] = (SharedDescriptorDatabase::SharedDescriptorBindingType)mLayoutBindingTypesFlat[bindingIndex];
+			uint_fast16_t bindingTypeIndex = mLayoutBindingTypesFlat[bindingIndex];
+			layoutSetCount = std::lcm(layoutSetCount, FrameCountsPerSharedBinding[bindingTypeIndex]);
+
+			databaseToBuild->mSharedSetFormatsFlat[formatSpan.Begin + layoutBindingIndex] = (SharedDescriptorBindingType)bindingTypeIndex;
 		}
 
-		databaseToBuild->mSetsPerLayout.push_back(Span<uint32_t> 		
+		databaseToBuild->mSharedSetCreateMetadatas.push_back(DescriptorDatabase::SharedSetCreateMetadata
 		{
-			.Begin = (uint32_t)totalSetCount,
-			.End   = (uint32_t)(totalSetCount + layoutSetCount)
+			.SetLayout   = setLayoutNode.SetLayout,
+			.SetCount    = layoutSetCount,
+			.BindingSpan = formatSpan
 		});
 
-		totalSetCount += layoutSetCount;
+		mSetLayoutRecordNodes[layoutNodeIndex].SetLayout = VK_NULL_HANDLE; //Ownership is transferred
 	}
 
 	//Clear the linked list. No memory is freed, but the ownership of set layouts is taken away
-	mDomainRecords[SharedSetDomain].FirstLayoutNodeIndex  = (uint32_t)(-1);
-	mDomainRecords[SharedSetDomain].RegisteredLayoutCount = 0;
-
-	databaseToBuild->mSets.resize(totalSetCount);
+	mDomainRecords[SharedSetDomain].FirstLayoutNodeIndex = (uint32_t)(-1);
 }
 
 void Vulkan::ShaderDatabase::BuildUniquePassSetInfos(std::vector<PassSetInfo>& outPassSetInfos, std::vector<uint16_t>& outPassBindingTypes) const
@@ -235,7 +229,7 @@ void Vulkan::ShaderDatabase::BuildUniquePassSetInfos(std::vector<PassSetInfo>& o
 			outPassBindingTypes.resize(oldPassBindingTypeCount + layoutBindingCount);
 			for(uint32_t layoutBindingIndex = 0; layoutBindingIndex < layoutBindingCount; layoutBindingIndex++)
 			{
-				outPassBindingTypes[oldPassBindingTypeCount + layoutBindingIndex] = (mLayoutBindingTypesFlat[setLayoutRecordNode.BindingSpan.Begin + layoutBindingIndex]);
+				outPassBindingTypes[oldPassBindingTypeCount + layoutBindingIndex] = mLayoutBindingTypesFlat[setLayoutRecordNode.BindingSpan.Begin + layoutBindingIndex];
 			}
 
 			PassSetInfo passSetInfo;
@@ -290,7 +284,7 @@ void Vulkan::ShaderDatabase::RegisterBindings(const std::string_view groupName, 
 
 	//Construct binding list and name list
 	std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings;
-	std::vector<std::string_view>             setLayoutBindingNames;
+	std::vector<BindingRecord>                bindingRecordsToRegister;
 	for(size_t bindingIndex = 0; bindingIndex < spvSetLayoutBindings.size(); bindingIndex++)
 	{
 		SpvReflectDescriptorBinding* spvBinding = spvSetLayoutBindings[bindingIndex];
@@ -308,36 +302,32 @@ void Vulkan::ShaderDatabase::RegisterBindings(const std::string_view groupName, 
 			setLayoutBinding.descriptorCount = (uint32_t)(-1); //Mark the variable descriptor count
 		}
 
-		std::string_view bindingName = spvBinding->name;
-
 		setLayoutBindings.push_back(setLayoutBinding);
-		setLayoutBindingNames.push_back(bindingName);
+		bindingRecordsToRegister.push_back(mBindingRecordMap.at(spvBinding->name));
 	}
 
 
 	Span<uint32_t> groupSetSpan =
 	{
-		.Begin = (uint32_t)mSetLayoutRecordIndicesFlat.size(),
-		.End   = (uint32_t)(mSetLayoutRecordIndicesFlat.size() + bindingSpansPerSet.size())
+		.Begin = (uint32_t)mSetLayoutsFlat.size(),
+		.End   = (uint32_t)(mSetLayoutsFlat.size() + bindingSpansPerSet.size())
 	};
 
 	mSetLayoutSpansPerShaderGroup[groupName] = groupSetSpan;
-	mSetLayoutRecordIndicesFlat.resize(mSetLayoutRecordIndicesFlat.size() + bindingSpansPerSet.size());
+	mSetLayoutsFlat.resize(mSetLayoutsFlat.size() + bindingSpansPerSet.size());
 
-
-	std::vector<BindingRecord> setLayoutBindingRecords(setLayoutBindingNames.size());
 	for(uint32_t bindingSpanIndex = 0; bindingSpanIndex < (uint32_t)bindingSpansPerSet.size(); bindingSpanIndex++)
 	{
 		Span<uint32_t> bindingSpan = bindingSpansPerSet[bindingSpanIndex];
 
-		std::span<std::string_view> bindingNameSpan   = std::span(setLayoutBindingNames.begin()   + bindingSpan.Begin, setLayoutBindingNames.begin()   + bindingSpan.End);
-		std::span<BindingRecord>    bindingRecordSpan = std::span(setLayoutBindingRecords.begin() + bindingSpan.Begin, setLayoutBindingRecords.begin() + bindingSpan.End);
+		std::span<VkDescriptorSetLayoutBinding> bindingInfoSpan   = std::span(setLayoutBindings.begin()        + bindingSpan.Begin, setLayoutBindings.begin()        + bindingSpan.End);
+		std::span<BindingRecord>                bindingRecordSpan = std::span(bindingRecordsToRegister.begin() + bindingSpan.Begin, bindingRecordsToRegister.begin() + bindingSpan.End);
 
-		uint16_t setDomain = DetectSetDomain(bindingNameSpan, bindingRecordSpan);
+		uint16_t setDomain = ValidateSetDomain(bindingRecordSpan);
 		assert(setDomain != UndefinedSetDomain);
 
-		std::span<VkDescriptorSetLayoutBinding> bindingInfoSpan = std::span(setLayoutBindings.begin() + bindingSpan.Begin, setLayoutBindings.begin() + bindingSpan.End);
-		mSetLayoutRecordIndicesFlat[groupSetSpan.Begin + bindingSpanIndex] = RegisterSetLayout(setDomain, bindingInfoSpan, bindingRecordSpan);
+		uint32_t layoutIndex = RegisterSetLayout(setDomain, bindingInfoSpan, bindingRecordSpan);
+		mSetLayoutsFlat[groupSetSpan.Begin + bindingSpanIndex] = (VkDescriptorSetLayout)(uintptr_t)layoutIndex; //Since we can't create the layouts right now, store the ptr offset
 	}
 }
 
@@ -950,11 +940,11 @@ Span<uint32_t> Vulkan::ShaderDatabase::FindMatchingPushConstantRangeSpan(std::sp
 	return handledRangeSpan;
 }
 
-uint32_t Vulkan::ShaderDatabase::RegisterSetLayout(uint16_t setDomain, std::span<VkDescriptorSetLayoutBinding> setBindings, std::span<BindingRecord> setBindingRecords)
+uint32_t Vulkan::ShaderDatabase::RegisterSetLayout(uint16_t setDomain, const std::span<VkDescriptorSetLayoutBinding> setBindings, const std::span<BindingRecord> setBindingRecords)
 {
 	DomainRecord domainRecord = mDomainRecords[setDomain];
 
-	//Traverse the linked list of binding spans for the domain
+	//Traverse the linked list of binding spans for the domain. For each set layout in the domain, try to match the bindings by the type
 	uint32_t prevNodeIndex = (uint32_t)(-1);
 	uint32_t currNodeIndex = domainRecord.FirstLayoutNodeIndex;
 	while(currNodeIndex != (uint32_t)(-1))
@@ -973,11 +963,13 @@ uint32_t Vulkan::ShaderDatabase::RegisterSetLayout(uint16_t setDomain, std::span
 					//Binding types don't match
 					break;
 				}
+
+				layoutBindingIndex++;
 			}
 
 			if(layoutBindingIndex == layoutBindingCount)
 			{
-				//All binding types matched
+				//All bindings matched
 				break;
 			}
 		}
@@ -1027,7 +1019,7 @@ uint32_t Vulkan::ShaderDatabase::RegisterSetLayout(uint16_t setDomain, std::span
 			assert(bindingInfo.binding == layoutBindingIndex);
 
 			mLayoutBindingsFlat[layoutBindingIndex] = bindingInfo;
-			if(setDomain == SharedSetDomain && bindingRecord.Type == (uint16_t)DescriptorDatabase::SharedDescriptorBindingType::SamplerList)
+			if(setDomain == SharedSetDomain && bindingRecord.Type == (uint16_t)SharedDescriptorBindingType::SamplerList)
 			{
 				mLayoutBindingsFlat[layoutBindingIndex].pImmutableSamplers = mSamplerManagerRef->GetSamplerVariableArray();
 			}
@@ -1038,7 +1030,7 @@ uint32_t Vulkan::ShaderDatabase::RegisterSetLayout(uint16_t setDomain, std::span
 			uint32_t layoutBindingIndex = bindingIndex - newSetBindingNode.BindingSpan.Begin;
 
 			const BindingRecord& bindingRecord = setBindingRecords[layoutBindingIndex];
-			mLayoutBindingTypesFlat[layoutBindingIndex] = bindingRecord.Type;
+			mLayoutBindingFlagsFlat[layoutBindingIndex] = bindingRecord.DescriptorFlags;
 		}
 
 		for(uint32_t bindingIndex = newSetBindingNode.BindingSpan.Begin; bindingIndex < newSetBindingNode.BindingSpan.End; bindingIndex++)
@@ -1046,7 +1038,7 @@ uint32_t Vulkan::ShaderDatabase::RegisterSetLayout(uint16_t setDomain, std::span
 			uint32_t layoutBindingIndex = bindingIndex - newSetBindingNode.BindingSpan.Begin;
 
 			const BindingRecord& bindingRecord = setBindingRecords[layoutBindingIndex];
-			mLayoutBindingFlagsFlat[layoutBindingIndex] = bindingRecord.DescriptorFlags;
+			mLayoutBindingTypesFlat[layoutBindingIndex] = bindingRecord.Type;
 		}
 	}
 	else
@@ -1069,30 +1061,25 @@ uint32_t Vulkan::ShaderDatabase::RegisterSetLayout(uint16_t setDomain, std::span
 	return currNodeIndex;
 }
 
-uint16_t Vulkan::ShaderDatabase::DetectSetDomain(std::span<std::string_view> bindingNames, std::span<BindingRecord> outSetBindingRecords)
+uint16_t Vulkan::ShaderDatabase::ValidateSetDomain(const std::span<BindingRecord> setBindingRecords)
 {
-	assert(bindingNames.size() == outSetBindingRecords.size());
-	if(bindingNames.size() == 0)
+	if(setBindingRecords.size() == 0)
 	{
 		return UndefinedSetDomain;
 	}
 
-	outSetBindingRecords[0] = mBindingRecordMap[bindingNames[0]];
-	for(size_t bindingIndex = 1; bindingIndex < bindingNames.size(); bindingIndex++)
+	BindingDomain firstDomain = setBindingRecords[0].Domain;
+	for(size_t bindingIndex = 1; bindingIndex < setBindingRecords.size(); bindingIndex++)
 	{
-		BindingRecord bindingRecord = mBindingRecordMap[bindingNames[bindingIndex]];
-		if(bindingRecord.Domain != outSetBindingRecords[0].Domain)
+		BindingRecord bindingRecord = setBindingRecords[bindingIndex];
+		if(bindingRecord.Domain != firstDomain)
 		{
 			//All bindings in the set should belong to the same domain
 			return UndefinedSetDomain;
 		}
-		else
-		{
-			outSetBindingRecords[bindingIndex] = bindingRecord;
-		}
 	}
 
-	return outSetBindingRecords[0].Domain;
+	return firstDomain;
 }
 
 void Vulkan::ShaderDatabase::BuildSetLayouts()
@@ -1123,10 +1110,10 @@ void Vulkan::ShaderDatabase::BuildSetLayouts()
 		ThrowIfFailed(vkCreateDescriptorSetLayout(mDeviceRef, &setLayoutCreateInfo, nullptr, &layoutRecordNode.SetLayout));
 	}
 
-	mSetLayoutsFlat.reserve(mSetLayoutRecordIndicesFlat.size());
-	for(uint32_t setLayoutIndex: mSetLayoutRecordIndicesFlat)
+	for(uint32_t flatSetLayoutIndex = 0; flatSetLayoutIndex < mSetLayoutsFlat.size(); flatSetLayoutIndex++)
 	{
-		mSetLayoutsFlat.push_back(mSetLayoutRecordNodes[setLayoutIndex].SetLayout);
+		uintptr_t setLayoutIndex = (uintptr_t)mSetLayoutsFlat[flatSetLayoutIndex]; //Extract the offset written in the pointer
+		mSetLayoutsFlat[flatSetLayoutIndex] = mSetLayoutRecordNodes[setLayoutIndex].SetLayout;
 	}
 }
 

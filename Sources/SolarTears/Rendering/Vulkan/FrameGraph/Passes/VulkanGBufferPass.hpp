@@ -22,9 +22,10 @@ namespace Vulkan
 		constexpr static std::string_view RigidShaderGroup           = "GBufferRigidShaders";
 
 	public:
-		inline static void RegisterSubresources(std::span<SubresourceMetadataPayload> inoutMetadataPayloads);
-		inline static void RegisterShaders(ShaderDatabase* shaderDatabase);
-		inline static bool PropagateSubresourceInfos(std::span<SubresourceMetadataPayload> inoutMetadataPayloads);
+		inline static void             RegisterSubresources(std::span<SubresourceMetadataPayload> inoutMetadataPayloads);
+		inline static void             RegisterShaders(ShaderDatabase* shaderDatabase);
+		inline static bool             PropagateSubresourceInfos(std::span<SubresourceMetadataPayload> inoutMetadataPayloads);
+		inline static VkDescriptorType GetSubresourceDescriptorType(uint_fast16_t subresourceId);
 
 	public:
 		GBufferPass(const FrameGraphBuilder* frameGraphBuilder, uint32_t frameGraphPassIndex, uint32_t frame);
@@ -33,8 +34,8 @@ namespace Vulkan
 		void RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* renderableScene, const FrameGraphConfig& frameGraphConfig) const override;
 
 	private:
-		void CreateRenderPass(const FrameGraphBuilder* frameGraphBuilder, const DeviceParameters* deviceParameters, const std::string& currentPassName);
-		void CreateFramebuffer(const FrameGraphBuilder* frameGraphBuilder, const FrameGraphConfig* frameGraphConfig, const std::string& currentPassName, uint32_t frame);
+		void CreateRenderPass(const FrameGraphBuilder* frameGraphBuilder, uint32_t frameGraphPassId, const DeviceParameters* deviceParameters);
+		void CreateFramebuffer(const FrameGraphBuilder* frameGraphBuilder, uint32_t frameGraphPassId, const FrameGraphConfig* frameGraphConfig, uint32_t frame);
 		void CreatePipelineLayout(std::span<VkDescriptorSetLayout> setLayouts, std::span<VkPushConstantRange> pushConstantRanges, VkPipelineLayout* outPipelineLayout);
 		void CreateGBufferPipeline(const uint32_t* vertexShaderModule, uint32_t vertexShaderModuleSize, const uint32_t* fragmentShaderModule, uint32_t fragmetShaderModuleSize, VkPipelineLayout pipelineLayout, const FrameGraphConfig* frameGraphConfig, VkPipeline* outPipeline);
 

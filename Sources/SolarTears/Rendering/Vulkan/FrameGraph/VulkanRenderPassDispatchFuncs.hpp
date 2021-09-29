@@ -63,6 +63,23 @@ namespace Vulkan
 	}
 
 	template<typename Pass>
+	VkDescriptorType GetPassSubresourceDescriptorType(uint_fast16_t subresourceIndex)
+	{
+		return Pass::GetSubresourceDescriptorType(subresourceIndex);
+	};
+
+	VkDescriptorType GetPassSubresourceDescriptorType(RenderPassType passType, uint_fast16_t subresourceIndex)
+	{
+		using GetDescriptorTypeFunc = VkDescriptorType(*)(uint_fast16_t);
+
+		GetDescriptorTypeFunc GetDescriptorType = nullptr;
+		CHOOSE_PASS_FUNCTION(passType, GetPassSubresourceDescriptorType, GetDescriptorType);
+
+		assert(GetDescriptorType != nullptr);
+		GetDescriptorType(subresourceIndex);
+	}
+
+	template<typename Pass>
 	std::unique_ptr<RenderPass> MakeUniquePass(const FrameGraphBuilder* builder, uint32_t passIndex, uint32_t frame)
 	{
 		return std::make_unique<Pass>(builder, passIndex, frame);
