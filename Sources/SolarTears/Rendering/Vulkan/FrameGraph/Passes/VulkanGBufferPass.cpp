@@ -1,5 +1,4 @@
 #include "VulkanGBufferPass.hpp"
-#include "../../../../Core/Util.hpp"
 #include "../../VulkanFunctions.hpp"
 #include "../../Scene/VulkanScene.hpp"
 #include "../../VulkanShaders.hpp"

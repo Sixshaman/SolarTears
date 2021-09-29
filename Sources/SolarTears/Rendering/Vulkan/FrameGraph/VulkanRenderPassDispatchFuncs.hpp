@@ -17,7 +17,7 @@ namespace Vulkan
 		return Pass::RegisterSubresources(metadataPayloads);
 	}
 
-	constexpr uint_fast16_t RegisterPassSubresources(RenderPassType passType, std::span<SubresourceMetadataPayload> metadataPayloads)
+	uint_fast16_t RegisterPassSubresources(RenderPassType passType, std::span<SubresourceMetadataPayload> metadataPayloads)
 	{
 		using RegisterSubresourcesFunc = void(*)(std::span<SubresourceMetadataPayload>);
 
@@ -51,7 +51,7 @@ namespace Vulkan
 		return Pass::PropagateSubresourceInfos(metadataPayloads);
 	};
 
-	constexpr bool PropagateSubresourceInfos(RenderPassType passType, std::span<SubresourceMetadataPayload> metadataPayloads)
+	bool PropagateSubresourceInfos(RenderPassType passType, std::span<SubresourceMetadataPayload> metadataPayloads)
 	{
 		using PropagateInfosFunc = bool(*)(std::span<SubresourceMetadataPayload>);
 

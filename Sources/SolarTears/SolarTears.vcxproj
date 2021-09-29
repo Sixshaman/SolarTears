@@ -102,9 +102,10 @@
     <ClInclude Include="Rendering\Vulkan\FrameGraph\VulkanFrameGraphMisc.hpp" />
     <ClInclude Include="Rendering\Vulkan\FrameGraph\VulkanRenderPass.hpp" />
     <ClInclude Include="Rendering\Vulkan\FrameGraph\VulkanRenderPassDispatchFuncs.hpp" />
-    <ClInclude Include="Rendering\Vulkan\FrameGraph\VulkanSharedDescriptorDatabase.hpp" />
     <ClInclude Include="Rendering\Vulkan\Scene\VulkanScene.hpp" />
     <ClInclude Include="Rendering\Vulkan\Scene\VulkanSceneBuilder.hpp" />
+    <ClInclude Include="Rendering\Vulkan\VulkanDescriptors.hpp" />
+    <ClInclude Include="Rendering\Vulkan\VulkanDescriptorsMisc.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanDeviceParameters.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanDeviceQueues.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanFunctions.hpp" />
@@ -179,9 +180,9 @@
     <ClCompile Include="Rendering\Vulkan\FrameGraph\VulkanFrameGraph.cpp" />
     <ClCompile Include="Rendering\Vulkan\FrameGraph\VulkanFrameGraphBuilder.cpp" />
     <ClCompile Include="Rendering\Vulkan\FrameGraph\VulkanRenderPass.cpp" />
-    <ClCompile Include="Rendering\Vulkan\FrameGraph\VulkanSharedDescriptorDatabase.cpp" />
     <ClCompile Include="Rendering\Vulkan\Scene\VulkanScene.cpp" />
     <ClCompile Include="Rendering\Vulkan\Scene\VulkanSceneBuilder.cpp" />
+    <ClCompile Include="Rendering\Vulkan\VulkanDescriptors.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanDeviceParameters.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanDeviceQueues.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanFunctions.cpp" />

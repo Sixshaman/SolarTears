@@ -4,6 +4,7 @@
 #include "../../../Common/FrameGraph/Passes/GBufferPass.hpp"
 #include "../../../../Core/DataStructures/Span.hpp"
 #include "../VulkanFrameGraphMisc.hpp"
+#include "../../../../Core/Util.hpp"
 #include <span>
 
 namespace Vulkan

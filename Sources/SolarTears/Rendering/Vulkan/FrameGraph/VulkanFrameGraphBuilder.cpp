@@ -215,87 +215,85 @@ void Vulkan::FrameGraphBuilder::Build(FrameGraphDescription&& frameGraphDescript
 
 void Vulkan::FrameGraphBuilder::BuildPassDescriptorSets()
 {
-	//Step 1
+	//Step 1 - find unique pass set infos
 	std::vector<PassSetInfo> uniquePassSetInfos;
 	std::vector<uint16_t> passSetBindingTypes;
 	mShaderDatabase->BuildUniquePassSetInfos(uniquePassSetInfos, passSetBindingTypes);
 
 
-	//Step 2
+	//Step 2 - build flat pass set info list corresponding to the frame graph passes
+	struct NonUniquePassSetInfo
+	{
+		uint32_t       PassIndex;
+		Span<uint32_t> BindingIndexSpan;
+		uint32_t       SetCount;
+	};
+
 	std::sort(uniquePassSetInfos.begin(), uniquePassSetInfos.end(), [](const PassSetInfo& left, const PassSetInfo& right)
 	{
 		return left.PassType < right.PassType;
 	});
 
-	std::vector<std::span<PassSetInfo>> setInfoSpansPerPass;
-	setInfoSpansPerPass.reserve(mPassMetadatas.size());
-	for(const PassMetadata& passMetadata: mPassMetadatas)
+	std::vector<NonUniquePassSetInfo>  nonUniqueSetInfos;
+	std::vector<VkDescriptorSetLayout> setLayoutsFlat;
+	for(uint32_t passIndex = 0; passIndex < mPassMetadatas.size(); passIndex++)
 	{
-		auto passSetInfoRange = std::equal_range(uniquePassSetInfos.begin(), uniquePassSetInfos.end(), passMetadata.Type, [](const PassSetInfo& passSetInfo, RenderPassType type)
+		auto passSetInfoRange = std::equal_range(uniquePassSetInfos.begin(), uniquePassSetInfos.end(), mPassMetadatas[passIndex].Type, [](const PassSetInfo& passSetInfo, RenderPassType type)
 		{
 			return passSetInfo.PassType < type;
 		});
 
-		setInfoSpansPerPass.push_back({passSetInfoRange.first, passSetInfoRange.second});
+		std::span setInfoSpan = {passSetInfoRange.first, passSetInfoRange.second};
+		for(const PassSetInfo& passSetInfo: setInfoSpan)
+		{
+			uint32_t setCount = 1;
+			for(uint32_t bindingIndex = passSetInfo.BindingSpan.Begin; bindingIndex < passSetInfo.BindingSpan.End; bindingIndex++)
+			{
+				uint32_t subresourceIndex = mPassMetadatas[passIndex].SubresourceMetadataSpan.Begin + passSetBindingTypes[bindingIndex];
+
+				const SubresourceMetadataNode& metadataNode     = mSubresourceMetadataNodesFlat[subresourceIndex];
+				const ResourceMetadata&        resourceMetadata = mResourceMetadatas[metadataNode.ResourceMetadataIndex];
+
+				setCount = std::lcm(mResourceMetadatas[metadataNode.ResourceMetadataIndex].FrameCount, setCount);
+			}
+
+			nonUniqueSetInfos.push_back(NonUniquePassSetInfo
+			{
+				.PassIndex        = passIndex,
+				.BindingIndexSpan = passSetInfo.BindingSpan,
+				.SetCount         = setCount
+			});
+
+			setLayoutsFlat.resize(setLayoutsFlat.size() + setCount, passSetInfo.SetLayout);
+		}
 	}
 
 
-	//Step 3
+	//Step 3 - find the pool sizes
 	VkDescriptorPoolSize sampledImagePoolSize    = {.type = VK_DESCRIPTOR_TYPE_SAMPLER,        .descriptorCount = 0};
 	VkDescriptorPoolSize storageImagePoolSize    = {.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,  .descriptorCount = 0};
 	VkDescriptorPoolSize inputAttachmentPoolSize = {.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = 0};
 
-	//For each pass type, get the subresources requiring creating a descriptor from uniquePassSetInfos
-	std::vector<VkDescriptorSetLayout> setLayouts;
-	std::vector<uint32_t>              setCountsPerNonUniqueSet;
-	std::vector<VkDescriptorImageInfo> uniqueDescriptorImageInfos;
-	for(uint32_t passIndex = 0; passIndex < mPassMetadatas.size(); passIndex++)
+	for(const NonUniquePassSetInfo& passSetInfo: nonUniqueSetInfos)
 	{
-		const PassMetadata& passMetadata = mPassMetadatas[passIndex];
-		std::span passSetInfoSpan = setInfoSpansPerPass[passIndex];
-
-		for(const PassSetInfo& passSetInfo: passSetInfoSpan)
+		const PassMetadata& passMetadata = mPassMetadatas[passSetInfo.PassIndex];
+		for(uint32_t bindingIndex = passSetInfo.BindingIndexSpan.Begin; bindingIndex < passSetInfo.BindingIndexSpan.End; bindingIndex++)
 		{
-			uint32_t setCount = 1;
+			uint32_t subresourceIndex = passMetadata.SubresourceMetadataSpan.Begin + passSetBindingTypes[bindingIndex];
+			const SubresourceMetadataPayload& metadataPayload = mSubresourceMetadataPayloads[subresourceIndex];
 
-			uint32_t setSampledImageCount = 0;
-			uint32_t setStorageImageCount = 0;
-			uint32_t setInputImageCount   = 0;
-			for(uint32_t bindingIndex = passSetInfo.BindingSpan.Begin; bindingIndex < passSetInfo.BindingSpan.End; bindingIndex++)
+			if(metadataPayload.Usage == VK_IMAGE_USAGE_SAMPLED_BIT)
 			{
-				uint32_t subresourceIndex = passMetadata.SubresourceMetadataSpan.Begin + passSetBindingTypes[bindingIndex];
-
-				const SubresourceMetadataNode&    metadataNode    = mSubresourceMetadataNodesFlat[subresourceIndex];
-				const SubresourceMetadataPayload& metadataPayload = mSubresourceMetadataPayloads[subresourceIndex];
-
-				if(metadataPayload.Usage == VK_IMAGE_USAGE_SAMPLED_BIT)
-				{
-					setSampledImageCount++;
-				}
-				else if(metadataPayload.Usage == VK_IMAGE_USAGE_STORAGE_BIT)
-				{
-					setStorageImageCount++;
-				}
-				else if(metadataPayload.Usage == VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)
-				{
-					setInputImageCount++;
-				}
-
-				setCount = std::lcm(mResourceMetadatas[metadataNode.ResourceMetadataIndex].FrameCount, setCount);
-
-				VkDescriptorImageInfo descriptorImageInfo;
-				descriptorImageInfo.sampler     = nullptr;
-				descriptorImageInfo.imageView   = mVulkanGraphToBuild->mImageViews[metadataNode.FirstFrameViewHandle];
-				descriptorImageInfo.imageLayout = metadataPayload.Layout;
-				uniqueDescriptorImageInfos.push_back(descriptorImageInfo);
+				sampledImagePoolSize.descriptorCount += passSetInfo.SetCount;
 			}
-
-			sampledImagePoolSize.descriptorCount    += setSampledImageCount * setCount;
-			storageImagePoolSize.descriptorCount    += setStorageImageCount * setCount;
-			inputAttachmentPoolSize.descriptorCount += setInputImageCount   * setCount;
-
-			setLayouts.resize(setLayouts.size() + setCount, passSetInfo.SetLayout);
-			setCountsPerNonUniqueSet.push_back(setCount);
+			else if(metadataPayload.Usage == VK_IMAGE_USAGE_STORAGE_BIT)
+			{
+				storageImagePoolSize.descriptorCount += passSetInfo.SetCount;
+			}
+			else if(metadataPayload.Usage == VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)
+			{
+				inputAttachmentPoolSize.descriptorCount += passSetInfo.SetCount;
+			}
 		}
 	}
 
@@ -307,11 +305,11 @@ void Vulkan::FrameGraphBuilder::BuildPassDescriptorSets()
 	descriptorPoolCreateInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	descriptorPoolCreateInfo.pNext         = nullptr;
 	descriptorPoolCreateInfo.flags         = 0;
-	descriptorPoolCreateInfo.maxSets       = (uint32_t)setLayouts.size();
+	descriptorPoolCreateInfo.maxSets       = (uint32_t)setLayoutsFlat.size();
 	descriptorPoolCreateInfo.poolSizeCount = (uint32_t)(poolSizes.size());
 	descriptorPoolCreateInfo.pPoolSizes    = poolSizes.data();
 
-	ThrowIfFailed(vkCreateDescriptorPool(mDeviceRef, &descriptorPoolCreateInfo, nullptr, &mDescriptorPool));
+	ThrowIfFailed(vkCreateDescriptorPool(mVulkanGraphToBuild->mDeviceRef, &descriptorPoolCreateInfo, nullptr, &mDescriptorPool));
 
 
 	//Step 5
@@ -319,63 +317,66 @@ void Vulkan::FrameGraphBuilder::BuildPassDescriptorSets()
 	setAllocateInfo.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 	setAllocateInfo.pNext              = nullptr;
 	setAllocateInfo.descriptorPool     = mDescriptorPool;
-	setAllocateInfo.descriptorSetCount = (uint32_t)setLayouts.size();
-	setAllocateInfo.pSetLayouts        = setLayouts.data();
+	setAllocateInfo.descriptorSetCount = (uint32_t)setLayoutsFlat.size();
+	setAllocateInfo.pSetLayouts        = setLayoutsFlat.data();
 
-	ThrowIfFailed(vkAllocateDescriptorSets(mDeviceRef, &setAllocateInfo, mSets.data()));
+	ThrowIfFailed(vkAllocateDescriptorSets(mVulkanGraphToBuild->mDeviceRef, &setAllocateInfo, mSets.data()));
 
 
 	//Step 6
-	for(uint32_t passIndex = 0, nonUniqueSetIndex = 0, totalSetIndex = 0, imageBindingOffset = 0; passIndex < mPassMetadatas.size(); passIndex++)
+	std::vector<VkWriteDescriptorSet> writeDescriptorSets;
+	std::vector<VkDescriptorImageInfo> descriptorImageInfos;
+	for(uint32_t passInfoIndex = 0, totalSetIndex = 0; passInfoIndex < nonUniqueSetInfos.size(); passInfoIndex++)
 	{
-		const PassMetadata& passMetadata = mPassMetadatas[passIndex];
-		std::span passSetInfoSpan = setInfoSpansPerPass[passIndex];
+		const NonUniquePassSetInfo& passSetInfo = nonUniqueSetInfos[passInfoIndex];
 
-		for(uint32_t passSetIndex = 0; passSetIndex < passSetInfoSpan.size(); passSetIndex++, nonUniqueSetIndex++)
+		const PassMetadata& passMetadata = mPassMetadatas[passSetInfo.PassIndex];
+		for(uint32_t setIndex = 0; setIndex < passSetInfo.SetCount; setIndex++, totalSetIndex++)
 		{
-			const PassSetInfo& passSetInfo = passSetInfoSpan[passSetIndex];
-
-			uint32_t setCount = setCountsPerNonUniqueSet[nonUniqueSetIndex];
-			for(uint32_t setIndex = 0; setIndex < setCount; setCount++, totalSetIndex++)
+			for(uint32_t bindingIndex = passSetInfo.BindingIndexSpan.Begin; bindingIndex < passSetInfo.BindingIndexSpan.End; bindingIndex++)
 			{
-				for(uint32_t bindingIndex = passSetInfo.BindingSpan.Begin; bindingIndex < passSetInfo.BindingSpan.End; bindingIndex++)
+				uint32_t subresourceIndex = passMetadata.SubresourceMetadataSpan.Begin + passSetBindingTypes[bindingIndex];
+
+				const SubresourceMetadataPayload& metadataPayload  = mSubresourceMetadataPayloads[subresourceIndex];
+				const SubresourceMetadataNode&    metadataNode     = mSubresourceMetadataNodesFlat[subresourceIndex];
+				const ResourceMetadata&           resourceMetadata = mResourceMetadatas[metadataNode.ResourceMetadataIndex];
+
+				VkDescriptorType type = VK_DESCRIPTOR_TYPE_MAX_ENUM;
+				if(metadataPayload.Usage == VK_IMAGE_USAGE_SAMPLED_BIT)
 				{
-					uint32_t subresourceIndex = passMetadata.SubresourceMetadataSpan.Begin + passSetBindingTypes[bindingIndex];
-					VkImageUsageFlags usage = mSubresourceMetadataPayloads[subresourceIndex].Usage;
-
-					VkDescriptorType type = VK_DESCRIPTOR_TYPE_MAX_ENUM;
-					if(usage == VK_IMAGE_USAGE_SAMPLED_BIT)
-					{
-						type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-					}
-					else if(usage == VK_IMAGE_USAGE_STORAGE_BIT)
-					{
-						type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-					}
-					else if(usage == VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)
-					{
-						type = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
-					}
-
-					uint32_t layoutBindingIndex = bindingIndex - passSetInfo.BindingSpan.Begin;
-
-					VkWriteDescriptorSet writeDescriptorSet;
-					writeDescriptorSet.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-					writeDescriptorSet.pNext            = nullptr;
-					writeDescriptorSet.dstSet           = mSets[totalSetIndex];
-					writeDescriptorSet.dstBinding       = layoutBindingIndex;
-					writeDescriptorSet.dstArrayElement  = 0;
-					writeDescriptorSet.descriptorCount  = 1;
-					writeDescriptorSet.descriptorType   = type;
-					writeDescriptorSet.pImageInfo       = &uniqueDescriptorImageInfos[imageBindingOffset + layoutBindingIndex];
-					writeDescriptorSet.pBufferInfo      = nullptr;
-					writeDescriptorSet.pTexelBufferView = nullptr;
-
-					writeDescriptorSets.push_back(writeDescriptorSet);
+					type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 				}
-			}
+				else if(metadataPayload.Usage == VK_IMAGE_USAGE_STORAGE_BIT)
+				{
+					type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+				}
+				else if(metadataPayload.Usage == VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)
+				{
+					type = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+				}
 
-			imageBindingOffset += (passSetInfo.BindingSpan.End - passSetInfo.BindingSpan.Begin);
+				uint32_t layoutBindingIndex = bindingIndex - passSetInfo.BindingIndexSpan.Begin;
+
+				VkDescriptorImageInfo descriptorImageInfo;
+				descriptorImageInfo.sampler     = nullptr;
+				descriptorImageInfo.imageView   = mVulkanGraphToBuild->mImageViews[metadataNode.FirstFrameViewHandle + setIndex % resourceMetadata.FrameCount];
+				descriptorImageInfo.imageLayout = metadataPayload.Layout;
+				descriptorImageInfos.push_back(descriptorImageInfo);
+
+				VkWriteDescriptorSet writeDescriptorSet;
+				writeDescriptorSet.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+				writeDescriptorSet.pNext            = nullptr;
+				writeDescriptorSet.dstSet           = mSets[totalSetIndex];
+				writeDescriptorSet.dstBinding       = layoutBindingIndex;
+				writeDescriptorSet.dstArrayElement  = 0;
+				writeDescriptorSet.descriptorCount  = 1;
+				writeDescriptorSet.descriptorType   = type;
+				writeDescriptorSet.pImageInfo       = &descriptorImageInfos.back();
+				writeDescriptorSet.pBufferInfo      = nullptr;
+				writeDescriptorSet.pTexelBufferView = nullptr;
+
+				writeDescriptorSets.push_back(writeDescriptorSet);
+			}
 		}
 	}
 

@@ -20,19 +20,19 @@ Vulkan::ShaderDatabase::ShaderDatabase(VkDevice device, SamplerManager* samplerM
 		.FirstLayoutNodeIndex = (uint32_t)(-1)
 	};
 
-	for(uint16_t bindingTypeIndex = 0; bindingTypeIndex < SharedDescriptorDatabase::TotalBindings; bindingTypeIndex++)
+	for(uint16_t bindingTypeIndex = 0; bindingTypeIndex < DescriptorDatabase::TotalBindings; bindingTypeIndex++)
 	{
-		std::string_view bindingName = SharedDescriptorDatabase::DescriptorBindingNames[bindingTypeIndex];
+		std::string_view bindingName = DescriptorDatabase::DescriptorBindingNames[bindingTypeIndex];
 		mBindingRecordMap[bindingName] = BindingRecord
 		{
 			.Domain          = SharedSetDomain,
 			.Type            = (BindingType)(bindingTypeIndex),
-			.DescriptorType  = SharedDescriptorDatabase::DescriptorTypesPerBinding[bindingTypeIndex],
+			.DescriptorType  = DescriptorDatabase::DescriptorTypesPerBinding[bindingTypeIndex],
 			.DescriptorFlags = 0,
 		};
 
-		auto it = mBindingRecordMap.find(SharedDescriptorDatabase::DescriptorBindingNames[bindingTypeIndex]);
-		it->second.DescriptorFlags = SharedDescriptorDatabase::DescriptorFlagsPerBinding[bindingTypeIndex];
+		auto it = mBindingRecordMap.find(DescriptorDatabase::DescriptorBindingNames[bindingTypeIndex]);
+		it->second.DescriptorFlags = DescriptorDatabase::DescriptorFlagsPerBinding[bindingTypeIndex];
 	}
 }
 
@@ -164,7 +164,7 @@ void Vulkan::ShaderDatabase::CreateMatchingPipelineLayout(std::span<std::string_
 	}
 }
 
-void Vulkan::ShaderDatabase::FlushSharedSetLayouts(SharedDescriptorDatabase* databaseToBuild)
+void Vulkan::ShaderDatabase::FlushSharedSetLayouts(DescriptorDatabase* databaseToBuild)
 {
 	databaseToBuild->mSetFormatsPerLayout.clear();
 	databaseToBuild->mSetFormatsFlat.clear();
@@ -215,60 +215,6 @@ void Vulkan::ShaderDatabase::FlushSharedSetLayouts(SharedDescriptorDatabase* dat
 	mDomainRecords[SharedSetDomain].RegisteredLayoutCount = 0;
 
 	databaseToBuild->mSets.resize(totalSetCount);
-}
-
-void Vulkan::ShaderDatabase::MakePassSets() const
-{
-	std::array<std::string_view, 0> shaderGroupNames = 0xffffffff;
-	
-	std::vector<SetCreateInfo> setCreateInfos;
-	for(std::string_view shaderGroupName: shaderGroupNames)
-	{
-		Span<uint32_t> groupLayoutSpan = mSetLayoutSpansPerShaderGroup.at(shaderGroupName);
-		std::span layoutRecordIndexSpan = {mSetLayoutRecordIndicesFlat.begin() + groupLayoutSpan.Begin, mSetLayoutRecordIndicesFlat.begin() + groupLayoutSpan.End};
-
-		for(const uint32_t layoutRecordIndex: layoutRecordIndexSpan)
-		{
-			const SetLayoutRecordNode& layoutRecordNode = mSetLayoutRecordNodes[layoutRecordIndex];
-
-			uint16_t domain = ddoommaaiinn;
-			if(domain == SharedSetDomain)
-			{
-				
-			}
-			else
-			{
-
-			}
-
-			for(uint32_t bindingIndex = layoutRecordNode.BindingSpan.Begin; bindingIndex < layoutRecordNode.BindingSpan.End; bindingIndex++)
-			{
-				uint32_t layoutBindingIndex = bindingIndex - layoutRecordNode.BindingSpan.Begin;
-
-				BindingRecord bindingRecord = mBindingRecords[bindingIndex];
-
-				//TO FRAME GRAPH BUILDER
-				VkDescriptorImageInfo descriptorImageInfo;
-				descriptorImageInfo.sampler     = nullptr;
-				descriptorImageInfo.imageView   = mVulkanGraphToBuild->mImageViews[imageViewIndex];
-				descriptorImageInfo.imageLayout = mSubresourceInfos[subresourceInfoIndex].Layout;
-
-				VkWriteDescriptorSet writeDescriptorSet;
-				writeDescriptorSet.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-				writeDescriptorSet.pNext            = nullptr;
-				writeDescriptorSet.dstSet           = mSets[setIndex];
-				writeDescriptorSet.dstBinding       = layoutBindingIndex;
-				writeDescriptorSet.dstArrayElement  = 0;
-				writeDescriptorSet.descriptorCount  = bindingDescriptorCounts[bindingTypeIndex];
-				writeDescriptorSet.descriptorType   = DescriptorTypesPerBinding[bindingTypeIndex];
-				writeDescriptorSet.pImageInfo       = imageDescriptorInfosPerUniqueBinding[uniqueBindingIndex];
-				writeDescriptorSet.pBufferInfo      = nullptr;
-				writeDescriptorSet.pTexelBufferView = nullptr;
-
-				writeDescriptorSets.push_back(writeDescriptorSet);
-			}	
-		}
-	}
 }
 
 void Vulkan::ShaderDatabase::BuildUniquePassSetInfos(std::vector<PassSetInfo>& outPassSetInfos, std::vector<uint16_t>& outPassBindingTypes) const
@@ -1083,7 +1029,7 @@ uint32_t Vulkan::ShaderDatabase::RegisterSetLayout(uint16_t setDomain, std::span
 			assert(bindingInfo.binding == layoutBindingIndex);
 
 			mLayoutBindingsFlat[layoutBindingIndex] = bindingInfo;
-			if(setDomain == SharedSetDomain && bindingRecord.Type == (uint16_t)SharedDescriptorDatabase::SharedDescriptorBindingType::SamplerList)
+			if(setDomain == SharedSetDomain && bindingRecord.Type == (uint16_t)DescriptorDatabase::SharedDescriptorBindingType::SamplerList)
 			{
 				mLayoutBindingsFlat[layoutBindingIndex].pImmutableSamplers = mSamplerManagerRef->GetSamplerVariableArray();
 			}

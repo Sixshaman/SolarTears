@@ -1,39 +1,42 @@
-#include "VulkanSharedDescriptorDatabase.hpp"
-#include "../VulkanUtils.hpp"
-#include "../VulkanFunctions.hpp"
-#include "../VulkanSamplers.hpp"
-#include "../Scene/VulkanScene.hpp"
+#include "VulkanDescriptors.hpp"
+#include "VulkanUtils.hpp"
+#include "VulkanFunctions.hpp"
+#include "VulkanSamplers.hpp"
+#include "Scene/VulkanScene.hpp"
 #include <VulkanGenericStructures.h>
 
-Vulkan::SharedDescriptorDatabase::SharedDescriptorDatabase(const VkDevice device): mDeviceRef(device)
+Vulkan::DescriptorDatabase::DescriptorDatabase(const VkDevice device): mDeviceRef(device)
 {
-	mDescriptorPool = VK_NULL_HANDLE;
+	mSharedDescriptorPool = VK_NULL_HANDLE;
+	mPassDescriptorPool   = VK_NULL_HANDLE;
 }
 
-Vulkan::SharedDescriptorDatabase::~SharedDescriptorDatabase()
+Vulkan::DescriptorDatabase::~DescriptorDatabase()
 {
-	SafeDestroyObject(vkDestroyDescriptorPool, mDeviceRef, mDescriptorPool);
-	for(size_t entryIndex = 0; entryIndex < mSetLayouts.size(); entryIndex++)
+	SafeDestroyObject(vkDestroyDescriptorPool, mDeviceRef, mSharedDescriptorPool);
+	for(size_t entryIndex = 0; entryIndex < mSharedSetCreateMetadatas.size(); entryIndex++)
 	{
-		SafeDestroyObject(vkDestroyDescriptorSetLayout, mDeviceRef, mSetLayouts[entryIndex]);
+		SafeDestroyObject(vkDestroyDescriptorSetLayout, mDeviceRef, mSharedSetCreateMetadatas[entryIndex].SetLayout);
 	}
 }
 
-void Vulkan::SharedDescriptorDatabase::RecreateSets(const RenderableScene* sceneToCreateDescriptors, const SamplerManager* samplerManager)
+void Vulkan::DescriptorDatabase::RecreateSharedSets(const RenderableScene* sceneToCreateDescriptors, const SamplerManager* samplerManager)
 {
-	RecreateDescriptorPool(sceneToCreateDescriptors, samplerManager);
+	RecreateSharedDescriptorPool(sceneToCreateDescriptors, samplerManager);
 
-	AllocateDescriptorSets(sceneToCreateDescriptors, samplerManager);
-	UpdateDescriptorSets(sceneToCreateDescriptors);
+	std::vector<VkDescriptorSet> sharedSets;
+	AllocateSharedDescriptorSets(sceneToCreateDescriptors, samplerManager, sharedSets);
+	UpdateSharedDescriptorSets(sceneToCreateDescriptors, sharedSets);
+	ReassignSharedDescriptorSets(sharedSets);
 }
 
-void Vulkan::SharedDescriptorDatabase::RecreateDescriptorPool(const RenderableScene* sceneToCreateDescriptors, const SamplerManager* samplerManager)
+void Vulkan::DescriptorDatabase::RecreateSharedDescriptorPool(const RenderableScene* sceneToCreateDescriptors, const SamplerManager* samplerManager)
 {
 	VkDescriptorPoolSize samplerDescriptorPoolSize = {.type = VK_DESCRIPTOR_TYPE_SAMPLER,        .descriptorCount = 0};
 	VkDescriptorPoolSize textureDescriptorPoolSize = {.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,  .descriptorCount = 0};
 	VkDescriptorPoolSize uniformDescriptorPoolSize = {.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = 0};
 
-	std::array<uint32_t, TotalBindings> descriptorCountsPerBinding = std::to_array
+	std::array<uint32_t, TotalSharedBindings> descriptorCountsPerBinding = std::to_array
 	({
 		(uint32_t)samplerManager->GetSamplerVariableArrayLength(),                                                    //Sampler descriptor count
 		(uint32_t)sceneToCreateDescriptors->mSceneTextures.size(),                                                    //Texture descriptor count
@@ -43,31 +46,38 @@ void Vulkan::SharedDescriptorDatabase::RecreateDescriptorPool(const RenderableSc
 		1u                                                                                                            //Frame data descriptor count
 	});
 
-	std::array<VkDescriptorPoolSize*, TotalBindings> poolSizeRefsPerType = std::to_array
-	({
-		&samplerDescriptorPoolSize, //Sampler pool size
-		&textureDescriptorPoolSize, //Texture pool size
-		&uniformDescriptorPoolSize, //Material pool size
-		&uniformDescriptorPoolSize, //Static data pool size
-		&uniformDescriptorPoolSize, //Dynamic data pool size
-		&uniformDescriptorPoolSize  //Frame data pool size
-	});
-
-
 	uint32_t totalSetCount = 0;
-	for(size_t setIndex = 0; setIndex < mSetLayouts.size(); setIndex++)
+	for(const SharedSetCreateMetadata& sharedSetMetadata: mSharedSetCreateMetadatas)
 	{
-		Span<uint32_t>        setBindingTypeSpan = mSetFormatsPerLayout[setIndex];
-		VkDescriptorSetLayout setLayout          = mSetLayouts[setIndex];
+		std::array<uint32_t, TotalSharedBindings> bindingCountPerSharedType;
+		std::fill(bindingCountPerSharedType.begin(), bindingCountPerSharedType.end(), 0);
 
-		uint32_t setCount = mSetsPerLayout[setIndex].End - mSetsPerLayout[setIndex].Begin;
-		for(uint32_t bindingIndex = setBindingTypeSpan.Begin; bindingIndex < setBindingTypeSpan.End; bindingIndex++)
+		for(uint32_t bindingIndex = sharedSetMetadata.BindingSpan.Begin; bindingIndex < sharedSetMetadata.BindingSpan.End; bindingIndex++)
 		{
-			uint32_t bindingTypeIndex = (uint32_t)mSetFormatsFlat[bindingIndex];
-			poolSizeRefsPerType[bindingTypeIndex]->descriptorCount += descriptorCountsPerBinding[bindingTypeIndex] * setCount;
+			uint32_t bindingTypeIndex = (uint32_t)mSharedSetFormatsFlat[bindingIndex];
+			bindingCountPerSharedType[bindingTypeIndex] += descriptorCountsPerBinding[bindingTypeIndex] * sharedSetMetadata.SetCount;
 		}
 
-		totalSetCount += setCount;
+		std::array samplerTypes = {SharedDescriptorBindingType::SamplerList};
+		std::array textureTypes = {SharedDescriptorBindingType::TextureList};
+		std::array uniformTypes = {SharedDescriptorBindingType::MaterialList, SharedDescriptorBindingType::StaticObjectDataList, SharedDescriptorBindingType::MaterialList, SharedDescriptorBindingType::FrameDataList};
+
+		for(SharedDescriptorBindingType samplerType: samplerTypes)
+		{
+			samplerDescriptorPoolSize.descriptorCount += bindingCountPerSharedType[(uint32_t)samplerType];
+		}
+
+		for(SharedDescriptorBindingType textureType: textureTypes)
+		{
+			textureDescriptorPoolSize.descriptorCount += bindingCountPerSharedType[(uint32_t)textureType];
+		}
+
+		for(SharedDescriptorBindingType uniformType: uniformTypes)
+		{
+			uniformDescriptorPoolSize.descriptorCount += bindingCountPerSharedType[(uint32_t)uniformType];
+		}
+
+		totalSetCount += sharedSetMetadata.SetCount;
 	}
 
 	std::array poolSizes = {samplerDescriptorPoolSize, textureDescriptorPoolSize, uniformDescriptorPoolSize};
@@ -81,12 +91,12 @@ void Vulkan::SharedDescriptorDatabase::RecreateDescriptorPool(const RenderableSc
 	descriptorPoolCreateInfo.poolSizeCount = (uint32_t)(poolSizes.size());
 	descriptorPoolCreateInfo.pPoolSizes    = poolSizes.data();
 
-	ThrowIfFailed(vkCreateDescriptorPool(mDeviceRef, &descriptorPoolCreateInfo, nullptr, &mDescriptorPool));
+	ThrowIfFailed(vkCreateDescriptorPool(mDeviceRef, &descriptorPoolCreateInfo, nullptr, &mSharedDescriptorPool));
 }
 
-void Vulkan::SharedDescriptorDatabase::AllocateDescriptorSets(const RenderableScene* sceneToCreateDescriptors, const SamplerManager* samplerManager)
+void Vulkan::DescriptorDatabase::AllocateSharedDescriptorSets(const RenderableScene* sceneToCreateDescriptors, const SamplerManager* samplerManager, std::vector<VkDescriptorSet>& outSharedDescriptorSets)
 {
-	std::array<uint32_t, TotalBindings> variableCountsPerBindingType = std::to_array
+	std::array<uint32_t, TotalSharedBindings> variableCountsPerBindingType = std::to_array
 	({
 		(uint32_t)samplerManager->GetSamplerVariableArrayLength(),                                                    //Samplers binding
 		(uint32_t)sceneToCreateDescriptors->mSceneTextures.size(),                                                    //Textures binding
@@ -96,30 +106,19 @@ void Vulkan::SharedDescriptorDatabase::AllocateDescriptorSets(const RenderableSc
 		0u                                                                                                            //Frame data binding
 	});
 
-	std::vector<VkDescriptorSetLayout> layoutsForSets(mSets.size());
-	std::vector<uint32_t>              variableCountsForSets(mSets.size(), 0);
-
-	for(uint32_t layoutIndex = 0; layoutIndex < mSetLayouts.size(); layoutIndex++)
+	std::vector<VkDescriptorSetLayout> layoutsForSets;
+	std::vector<uint32_t>              variableCountsForSets;
+	for(const SharedSetCreateMetadata& sharedSetCreateMetadata: mSharedSetCreateMetadatas)
 	{
-		Span<uint32_t> layoutSetSpan     = mSetsPerLayout[layoutIndex];
-		Span<uint32_t> layoutBindingspan = mSetFormatsPerLayout[layoutIndex];
+		uint32_t lastBindingIndex        = (uint32_t)mSharedSetFormatsFlat[sharedSetCreateMetadata.BindingSpan.End - 1];
+		uint32_t variableDescriptorCount = variableCountsPerBindingType[lastBindingIndex];
 
-		for(uint32_t setIndex = layoutSetSpan.Begin; setIndex < layoutSetSpan.End; setIndex++)
-		{
-			layoutsForSets[setIndex] = mSetLayouts[layoutIndex];
-			for(size_t bindingIndex = layoutBindingspan.Begin; bindingIndex < layoutBindingspan.End; bindingIndex++)
-			{
-				uint32_t bindingTypeIndex = (uint32_t)mSetFormatsFlat[bindingIndex];
-				uint32_t variableCount = variableCountsPerBindingType[bindingTypeIndex];
-
-				if(variableCount != 0)
-				{
-					assert(variableCountsForSets[setIndex] == 0); //Only the last binding can be of variable size
-					variableCountsForSets[setIndex] = variableCount;
-				}
-			}
-		}
+		layoutsForSets.resize(layoutsForSets.size() + sharedSetCreateMetadata.SetCount, sharedSetCreateMetadata.SetLayout);
+		variableCountsForSets.resize(layoutsForSets.size() + sharedSetCreateMetadata.SetCount, variableDescriptorCount);
 	}
+
+	outSharedDescriptorSets.resize(layoutsForSets.size(), VK_NULL_HANDLE);
+
 
 	VkDescriptorSetVariableDescriptorCountAllocateInfo variableCountAllocateInfo;
 	variableCountAllocateInfo.pNext              = nullptr;
@@ -130,14 +129,14 @@ void Vulkan::SharedDescriptorDatabase::AllocateDescriptorSets(const RenderableSc
 	descriptorSetAllocateInfoChain.AppendToChain(variableCountAllocateInfo);
 
 	VkDescriptorSetAllocateInfo& setAllocateInfo = descriptorSetAllocateInfoChain.GetChainHead();
-	setAllocateInfo.descriptorPool     = mDescriptorPool;
+	setAllocateInfo.descriptorPool     = mSharedDescriptorPool;
 	setAllocateInfo.descriptorSetCount = (uint32_t)layoutsForSets.size();
 	setAllocateInfo.pSetLayouts        = layoutsForSets.data();
 
-	ThrowIfFailed(vkAllocateDescriptorSets(mDeviceRef, &setAllocateInfo, mSets.data()));
+	ThrowIfFailed(vkAllocateDescriptorSets(mDeviceRef, &setAllocateInfo, outSharedDescriptorSets.data()));
 }
 
-void Vulkan::SharedDescriptorDatabase::UpdateDescriptorSets(const RenderableScene* sceneToCreateDescriptors)
+void Vulkan::DescriptorDatabase::UpdateSharedDescriptorSets(const RenderableScene* sceneToCreateDescriptors, const std::vector<VkDescriptorSet>& sharedDescriptorSets)
 {
 	const uint32_t samplerCount      = 0; //Immutable samplers are used
 	const uint32_t textureCount      = (uint32_t)sceneToCreateDescriptors->mSceneTextureViews.size();
@@ -146,7 +145,7 @@ void Vulkan::SharedDescriptorDatabase::UpdateDescriptorSets(const RenderableScen
 	const uint32_t rigidObjectCount  = (uint32_t)(sceneToCreateDescriptors->mCurrFrameDataToUpdate.size());
 	const uint32_t frameDataCount    = 1u;
 
-	std::array<uint32_t, TotalBindings> bindingDescriptorCounts = std::to_array
+	std::array<uint32_t, TotalSharedBindings> bindingDescriptorCounts = std::to_array
 	({
 		samplerCount,
 		textureCount,
@@ -158,12 +157,12 @@ void Vulkan::SharedDescriptorDatabase::UpdateDescriptorSets(const RenderableScen
 
 	size_t imageDescriptorCount  = 0;
 	size_t bufferDescriptorCount = 0;
-	for(uint32_t bindingTypeIndex = 0; bindingTypeIndex < TotalBindings; bindingTypeIndex++)
+	for(uint32_t bindingTypeIndex = 0; bindingTypeIndex < TotalSharedBindings; bindingTypeIndex++)
 	{
-		size_t frameCount   = FrameCountsPerBinding[bindingTypeIndex];
+		size_t frameCount   = FrameCountsPerSharedBinding[bindingTypeIndex];
 		size_t bindingCount = bindingDescriptorCounts[bindingTypeIndex];
 
-		switch(DescriptorTypesPerBinding[bindingTypeIndex])
+		switch(DescriptorTypesPerSharedBinding[bindingTypeIndex])
 		{
 		case VK_DESCRIPTOR_TYPE_SAMPLER:
 			break;
@@ -241,7 +240,7 @@ void Vulkan::SharedDescriptorDatabase::UpdateDescriptorSets(const RenderableScen
 	};
 
 	using AddBindingFunc = void(*)(const RenderableScene*, std::vector<VkDescriptorImageInfo>&, std::vector<VkDescriptorBufferInfo>&, uint32_t, uint32_t);
-	constexpr std::array<AddBindingFunc, TotalBindings> bindingAddFuncs = std::to_array
+	constexpr std::array<AddBindingFunc, TotalSharedBindings> bindingAddFuncs = std::to_array
 	({
 		(AddBindingFunc)addSamplerBindingsFunc,
 		(AddBindingFunc)addTextureBindingFunc,
@@ -251,10 +250,10 @@ void Vulkan::SharedDescriptorDatabase::UpdateDescriptorSets(const RenderableScen
 		(AddBindingFunc)addFrameDataBindingsFunc
 	});
 
-	constexpr uint32_t UniqueBindingCount = std::accumulate(FrameCountsPerBinding.begin(), FrameCountsPerBinding.end(), 0u);
+	constexpr uint32_t UniqueBindingCount = std::accumulate(FrameCountsPerSharedBinding.begin(), FrameCountsPerSharedBinding.end(), 0u);
 
-	constexpr std::array<uint32_t, TotalBindings> uniqueBindingStarts = { 0 };
-	std::exclusive_scan(FrameCountsPerBinding.begin(), FrameCountsPerBinding.end(), uniqueBindingStarts.begin(), 0u);
+	constexpr std::array<uint32_t, TotalSharedBindings> uniqueBindingStarts = { 0 };
+	std::exclusive_scan(FrameCountsPerSharedBinding.begin(), FrameCountsPerSharedBinding.end(), uniqueBindingStarts.begin(), 0u);
 
 	std::array<VkDescriptorImageInfo*,  UniqueBindingCount> imageDescriptorInfosPerUniqueBinding       = {0};
 	std::array<VkDescriptorBufferInfo*, UniqueBindingCount> bufferDescriptorInfosPerUniqueBinding      = {0};
@@ -262,12 +261,12 @@ void Vulkan::SharedDescriptorDatabase::UpdateDescriptorSets(const RenderableScen
 
 	imageDescriptorInfos.reserve(imageDescriptorCount);
 	bufferDescriptorInfos.reserve(bufferDescriptorCount);
-	for(uint32_t bindingTypeIndex = 0; bindingTypeIndex < TotalBindings; bindingTypeIndex++)
+	for(uint32_t bindingTypeIndex = 0; bindingTypeIndex < TotalSharedBindings; bindingTypeIndex++)
 	{
 		AddBindingFunc addfunc      = bindingAddFuncs[bindingTypeIndex];
 		uint32_t       bindingCount = bindingDescriptorCounts[bindingTypeIndex];
 
-		for(uint32_t frameIndex = 0; frameIndex < FrameCountsPerBinding[bindingTypeIndex]; frameIndex++)
+		for(uint32_t frameIndex = 0; frameIndex < FrameCountsPerSharedBinding[bindingTypeIndex]; frameIndex++)
 		{
 			uint32_t uniqueBindingIndex = uniqueBindingStarts[bindingTypeIndex] + frameIndex;
 
@@ -283,36 +282,32 @@ void Vulkan::SharedDescriptorDatabase::UpdateDescriptorSets(const RenderableScen
 		}
 	}
 
-	uint32_t allBindingCount = std::inner_product(mSetFormatsPerLayout.begin(), mSetFormatsPerLayout.end(), mSetsPerLayout.begin(), 0, std::plus<>(), [](const Span<uint32_t>& bindingSpan, const Span<uint32_t>& setSpan)
+	uint32_t totalBindingCount = std::accumulate(mSharedSetCreateMetadatas.begin(), mSharedSetCreateMetadatas.end(), 0, [](const uint32_t acc, const SharedSetCreateMetadata& createMetadata)
 	{
-		return (bindingSpan.End - bindingSpan.Begin) * (setSpan.End - setSpan.Begin);
+		return acc + (createMetadata.BindingSpan.End - createMetadata.BindingSpan.Begin) * createMetadata.SetCount;
 	});
 
 	std::vector<VkWriteDescriptorSet> writeDescriptorSets;
-	writeDescriptorSets.reserve(allBindingCount);
+	writeDescriptorSets.reserve(totalBindingCount);
 
-	for(uint32_t layoutIndex = 0; layoutIndex < mSetLayouts.size(); layoutIndex++)
+	for(const SharedSetCreateMetadata& sharedSetCreateMetadata: mSharedSetCreateMetadatas)
 	{
-		Span<uint32_t> layoutSetSpan     = mSetsPerLayout[layoutIndex];
-		Span<uint32_t> layoutBindingSpan = mSetFormatsPerLayout[layoutIndex];
-
-		for(uint32_t bindingIndex = layoutBindingSpan.Begin; bindingIndex < layoutBindingSpan.End; bindingIndex++)
+		for(uint32_t bindingIndex = sharedSetCreateMetadata.BindingSpan.Begin; bindingIndex < sharedSetCreateMetadata.BindingSpan.End; bindingIndex++)
 		{
-			for(uint32_t setIndex = layoutSetSpan.Begin; setIndex < layoutSetSpan.End; setIndex++)
+			uint32_t layoutBindingIndex = bindingIndex - sharedSetCreateMetadata.BindingSpan.Begin;
+			for(uint32_t setIndex = 0; setIndex < sharedSetCreateMetadata.SetCount; setIndex++)
 			{
-				uint32_t layoutBindingIndex = bindingIndex - layoutBindingSpan.Begin;
-				uint32_t bindingTypeIndex   = (uint32_t)mSetFormatsFlat[bindingIndex];
-
-				uint32_t uniqueBindingIndex = uniqueBindingStarts[bindingTypeIndex] + setIndex % FrameCountsPerBinding[bindingTypeIndex];
+				uint32_t bindingTypeIndex    = (uint32_t)mSharedSetFormatsFlat[bindingIndex];
+				uint32_t uniqueBindingIndex = uniqueBindingStarts[bindingTypeIndex] + setIndex % FrameCountsPerSharedBinding[bindingTypeIndex];
 
 				VkWriteDescriptorSet writeDescriptorSet;
 				writeDescriptorSet.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 				writeDescriptorSet.pNext            = nullptr;
-				writeDescriptorSet.dstSet           = mSets[setIndex];
+				writeDescriptorSet.dstSet           = sharedDescriptorSets[setIndex];
 				writeDescriptorSet.dstBinding       = layoutBindingIndex;
 				writeDescriptorSet.dstArrayElement  = 0;
 				writeDescriptorSet.descriptorCount  = bindingDescriptorCounts[bindingTypeIndex];
-				writeDescriptorSet.descriptorType   = DescriptorTypesPerBinding[bindingTypeIndex];
+				writeDescriptorSet.descriptorType   = DescriptorTypesPerSharedBinding[bindingTypeIndex];
 				writeDescriptorSet.pImageInfo       = imageDescriptorInfosPerUniqueBinding[uniqueBindingIndex];
 				writeDescriptorSet.pBufferInfo      = bufferDescriptorInfosPerUniqueBinding[uniqueBindingIndex];
 				writeDescriptorSet.pTexelBufferView = texelBufferDescriptorInfosPerUniqueBinding[uniqueBindingIndex];

@@ -7,7 +7,7 @@
 #include "../../Core/DataStructures/Span.hpp"
 #include "../Common/FrameGraph/ModernFrameGraphMisc.hpp"
 #include "FrameGraph/VulkanRenderPass.hpp"
-#include "FrameGraph/VulkanSharedDescriptorDatabase.hpp"
+#include "VulkanDescriptors.hpp"
 
 class LoggerQueue;
 
@@ -107,7 +107,7 @@ namespace Vulkan
 		void CreateMatchingPipelineLayout(std::span<std::string_view> groupNamesForSets, std::span<std::string_view> groupNamesForPushConstants, VkPipelineLayout* outPipelineLayout) const;
 
 		//Transfers the ownership of all set layouts from shared domain to shared descriptor database, also saving the information about layouts
-		void FlushSharedSetLayouts(SharedDescriptorDatabase* databaseToBuild);
+		void FlushSharedSetLayouts(DescriptorDatabase* databaseToBuild);
 
 		void BuildUniquePassSetInfos(std::vector<PassSetInfo>& outPassSetInfos, std::vector<uint16_t>& outPassBindingTypes) const;
 
