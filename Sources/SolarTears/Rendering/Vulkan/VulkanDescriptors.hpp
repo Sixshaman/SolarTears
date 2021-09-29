@@ -27,8 +27,8 @@ namespace Vulkan
 
 		struct SharedSetRecord
 		{
-			uint32_t SetType;
-			uint32_t SetIndex;
+			uint32_t FlatCreateSetIndex; //The index of the set that can be calculated from mSharedSetCreateMetadatas taking set count into account
+			uint32_t SetDatabaseIndex;   //The index of the sets in mDescriptorSets
 		};
 
 	public:
@@ -42,7 +42,6 @@ namespace Vulkan
 		void RecreateSharedDescriptorPool(const RenderableScene* sceneToCreateDescriptors, const SamplerManager* samplerManager);
 		void AllocateSharedDescriptorSets(const RenderableScene* sceneToCreateDescriptors, const SamplerManager* samplerManager, std::vector<VkDescriptorSet>& outSharedDescriptorSets);
 		void UpdateSharedDescriptorSets(const RenderableScene* sceneToCreateDescriptors,   const std::vector<VkDescriptorSet>& sharedDescriptorSets);
-		void ReassignSharedDescriptorSets(const std::vector<VkDescriptorSet>& sharedDescriptorSets);
 
 	private:
 		const VkDevice mDeviceRef;

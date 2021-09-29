@@ -27,7 +27,6 @@ void Vulkan::DescriptorDatabase::RecreateSharedSets(const RenderableScene* scene
 	std::vector<VkDescriptorSet> sharedSets;
 	AllocateSharedDescriptorSets(sceneToCreateDescriptors, samplerManager, sharedSets);
 	UpdateSharedDescriptorSets(sceneToCreateDescriptors, sharedSets);
-	ReassignSharedDescriptorSets(sharedSets);
 }
 
 void Vulkan::DescriptorDatabase::RecreateSharedDescriptorPool(const RenderableScene* sceneToCreateDescriptors, const SamplerManager* samplerManager)
@@ -134,6 +133,12 @@ void Vulkan::DescriptorDatabase::AllocateSharedDescriptorSets(const RenderableSc
 	setAllocateInfo.pSetLayouts        = layoutsForSets.data();
 
 	ThrowIfFailed(vkAllocateDescriptorSets(mDeviceRef, &setAllocateInfo, outSharedDescriptorSets.data()));
+	
+
+	for(const SharedSetRecord& sharedSetRecord: mSharedSetRecords)
+	{
+		mDescriptorSets[sharedSetRecord.SetDatabaseIndex] = outSharedDescriptorSets[sharedSetRecord.FlatCreateSetIndex];
+	}
 }
 
 void Vulkan::DescriptorDatabase::UpdateSharedDescriptorSets(const RenderableScene* sceneToCreateDescriptors, const std::vector<VkDescriptorSet>& sharedDescriptorSets)

@@ -87,9 +87,6 @@ namespace Vulkan
 
 		//Registers a render pass in the database
 		void RegisterPass(RenderPassType passType);
-		void RegisterPassBinding(RenderPassType passType, std::string_view bindingName, uint16_t passBindingType);
-		void SetPassBindingValidateInfo(VkDescriptorType descriptorType);
-		void SetPassBindingFlags(std::string_view bindingName, VkDescriptorBindingFlags descriptorFlags);
 
 		//Registers a shader group in the database
 		void RegisterShaderGroup(std::string_view groupName, std::span<std::wstring> shaderPaths);

@@ -2,6 +2,8 @@
 #include "VulkanUtils.hpp"
 #include "VulkanFunctions.hpp"
 #include "VulkanSamplers.hpp"
+#include "VulkanDescriptorsMisc.hpp"
+#include "FrameGraph/VulkanRenderPassDispatchFuncs.hpp"
 #include "../../Core/Util.hpp"
 #include "../../Logging/LoggerQueue.hpp"
 #include <VulkanGenericStructures.h>
@@ -20,19 +22,16 @@ Vulkan::ShaderDatabase::ShaderDatabase(VkDevice device, SamplerManager* samplerM
 		.FirstLayoutNodeIndex = (uint32_t)(-1)
 	};
 
-	for(uint16_t bindingTypeIndex = 0; bindingTypeIndex < DescriptorDatabase::TotalBindings; bindingTypeIndex++)
+	for(uint16_t bindingTypeIndex = 0; bindingTypeIndex < TotalSharedBindings; bindingTypeIndex++)
 	{
-		std::string_view bindingName = DescriptorDatabase::DescriptorBindingNames[bindingTypeIndex];
+		std::string_view bindingName = SharedDescriptorBindingNames[bindingTypeIndex];
 		mBindingRecordMap[bindingName] = BindingRecord
 		{
 			.Domain          = SharedSetDomain,
 			.Type            = (BindingType)(bindingTypeIndex),
-			.DescriptorType  = DescriptorDatabase::DescriptorTypesPerBinding[bindingTypeIndex],
-			.DescriptorFlags = 0,
+			.DescriptorType  = DescriptorTypesPerSharedBinding[bindingTypeIndex],
+			.DescriptorFlags = DescriptorFlagsPerSharedBinding[bindingTypeIndex],
 		};
-
-		auto it = mBindingRecordMap.find(DescriptorDatabase::DescriptorBindingNames[bindingTypeIndex]);
-		it->second.DescriptorFlags = DescriptorDatabase::DescriptorFlagsPerBinding[bindingTypeIndex];
 	}
 }
 
@@ -47,7 +46,10 @@ Vulkan::ShaderDatabase::~ShaderDatabase()
 
 void Vulkan::ShaderDatabase::RegisterPass(RenderPassType passType)
 {
-	assert(!mPassDomainMap.contains(passType));
+	if(mPassDomainMap.contains(passType))
+	{
+		return;
+	}
 
 	mDomainRecords.push_back(DomainRecord
 	{
@@ -55,29 +57,25 @@ void Vulkan::ShaderDatabase::RegisterPass(RenderPassType passType)
 		.FirstLayoutNodeIndex = (uint32_t)(-1)
 	});
 
-	mPassDomainMap[passType] = (uint32_t)(mDomainRecords.size() - 1);
-}
+	BindingDomain newDomain = (uint32_t)(mDomainRecords.size() - 1);
+	mPassDomainMap[passType] = newDomain;
 
-void Vulkan::ShaderDatabase::RegisterPassBinding(RenderPassType passType, uint16_t passBindingType, VkDescriptorType descriptorType)
-{
-	BindingDomain domain = mPassDomainMap.at(passType);
-
-	DomainRecord& domainRecord = mDomainRecords[domain];
-	mBindingRecordMap[bindingName] = BindingRecord
+	uint_fast16_t passSubresourceCount = GetPassSubresourceCount(passType);
+	for(uint_fast16_t passSubresourceIndex = 0; passSubresourceIndex < passSubresourceCount; passSubresourceIndex++)
 	{
-		.Domain          = domain,
-		.Type            = (BindingType)passBindingType,
-		.DescriptorType  = descriptorType,
-		.DescriptorFlags = 0
-	};
-}
-
-void Vulkan::ShaderDatabase::SetPassBindingFlags(std::string_view bindingName, VkDescriptorBindingFlags descriptorFlags)
-{
-	auto it = mBindingRecordMap.find(bindingName);
-	assert(it != mBindingRecordMap.end());
-
-	it->second.DescriptorFlags = descriptorFlags;
+		VkDescriptorType bindingDescriptorType = GetPassSubresourceDescriptorType(passType, passSubresourceIndex);
+		if(bindingDescriptorType != VK_DESCRIPTOR_TYPE_MAX_ENUM)
+		{
+			std::string_view bindingName = GetPassSubresourceStringId(passType, passSubresourceIndex);
+			mBindingRecordMap[bindingName] = BindingRecord
+			{
+				.Domain          = newDomain,
+				.Type            = (BindingType)passSubresourceIndex,
+				.DescriptorType  = bindingDescriptorType,
+				.DescriptorFlags = 0
+			};
+		}
+	}
 }
 
 void Vulkan::ShaderDatabase::RegisterShaderGroup(std::string_view groupName, std::span<std::wstring> shaderPaths)
