@@ -336,10 +336,10 @@ void Vulkan::ShaderDatabase::RegisterBindings(const std::string_view groupName, 
 		assert(spvBinding != nullptr);
 
 		VkDescriptorSetLayoutBinding setLayoutBinding;
-		setLayoutBinding.binding            = spvBinding->binding,
-		setLayoutBinding.descriptorType     = SpvToVkDescriptorType(spvBinding->descriptor_type),
-		setLayoutBinding.descriptorCount    = spvBinding->count,
-		setLayoutBinding.stageFlags         = bindingStageFlags[bindingIndex],
+		setLayoutBinding.binding            = spvBinding->binding;
+		setLayoutBinding.descriptorType     = SpvToVkDescriptorType(spvBinding->descriptor_type);
+		setLayoutBinding.descriptorCount    = spvBinding->count;
+		setLayoutBinding.stageFlags         = bindingStageFlags[bindingIndex];
 		setLayoutBinding.pImmutableSamplers = nullptr;
 
 		if(spvBinding->type_description->op == SpvOpTypeRuntimeArray)
