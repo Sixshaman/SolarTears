@@ -10,7 +10,6 @@ class FrameGraphConfig;
 namespace Vulkan
 {
 	class FrameGraphBuilder;
-	class ShaderDatabase;
 
 	class CopyImagePass: public RenderPass, public CopyImagePassBase
 	{
@@ -25,6 +24,8 @@ namespace Vulkan
 		~CopyImagePass();
 
 		void RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig) const override;
+
+		void ValidateDescriptorSets(const ShaderDatabase* shaderDatabase, DescriptorDatabase* descriptorDatabase) override;
 
 	private:
 		VkImage mSrcImageRef;

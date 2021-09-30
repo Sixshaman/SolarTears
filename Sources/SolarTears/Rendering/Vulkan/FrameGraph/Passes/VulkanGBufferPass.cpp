@@ -41,15 +41,15 @@ Vulkan::GBufferPass::GBufferPass(const FrameGraphBuilder* frameGraphBuilder, uin
 	uint32_t  fragmentShaderSize = 0;
 	shaderDatabase->GetRegisteredShaderInfo(shaderFolder + L"GBufferDraw.frag.spv", &fragmentShaderCode, &fragmentShaderSize);
 
-	std::array staticGroupNames = {std::string_view("GBufferStaticShaders"), "GBufferStaticInstancedShaders"};
-	std::array rigidGroupNames  = {std::string_view("GBufferRigisShaders")};
-	std::array allGroupNames    = {std::string_view("GBufferStaticShaders"), "GBufferStaticInstancedShaders", "GBufferRigisShaders"};
+	std::array staticGroupNames = {StaticShaderGroup, StaticInstancedShaderGroup};
+	std::array rigidGroupNames  = {RigidShaderGroup};
+	std::array allGroupNames    = {StaticShaderGroup, StaticInstancedShaderGroup, RigidShaderGroup};
 
 	shaderDatabase->CreateMatchingPipelineLayout(staticGroupNames, allGroupNames, &mStaticPipelineLayout);
 	shaderDatabase->CreateMatchingPipelineLayout(rigidGroupNames,  allGroupNames, &mRigidPipelineLayout);
 
-	shaderDatabase->GetPushConstantInfo("GBufferRigisShaders", "MaterialIndex", &mMaterialIndexPushConstantOffset, &mMaterialIndexPushConstantStages);
-	shaderDatabase->GetPushConstantInfo("GBufferRigisShaders", "ObjectIndex",   &mObjectIndexPushConstantOffset,   &mObjectIndexPushConstantStages);
+	shaderDatabase->GetPushConstantInfo(RigidShaderGroup, "MaterialIndex", &mMaterialIndexPushConstantOffset, &mMaterialIndexPushConstantStages);
+	shaderDatabase->GetPushConstantInfo(RigidShaderGroup, "ObjectIndex",   &mObjectIndexPushConstantOffset,   &mObjectIndexPushConstantStages);
 
 	//Create pipelines
 	CreateGBufferPipeline(staticVertexShaderCode,          staticVertexShaderSize,          fragmentShaderCode, fragmentShaderSize, mStaticPipelineLayout, frameGraphBuilder->GetConfig(), &mStaticPipeline);
@@ -134,6 +134,33 @@ void Vulkan::GBufferPass::RecordExecution(VkCommandBuffer commandBuffer, const R
 	scene->DrawRigidObjects(commandBuffer, meshCallback, submeshCallback);
 
 	vkCmdEndRenderPass(commandBuffer);
+}
+
+void Vulkan::GBufferPass::ValidateDescriptorSets(const ShaderDatabase* shaderDatabase, DescriptorDatabase* descriptorDatabase)
+{
+	//The pipelines will be bound in this order
+	constexpr uint32_t staticGroupIndex          = 0;
+	constexpr uint32_t staticInstancedGroupIndex = 1;
+	constexpr uint32_t rigidGroupIndex           = 2;
+
+	std::array<std::string_view, 3> shaderGroupPipelineOrder;
+	shaderGroupPipelineOrder[staticGroupIndex]          = StaticShaderGroup;
+	shaderGroupPipelineOrder[staticInstancedGroupIndex] = StaticInstancedShaderGroup;
+	shaderGroupPipelineOrder[rigidGroupIndex]           = RigidShaderGroup;
+	
+	std::array<Span<uint32_t>, shaderGroupPipelineOrder.size()> setSubspansPerShaderGroup;
+	std::array<uint32_t, shaderGroupPipelineOrder.size()>       setBindOffsetsPerShaderGroup;
+	
+	mDescriptorSets = shaderDatabase->AssignPassSets(descriptorDatabase, shaderGroupPipelineOrder, setSubspansPerShaderGroup, setBindOffsetsPerShaderGroup);
+
+	//Static and static instanced sets should match
+	assert(setSubspansPerShaderGroup[staticInstancedGroupIndex].Begin == setSubspansPerShaderGroup[staticInstancedGroupIndex].End);
+
+	mStaticDrawChangedSetSpan = setSubspansPerShaderGroup[staticInstancedGroupIndex];
+	mStaticDrawSetBindOffset  = setBindOffsetsPerShaderGroup[staticInstancedGroupIndex];
+
+	mRigidDrawChangedSetSpan = setSubspansPerShaderGroup[rigidGroupIndex];
+	mRigidDrawSetBindOffset  = setBindOffsetsPerShaderGroup[rigidGroupIndex];
 }
 
 void Vulkan::GBufferPass::CreateRenderPass(const FrameGraphBuilder* frameGraphBuilder, uint32_t frameGraphPassId, const DeviceParameters* deviceParameters)

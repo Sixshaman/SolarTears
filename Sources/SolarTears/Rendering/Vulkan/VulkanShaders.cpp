@@ -80,7 +80,7 @@ void Vulkan::ShaderDatabase::RegisterPass(RenderPassType passType)
 
 void Vulkan::ShaderDatabase::RegisterShaderGroup(std::string_view groupName, std::span<std::wstring> shaderPaths)
 {
-	assert(!mSetLayoutSpansPerShaderGroup.contains(groupName));
+	assert(!mLayoutNodeRecordIndexSpansPerShaderGroup.contains(groupName));
 
 	for(const std::wstring& shaderPath: shaderPaths)
 	{
@@ -112,8 +112,8 @@ void Vulkan::ShaderDatabase::GetPushConstantInfo(std::string_view groupName, std
 {
 	Span<uint32_t> pushConstantSpan = mPushConstantSpansPerShaderGroup.at(groupName).RecordSpan;
 
-	const auto rangeBegin = mPushConstantRecords.begin() + pushConstantSpan.Begin;
-	const auto rangeEnd   = mPushConstantRecords.begin() + pushConstantSpan.End;
+	const auto rangeBegin = mPushConstantRecordsFlat.begin() + pushConstantSpan.Begin;
+	const auto rangeEnd   = mPushConstantRecordsFlat.begin() + pushConstantSpan.End;
 	auto pushConstantRecord = std::lower_bound(rangeBegin, rangeEnd, [pushConstantName](const PushConstantRecord& rec)
 	{
 		return pushConstantName == rec.Name;
@@ -142,8 +142,8 @@ void Vulkan::ShaderDatabase::CreateMatchingPipelineLayout(std::span<std::string_
 
 	if(matchingSetLayoutSpan.End != matchingSetLayoutSpan.Begin && matchingPushConstantRangeSpan.End != matchingPushConstantRangeSpan.Begin)
 	{
-		std::span setLayouts    = {mSetLayoutsFlat.begin()     + matchingSetLayoutSpan.Begin,         mSetLayoutsFlat.begin()     + matchingSetLayoutSpan.End};
-		std::span pushConstants = {mPushConstantRanges.begin() + matchingPushConstantRangeSpan.Begin, mPushConstantRanges.begin() + matchingPushConstantRangeSpan.End};
+		std::span setLayouts    = { mSetLayoutsForCreatePipelineFlat.begin() + matchingSetLayoutSpan.Begin,         mSetLayoutsForCreatePipelineFlat.begin() + matchingSetLayoutSpan.End};
+		std::span pushConstants = {mPushConstantRangesFlat.begin()           + matchingPushConstantRangeSpan.Begin, mPushConstantRangesFlat.begin()          + matchingPushConstantRangeSpan.End};
 
 		VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo;
 		pipelineLayoutCreateInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -160,6 +160,51 @@ void Vulkan::ShaderDatabase::CreateMatchingPipelineLayout(std::span<std::string_
 	{
 		*outPipelineLayout = VK_NULL_HANDLE;
 	}
+}
+
+std::span<VkDescriptorSet> Vulkan::ShaderDatabase::AssignPassSets(DescriptorDatabase* databaseToStore, const std::span<std::string_view> shaderGroupSequence, std::span<Span<uint32_t>> outBindSubspansPerGroup, std::span<uint32_t> outBindPointsPerGroup)
+{
+	assert(shaderGroupSequence.size() == outBindSubspansPerGroup.size());
+	assert(shaderGroupSequence.size() == outBindPointsPerGroup.size());
+
+	std::vector<uint32_t> totalLayoutRecordIndices;
+	std::vector<uint32_t> currentLayoutRecordIndices;
+
+	//Try to match each shader group layout span with currentLayoutRecordIndices, and find the first non-matching element
+	for(uint32_t shaderGroupIndex = 0; shaderGroupIndex < shaderGroupSequence.size(); shaderGroupIndex++)
+	{
+		const std::string_view shaderGroupName = shaderGroupSequence[shaderGroupIndex];
+		Span<uint32_t> groupLayoutSpan = mLayoutNodeRecordIndexSpansPerShaderGroup.at(shaderGroupName);
+
+		uint32_t currIndexToMatch = 0;
+		std::span<uint32_t> groupLayoutRecordIndices = {mLayoutRecordNodeIndicesFlat.begin() + groupLayoutSpan.Begin, mLayoutRecordNodeIndicesFlat.begin() + groupLayoutSpan.End};
+		while(currIndexToMatch < groupLayoutRecordIndices.size() && currIndexToMatch < currentLayoutRecordIndices.size())
+		{
+			if(groupLayoutRecordIndices[currIndexToMatch] != currentLayoutRecordIndices[currIndexToMatch])
+			{
+				break;
+			}
+
+			currIndexToMatch++;
+		}
+
+		uint32_t oldLayoutIndexCount = (uint32_t)totalLayoutRecordIndices.size();
+
+		outBindSubspansPerGroup[shaderGroupIndex].Begin = oldLayoutIndexCount;
+		outBindSubspansPerGroup[shaderGroupIndex].End   = oldLayoutIndexCount + (uint32_t)(groupLayoutRecordIndices.size() - currIndexToMatch);
+		outBindPointsPerGroup[shaderGroupIndex]         = currIndexToMatch;
+
+		totalLayoutRecordIndices.insert(totalLayoutRecordIndices.end(), groupLayoutRecordIndices.begin() + currIndexToMatch, groupLayoutRecordIndices.end());
+		
+		currentLayoutRecordIndices.resize(groupLayoutRecordIndices.size());
+		std::copy(groupLayoutRecordIndices.begin() + currIndexToMatch, groupLayoutRecordIndices.end(), currentLayoutRecordIndices.begin() + currIndexToMatch);
+	}
+
+	//Store new sets in the database
+	uint32_t oldSetCount = databaseToStore->mDescriptorSets.size();
+	AddSetsToDatabase(totalLayoutRecordIndices);
+
+	return std::span(databaseToStore->mDescriptorSets.begin() + oldSetCount, databaseToStore->mDescriptorSets.end());
 }
 
 void Vulkan::ShaderDatabase::FlushSharedSetLayouts(DescriptorDatabase* databaseToBuild)
@@ -309,12 +354,12 @@ void Vulkan::ShaderDatabase::RegisterBindings(const std::string_view groupName, 
 
 	Span<uint32_t> groupSetSpan =
 	{
-		.Begin = (uint32_t)mSetLayoutsFlat.size(),
-		.End   = (uint32_t)(mSetLayoutsFlat.size() + bindingSpansPerSet.size())
+		.Begin = (uint32_t)mLayoutRecordNodeIndicesFlat.size(),
+		.End   = (uint32_t)(mLayoutRecordNodeIndicesFlat.size() + bindingSpansPerSet.size())
 	};
 
-	mSetLayoutSpansPerShaderGroup[groupName] = groupSetSpan;
-	mSetLayoutsFlat.resize(mSetLayoutsFlat.size() + bindingSpansPerSet.size());
+	mLayoutNodeRecordIndexSpansPerShaderGroup[groupName] = groupSetSpan;
+	mLayoutRecordNodeIndicesFlat.resize(mLayoutRecordNodeIndicesFlat.size() + bindingSpansPerSet.size());
 
 	for(uint32_t bindingSpanIndex = 0; bindingSpanIndex < (uint32_t)bindingSpansPerSet.size(); bindingSpanIndex++)
 	{
@@ -326,8 +371,7 @@ void Vulkan::ShaderDatabase::RegisterBindings(const std::string_view groupName, 
 		uint16_t setDomain = ValidateSetDomain(bindingRecordSpan);
 		assert(setDomain != UndefinedSetDomain);
 
-		uint32_t layoutIndex = RegisterSetLayout(setDomain, bindingInfoSpan, bindingRecordSpan);
-		mSetLayoutsFlat[groupSetSpan.Begin + bindingSpanIndex] = (VkDescriptorSetLayout)(uintptr_t)layoutIndex; //Since we can't create the layouts right now, store the ptr offset
+		mLayoutRecordNodeIndicesFlat[groupSetSpan.Begin + bindingSpanIndex] = RegisterSetLayout(setDomain, bindingInfoSpan, bindingRecordSpan);
 	}
 }
 
@@ -588,7 +632,7 @@ void Vulkan::ShaderDatabase::CollectPushConstantRecords(const std::span<std::wst
 
 Span<uint32_t> Vulkan::ShaderDatabase::RegisterPushConstantRecords(const std::span<PushConstantRecord> lexicographicallySortedRecords)
 {
-	uint32_t oldPushConstantCount = (uint32_t)mPushConstantRecords.size();
+	uint32_t oldPushConstantCount = (uint32_t)mPushConstantRecordsFlat.size();
 	
 	std::string_view currName = "";
 	for(const PushConstantRecord& pushConstantRecord: lexicographicallySortedRecords)
@@ -596,19 +640,19 @@ Span<uint32_t> Vulkan::ShaderDatabase::RegisterPushConstantRecords(const std::sp
 		if(currName == pushConstantRecord.Name)
 		{
 			//Merge and validate push constant record
-			assert(mPushConstantRecords.back().Offset == pushConstantRecord.Offset);
-			mPushConstantRecords.back().ShaderStages |= pushConstantRecord.ShaderStages;
+			assert(mPushConstantRecordsFlat.back().Offset == pushConstantRecord.Offset);
+			mPushConstantRecordsFlat.back().ShaderStages |= pushConstantRecord.ShaderStages;
 		}
 		else
 		{
-			mPushConstantRecords.push_back(pushConstantRecord);
+			mPushConstantRecordsFlat.push_back(pushConstantRecord);
 		}
 	}
 
 	return Span<uint32_t>
 	{
 		.Begin = oldPushConstantCount,
-		.End   = (uint32_t)mPushConstantRecords.size()
+		.End   = (uint32_t)mPushConstantRecordsFlat.size()
 	};
 }
 
@@ -714,13 +758,13 @@ Span<uint32_t> Vulkan::ShaderDatabase::RegisterPushConstantRanges(const std::spa
 		rangeToChange->size   = newRangeEnd;
 	}
 
-	uint32_t oldRangeCount = (uint32_t)mPushConstantRanges.size();
-	mPushConstantRanges.insert(mPushConstantRanges.end(), pushConstantRanges.begin(), pushConstantRanges.begin() + pushConstantRangeCount);
+	uint32_t oldRangeCount = (uint32_t)mPushConstantRangesFlat.size();
+	mPushConstantRangesFlat.insert(mPushConstantRangesFlat.end(), mPushConstantRangesFlat.begin(), mPushConstantRangesFlat.begin() + pushConstantRangeCount);
 
 	return Span<uint32_t>
 	{
 		.Begin = oldRangeCount,
-		.End   = (uint32_t)mPushConstantRanges.size()
+		.End   = (uint32_t)mPushConstantRangesFlat.size()
 	};
 }
 
@@ -735,12 +779,12 @@ Span<uint32_t> Vulkan::ShaderDatabase::FindMatchingSetLayoutSpan(std::span<std::
 		};
 	}
 
-	Span<uint32_t> handledLayoutSpan = mSetLayoutSpansPerShaderGroup.at(groupNames[0]);
+	Span<uint32_t> handledLayoutSpan = mLayoutNodeRecordIndexSpansPerShaderGroup.at(groupNames[0]);
 	for(size_t groupIndex = 1; groupIndex < groupNames.size(); groupIndex++)
 	{
 		std::string_view groupName = groupNames[groupIndex];
 
-		Span<uint32_t> testLayoutSpan = mSetLayoutSpansPerShaderGroup.at(groupName);
+		Span<uint32_t> testLayoutSpan = mLayoutNodeRecordIndexSpansPerShaderGroup.at(groupName);
 		if(testLayoutSpan.Begin == handledLayoutSpan.Begin)
 		{
 			//The layout objects themselves match, just create the minimal span satisfying both
@@ -913,8 +957,8 @@ Span<uint32_t> Vulkan::ShaderDatabase::FindMatchingPushConstantRangeSpan(std::sp
 			uint32_t rangesToTest = std::min(handledRangeCount, testRangeCount);
 			for(uint32_t rangeIndex = 0; rangeIndex < rangesToTest; rangeIndex++)
 			{
-				VkPushConstantRange handledRange = mPushConstantRanges[handledRangeSpan.Begin + rangeIndex];
-				VkPushConstantRange testRange    = mPushConstantRanges[testRangeSpan.Begin    + rangeIndex];
+				VkPushConstantRange handledRange = mPushConstantRangesFlat[handledRangeSpan.Begin + rangeIndex];
+				VkPushConstantRange testRange    = mPushConstantRangesFlat[testRangeSpan.Begin    + rangeIndex];
 
 				if(handledRange.stageFlags != testRange.stageFlags
 				|| handledRange.size       != testRange.size
@@ -1110,10 +1154,10 @@ void Vulkan::ShaderDatabase::BuildSetLayouts()
 		ThrowIfFailed(vkCreateDescriptorSetLayout(mDeviceRef, &setLayoutCreateInfo, nullptr, &layoutRecordNode.SetLayout));
 	}
 
-	for(uint32_t flatSetLayoutIndex = 0; flatSetLayoutIndex < mSetLayoutsFlat.size(); flatSetLayoutIndex++)
+	mSetLayoutsForCreatePipelineFlat.resize(mLayoutRecordNodeIndicesFlat.size());
+	for(uint32_t flatSetLayoutIndex = 0; flatSetLayoutIndex < mLayoutRecordNodeIndicesFlat.size(); flatSetLayoutIndex++)
 	{
-		uintptr_t setLayoutIndex = (uintptr_t)mSetLayoutsFlat[flatSetLayoutIndex]; //Extract the offset written in the pointer
-		mSetLayoutsFlat[flatSetLayoutIndex] = mSetLayoutRecordNodes[setLayoutIndex].SetLayout;
+		mSetLayoutsForCreatePipelineFlat[flatSetLayoutIndex] = mSetLayoutRecordNodes[mLayoutRecordNodeIndicesFlat[flatSetLayoutIndex]].SetLayout;
 	}
 }
 

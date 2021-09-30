@@ -50,7 +50,7 @@ namespace Vulkan
 		//The data structure to store information about which passes use which bindings
 		struct BindingRecord
 		{
-			uint16_t         Domain;          //Type of the pass that uses the set (Shared, Pass 1, Pass 2, etc.)
+			BindingDomain    Domain;          //Type of the pass that uses the set (Shared, Pass 1, Pass 2, etc.)
 			uint16_t         Type;            //Per-domain binding type
 			VkDescriptorType DescriptorType;  //Descriptor type for the binding (used for validation purposes)
 			uint32_t         DescriptorFlags; //Descriptor flags for the binding (used for validation purposes)
@@ -101,6 +101,12 @@ namespace Vulkan
 		//The push constants are minimal matching set in groupNamesForPushConstants
 		//Returns nullptr if no matching pipeline layout can be created
 		void CreateMatchingPipelineLayout(std::span<std::string_view> groupNamesForSets, std::span<std::string_view> groupNamesForPushConstants, VkPipelineLayout* outPipelineLayout) const;
+
+		//Calculates and returns the optimal VkDescriptorSet span for shaderGroupSequence. The span gets stored in databaseToStore.
+		//The span is built in such a way that binding pipelines according to order in shaderGroupSequence would produce the least amount of descriptors needed to be rebound
+		//Returns the descriptor sub-span for each entry in shaderGroupSequence in outBindSubspansPerGroup
+		//Returns the firstSet parameter for vkBindDescriptorSets for each entry in shaderGroupSequence in outBindPointsPerGroup
+		std::span<VkDescriptorSet> AssignPassSets(DescriptorDatabase* databaseToStore, const std::span<std::string_view> shaderGroupSequence, std::span<Span<uint32_t>> outBindSubspansPerGroup, std::span<uint32_t> outBindPointsPerGroup);
 
 		//Transfers the ownership of all set layouts from shared domain to shared descriptor database, also saving the information about layouts
 		void FlushSharedSetLayouts(DescriptorDatabase* databaseToBuild);
@@ -173,30 +179,40 @@ namespace Vulkan
 		//Loaded shader modules per shader path
 		std::unordered_map<std::wstring, spv_reflect::ShaderModule> mLoadedShaderModules;
 
-		//Set layout records for each shader group
-		//The list of set layouts is non-owning
-		std::vector<VkDescriptorSetLayout>                   mSetLayoutsFlat;
-		std::unordered_map<std::string_view, Span<uint32_t>> mSetLayoutSpansPerShaderGroup;
+		//Set layout records for each shader group name
+		//Each entry in mLayoutNodeRecordIndexSpansPerShaderGroup references a span in mLayoutRecordNodeIndicesFlat and a span in mSetLayoutsForCreatePipelineFlat
+		//Each entry in mLayoutRecordNodeIndicesFlat references an entry in mSetLayoutRecordNodes
+		//The mSetLayoutsForCreatePipelineFlat list is non-owning and only used by vkCreatePipelineLayout call
+		std::unordered_map<std::string_view, Span<uint32_t>> mLayoutNodeRecordIndexSpansPerShaderGroup;
+		std::vector<uint32_t>                                mLayoutRecordNodeIndicesFlat;              
+		std::vector<VkDescriptorSetLayout>                   mSetLayoutsForCreatePipelineFlat;
 
-		//Push constants for each shader group
-		//Each push constant span is lexicographically sorted by name
-		std::vector<PushConstantRecord>                         mPushConstantRecords;
-		std::vector<VkPushConstantRange>                        mPushConstantRanges;
+		//Push constant ranges and records for each shader group name
+		//Each entry in mPushConstantSpansPerShaderGroup references a span in mPushConstantRecordsFlat and a span in mPushConstantRangesFlat
+		//Each push constant span in mPushConstantRecordsFlat is lexicographically sorted by the push constant name
 		std::unordered_map<std::string_view, PushConstantSpans> mPushConstantSpansPerShaderGroup;
+		std::vector<PushConstantRecord>                         mPushConstantRecordsFlat;
+		std::vector<VkPushConstantRange>                        mPushConstantRangesFlat;
 
-		std::vector<DomainRecord>        mDomainRecords;
+		//The flat list of domain records.
+		//Each domain record references the head of the linked sublist in mSetLayoutRecordNodes, allowing to traverse all the layouts for the domain
+		std::vector<DomainRecord> mDomainRecords; 
+
+		//The flat list of registered set layouts. 
+		//Each record references a span in mLayoutBindingsFlat, mLayoutBindingFlagsFlat, and mLayoutBindingTypesFlat, which describe the bindings for the layout
+		//Layout records for the same domain form linked sublists in the array
 		std::vector<SetLayoutRecordNode> mSetLayoutRecordNodes;
 
 		//Bindings per layout
-		//A lot of data is stored separately because mLayoutBindingsFlat and mLayoutBindingFlagsFlat are needed as separate arrays
-		std::vector<VkDescriptorSetLayoutBinding> mLayoutBindingsFlat;
-		std::vector<VkDescriptorBindingFlags>     mLayoutBindingFlagsFlat;
-		std::vector<uint16_t>                     mLayoutBindingTypesFlat;
+		//These are stored separately because mLayoutBindingsFlat and mLayoutBindingFlagsFlat are needed as separate arrays
+		std::vector<VkDescriptorSetLayoutBinding> mLayoutBindingsFlat;     //Binding infos
+		std::vector<VkDescriptorBindingFlags>     mLayoutBindingFlagsFlat; //Binding flags
+		std::vector<uint16_t>                     mLayoutBindingTypesFlat; //Pass-specific binding types
 		
 		//Domain records per pass type
 		std::unordered_map<RenderPassType, BindingDomain> mPassDomainMap;
 
-		//Indices in mLayoutBindingRecordsFlat for each binding record name
+		//Indices in mLayoutBindingRecordsFlat/mLayoutBindingFlagsFlat/mLayoutBindingTypesFlat for each binding record name
 		std::unordered_map<std::string_view, BindingRecord> mBindingRecordMap;
 	};
 }

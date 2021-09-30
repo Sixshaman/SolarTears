@@ -11,7 +11,8 @@ namespace Vulkan
 {
 	class FrameGraphBuilder;
 	class RenderableScene;
-	class ShaderManager;
+	class ShaderDatabase;
+	class DescriptorDatabase;
 
 	//An alternative approach would be a single class with Execute() callback and different render pass description classes.
 	//This would eliminate the cost of dereferencing class pointer, then dereferencing vtable, then indexing through vtable.
@@ -31,6 +32,8 @@ namespace Vulkan
 
 	public:
 		virtual void RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig) const = 0;
+
+		virtual void ValidateDescriptorSets(const ShaderDatabase* shaderDatabase, DescriptorDatabase* descriptorDatabase) = 0;
 
 	protected:
 		const VkDevice mDeviceRef;
