@@ -106,7 +106,7 @@ namespace Vulkan
 		//The span is built in such a way that binding pipelines according to order in shaderGroupSequence would produce the least amount of descriptors needed to be rebound
 		//Returns the descriptor sub-span for each entry in shaderGroupSequence in outBindSubspansPerGroup
 		//Returns the firstSet parameter for vkBindDescriptorSets for each entry in shaderGroupSequence in outBindPointsPerGroup
-		std::span<VkDescriptorSet> AssignPassSets(DescriptorDatabase* databaseToStore, const std::span<std::string_view> shaderGroupSequence, std::span<Span<uint32_t>> outBindSubspansPerGroup, std::span<uint32_t> outBindPointsPerGroup);
+		std::span<VkDescriptorSet> AssignPassSets(DescriptorDatabase* databaseToStore, const std::span<std::string_view> shaderGroupSequence, std::span<Span<uint32_t>> outBindSubspansPerGroup, std::span<uint32_t> outBindPointsPerGroup) const;
 
 		//Transfers the ownership of all set layouts from shared domain to shared descriptor database, also saving the information about layouts
 		void FlushSharedSetLayouts(DescriptorDatabase* databaseToBuild);

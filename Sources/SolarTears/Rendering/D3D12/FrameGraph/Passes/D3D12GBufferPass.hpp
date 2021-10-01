@@ -58,6 +58,7 @@ namespace D3D12
 
 		D3D12_VIEWPORT mViewport;
 		D3D12_RECT     mScissorRect;
+		DXGI_FORMAT    mOutputFormat;
 
 		wil::com_ptr_nothrow<ID3D12RootSignature> mRootSignature;
 		wil::com_ptr_nothrow<ID3D12PipelineState> mStaticPipelineState;

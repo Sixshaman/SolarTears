@@ -162,7 +162,7 @@ void Vulkan::ShaderDatabase::CreateMatchingPipelineLayout(std::span<std::string_
 	}
 }
 
-std::span<VkDescriptorSet> Vulkan::ShaderDatabase::AssignPassSets(DescriptorDatabase* databaseToStore, const std::span<std::string_view> shaderGroupSequence, std::span<Span<uint32_t>> outBindSubspansPerGroup, std::span<uint32_t> outBindPointsPerGroup)
+std::span<VkDescriptorSet> Vulkan::ShaderDatabase::AssignPassSets(DescriptorDatabase* databaseToStore, const std::span<std::string_view> shaderGroupSequence, std::span<Span<uint32_t>> outBindSubspansPerGroup, std::span<uint32_t> outBindPointsPerGroup) const
 {
 	assert(shaderGroupSequence.size() == outBindSubspansPerGroup.size());
 	assert(shaderGroupSequence.size() == outBindPointsPerGroup.size());
@@ -177,7 +177,7 @@ std::span<VkDescriptorSet> Vulkan::ShaderDatabase::AssignPassSets(DescriptorData
 		Span<uint32_t> groupLayoutSpan = mLayoutNodeRecordIndexSpansPerShaderGroup.at(shaderGroupName);
 
 		uint32_t currIndexToMatch = 0;
-		std::span<uint32_t> groupLayoutRecordIndices = {mLayoutRecordNodeIndicesFlat.begin() + groupLayoutSpan.Begin, mLayoutRecordNodeIndicesFlat.begin() + groupLayoutSpan.End};
+		const std::span<const uint32_t> groupLayoutRecordIndices = {mLayoutRecordNodeIndicesFlat.begin() + groupLayoutSpan.Begin, mLayoutRecordNodeIndicesFlat.begin() + groupLayoutSpan.End};
 		while(currIndexToMatch < groupLayoutRecordIndices.size() && currIndexToMatch < currentLayoutRecordIndices.size())
 		{
 			if(groupLayoutRecordIndices[currIndexToMatch] != currentLayoutRecordIndices[currIndexToMatch])

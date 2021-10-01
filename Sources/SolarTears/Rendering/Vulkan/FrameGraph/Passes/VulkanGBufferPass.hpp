@@ -5,6 +5,7 @@
 #include "../../../../Core/DataStructures/Span.hpp"
 #include "../VulkanFrameGraphMisc.hpp"
 #include "../../../../Core/Util.hpp"
+#include "../../../Common/RenderingUtils.hpp"
 #include <span>
 
 namespace Vulkan
@@ -31,7 +32,7 @@ namespace Vulkan
 		GBufferPass(const FrameGraphBuilder* frameGraphBuilder, uint32_t frameGraphPassIndex, uint32_t frame);
 		~GBufferPass();
 
-		void RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* renderableScene, const FrameGraphConfig& frameGraphConfig) const override;
+		void RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* renderableScene, const FrameGraphConfig& frameGraphConfig, uint32_t frameResourceIndex) const override;
 
 		void ValidateDescriptorSets(const ShaderDatabase* shaderDatabase, DescriptorDatabase* descriptorDatabase) override;
 
@@ -52,11 +53,11 @@ namespace Vulkan
 		VkPipeline mStaticInstancedPipeline;
 		VkPipeline mRigidPipeline;
 
-		std::span<VkDescriptorSet> mDescriptorSets;           //All descriptor sets needed for pass
-		Span<uint32_t>             mStaticDrawChangedSetSpan; //The span in mDescriptorSets to bind for static mesh draw
-		Span<uint32_t>             mRigidDrawChangedSetSpan;  //The span in mDescriptorSets to bind for rigid mesh draw
-		uint32_t                   mStaticDrawSetBindOffset;  //The firstSet parameter for static mesh draw 
-		uint32_t                   mRigidDrawSetBindOffset;   //The firstSet parameter for rigid mesh draw 
+		std::span<VkDescriptorSet> mDescriptorSets[Utils::InFlightFrameCount]; //All descriptor sets needed for pass (per frame resource)
+		Span<uint32_t>             mStaticDrawChangedSetSpan;                  //The span in mDescriptorSets to bind for static mesh draw
+		Span<uint32_t>             mRigidDrawChangedSetSpan;                   //The span in mDescriptorSets to bind for rigid mesh draw
+		uint32_t                   mStaticDrawSetBindOffset;                   //The firstSet parameter for static mesh draw 
+		uint32_t                   mRigidDrawSetBindOffset;                    //The firstSet parameter for rigid mesh draw 
 
 		uint32_t           mMaterialIndexPushConstantOffset;
 		VkShaderStageFlags mMaterialIndexPushConstantStages;

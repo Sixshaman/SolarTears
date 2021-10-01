@@ -8,7 +8,7 @@
 #include "../../../../Core/Util.hpp"
 #include <array>
 
-D3D12::GBufferPass::GBufferPass(const FrameGraphBuilder* frameGraphBuilder, uint32_t passIndex, uint32_t frame)
+D3D12::GBufferPass::GBufferPass(const FrameGraphBuilder* frameGraphBuilder, uint32_t frameGraphPassId, uint32_t frame)
 {
 	wil::com_ptr_t<IDxcBlobEncoding> staticVertexShaderBlob;
 	wil::com_ptr_t<IDxcBlobEncoding> rigidVertexShaderBlob;
@@ -18,10 +18,12 @@ D3D12::GBufferPass::GBufferPass(const FrameGraphBuilder* frameGraphBuilder, uint
 	CreateRootSignature(frameGraphBuilder->GetShaderManager(), frameGraphBuilder->GetDevice(), rigidVertexShaderBlob.get(), pixelShaderBlob.get());
 
 	//TODO: bundles
-	CreateGBufferPipelineState(device, staticVertexShaderBlob.get(), pixelShaderBlob.get(), mStaticPipelineState.put());
-	CreateGBufferPipelineState(device, rigidVertexShaderBlob.get(),  pixelShaderBlob.get(), mRigidPipelineState.put());
+	CreateGBufferPipelineState(frameGraphBuilder->GetDevice(), staticVertexShaderBlob.get(), pixelShaderBlob.get(), mStaticPipelineState.put());
+	CreateGBufferPipelineState(frameGraphBuilder->GetDevice(), rigidVertexShaderBlob.get(),  pixelShaderBlob.get(), mRigidPipelineState.put());
 
-	mColorsRenderTarget = frameGraphBuilder->GetRegisteredSubresourceRtv(passName, ColorBufferImageId, frame);
+	mColorsRenderTarget = frameGraphBuilder->GetRegisteredSubresourceRtv(frameGraphPassId, (uint_fast16_t)PassSubresourceId::ColorBufferImage, frame);
+
+	mOutputFormat = frameGraphBuilder->GetRegisteredSubresourceFormat(frameGraphPassId, (uint_fast16_t)PassSubresourceId::ColorBufferImage);
 
 	const FrameGraphConfig* frameGraphConfig = frameGraphBuilder->GetConfig();
 
@@ -47,7 +49,7 @@ void D3D12::GBufferPass::RecordExecution(ID3D12GraphicsCommandList6* commandList
 	D3D12_RENDER_PASS_RENDER_TARGET_DESC colorsRtvDesc;
 	colorsRtvDesc.cpuDescriptor                             = mColorsRenderTarget;
 	colorsRtvDesc.BeginningAccess.Type                      = D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR;
-	colorsRtvDesc.BeginningAccess.Clear.ClearValue.Format   = ColorOutputFormat;
+	colorsRtvDesc.BeginningAccess.Clear.ClearValue.Format   = mOutputFormat;
 	colorsRtvDesc.BeginningAccess.Clear.ClearValue.Color[0] = 0.0f;
 	colorsRtvDesc.BeginningAccess.Clear.ClearValue.Color[1] = 0.0f;
 	colorsRtvDesc.BeginningAccess.Clear.ClearValue.Color[2] = 0.0f;
@@ -210,7 +212,7 @@ void D3D12::GBufferPass::CreateGBufferPipelineState(ID3D12Device8* device, IDxcB
 
 	D3D12_RT_FORMAT_ARRAY renderTargetFormats;
 	renderTargetFormats.NumRenderTargets = 1;
-	renderTargetFormats.RTFormats[0] = ColorOutputFormat;
+	renderTargetFormats.RTFormats[0] = mOutputFormat;
 	renderTargetFormats.RTFormats[1] = DXGI_FORMAT_UNKNOWN;
 	renderTargetFormats.RTFormats[2] = DXGI_FORMAT_UNKNOWN;
 	renderTargetFormats.RTFormats[3] = DXGI_FORMAT_UNKNOWN;

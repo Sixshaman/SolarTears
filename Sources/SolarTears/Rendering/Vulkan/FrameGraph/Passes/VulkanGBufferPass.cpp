@@ -70,7 +70,7 @@ Vulkan::GBufferPass::~GBufferPass()
 	SafeDestroyObject(vkDestroyFramebuffer, mDeviceRef, mFramebuffer);
 }
 
-void Vulkan::GBufferPass::RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig) const
+void Vulkan::GBufferPass::RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig, uint32_t frameResourceIndex) const
 {
 	constexpr uint32_t WriteAttachmentCount = 1;
 
@@ -115,7 +115,7 @@ void Vulkan::GBufferPass::RecordExecution(VkCommandBuffer commandBuffer, const R
 	};
 
 	//Prepare to first drawing
-	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, currentPipelineLayout, mStaticDrawSetBindOffset, mStaticDrawChangedSetSpan.End - mStaticDrawChangedSetSpan.Begin, mDescriptorSets.data() + mStaticDrawChangedSetSpan.Begin, 0, nullptr);
+	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, currentPipelineLayout, mStaticDrawSetBindOffset, mStaticDrawChangedSetSpan.End - mStaticDrawChangedSetSpan.Begin, mDescriptorSets[frameResourceIndex].data() + mStaticDrawChangedSetSpan.Begin, 0, nullptr);
 	scene->PrepareDrawBuffers(commandBuffer);
 	
 	//Draw static meshes
@@ -130,7 +130,7 @@ void Vulkan::GBufferPass::RecordExecution(VkCommandBuffer commandBuffer, const R
 	currentPipelineLayout = mRigidPipelineLayout;
 
 	//Draw rigid meshes
-	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, currentPipelineLayout, mRigidDrawSetBindOffset, mRigidDrawChangedSetSpan.End - mRigidDrawChangedSetSpan.Begin, mDescriptorSets.data() + mRigidDrawChangedSetSpan.Begin, 0, nullptr);
+	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, currentPipelineLayout, mRigidDrawSetBindOffset, mRigidDrawChangedSetSpan.End - mRigidDrawChangedSetSpan.Begin, mDescriptorSets[frameResourceIndex].data() + mRigidDrawChangedSetSpan.Begin, 0, nullptr);
 	scene->DrawRigidObjects(commandBuffer, meshCallback, submeshCallback);
 
 	vkCmdEndRenderPass(commandBuffer);
@@ -151,7 +151,10 @@ void Vulkan::GBufferPass::ValidateDescriptorSets(const ShaderDatabase* shaderDat
 	std::array<Span<uint32_t>, shaderGroupPipelineOrder.size()> setSubspansPerShaderGroup;
 	std::array<uint32_t, shaderGroupPipelineOrder.size()>       setBindOffsetsPerShaderGroup;
 	
-	mDescriptorSets = shaderDatabase->AssignPassSets(descriptorDatabase, shaderGroupPipelineOrder, setSubspansPerShaderGroup, setBindOffsetsPerShaderGroup);
+	for(uint32_t frameResourceIndex = 0; frameResourceIndex < Utils::InFlightFrameCount; frameResourceIndex++)
+	{
+		mDescriptorSets[frameResourceIndex] = shaderDatabase->AssignPassSets(descriptorDatabase, shaderGroupPipelineOrder, setSubspansPerShaderGroup, setBindOffsetsPerShaderGroup);
+	}
 
 	//Static and static instanced sets should match
 	assert(setSubspansPerShaderGroup[staticInstancedGroupIndex].Begin == setSubspansPerShaderGroup[staticInstancedGroupIndex].End);
