@@ -34,9 +34,8 @@ protected:
 	{
 		ResourceName Name; //The name of the resource
 
-		uint32_t HeadNodeIndex;    //The index of the head SubresourceMetadataNode
-		uint32_t FirstFrameHandle; //The id of the first frame of the resource in the frame graph texture list
-		uint32_t FrameCount;       //The number of different frames in the resource
+		uint32_t HeadNodeIndex; //The index of the head SubresourceMetadataNode
+		uint32_t ImageHandle;   //The id of the resource in the frame graph texture lis
 	};
 
 	//Describes a particular pass usage of the resource
@@ -46,8 +45,8 @@ protected:
 		uint32_t NextPassNodeIndex;     //The index of the same resources metadata used in the next pass
 		uint32_t ResourceMetadataIndex; //The index of ResourceMetadata associated with the subresource
 
-		uint32_t        FirstFrameViewHandle; //The id of the first frame of the subresource in the frame graph texture view list
-		RenderPassClass PassClass;            //The pass class (Graphics/Compute/Copy) that uses the node
+		uint32_t        ImageViewHandle; //The id of the subresource in the frame graph texture view list
+		RenderPassClass PassClass;       //The pass class (Graphics/Compute/Copy) that uses the node
 	};
 
 public:

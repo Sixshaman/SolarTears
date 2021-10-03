@@ -215,6 +215,7 @@ void Vulkan::FrameGraphBuilder::Build(FrameGraphDescription&& frameGraphDescript
 
 void Vulkan::FrameGraphBuilder::BuildPassDescriptorSets()
 {
+	/*
 	//Step 1 - find unique pass set infos
 	std::vector<PassSetInfo> uniquePassSetInfos;
 	std::vector<uint16_t> passSetBindingTypes;
@@ -381,6 +382,7 @@ void Vulkan::FrameGraphBuilder::BuildPassDescriptorSets()
 	}
 
 	vkUpdateDescriptorSets(mVulkanGraphToBuild->mDeviceRef, (uint32_t)writeDescriptorSets.size(), writeDescriptorSets.data(), 0, nullptr);
+	*/
 }
 
 void Vulkan::FrameGraphBuilder::InitMetadataPayloads()
