@@ -24,7 +24,6 @@ protected:
 		RenderPassType  Type;  //The type of the pass
 
 		uint32_t DependencyLevel; //The dependendency level of the pass
-		uint32_t OwnPeriod;       //The period of the pass' own subresources, excluding swapchain images
 
 		Span<uint32_t> SubresourceMetadataSpan; //The indices of pass subresource metadatas
 	};

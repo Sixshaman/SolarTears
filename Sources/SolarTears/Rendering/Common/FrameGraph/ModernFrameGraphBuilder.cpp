@@ -360,6 +360,27 @@ void ModernFrameGraphBuilder::InitAugmentedData()
 	PropagateSubresourcePassClasses();
 	BuildPassSpans();
 
+	std::vector<uint32_t> resourceCounts(mResourceMetadatas.size(), 1);
+	for(const PassMetadata& passMetadata: mPassMetadatas)
+	{
+		for(uint32_t subresourceIndex = passMetadata.SubresourceMetadataSpan.Begin; subresourceIndex < passMetadata.SubresourceMetadataSpan.End; subresourceIndex++)
+		{
+			uint32_t resourceFrameCount = GetPassSubresourceFrameCount(resourceFrameCount);
+
+			uint32_t resourceIndex = mSubresourceMetadataNodesFlat[subresourceIndex].ResourceMetadataIndex;
+			assert(resourceCounts[resourceIndex] == 1 || resourceFrameCount == 1); //Do not allow M -> N connections between passes
+
+			resourceCounts[resourceIndex] = std::lcm(resourceCounts[resourceIndex], resourceFrameCount);
+		}
+	}
+
+	for(const PassMetadata& passMetadata: mPassMetadatas)
+	{
+
+	}
+
+	
+
 	CalculatePassPeriods();
 
 	ValidateSubresourceLinks();
