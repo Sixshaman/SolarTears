@@ -36,3 +36,10 @@ enum class RenderPassType: uint32_t
 
 	None = 0xffffffff
 };
+
+enum class RenderPassFrameSwapType
+{
+	Constant,
+	PerLinearFrame,
+	PerBackbufferImage,
+};

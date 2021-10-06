@@ -1,6 +1,7 @@
 #pragma once
 
 #include "FrameGraphConfig.hpp"
+#include "ModernFrameGraphMisc.hpp"
 #include <vector>
 #include "../../../Core/DataStructures/Span.hpp"
 
@@ -9,6 +10,14 @@ class ModernFrameGraph
 	friend class ModernFrameGraphBuilder;
 
 protected:
+	struct PassFrameSpan //Describes a set of passes substituting for different frames
+	{
+		uint32_t                Begin;
+		uint32_t                End;
+		RenderPassType          Type;
+		RenderPassFrameSwapType SwapType;
+	};
+
 	struct BarrierSpan
 	{
 		uint32_t BeforePassBegin;
@@ -17,14 +26,14 @@ protected:
 		uint32_t AfterPassEnd;
 	};
 
+	
+
 public:
 	ModernFrameGraph(FrameGraphConfig&& frameGraphConfig);
 	~ModernFrameGraph();
 
 protected:
 	FrameGraphConfig mFrameGraphConfig;
-
-	std::vector<Span<uint32_t>> mGraphicsPassSpans;
 
 	std::vector<BarrierSpan> mRenderPassBarriers; //The ith element refers to barrier spans for ith render pass. The last element refers to barrier spans for swapchain acquire-present "pass"
 

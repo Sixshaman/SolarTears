@@ -157,10 +157,15 @@ void D3D12::FrameGraph::RecordGraphicsPasses(ID3D12GraphicsCommandList6* command
 void D3D12::FrameGraph::SwitchBarrierTextures(uint32_t swapchainImageIndex, uint32_t frameIndex)
 {
 	//Update barriers
-	for(MultiframeBarrierInfo barrierInfo: mMultiframeBarrierInfos)
+	for(BarrierFrameSwapInfo barrierSwapInfo: mFrameBarrierSwapInfos)
 	{
+		if(barrierSwapInfo.swapType == RenderPassFrameSwapType::PerLinearFrame)
+		{
+			mResourceBarriers[barrierSwapInfo.BarrierIndex].Transition.pResource = mTextures[barrierSwapInfo.BaseTexIndex + frame];
+		}
+
 		bool isSwapchainTex = barrierInfo.BaseTexIndex == mBackbufferImageSpan.Begin;
 		uint32_t frame = (uint32_t)(isSwapchainTex) * swapchainImageIndex + (uint32_t)(!isSwapchainTex) * (frameIndex % barrierInfo.TexturePeriod);
-		mResourceBarriers[barrierInfo.BarrierIndex].Transition.pResource = mTextures[barrierInfo.BaseTexIndex + frame];
+		
 	}
 }
