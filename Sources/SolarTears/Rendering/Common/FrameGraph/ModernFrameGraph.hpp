@@ -14,19 +14,29 @@ protected:
 	{
 		uint32_t                Begin;
 		uint32_t                End;
-		RenderPassType          Type;
 		RenderPassFrameSwapType SwapType;
 	};
 
-	struct BarrierSpan
+	struct BarrierFrameSpan //Describes a set of barriers substituting for different frames
+	{
+		uint32_t                Begin;
+		uint32_t                End;
+		RenderPassFrameSwapType SwapType;
+	};
+
+	struct BarrierFrameSwapInfo //Describes a per-frame barrier image setting
+	{
+		uint32_t BarrierIndex;
+		uint32_t FrameImageIndex;
+	};
+
+	struct BarrierPassSpan
 	{
 		uint32_t BeforePassBegin;
 		uint32_t BeforePassEnd;
 		uint32_t AfterPassBegin;
 		uint32_t AfterPassEnd;
 	};
-
-	
 
 public:
 	ModernFrameGraph(FrameGraphConfig&& frameGraphConfig);
@@ -35,7 +45,11 @@ public:
 protected:
 	FrameGraphConfig mFrameGraphConfig;
 
-	std::vector<BarrierSpan> mRenderPassBarriers; //The ith element refers to barrier spans for ith render pass. The last element refers to barrier spans for swapchain acquire-present "pass"
+	std::vector<BarrierFrameSpan>     mBarrierFrameSpans;
+	std::vector<BarrierFrameSwapInfo> mBarrierSwapInfos;
+	std::vector<BarrierPassSpan>      mRenderPassBarriers; //The ith element refers to barrier spans for ith render pass. The last element refers to barrier spans for swapchain acquire-present "pass"
+
+	std::vector<Span<uint32_t>> mGraphicsPassSpans;
 
 	Span<uint32_t> mBackbufferImageSpan;
 };

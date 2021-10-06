@@ -157,15 +157,23 @@ void D3D12::FrameGraph::RecordGraphicsPasses(ID3D12GraphicsCommandList6* command
 void D3D12::FrameGraph::SwitchBarrierTextures(uint32_t swapchainImageIndex, uint32_t frameIndex)
 {
 	//Update barriers
-	for(BarrierFrameSwapInfo barrierSwapInfo: mFrameBarrierSwapInfos)
+	for(const BarrierFrameSpan& barrierFrameSpan: mBarrierFrameSpans)
 	{
-		if(barrierSwapInfo.swapType == RenderPassFrameSwapType::PerLinearFrame)
+		uint32_t barrierSwapInfoIndex = (uint32_t)(-1);
+		if(barrierFrameSpan.SwapType == RenderPassFrameSwapType::PerLinearFrame)
 		{
-			mResourceBarriers[barrierSwapInfo.BarrierIndex].Transition.pResource = mTextures[barrierSwapInfo.BaseTexIndex + frame];
+			barrierSwapInfoIndex = barrierFrameSpan.Begin + frameIndex % (barrierFrameSpan.End - barrierFrameSpan.Begin);
 		}
-
-		bool isSwapchainTex = barrierInfo.BaseTexIndex == mBackbufferImageSpan.Begin;
-		uint32_t frame = (uint32_t)(isSwapchainTex) * swapchainImageIndex + (uint32_t)(!isSwapchainTex) * (frameIndex % barrierInfo.TexturePeriod);
+		else if(barrierFrameSpan.SwapType == RenderPassFrameSwapType::PerBackbufferImage)
+		{
+			barrierSwapInfoIndex = barrierFrameSpan.Begin + swapchainImageIndex;
+		}
+		else
+		{
+			continue;
+		}
 		
+		const BarrierFrameSwapInfo& barrierSwapInfo = mBarrierSwapInfos[barrierSwapInfoIndex];
+		mResourceBarriers[barrierSwapInfo.BarrierIndex].Transition.pResource = mTextures[barrierSwapInfo.FrameImageIndex];
 	}
 }
