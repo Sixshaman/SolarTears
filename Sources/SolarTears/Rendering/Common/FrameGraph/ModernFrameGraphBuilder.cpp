@@ -358,7 +358,15 @@ void ModernFrameGraphBuilder::InitAugmentedData()
 {
 	AdjustPassClasses();
 	PropagateSubresourcePassClasses();
-	BuildPassSpans();
+	BuildPassSpans();	
+
+	ValidateSubresourceLinks();
+
+	struct TextureRemapInfo
+	{
+		uint32_t BaseTextureIndex;
+		uint32_t FrameCount;
+	};
 
 	std::vector<uint32_t> resourceCounts(mResourceMetadatas.size(), 1);
 	for(const PassMetadata& passMetadata: mPassMetadatas)
@@ -374,16 +382,48 @@ void ModernFrameGraphBuilder::InitAugmentedData()
 		}
 	}
 
+	std::vector<PassMetadata> amplifiedPassMetadatas;
 	for(const PassMetadata& passMetadata: mPassMetadatas)
 	{
+		uint32_t passFrameCount = 1;
+		for(uint32_t subresourceIndex = passMetadata.SubresourceMetadataSpan.Begin; subresourceIndex < passMetadata.SubresourceMetadataSpan.End; subresourceIndex++)
+		{
+			uint32_t resourceIndex = mSubresourceMetadataNodesFlat[subresourceIndex].ResourceMetadataIndex;
+			passFrameCount = std::lcm(resourceCounts[resourceIndex], resourceIndex);
+		}
 
+		uint32_t passSubresourceCount = passMetadata.SubresourceMetadataSpan.End - passMetadata.SubresourceMetadataSpan.Begin;
+		for(uint32_t passFrameIndex = 0; passFrameIndex < passFrameCount; passFrameIndex++)
+		{
+			PassMetadata framePassMetadata;
+			framePassMetadata.Name                    = passMetadata.Name + "#" + std::to_string(passFrameIndex);
+			framePassMetadata.Class                   = passMetadata.Class;
+			framePassMetadata.Type                    = passMetadata.Type;
+			framePassMetadata.DependencyLevel         = passMetadata.DependencyLevel;
+			framePassMetadata.SubresourceMetadataSpan = transformSpan(passMetadata.SubresourceMetadataSpan);
+
+			Span<uint32_t> newSubresourceMetadataSpan = Span<uint32_t>
+			{
+				.Begin = (uint32_t)(mSubresourceMetadataNodesFlat.size()),
+				.End   = (uint32_t)(mSubresourceMetadataNodesFlat.size() + passSubresourceCount)
+			};
+
+			mSubresourceMetadataNodesFlat.resize(mSubresourceMetadataNodesFlat.size() + passSubresourceCount);
+			std::copy(mSubresourceMetadataNodesFlat.begin() + passMetadata.SubresourceMetadataSpan.Begin, mSubresourceMetadataNodesFlat.begin() + passMetadata.SubresourceMetadataSpan.End, mSubresourceMetadataNodesFlat.begin() + newSubresourceMetadataSpan.Begin);
+
+			for(uint32_t subresourceIndex = newSubresourceMetadataSpan.Begin; subresourceIndex < newSubresourceMetadataSpan.End; subresourceIndex++)
+			{
+				uint32_t resourceIndex = mSubresourceMetadataNodesFlat[subresourceIndex].ResourceMetadataIndex;
+				uint32_t resourceFrameIndex = passFrameIndex % resourceCounts[resourceIndex];
+
+				if(resourceFrameIndex != 0)
+				{
+					mSubresourceMetadataNodesFlat[subresourceIndex].ResourceMetadataIndex = 
+				}
+			}
+		}
 	}
 
-	
-
-	CalculatePassPeriods();
-
-	ValidateSubresourceLinks();
 	PropagateSubresourcePayloadData();
 }
 

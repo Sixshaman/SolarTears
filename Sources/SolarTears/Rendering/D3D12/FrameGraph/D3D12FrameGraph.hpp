@@ -28,7 +28,8 @@ namespace D3D12
 		void Traverse(ThreadPool* threadPool, const RenderableScene* scene, uint32_t frameIndex, uint32_t swapchainImageIndex);
 
 	private:
-		void SwitchBarrierTextures(uint32_t swapchainImageIndex, uint32_t frameIndex);
+		void        SwitchBarrierTextures(uint32_t swapchainImageIndex, uint32_t frameIndex);
+		RenderPass* ChoosePass(const PassFrameSpan& passFrameSpan, uint32_t swapchainImageIndex, uint32_t frameIndex) const;
 
 		void BeginCommandList(ID3D12GraphicsCommandList* commandList, ID3D12CommandAllocator* commandAllocator, uint32_t dependencyLevelSpanIndex) const;
 		void EndCommandList(ID3D12GraphicsCommandList* commandList)                                                                                const;
@@ -42,7 +43,6 @@ namespace D3D12
 
 		std::vector<ID3D12Resource2*> mTextures;
 
-		std::vector<PassFrameSpan>               mPassFrameSpans;
 		std::vector<std::unique_ptr<RenderPass>> mRenderPasses; //All render passes (sorted by dependency level)
 
 		std::vector<wil::com_ptr_nothrow<ID3D12Resource2>> mOwnedResources; //All resources that the frame graph owns

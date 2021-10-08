@@ -29,7 +29,8 @@ namespace Vulkan
 	private:
 		void CreateSemaphores();
 
-		void SwitchBarrierImages(uint32_t swapchainImageIndex, uint32_t frameIndex);
+		void        SwitchBarrierImages(uint32_t swapchainImageIndex, uint32_t frameIndex);
+		RenderPass* ChoosePass(const PassFrameSpan& passFrameSpan, uint32_t swapchainImageIndex, uint32_t frameIndex) const;
 
 		void BeginCommandBuffer(VkCommandBuffer cmdBuffer, VkCommandPool cmdPool) const;
 		void EndCommandBuffer(VkCommandBuffer cmdBuffer)                          const;
@@ -39,7 +40,6 @@ namespace Vulkan
 	private:
 		const VkDevice mDeviceRef;
 
-		std::vector<PassFrameSpan>               mRenderPassFrameSpans;
 		std::vector<std::unique_ptr<RenderPass>> mRenderPasses; //All render passes
 
 		std::vector<VkImage>     mImages;

@@ -102,9 +102,6 @@ private:
 	//Builds frame graph pass spans
 	void BuildPassSpans();
 
-	//Finds own render pass periods, i.e. the minimum number of pass objects required for all possible non-swapchain frame combinations
-	void CalculatePassPeriods();
-
 	//Validates PrevPassMetadata and NextPassMetadata links in each subresource info
 	void ValidateSubresourceLinks();
 

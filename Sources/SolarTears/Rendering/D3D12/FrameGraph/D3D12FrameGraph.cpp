@@ -27,7 +27,7 @@ void D3D12::FrameGraph::Traverse(ThreadPool* threadPool, const RenderableScene* 
 	SwitchBarrierTextures(swapchainImageIndex, frameIndex);
 
 	uint32_t currentFrameResourceIndex = frameIndex % Utils::InFlightFrameCount;
-	if(mGraphicsPassSpans.size() > 0)
+	if(mGraphicsPassSpansPerDependencyLevel.size() > 0)
 	{
 		struct ExecuteParameters
 		{
@@ -48,8 +48,8 @@ void D3D12::FrameGraph::Traverse(ThreadPool* threadPool, const RenderableScene* 
 			.SwapchainImageIndex = swapchainImageIndex
 		};
 
-		std::latch graphicsPassLatch((uint32_t)(mGraphicsPassSpans.size() - 1));
-		for(size_t dependencyLevelSpanIndex = 0; dependencyLevelSpanIndex < mGraphicsPassSpans.size() - 1; dependencyLevelSpanIndex++)
+		std::latch graphicsPassLatch((uint32_t)(mGraphicsPassSpansPerDependencyLevel.size() - 1));
+		for(size_t dependencyLevelSpanIndex = 0; dependencyLevelSpanIndex < mGraphicsPassSpansPerDependencyLevel.size() - 1; dependencyLevelSpanIndex++)
 		{
 			struct JobData
 			{
@@ -89,25 +89,25 @@ void D3D12::FrameGraph::Traverse(ThreadPool* threadPool, const RenderableScene* 
 		ID3D12GraphicsCommandList6* mainGraphicsCommandList      = mCommandListsRef->GetMainThreadDirectCommandList();
 		ID3D12CommandAllocator*     mainGraphicsCommandAllocator = mCommandListsRef->GetMainThreadDirectCommandAllocator(currentFrameResourceIndex);
 		
-		BeginCommandList(mainGraphicsCommandList, mainGraphicsCommandAllocator, (uint32_t)(mGraphicsPassSpans.size() - 1));
+		BeginCommandList(mainGraphicsCommandList, mainGraphicsCommandAllocator, (uint32_t)(mGraphicsPassSpansPerDependencyLevel.size() - 1));
 
 		std::array descriptorHeaps = {mDescriptorManagerRef->GetDescriptorHeap()};
 		mainGraphicsCommandList->SetDescriptorHeaps((UINT)descriptorHeaps.size(), descriptorHeaps.data());
 
-		RecordGraphicsPasses(mainGraphicsCommandList, scene, (uint32_t)(mGraphicsPassSpans.size() - 1), frameIndex, swapchainImageIndex);
+		RecordGraphicsPasses(mainGraphicsCommandList, scene, (uint32_t)(mGraphicsPassSpansPerDependencyLevel.size() - 1), frameIndex, swapchainImageIndex);
 		EndCommandList(mainGraphicsCommandList);
 
 		graphicsPassLatch.wait();
 
-		for(size_t i = 0; i < mGraphicsPassSpans.size() - 1; i++)
+		for(size_t i = 0; i < mGraphicsPassSpansPerDependencyLevel.size() - 1; i++)
 		{
 			mFrameRecordedGraphicsCommandLists[i] = mCommandListsRef->GetThreadDirectCommandList((uint32_t)i); //The command buffer that was used to record the command
 		}
 
-		mFrameRecordedGraphicsCommandLists[mGraphicsPassSpans.size() - 1] = mainGraphicsCommandList;
+		mFrameRecordedGraphicsCommandLists[mGraphicsPassSpansPerDependencyLevel.size() - 1] = mainGraphicsCommandList;
 
 		ID3D12CommandQueue* graphicsQueue = mDeviceQueuesRef->GraphicsQueueHandle();
-		graphicsQueue->ExecuteCommandLists((UINT)mGraphicsPassSpans.size(), mFrameRecordedGraphicsCommandLists.data());
+		graphicsQueue->ExecuteCommandLists((UINT)mGraphicsPassSpansPerDependencyLevel.size(), mFrameRecordedGraphicsCommandLists.data());
 	}
 }
 
@@ -125,18 +125,12 @@ void D3D12::FrameGraph::EndCommandList(ID3D12GraphicsCommandList* commandList) c
 
 void D3D12::FrameGraph::RecordGraphicsPasses(ID3D12GraphicsCommandList6* commandList, const RenderableScene* scene, uint32_t dependencyLevelSpanIndex, uint32_t frameIndex, uint32_t swapchainImageIndex) const
 {
-	Span<uint32_t> levelSpan = mGraphicsPassSpans[dependencyLevelSpanIndex];
+	Span<uint32_t> levelSpan = mGraphicsPassSpansPerDependencyLevel[dependencyLevelSpanIndex];
 	for(uint32_t passSpanIndex = levelSpan.Begin; passSpanIndex < levelSpan.End; passSpanIndex++)
 	{
-		const RenderPassSpanInfo passSpanInfo = mPassFrameSpans[passSpanIndex];
-
-		uint32_t totalPassFrames = mPassFrameSpans[passSpanIndex + 1].PassSpanBegin - passSpanInfo.PassSpanBegin; //The number passSpanIndex + 1 is always a valid index because the present pass, which is always last, is never accessed there
-		uint32_t renderPassFrame = passSpanInfo.OwnFrames * swapchainImageIndex * (passSpanInfo.OwnFrames != totalPassFrames) + frameIndex % passSpanInfo.OwnFrames;
-		uint32_t renderPassIndex = passSpanInfo.PassSpanBegin + renderPassFrame;
-
-		BarrierSpan barrierSpan            = mRenderPassBarriers[passSpanIndex];
-		UINT        beforePassBarrierCount = barrierSpan.BeforePassEnd - barrierSpan.BeforePassBegin;
-		UINT        afterPassBarrierCount  = barrierSpan.AfterPassEnd  - barrierSpan.AfterPassBegin;
+		const BarrierPassSpan& barrierSpan            = mRenderPassBarriers[passSpanIndex];
+		UINT                   beforePassBarrierCount = barrierSpan.BeforePassEnd - barrierSpan.BeforePassBegin;
+		UINT                   afterPassBarrierCount  = barrierSpan.AfterPassEnd  - barrierSpan.AfterPassBegin;
 
 		if(beforePassBarrierCount != 0)
 		{
@@ -144,7 +138,8 @@ void D3D12::FrameGraph::RecordGraphicsPasses(ID3D12GraphicsCommandList6* command
 			commandList->ResourceBarrier(beforePassBarrierCount, barrierPointer);
 		}
 
-		mRenderPasses[renderPassIndex]->RecordExecution(commandList, scene, mFrameGraphConfig, frameIndex % Utils::InFlightFrameCount);
+		const RenderPass* pass = ChoosePass(mFrameSpansPerRenderPass[passSpanIndex], frameIndex, swapchainImageIndex);
+		pass->RecordExecution(commandList, scene, mFrameGraphConfig, frameIndex % Utils::InFlightFrameCount);
 
 		if(afterPassBarrierCount != 0)
 		{
@@ -176,4 +171,22 @@ void D3D12::FrameGraph::SwitchBarrierTextures(uint32_t swapchainImageIndex, uint
 		const BarrierFrameSwapInfo& barrierSwapInfo = mBarrierSwapInfos[barrierSwapInfoIndex];
 		mResourceBarriers[barrierSwapInfo.BarrierIndex].Transition.pResource = mTextures[barrierSwapInfo.FrameImageIndex];
 	}
+}
+
+D3D12::RenderPass* D3D12::FrameGraph::ChoosePass(const PassFrameSpan& passFrameSpan, uint32_t swapchainImageIndex, uint32_t frameIndex) const
+{
+	uint32_t passToRecordIndex = passFrameSpan.Begin;
+	switch(passFrameSpan.SwapType)
+	{
+	case RenderPassFrameSwapType::PerLinearFrame:
+		return mRenderPasses[passFrameSpan.Begin + frameIndex % (passFrameSpan.End - passFrameSpan.Begin)].get();
+
+	case RenderPassFrameSwapType::PerBackbufferImage:
+		return mRenderPasses[passFrameSpan.Begin + swapchainImageIndex].get();
+
+	default:
+		break;
+	}
+
+	return mRenderPasses[passFrameSpan.Begin].get();
 }

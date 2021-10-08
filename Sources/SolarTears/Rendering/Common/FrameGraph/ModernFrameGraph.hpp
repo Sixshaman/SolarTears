@@ -49,7 +49,8 @@ protected:
 	std::vector<BarrierFrameSwapInfo> mBarrierSwapInfos;
 	std::vector<BarrierPassSpan>      mRenderPassBarriers; //The ith element refers to barrier spans for ith render pass. The last element refers to barrier spans for swapchain acquire-present "pass"
 
-	std::vector<Span<uint32_t>> mGraphicsPassSpans;
+	std::vector<PassFrameSpan>  mFrameSpansPerRenderPass;
+	std::vector<Span<uint32_t>> mGraphicsPassSpansPerDependencyLevel;
 
 	Span<uint32_t> mBackbufferImageSpan;
 };
