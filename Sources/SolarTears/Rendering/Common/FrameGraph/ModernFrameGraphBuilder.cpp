@@ -360,15 +360,13 @@ void ModernFrameGraphBuilder::InitAugmentedData()
 	PropagateSubresourcePassClasses();
 	BuildPassSpans();	
 
-	ValidateSubresourceLinks();
-
 	struct TextureRemapInfo
 	{
 		uint32_t BaseTextureIndex;
 		uint32_t FrameCount;
 	};
 
-	std::vector<uint32_t> resourceCounts(mResourceMetadatas.size(), 1);
+	std::vector<TextureRemapInfo> resourceRemapInfos(mResourceMetadatas.size(), {.BaseTextureIndex = (uint32_t)(-1), .FrameCount = 1});
 	for(const PassMetadata& passMetadata: mPassMetadatas)
 	{
 		for(uint32_t subresourceIndex = passMetadata.SubresourceMetadataSpan.Begin; subresourceIndex < passMetadata.SubresourceMetadataSpan.End; subresourceIndex++)
@@ -376,54 +374,104 @@ void ModernFrameGraphBuilder::InitAugmentedData()
 			uint32_t resourceFrameCount = GetPassSubresourceFrameCount(resourceFrameCount);
 
 			uint32_t resourceIndex = mSubresourceMetadataNodesFlat[subresourceIndex].ResourceMetadataIndex;
-			assert(resourceCounts[resourceIndex] == 1 || resourceFrameCount == 1); //Do not allow M -> N connections between passes
+			assert(resourceRemapInfos[resourceIndex].FrameCount == 1 || resourceFrameCount == 1); //Do not allow M -> N connections between passes
 
-			resourceCounts[resourceIndex] = std::lcm(resourceCounts[resourceIndex], resourceFrameCount);
+			resourceRemapInfos[resourceIndex].FrameCount = std::lcm(resourceRemapInfos[resourceIndex].FrameCount, resourceFrameCount);
 		}
 	}
 
-	std::vector<PassMetadata> amplifiedPassMetadatas;
-	for(const PassMetadata& passMetadata: mPassMetadatas)
+	std::vector<ResourceMetadata> amplifiedResources;
+	for(uint32_t resourceIndex = 0; resourceIndex < mResourceMetadatas.size(); resourceIndex++)
 	{
+		resourceRemapInfos[resourceIndex].BaseTextureIndex = (uint32_t)amplifiedResources.size();
+		for(uint32_t frameIndex = 0; frameIndex < resourceRemapInfos[resourceIndex].FrameCount; frameIndex++)
+		{
+			amplifiedResources.push_back(ResourceMetadata
+			{
+				.Name          = mResourceMetadatas[resourceIndex].Name + "#" + frameIndex,
+				.HeadNodeIndex = (uint32_t)(-1),
+				.ImageHandle   = (uint32_t)(-1)
+			});
+		}
+	}
+
+	uint32_t backbufferResourceIndex = mSubresourceMetadataNodesFlat[mPresentPassMetadata.SubresourceMetadataSpan.Begin].ResourceMetadataIndex;
+
+	std::vector<PassMetadata>            amplifiedPassMetadatas;
+	std::vector<SubresourceMetadataNode> amplifiedSubresourceMetadatas;
+	for(uint32_t passIndex = 0; passIndex < mPassMetadatas.size(); passIndex++)
+	{
+		const PassMetadata& passMetadata = mPassMetadatas[passIndex];
+
+		RenderPassFrameSwapType swapType = RenderPassFrameSwapType::Constant;
+
 		uint32_t passFrameCount = 1;
 		for(uint32_t subresourceIndex = passMetadata.SubresourceMetadataSpan.Begin; subresourceIndex < passMetadata.SubresourceMetadataSpan.End; subresourceIndex++)
 		{
 			uint32_t resourceIndex = mSubresourceMetadataNodesFlat[subresourceIndex].ResourceMetadataIndex;
-			passFrameCount = std::lcm(resourceCounts[resourceIndex], resourceIndex);
+			passFrameCount = std::lcm(resourceRemapInfos[resourceIndex].FrameCount, passFrameCount);
+
+			RenderPassFrameSwapType resourceType = RenderPassFrameSwapType::Constant;
+			if(resourceRemapInfos[resourceIndex].FrameCount > 1)
+			{
+				if(resourceIndex == backbufferResourceIndex)
+				{
+					resourceType = RenderPassFrameSwapType::PerBackbufferImage;
+				}
+				else
+				{
+					resourceType = RenderPassFrameSwapType::PerLinearFrame;
+				}
+
+				//Do not allow resources with different swap types
+				assert(swapType == RenderPassFrameSwapType::Constant || resourceType == swapType);
+				swapType = resourceType;
+			}
 		}
+
+		mGraphToBuild->mFrameSpansPerRenderPass.push_back
+		({
+			.Begin    = (uint32_t)amplifiedPassMetadatas.size(),
+			.End      = (uint32_t)amplifiedPassMetadatas.size() + passFrameCount,
+			.SwapType = swapType
+		});
 
 		uint32_t passSubresourceCount = passMetadata.SubresourceMetadataSpan.End - passMetadata.SubresourceMetadataSpan.Begin;
 		for(uint32_t passFrameIndex = 0; passFrameIndex < passFrameCount; passFrameIndex++)
 		{
-			PassMetadata framePassMetadata;
-			framePassMetadata.Name                    = passMetadata.Name + "#" + std::to_string(passFrameIndex);
-			framePassMetadata.Class                   = passMetadata.Class;
-			framePassMetadata.Type                    = passMetadata.Type;
-			framePassMetadata.DependencyLevel         = passMetadata.DependencyLevel;
-			framePassMetadata.SubresourceMetadataSpan = transformSpan(passMetadata.SubresourceMetadataSpan);
-
 			Span<uint32_t> newSubresourceMetadataSpan = Span<uint32_t>
 			{
-				.Begin = (uint32_t)(mSubresourceMetadataNodesFlat.size()),
-				.End   = (uint32_t)(mSubresourceMetadataNodesFlat.size() + passSubresourceCount)
+				.Begin = (uint32_t)(amplifiedSubresourceMetadatas.size()),
+				.End   = (uint32_t)(amplifiedSubresourceMetadatas.size() + passSubresourceCount)
 			};
 
-			mSubresourceMetadataNodesFlat.resize(mSubresourceMetadataNodesFlat.size() + passSubresourceCount);
-			std::copy(mSubresourceMetadataNodesFlat.begin() + passMetadata.SubresourceMetadataSpan.Begin, mSubresourceMetadataNodesFlat.begin() + passMetadata.SubresourceMetadataSpan.End, mSubresourceMetadataNodesFlat.begin() + newSubresourceMetadataSpan.Begin);
-
-			for(uint32_t subresourceIndex = newSubresourceMetadataSpan.Begin; subresourceIndex < newSubresourceMetadataSpan.End; subresourceIndex++)
+			amplifiedPassMetadatas.push_back(PassMetadata
 			{
-				uint32_t resourceIndex = mSubresourceMetadataNodesFlat[subresourceIndex].ResourceMetadataIndex;
-				uint32_t resourceFrameIndex = passFrameIndex % resourceCounts[resourceIndex];
+				.Name                    = passMetadata.Name + "#" + std::to_string(passFrameIndex),
+				.Class                   = passMetadata.Class,
+				.Type                    = passMetadata.Type,
+				.DependencyLevel         = passMetadata.DependencyLevel,
+				.SubresourceMetadataSpan = newSubresourceMetadataSpan
+			});
 
-				if(resourceFrameIndex != 0)
+			for(uint32_t subresourceIndex = passMetadata.SubresourceMetadataSpan.Begin; subresourceIndex < passMetadata.SubresourceMetadataSpan.End; subresourceIndex++)
+			{
+				uint32_t newSubresourceIndex = newSubresourceMetadataSpan.Begin + (subresourceIndex - passMetadata.SubresourceMetadataSpan.Begin);
+
+				uint32_t oldResourceIndex = mSubresourceMetadataNodesFlat[subresourceIndex].ResourceMetadataIndex;
+				amplifiedSubresourceMetadatas[newSubresourceIndex] = SubresourceMetadataNode
 				{
-					mSubresourceMetadataNodesFlat[subresourceIndex].ResourceMetadataIndex = 
-				}
+					.PrevPassNodeIndex     = (uint32_t)(-1),
+					.NextPassNodeIndex     = (uint32_t)(-1),
+					.ResourceMetadataIndex = resourceRemapInfos[oldResourceIndex].BaseTextureIndex + passFrameIndex % resourceRemapInfos[oldResourceIndex].FrameCount,
+					.ImageViewHandle       = (uint32_t)(-1),
+					.PassClass             = passMetadata.Class
+				};
 			}
 		}
 	}
 
+	ValidateSubresourceLinks();
 	PropagateSubresourcePayloadData();
 }
 

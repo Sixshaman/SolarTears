@@ -34,7 +34,7 @@ protected:
 		ResourceName Name; //The name of the resource
 
 		uint32_t HeadNodeIndex; //The index of the head SubresourceMetadataNode
-		uint32_t ImageHandle;   //The id of the resource in the frame graph texture lis
+		uint32_t ImageHandle;   //The id of the resource in the frame graph texture list
 	};
 
 	//Describes a particular pass usage of the resource
@@ -164,5 +164,5 @@ protected:
 	std::vector<PassMetadata>            mPassMetadatas;
 	std::vector<ResourceMetadata>        mResourceMetadatas;
 
-	PassMetadata mPresentPassMetadata;
+	//PassMetadata mPresentPassMetadata;
 };
