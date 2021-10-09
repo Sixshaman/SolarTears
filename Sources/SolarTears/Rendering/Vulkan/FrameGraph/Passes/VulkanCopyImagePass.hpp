@@ -20,7 +20,7 @@ namespace Vulkan
 		inline static VkDescriptorType GetSubresourceDescriptorType(uint_fast16_t subresourceId);
 
 	public:
-		CopyImagePass(const FrameGraphBuilder* frameGraphBuilder, uint32_t frameGraphPassIndex, uint32_t frame);
+		CopyImagePass(const FrameGraphBuilder* frameGraphBuilder, uint32_t frameGraphPassIndex);
 		~CopyImagePass();
 
 		void RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig, uint32_t frameResourceIndex) const override;

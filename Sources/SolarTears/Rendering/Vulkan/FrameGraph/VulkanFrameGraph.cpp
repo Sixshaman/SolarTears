@@ -23,14 +23,12 @@ Vulkan::FrameGraph::~FrameGraph()
 		SafeDestroyObject(vkDestroyImageView, mDeviceRef, mImageViews[i]);
 	}
 
-	for(size_t i = 0; i < mBackbufferImageSpan.Begin; i++)
+	for(Span<uint32_t> ownedImageSpan: mOwnedImageSpans)
 	{
-		SafeDestroyObject(vkDestroyImage, mDeviceRef, mImages[i]);
-	}
-
-	for(size_t i = mBackbufferImageSpan.End; i < mImages.size(); i++)
-	{
-		SafeDestroyObject(vkDestroyImage, mDeviceRef, mImages[i]);
+		for(uint32_t imageIndex = ownedImageSpan.Begin; imageIndex < ownedImageSpan.End; imageIndex++)
+		{
+			SafeDestroyObject(vkDestroyImage, mDeviceRef, mImages[imageIndex]);
+		}
 	}
 
 	for(size_t i = 0; i < Utils::InFlightFrameCount; i++)
@@ -45,8 +43,6 @@ Vulkan::FrameGraph::~FrameGraph()
 
 void Vulkan::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommandBuffers* commandBuffers, RenderableScene* scene, DeviceQueues* deviceQueues, SwapChain* swapchain, VkFence traverseFence, uint32_t frameIndex, uint32_t swapchainImageIndex, VkSemaphore preTraverseSemaphore, VkSemaphore* outPostTraverseSemaphore)
 {
-	SwitchBarrierImages(swapchainImageIndex, frameIndex);
-
 	uint32_t currentFrameResourceIndex = frameIndex % Utils::InFlightFrameCount;
 	VkSemaphore lastTraverseSemaphore = preTraverseSemaphore;
 
@@ -264,30 +260,6 @@ void Vulkan::FrameGraph::RecordGraphicsPasses(VkCommandBuffer graphicsCommandBuf
 
 			vkCmdPipelineBarrier(graphicsCommandBuffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, memoryBarrierPointer, 0, bufferBarrierPointer, beforePassBarrierCount, imageBarrierPointer);
 		}
-	}
-}
-
-void Vulkan::FrameGraph::SwitchBarrierImages(uint32_t swapchainImageIndex, uint32_t frameIndex)
-{
-	//Update barriers
-	for(const BarrierFrameSpan& barrierFrameSpan: mBarrierFrameSpans)
-	{
-		uint32_t barrierSwapInfoIndex = (uint32_t)(-1);
-		if(barrierFrameSpan.SwapType == RenderPassFrameSwapType::PerLinearFrame)
-		{
-			barrierSwapInfoIndex = barrierFrameSpan.Begin + frameIndex % (barrierFrameSpan.End - barrierFrameSpan.Begin);
-		}
-		else if(barrierFrameSpan.SwapType == RenderPassFrameSwapType::PerBackbufferImage)
-		{
-			barrierSwapInfoIndex = barrierFrameSpan.Begin + swapchainImageIndex;
-		}
-		else
-		{
-			continue;
-		}
-		
-		const BarrierFrameSwapInfo& barrierSwapInfo = mBarrierSwapInfos[barrierSwapInfoIndex];
-		mImageBarriers[barrierSwapInfo.BarrierIndex].image = mImages[barrierSwapInfo.FrameImageIndex];
 	}
 }
 

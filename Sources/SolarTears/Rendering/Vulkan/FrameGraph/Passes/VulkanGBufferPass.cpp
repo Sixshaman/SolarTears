@@ -6,7 +6,7 @@
 #include <array>
 #include <VulkanGenericStructures.h>
 
-Vulkan::GBufferPass::GBufferPass(const FrameGraphBuilder* frameGraphBuilder, uint32_t frameGraphPassId, uint32_t frame): RenderPass(frameGraphBuilder->GetDevice())
+Vulkan::GBufferPass::GBufferPass(const FrameGraphBuilder* frameGraphBuilder, uint32_t frameGraphPassId): RenderPass(frameGraphBuilder->GetDevice())
 {
 	mRenderPass  = VK_NULL_HANDLE;
 	mFramebuffer = VK_NULL_HANDLE;
@@ -20,7 +20,7 @@ Vulkan::GBufferPass::GBufferPass(const FrameGraphBuilder* frameGraphBuilder, uin
 
 	//TODO: subpasses (AND SECONDARY COMMAND BUFFERS)
 	CreateRenderPass(frameGraphBuilder,  frameGraphPassId, frameGraphBuilder->GetDeviceParameters());
-	CreateFramebuffer(frameGraphBuilder, frameGraphPassId, frameGraphBuilder->GetConfig(), frame);
+	CreateFramebuffer(frameGraphBuilder, frameGraphPassId, frameGraphBuilder->GetConfig());
 
 	const std::wstring    shaderFolder   = Utils::GetMainDirectory() + L"Shaders/Vulkan/GBuffer/";
 	const ShaderDatabase* shaderDatabase = frameGraphBuilder->GetShaderDatabase();
@@ -236,7 +236,7 @@ void Vulkan::GBufferPass::CreateRenderPass(const FrameGraphBuilder* frameGraphBu
 	ThrowIfFailed(vkCreateRenderPass(mDeviceRef, &renderPassCreateInfo, nullptr, &mRenderPass));
 }
 
-void Vulkan::GBufferPass::CreateFramebuffer(const FrameGraphBuilder* frameGraphBuilder, uint32_t frameGraphPassId, const FrameGraphConfig* frameGraphConfig, uint32_t frame)
+void Vulkan::GBufferPass::CreateFramebuffer(const FrameGraphBuilder* frameGraphBuilder, uint32_t frameGraphPassId, const FrameGraphConfig* frameGraphConfig)
 {
 	vgs::GenericStructureChain<VkFramebufferCreateInfo> framebufferCreateInfoChain;
 
@@ -245,7 +245,7 @@ void Vulkan::GBufferPass::CreateFramebuffer(const FrameGraphBuilder* frameGraphB
 	std::array<VkImageView, attachmentIds.size()> attachments;
 	for(size_t i = 0; i < attachments.size(); i++)
 	{
-		attachments[i] = frameGraphBuilder->GetRegisteredSubresource(frameGraphPassId, (uint_fast16_t)attachmentIds[i], frame);
+		attachments[i] = frameGraphBuilder->GetRegisteredSubresource(frameGraphPassId, (uint_fast16_t)attachmentIds[i]);
 	}
 
 	//TODO: imageless framebuffer (only if needed, set via config)

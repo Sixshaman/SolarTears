@@ -23,22 +23,20 @@ Vulkan::MemoryManager::~MemoryManager()
 {
 }
 
-VkDeviceMemory Vulkan::MemoryManager::AllocateImagesMemory(VkDevice device, const std::vector<VkImage>& images, std::vector<VkDeviceSize>& outMemoryOffsets) const
+VkDeviceMemory Vulkan::MemoryManager::AllocateImagesMemory(VkDevice device, std::span<VkBindImageMemoryInfo> inoutBindMemoryInfos) const
 {
-	outMemoryOffsets.clear();
-
 	VkMemoryRequirements memoryRequirements;
 	memoryRequirements.alignment      = 0;
 	memoryRequirements.memoryTypeBits = 0xffffffff;
 	memoryRequirements.size           = 0;
 
 	VkDeviceSize currMemoryOffset = 0;
-	for(size_t i = 0; i < images.size(); i++)
+	for(size_t i = 0; i < inoutBindMemoryInfos.size(); i++)
 	{
 		VkImageMemoryRequirementsInfo2 imageMemoryRequirementsInfo;
 		imageMemoryRequirementsInfo.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2;
 		imageMemoryRequirementsInfo.pNext = nullptr;
-		imageMemoryRequirementsInfo.image = images[i];
+		imageMemoryRequirementsInfo.image = inoutBindMemoryInfos[i].image;
 
 		//TODO: dedicated allocation
 		VkMemoryRequirements2 imageMemoryRequirements;
@@ -50,7 +48,7 @@ VkDeviceMemory Vulkan::MemoryManager::AllocateImagesMemory(VkDevice device, cons
 		VkDeviceSize memoryAlignment = std::max(memoryRequirements.alignment, imageMemoryRequirements.memoryRequirements.alignment);
 		VkDeviceSize memorySize      = Utils::AlignMemory(imageMemoryRequirements.memoryRequirements.size, memoryAlignment);
 
-		outMemoryOffsets.push_back(currMemoryOffset);
+		inoutBindMemoryInfos[i].memoryOffset = currMemoryOffset;
 		currMemoryOffset += memorySize;
 
 		memoryRequirements.alignment       = memoryAlignment;
@@ -80,10 +78,17 @@ VkDeviceMemory Vulkan::MemoryManager::AllocateImagesMemory(VkDevice device, cons
 	VkDeviceMemory allocatedMemory = nullptr;
 	ThrowIfFailed(vkAllocateMemory(device, &memoryAllocateInfo, nullptr, &allocatedMemory));
 
+	for(size_t imageIndex = 0; imageIndex < inoutBindMemoryInfos.size(); imageIndex++)
+	{
+		inoutBindMemoryInfos[imageIndex].memory = allocatedMemory;
+	}
+
+	ThrowIfFailed(vkBindImageMemory2(device, (uint32_t)(inoutBindMemoryInfos.size()), inoutBindMemoryInfos.data()));
+
 	return allocatedMemory;
 }
 
-VkDeviceMemory Vulkan::MemoryManager::AllocateBuffersMemory(VkDevice device, const std::vector<VkBuffer>& buffers, BufferAllocationType allocationType, std::vector<VkDeviceSize>& outMemoryOffsets) const
+VkDeviceMemory Vulkan::MemoryManager::AllocateBuffersMemory(VkDevice device, const std::span<VkBuffer> buffers, BufferAllocationType allocationType, std::vector<VkDeviceSize>& outMemoryOffsets) const
 {
 	outMemoryOffsets.clear();
 

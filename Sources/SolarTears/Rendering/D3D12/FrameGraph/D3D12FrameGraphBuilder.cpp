@@ -29,130 +29,93 @@ const D3D12::ShaderManager* D3D12::FrameGraphBuilder::GetShaderManager() const
 	return mShaderManager;
 }
 
-ID3D12Resource2* D3D12::FrameGraphBuilder::GetRegisteredResource(uint32_t passIndex, uint_fast16_t subresourceIndex, uint32_t frame) const
+ID3D12Resource2* D3D12::FrameGraphBuilder::GetRegisteredResource(uint32_t passIndex, uint_fast16_t subresourceIndex) const
 {
-	Span<uint32_t> metadataSpan = mPassMetadatas[passIndex].SubresourceMetadataSpan;
+	Span<uint32_t> metadataSpan = mTotalPassMetadatas[passIndex].SubresourceMetadataSpan;
 
 	const SubresourceMetadataNode& metadataNode = mSubresourceMetadataNodesFlat[metadataSpan.Begin + subresourceIndex];
-	const ResourceMetadata& resourceMetadata = mResourceMetadatas[metadataNode.ResourceMetadataIndex];
-	if(resourceMetadata.FirstFrameHandle == (uint32_t)(-1))
-	{
-		return nullptr;
-	}
-	else
-	{
-		if(resourceMetadata.FirstFrameHandle == GetBackbufferImageSpan().Begin)
-		{
-			uint32_t passPeriod = mPassMetadatas[passIndex].OwnPeriod;
-			return mD3d12GraphToBuild->mTextures[resourceMetadata.FirstFrameHandle + frame / passPeriod];
-		}
-		else
-		{
-			return mD3d12GraphToBuild->mTextures[resourceMetadata.FirstFrameHandle + frame % resourceMetadata.FrameCount];
-		}
-	}
+	return mD3d12GraphToBuild->mTextures[metadataNode.ResourceMetadataIndex].get();
 }
 
-D3D12_GPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceSrvUav(uint32_t passIndex, uint_fast16_t subresourceIndex, uint32_t frame) const
+D3D12_GPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceSrvUav(uint32_t passIndex, uint_fast16_t subresourceIndex) const
 {
-	Span<uint32_t> metadataSpan = mPassMetadatas[passIndex].SubresourceMetadataSpan;
+	Span<uint32_t> metadataSpan = mTotalPassMetadatas[passIndex].SubresourceMetadataSpan;
 
 	const SubresourceMetadataNode&    metadataNode     = mSubresourceMetadataNodesFlat[metadataSpan.Begin + subresourceIndex];
 	const SubresourceMetadataPayload& metadataPayload  = mSubresourceMetadataPayloads[metadataSpan.Begin + subresourceIndex];
 	const ResourceMetadata&           resourceMetadata = mResourceMetadatas[metadataNode.ResourceMetadataIndex];
 
 	const D3D12_RESOURCE_STATES resourceState = (D3D12_RESOURCE_STATE_UNORDERED_ACCESS | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-	assert((metadataPayload.State & resourceState) && (metadataNode.FirstFrameViewHandle != (uint32_t)(-1)));
+	assert((metadataPayload.State & resourceState) && (metadataNode.ImageViewHandle != (uint32_t)(-1)));
+
+	UINT descriptorSize = mDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 	D3D12_GPU_DESCRIPTOR_HANDLE descriptorHandle = GetFrameGraphSrvHeapStart();
-	UINT descriptorSize = mDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-	if(resourceMetadata.FirstFrameHandle == GetBackbufferImageSpan().Begin)
-	{
-		uint32_t passPeriod = mPassMetadatas[passIndex].OwnPeriod;
-		descriptorHandle.ptr += (metadataNode.FirstFrameViewHandle + frame / passPeriod) * descriptorSize;
-	}
-	else
-	{
-		descriptorHandle.ptr += (metadataNode.FirstFrameViewHandle + frame % resourceMetadata.FrameCount) * descriptorSize;
-	}
+	descriptorHandle.ptr += metadataNode.ImageViewHandle * descriptorSize;
 
 	return descriptorHandle;
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceRtv(uint32_t passIndex, uint_fast16_t subresourceIndex, uint32_t frame) const
+D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceRtv(uint32_t passIndex, uint_fast16_t subresourceIndex) const
 {
-	Span<uint32_t> metadataSpan = mPassMetadatas[passIndex].SubresourceMetadataSpan;
+	Span<uint32_t> metadataSpan = mTotalPassMetadatas[passIndex].SubresourceMetadataSpan;
 
 	const SubresourceMetadataNode&    metadataNode     = mSubresourceMetadataNodesFlat[metadataSpan.Begin + subresourceIndex];
 	const SubresourceMetadataPayload& metadataPayload  = mSubresourceMetadataPayloads[metadataSpan.Begin + subresourceIndex];
 	const ResourceMetadata&           resourceMetadata = mResourceMetadatas[metadataNode.ResourceMetadataIndex];
 
 	const D3D12_RESOURCE_STATES resourceState = D3D12_RESOURCE_STATE_RENDER_TARGET;
-	assert((metadataPayload.State & resourceState) && (metadataNode.FirstFrameViewHandle != (uint32_t)(-1)));
+	assert((metadataPayload.State & resourceState) && (metadataNode.ImageViewHandle != (uint32_t)(-1)));
+
+	UINT descriptorSize = mDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
 	D3D12_CPU_DESCRIPTOR_HANDLE descriptorHandle = GetFrameGraphRtvHeapStart();
-	UINT descriptorSize = mDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-	if(resourceMetadata.FirstFrameHandle == GetBackbufferImageSpan().Begin)
-	{
-		uint32_t passPeriod = mPassMetadatas[passIndex].OwnPeriod;
-		descriptorHandle.ptr += (metadataNode.FirstFrameViewHandle + frame / passPeriod) * descriptorSize;
-	}
-	else
-	{
-		descriptorHandle.ptr += (metadataNode.FirstFrameViewHandle + frame % resourceMetadata.FrameCount) * descriptorSize;
-	}
+	descriptorHandle.ptr += metadataNode.ImageViewHandle * descriptorSize;
 
 	return descriptorHandle;
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceDsv(uint32_t passIndex, uint_fast16_t subresourceIndex, uint32_t frame) const
+D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceDsv(uint32_t passIndex, uint_fast16_t subresourceIndex) const
 {
-	Span<uint32_t> metadataSpan = mPassMetadatas[passIndex].SubresourceMetadataSpan;
+	Span<uint32_t> metadataSpan = mTotalPassMetadatas[passIndex].SubresourceMetadataSpan;
 
 	const SubresourceMetadataNode&    metadataNode     = mSubresourceMetadataNodesFlat[metadataSpan.Begin + subresourceIndex];
 	const SubresourceMetadataPayload& metadataPayload  = mSubresourceMetadataPayloads[metadataSpan.Begin + subresourceIndex];
 	const ResourceMetadata&           resourceMetadata = mResourceMetadatas[metadataNode.ResourceMetadataIndex];
 
 	const D3D12_RESOURCE_STATES resourceState = (D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_DEPTH_WRITE);
-	assert((metadataPayload.State & resourceState) && (metadataNode.FirstFrameViewHandle != (uint32_t)(-1)));
+	assert((metadataPayload.State & resourceState) && (metadataNode.ImageViewHandle != (uint32_t)(-1)));
+
+	UINT descriptorSize = mDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 
 	D3D12_CPU_DESCRIPTOR_HANDLE descriptorHandle = GetFrameGraphDsvHeapStart();
-	UINT descriptorSize = mDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
-	if(resourceMetadata.FirstFrameHandle == GetBackbufferImageSpan().Begin)
-	{
-		uint32_t passPeriod = mPassMetadatas[passIndex].OwnPeriod;
-		descriptorHandle.ptr += (metadataNode.FirstFrameViewHandle + frame / passPeriod) * descriptorSize;
-	}
-	else
-	{
-		descriptorHandle.ptr += (metadataNode.FirstFrameViewHandle + frame % resourceMetadata.FrameCount) * descriptorSize;
-	}
+	descriptorHandle.ptr += metadataNode.ImageViewHandle * descriptorSize;
 
 	return descriptorHandle;
 }
 
 DXGI_FORMAT D3D12::FrameGraphBuilder::GetRegisteredSubresourceFormat(uint32_t passIndex, uint_fast16_t subresourceIndex) const
 {
-	Span<uint32_t> metadataSpan = mPassMetadatas[passIndex].SubresourceMetadataSpan;
+	Span<uint32_t> metadataSpan = mTotalPassMetadatas[passIndex].SubresourceMetadataSpan;
 	return mSubresourceMetadataPayloads[metadataSpan.Begin + subresourceIndex].Format;
 }
 
 D3D12_RESOURCE_STATES D3D12::FrameGraphBuilder::GetRegisteredSubresourceState(uint32_t passIndex, uint_fast16_t subresourceIndex) const
 {
-	Span<uint32_t> metadataSpan = mPassMetadatas[passIndex].SubresourceMetadataSpan;
+	Span<uint32_t> metadataSpan = mTotalPassMetadatas[passIndex].SubresourceMetadataSpan;
 	return mSubresourceMetadataPayloads[metadataSpan.Begin + subresourceIndex].State;
 }
 
 D3D12_RESOURCE_STATES D3D12::FrameGraphBuilder::GetPreviousPassSubresourceState(uint32_t passIndex, uint_fast16_t subresourceIndex) const
 {
-	Span<uint32_t> metadataSpan = mPassMetadatas[passIndex].SubresourceMetadataSpan;
+	Span<uint32_t> metadataSpan = mTotalPassMetadatas[passIndex].SubresourceMetadataSpan;
 	uint32_t prevNodeIndex = mSubresourceMetadataNodesFlat[metadataSpan.Begin + subresourceIndex].PrevPassNodeIndex;
 	return mSubresourceMetadataPayloads[prevNodeIndex].State;
 }
 
 D3D12_RESOURCE_STATES D3D12::FrameGraphBuilder::GetNextPassSubresourceState(uint32_t passIndex, uint_fast16_t subresourceIndex) const
 {
-	Span<uint32_t> metadataSpan = mPassMetadatas[passIndex].SubresourceMetadataSpan;
+	Span<uint32_t> metadataSpan = mTotalPassMetadatas[passIndex].SubresourceMetadataSpan;
 	uint32_t nextNodeIndex = mSubresourceMetadataNodesFlat[metadataSpan.Begin + subresourceIndex].NextPassNodeIndex;
 	return mSubresourceMetadataPayloads[nextNodeIndex].State;
 }
@@ -185,19 +148,25 @@ void D3D12::FrameGraphBuilder::InitMetadataPayloads()
 {
 	mSubresourceMetadataPayloads.resize(mSubresourceMetadataNodesFlat.size(), SubresourceMetadataPayload());
 
-	for(const PassMetadata& passMetadata: mPassMetadatas)
+	for(uint32_t passIndex = mRenderPassMetadataSpan.Begin; passIndex < mRenderPassMetadataSpan.End; passIndex++)
 	{
+		const PassMetadata& passMetadata = mTotalPassMetadatas[passIndex];
+
 		Span<uint32_t> passMetadataSpan = passMetadata.SubresourceMetadataSpan;
 		std::span<SubresourceMetadataPayload> payloadSpan = {mSubresourceMetadataPayloads.begin() + passMetadataSpan.Begin, mSubresourceMetadataPayloads.begin() + passMetadataSpan.End};
 
 		RegisterPassSubresources(passMetadata.Type, payloadSpan);
 	}
 
+	for(uint32_t passIndex = mPresentPassMetadataSpan.Begin; passIndex < mPresentPassMetadataSpan.End; passIndex++)
+	{
+		const PassMetadata& passMetadata = mTotalPassMetadatas[passIndex];
 
-	uint32_t backbufferPayloadIndex = mPresentPassMetadata.SubresourceMetadataSpan.Begin + (uint32_t)PresentPassSubresourceId::Backbuffer;
-	mSubresourceMetadataPayloads[backbufferPayloadIndex].Format = mSwapChain->GetBackbufferFormat();
-	mSubresourceMetadataPayloads[backbufferPayloadIndex].State  = D3D12_RESOURCE_STATE_PRESENT;
-	mSubresourceMetadataPayloads[backbufferPayloadIndex].Flags  = 0;
+		uint32_t backbufferPayloadIndex = passMetadata.SubresourceMetadataSpan.Begin + (uint32_t)PresentPassSubresourceId::Backbuffer;
+		mSubresourceMetadataPayloads[backbufferPayloadIndex].Format = mSwapChain->GetBackbufferFormat();
+		mSubresourceMetadataPayloads[backbufferPayloadIndex].State  = D3D12_RESOURCE_STATE_PRESENT;
+		mSubresourceMetadataPayloads[backbufferPayloadIndex].Flags  = 0;
+	}
 }
 
 bool D3D12::FrameGraphBuilder::IsReadSubresource(uint32_t subresourceInfoIndex)
@@ -285,23 +254,26 @@ bool D3D12::FrameGraphBuilder::PropagateSubresourcePayloadDataHorizontally(const
 
 void D3D12::FrameGraphBuilder::CreateTextures()
 {
+	mD3d12GraphToBuild->mTextures.resize(mResourceMetadatas.size());
 	mD3d12GraphToBuild->mTextureHeap.reset();
-	uint32_t backbufferResourceIndex = mSubresourceMetadataNodesFlat[mPresentPassMetadata.SubresourceMetadataSpan.Begin + (size_t)PresentPassSubresourceId::Backbuffer].ResourceMetadataIndex;
-
-	std::vector<D3D12_RESOURCE_DESC1> textureDescs;
 
 	//For TYPELESS formats, we lose the information for clear values. Fortunately, this is not a very common case
 	//It's only needed for RTV formats, since depth-stencil format can be recovered from a typeless one
 	std::unordered_map<uint32_t, DXGI_FORMAT> optimizedClearFormatsForTypeless;
 
+	std::vector<D3D12_RESOURCE_DESC1> textureDescs;
+	std::vector<uint32_t>             textureDescIndicesPerResource(mResourceMetadatas.size(), (uint32_t)(-1));
 	for(uint32_t resourceMetadataIndex = 0; resourceMetadataIndex < mResourceMetadatas.size(); resourceMetadataIndex++)
 	{
-		if(resourceMetadataIndex == backbufferResourceIndex)
+		ResourceMetadata& textureMetadata = mResourceMetadatas[resourceMetadataIndex];
+		if(textureMetadata.SourceType != TextureSourceType::PassTexture)
 		{
-			continue; //Backbuffer is handled separately
+			continue;
 		}
 
-		ResourceMetadata& textureMetadata = mResourceMetadatas[resourceMetadataIndex];
+		uint32_t newTextureDescIndex = (uint32_t)textureDescs.size();
+		textureDescIndicesPerResource[resourceMetadataIndex] = newTextureDescIndex;
+
 
 		uint8_t formatChanges = 0;
 
@@ -365,17 +337,13 @@ void D3D12::FrameGraphBuilder::CreateTextures()
 
 		} while(currentNodeIndex != headNodeIndex);
 
-
-		uint32_t newTextureIndex = (uint32_t)textureDescs.size();
-		textureMetadata.FirstFrameHandle = newTextureIndex;
-
 		if(formatChanges > 1)
 		{
 			resourceDesc.Format = D3D12Utils::ConvertToTypeless(resourceDesc.Format);
 
 			if(!(resourceDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL) && (resourceDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET))
 			{
-				optimizedClearFormatsForTypeless[newTextureIndex] = formatForClear;
+				optimizedClearFormatsForTypeless[newTextureDescIndex] = formatForClear;
 			}
 		}
 
@@ -385,92 +353,68 @@ void D3D12::FrameGraphBuilder::CreateTextures()
 			resourceDesc.Flags &= ~D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
 		}
 
-		for(uint32_t frame = 0; frame < textureMetadata.FrameCount; frame++)
-		{
-			textureDescs.push_back(resourceDesc);
-		}
+		textureDescs.push_back(resourceDesc);
 	}
 
 	std::vector<UINT64> textureHeapOffsets;
 	textureHeapOffsets.reserve(textureDescs.size());
 	mMemoryAllocator->AllocateTextureMemory(mDevice, textureDescs, textureHeapOffsets, D3D12_HEAP_FLAG_ALLOW_ONLY_RT_DS_TEXTURES, mD3d12GraphToBuild->mTextureHeap.put());
 
-	for(const ResourceMetadata& textureMetadata: mResourceMetadatas)
+	uint32_t nextSwapchainImageIndex = 0;
+	for(uint32_t metadataIndex = 0; metadataIndex < mResourceMetadatas.size(); metadataIndex++)
 	{
-		uint32_t baseTextureIndex = textureMetadata.FirstFrameHandle;
-		const D3D12_RESOURCE_DESC1& baseResourceDesc = textureDescs[baseTextureIndex];
-
-		D3D12_CLEAR_VALUE  clearValue;
-		D3D12_CLEAR_VALUE* clearValuePtr = nullptr;
-		if(baseResourceDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)
+		ResourceMetadata& textureMetadata = mResourceMetadatas[metadataIndex];
+		if(textureMetadata.SourceType == TextureSourceType::PassTexture)
 		{
-			if(D3D12Utils::IsTypelessFormat(baseResourceDesc.Format))
+			uint32_t textureDescIndex = textureDescIndicesPerResource[metadataIndex];
+
+			const D3D12_RESOURCE_DESC1& resourceDesc = textureDescs[textureDescIndex];
+			UINT64                      heapOffset   = textureHeapOffsets[textureDescIndex];
+
+			D3D12_CLEAR_VALUE  clearValue;
+			D3D12_CLEAR_VALUE* clearValuePtr = nullptr;
+			if(resourceDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)
 			{
-				clearValue.Format = optimizedClearFormatsForTypeless[baseTextureIndex];
+				if(D3D12Utils::IsTypelessFormat(resourceDesc.Format))
+				{
+					clearValue.Format = optimizedClearFormatsForTypeless[metadataIndex];
+				}
+				else
+				{
+					clearValue.Format = resourceDesc.Format;
+				}
+
+				clearValue.Color[0] = 0.0f;
+				clearValue.Color[1] = 0.0f;
+				clearValue.Color[2] = 0.0f;
+				clearValue.Color[3] = 1.0f;
+
+				clearValuePtr = &clearValue;
 			}
-			else
+			else if(resourceDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL)
 			{
-				clearValue.Format = baseResourceDesc.Format;
+				clearValue.Format               = D3D12Utils::ConvertToDepthStencil(resourceDesc.Format);
+				clearValue.DepthStencil.Depth   = 1.0f;
+				clearValue.DepthStencil.Stencil = 0;
+
+				clearValuePtr = &clearValue;
 			}
 
-			clearValue.Color[0] = 0.0f;
-			clearValue.Color[1] = 0.0f;
-			clearValue.Color[2] = 0.0f;
-			clearValue.Color[3] = 1.0f;
+			uint32_t lastMetadataIndex = mSubresourceMetadataNodesFlat[metadataIndex].PrevPassNodeIndex;
+			D3D12_RESOURCE_STATES lastState = mSubresourceMetadataPayloads[lastMetadataIndex].State;
 
-			clearValuePtr = &clearValue;
+			THROW_IF_FAILED(mDevice->CreatePlacedResource1(mD3d12GraphToBuild->mTextureHeap.get(), textureHeapOffsets[metadataIndex], &resourceDesc, lastState, clearValuePtr, IID_PPV_ARGS(mD3d12GraphToBuild->mTextures[metadataIndex].put())));
 		}
-		else if(baseResourceDesc.Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL)
+		else if(textureMetadata.SourceType == TextureSourceType::Backbuffer)
 		{
-			clearValue.Format               = D3D12Utils::ConvertToDepthStencil(baseResourceDesc.Format);
-			clearValue.DepthStencil.Depth   = 1.0f;
-			clearValue.DepthStencil.Stencil = 0;
+			ID3D12Resource* swapchainImage = mSwapChain->GetSwapchainImage(nextSwapchainImageIndex);
+			THROW_IF_FAILED(swapchainImage->QueryInterface(IID_PPV_ARGS(mD3d12GraphToBuild->mTextures[metadataIndex].put())));
 
-			clearValuePtr = &clearValue;
+			nextSwapchainImageIndex++;
 		}
-
-		uint32_t lastMetadataIndex = mSubresourceMetadataNodesFlat[textureMetadata.HeadNodeIndex].PrevPassNodeIndex;
-		D3D12_RESOURCE_STATES lastState = mSubresourceMetadataPayloads[lastMetadataIndex].State;
-
-		for(uint32_t frame = 0; frame < textureMetadata.FrameCount; frame++)
-		{
-			uint32_t imageIndex = baseTextureIndex + frame;
-			const D3D12_RESOURCE_DESC1& resourceDesc = textureDescs[imageIndex];
-
-			mD3d12GraphToBuild->mOwnedResources.emplace_back();
-			THROW_IF_FAILED(mDevice->CreatePlacedResource1(mD3d12GraphToBuild->mTextureHeap.get(), textureHeapOffsets[imageIndex], &resourceDesc, lastState, clearValuePtr, IID_PPV_ARGS(mD3d12GraphToBuild->mOwnedResources.back().put())));
-
-			mD3d12GraphToBuild->mTextures[imageIndex] = mD3d12GraphToBuild->mOwnedResources.back().get();
 
 #if defined(DEBUG) || defined(_DEBUG)
-			if(textureMetadata.FrameCount == 1)
-			{
-				D3D12Utils::SetDebugObjectName(mD3d12GraphToBuild->mTextures[imageIndex], textureMetadata.Name);
-			}
-			else
-			{
-				D3D12Utils::SetDebugObjectName(mD3d12GraphToBuild->mTextures[imageIndex], textureMetadata.Name + std::to_string(frame));
-			}
-#endif
-		}
-	}
-
-	//Process the backbuffer
-	ResourceMetadata& backbufferMetadata = mResourceMetadatas[backbufferResourceIndex];
-
-	uint32_t backbufferImageIndex = (uint32_t)mD3d12GraphToBuild->mTextures.size();
-	backbufferMetadata.FirstFrameHandle = backbufferImageIndex;
-	for(uint32_t frame = 0; frame < backbufferMetadata.FrameCount; frame++)
-	{
-		ID3D12Resource* swapchainImage = mSwapChain->GetSwapchainImage(frame);
-
-		wil::com_ptr_nothrow<ID3D12Resource2> swapchainImage2;
-		THROW_IF_FAILED(swapchainImage->QueryInterface(IID_PPV_ARGS(swapchainImage2.put())));
-
-		mD3d12GraphToBuild->mTextures.push_back(swapchainImage2.get());
-
-#if defined(DEBUG) || defined(_DEBUG)
-		D3D12Utils::SetDebugObjectName(swapchainImage2.get(), std::string(backbufferMetadata.Name) + std::to_string(frame));
+		D3D12Utils::SetDebugObjectName(mD3d12GraphToBuild->mTextures[metadataIndex].get(), mResourceMetadatas[metadataIndex].Name);
 #endif
 	}
 }
@@ -487,8 +431,10 @@ void D3D12::FrameGraphBuilder::CreateTextureViews()
 	std::vector<ViewCreateInfo> srvUavCreateInfos;
 	std::vector<ViewCreateInfo> rtvCreateInfos;
 	std::vector<ViewCreateInfo> dsvCreateInfos;
-	for(const ResourceMetadata& resourceMetadata: mResourceMetadatas)
+	for(uint32_t resourceMetadataIndex = 0; resourceMetadataIndex < mResourceMetadatas.size(); resourceMetadataIndex++)
 	{
+		const ResourceMetadata& resourceMetadata = mResourceMetadatas[resourceMetadataIndex];
+
 		std::unordered_map<DXGI_FORMAT, uint32_t> srvIndicesForFormats; //To only create different image views if the formats differ
 		std::unordered_map<DXGI_FORMAT, uint32_t> uavIndicesForFormats; //To only create different image views if the formats differ
 		std::unordered_map<DXGI_FORMAT, uint32_t> rtvIndicesForFormats; //To only create different image views if the formats differ
@@ -513,7 +459,7 @@ void D3D12::FrameGraphBuilder::CreateTextureViews()
 			bool isDsvResource = (subresourceMetadataPayload.State & dsvStateMask);
 
 			int stateCount = (int)isSrvResource + (int)isUavResource + (int)isRtvResource + (int)isDsvResource;
-			assert(stateCount <= 1); //Only a single state is supported, otherwise FirstImageViewIndex is undefined
+			assert(stateCount <= 1); //Only a single state is supported, otherwise ImageViewHandle is not defined uniquely
 
 			if(stateCount == 0)
 			{
@@ -526,18 +472,14 @@ void D3D12::FrameGraphBuilder::CreateTextureViews()
 				auto srvIndexIt = srvIndicesForFormats.find(subresourceMetadataPayload.Format);
 				if(srvIndexIt != srvIndicesForFormats.end())
 				{
-					subresourceMetadata.FirstFrameViewHandle = srvIndexIt->second;
+					subresourceMetadata.ImageViewHandle = srvIndexIt->second;
 				}
 				else
 				{
 					uint32_t newSrvUavDescriptorIndex = (uint32_t)srvUavCreateInfos.size();
-					subresourceMetadata.FirstFrameViewHandle = newSrvUavDescriptorIndex;
+					subresourceMetadata.ImageViewHandle = newSrvUavDescriptorIndex;
 
-					for(uint32_t frameIndex = 0; frameIndex < resourceMetadata.FrameCount; frameIndex++)
-					{
-						srvUavCreateInfos.push_back(std::make_pair(resourceMetadata.FirstFrameHandle + frameIndex, currNodeIndex));
-					}
-
+					srvUavCreateInfos.push_back(std::make_pair(resourceMetadataIndex, currNodeIndex));
 					srvIndicesForFormats[subresourceMetadataPayload.Format] = newSrvUavDescriptorIndex;
 				}				
 			}
@@ -546,18 +488,14 @@ void D3D12::FrameGraphBuilder::CreateTextureViews()
 				auto uavIndexIt = uavIndicesForFormats.find(subresourceMetadataPayload.Format);
 				if(uavIndexIt != uavIndicesForFormats.end())
 				{
-					subresourceMetadata.FirstFrameViewHandle = uavIndexIt->second;
+					subresourceMetadata.ImageViewHandle = uavIndexIt->second;
 				}
 				else
 				{
 					uint32_t newSrvUavDescriptorIndex = (uint32_t)srvUavCreateInfos.size();
-					subresourceMetadata.FirstFrameViewHandle = newSrvUavDescriptorIndex;
+					subresourceMetadata.ImageViewHandle = newSrvUavDescriptorIndex;
 
-					for(uint32_t frameIndex = 0; frameIndex < resourceMetadata.FrameCount; frameIndex++)
-					{
-						srvUavCreateInfos.push_back(std::make_pair(resourceMetadata.FirstFrameHandle + frameIndex, currNodeIndex));
-					}
-
+					srvUavCreateInfos.push_back(std::make_pair(resourceMetadataIndex, currNodeIndex));
 					uavIndicesForFormats[subresourceMetadataPayload.Format] = newSrvUavDescriptorIndex;
 				}
 			}
@@ -566,18 +504,14 @@ void D3D12::FrameGraphBuilder::CreateTextureViews()
 				auto rtvIndexIt = rtvIndicesForFormats.find(subresourceMetadataPayload.Format);
 				if(rtvIndexIt != rtvIndicesForFormats.end())
 				{
-					subresourceMetadata.FirstFrameViewHandle = rtvIndexIt->second;
+					subresourceMetadata.ImageViewHandle = rtvIndexIt->second;
 				}
 				else
 				{
 					uint32_t newRtvDescriptorIndex = (uint32_t)rtvCreateInfos.size();
-					subresourceMetadata.FirstFrameViewHandle = newRtvDescriptorIndex;
+					subresourceMetadata.ImageViewHandle = newRtvDescriptorIndex;
 
-					for(uint32_t frameIndex = 0; frameIndex < resourceMetadata.FrameCount; frameIndex++)
-					{
-						rtvCreateInfos.push_back(std::make_pair(resourceMetadata.FirstFrameHandle + frameIndex, currNodeIndex));
-					}
-
+					rtvCreateInfos.push_back(std::make_pair(resourceMetadataIndex, currNodeIndex));
 					rtvIndicesForFormats[subresourceMetadataPayload.Format] = newRtvDescriptorIndex;
 				}
 			}
@@ -586,18 +520,14 @@ void D3D12::FrameGraphBuilder::CreateTextureViews()
 				auto dsvIndexIt = dsvIndicesForFormats.find(subresourceMetadataPayload.Format);
 				if(dsvIndexIt != dsvIndicesForFormats.end())
 				{
-					subresourceMetadata.FirstFrameViewHandle = dsvIndexIt->second;
+					subresourceMetadata.ImageViewHandle = dsvIndexIt->second;
 				}
 				else
 				{
 					uint32_t newDsvDescriptorIndex = (uint32_t)dsvCreateInfos.size();
-					subresourceMetadata.FirstFrameViewHandle = newDsvDescriptorIndex;
+					subresourceMetadata.ImageViewHandle = newDsvDescriptorIndex;
 
-					for(uint32_t frameIndex = 0; frameIndex < resourceMetadata.FrameCount; frameIndex++)
-					{
-						dsvCreateInfos.push_back(std::make_pair(resourceMetadata.FirstFrameHandle + frameIndex, currNodeIndex));
-					}
-
+					dsvCreateInfos.push_back(std::make_pair(resourceMetadataIndex, currNodeIndex));
 					dsvIndicesForFormats[subresourceMetadataPayload.Format] = newDsvDescriptorIndex;
 				}
 			}
@@ -648,7 +578,7 @@ void D3D12::FrameGraphBuilder::CreateTextureViews()
 		uint32_t       resourceIndex        = createInfo.first;
 		uint32_t       subresourceInfoIndex = createInfo.second;
 
-		ID3D12Resource* descriptorResource = mD3d12GraphToBuild->mTextures[resourceIndex];
+		ID3D12Resource* descriptorResource = mD3d12GraphToBuild->mTextures[resourceIndex].get();
 		const SubresourceMetadataPayload& subresourceMetadataPayload = mSubresourceMetadataPayloads[subresourceInfoIndex];
 		if(subresourceMetadataPayload.State & srvStateMask)
 		{
@@ -687,7 +617,7 @@ void D3D12::FrameGraphBuilder::CreateTextureViews()
 		uint32_t       resourceIndex        = createInfo.first;
 		uint32_t       subresourceInfoIndex = createInfo.second;
 
-		ID3D12Resource* descriptorResource = mD3d12GraphToBuild->mTextures[resourceIndex];
+		ID3D12Resource* descriptorResource = mD3d12GraphToBuild->mTextures[resourceIndex].get();
 		const SubresourceMetadataPayload& subresourceMetadataPayload = mSubresourceMetadataPayloads[subresourceInfoIndex];
 		if(subresourceMetadataPayload.State & rtvStateMask)
 		{
@@ -710,7 +640,7 @@ void D3D12::FrameGraphBuilder::CreateTextureViews()
 		uint32_t       resourceIndex        = createInfo.first;
 		uint32_t       subresourceInfoIndex = createInfo.second;
 
-		ID3D12Resource* descriptorResource = mD3d12GraphToBuild->mTextures[resourceIndex];
+		ID3D12Resource* descriptorResource = mD3d12GraphToBuild->mTextures[resourceIndex].get();
 		const SubresourceMetadataPayload& subresourceMetadataPayload = mSubresourceMetadataPayloads[subresourceInfoIndex];
 		if(subresourceMetadataPayload.State & rtvStateMask)
 		{
@@ -727,26 +657,12 @@ void D3D12::FrameGraphBuilder::CreateTextureViews()
 	}
 }
 
-void D3D12::FrameGraphBuilder::CreateObjectsForPass(uint32_t passMetadataIndex, uint32_t passSwapchainImageCount)
+void D3D12::FrameGraphBuilder::BuildPassObjects()
 {
-	uint32_t oldPassCount = (uint32_t)mD3d12GraphToBuild->mRenderPasses.size();
-
-	const PassMetadata& passMetadata = mPassMetadatas[passMetadataIndex];
-	for(uint32_t swapchainImageIndex = 0; swapchainImageIndex < passSwapchainImageCount; swapchainImageIndex++)
+	for(uint32_t passIndex = mRenderPassMetadataSpan.Begin; passIndex < mRenderPassMetadataSpan.End; passIndex++)
 	{
-		for(uint32_t passFrame = 0; passFrame < passMetadata.OwnPeriod; passFrame++)
-		{
-			uint32_t frame = passMetadata.OwnPeriod * swapchainImageIndex + passFrame;
-			
-			mD3d12GraphToBuild->mRenderPasses.emplace_back(MakeUniquePass(passMetadata.Type, this, passMetadataIndex, frame));
-		}
+		mD3d12GraphToBuild->mRenderPasses.emplace_back(MakeUniquePass(mTotalPassMetadatas[passIndex].Type, this, passIndex));
 	}
-
-	ModernFrameGraph::RenderPassSpanInfo passSpanInfo;
-	passSpanInfo.PassSpanBegin = oldPassCount;
-	passSpanInfo.OwnFrames     = passMetadata.OwnPeriod;
-
-	mD3d12GraphToBuild->mPassFrameSpans.push_back(passSpanInfo);
 }
 
 void D3D12::FrameGraphBuilder::AddBeforePassBarriers(const PassMetadata& passMetadata, uint32_t barrierSpanIndex)
@@ -784,8 +700,6 @@ void D3D12::FrameGraphBuilder::AddBeforePassBarriers(const PassMetadata& passMet
 
 		const SubresourceMetadataPayload& currMetadataPayload = mSubresourceMetadataPayloads[metadataIndex];
 		const SubresourceMetadataPayload& prevMetadataPayload = mSubresourceMetadataPayloads[currMetadataNode.PrevPassNodeIndex];
-
-		const ResourceMetadata& resourceMetadata = mResourceMetadatas[currMetadataNode.ResourceMetadataIndex];
 
 		bool barrierNeeded = false;
 		D3D12_RESOURCE_STATES prevPassState = prevMetadataPayload.State;
@@ -839,25 +753,13 @@ void D3D12::FrameGraphBuilder::AddBeforePassBarriers(const PassMetadata& passMet
 		{
 			D3D12_RESOURCE_BARRIER textureTransitionBarrier;
 			textureTransitionBarrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-			textureTransitionBarrier.Transition.pResource   = mD3d12GraphToBuild->mTextures[resourceMetadata.FirstFrameHandle];
+			textureTransitionBarrier.Transition.pResource   = mD3d12GraphToBuild->mTextures[currMetadataNode.ResourceMetadataIndex].get();
 			textureTransitionBarrier.Transition.Subresource = 0;
 			textureTransitionBarrier.Transition.StateBefore = prevPassState;
 			textureTransitionBarrier.Transition.StateAfter  = currPassState;
 			textureTransitionBarrier.Flags                  = D3D12_RESOURCE_BARRIER_FLAG_NONE;
 
 			mD3d12GraphToBuild->mResourceBarriers.push_back(textureTransitionBarrier);
-
-			if(resourceMetadata.FrameCount > 1)
-			{
-				uint32_t newBarrierIndex = (uint32_t)(mD3d12GraphToBuild->mResourceBarriers.size() - 1);
-
-				ModernFrameGraph::MultiframeBarrierInfo multiframeBarrierInfo;
-				multiframeBarrierInfo.BarrierIndex  = newBarrierIndex;
-				multiframeBarrierInfo.BaseTexIndex  = resourceMetadata.FirstFrameHandle;
-				multiframeBarrierInfo.TexturePeriod = resourceMetadata.FrameCount;
-
-				mD3d12GraphToBuild->mMultiframeBarrierInfos.push_back(multiframeBarrierInfo);
-			}
 		}
 	}
 
@@ -900,8 +802,6 @@ void D3D12::FrameGraphBuilder::AddAfterPassBarriers(const PassMetadata& passMeta
 
 		const SubresourceMetadataPayload& currMetadataPayload = mSubresourceMetadataPayloads[metadataIndex];
 		const SubresourceMetadataPayload& nextMetadataPayload = mSubresourceMetadataPayloads[currMetadataNode.NextPassNodeIndex];
-
-		const ResourceMetadata& resourceMetadata = mResourceMetadatas[currMetadataNode.ResourceMetadataIndex];
 
 		bool barrierNeeded = false;
 		D3D12_RESOURCE_STATES currPassState = currMetadataPayload.State;
@@ -953,25 +853,13 @@ void D3D12::FrameGraphBuilder::AddAfterPassBarriers(const PassMetadata& passMeta
 		{
 			D3D12_RESOURCE_BARRIER textureTransitionBarrier;
 			textureTransitionBarrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-			textureTransitionBarrier.Transition.pResource   = mD3d12GraphToBuild->mTextures[resourceMetadata.FirstFrameHandle];
+			textureTransitionBarrier.Transition.pResource   = mD3d12GraphToBuild->mTextures[currMetadataNode.ResourceMetadataIndex].get();
 			textureTransitionBarrier.Transition.Subresource = 0;
 			textureTransitionBarrier.Transition.StateBefore = currPassState;
 			textureTransitionBarrier.Transition.StateAfter  = nextPassState;
 			textureTransitionBarrier.Flags                  = D3D12_RESOURCE_BARRIER_FLAG_NONE;
 
 			mD3d12GraphToBuild->mResourceBarriers.push_back(textureTransitionBarrier);
-
-			if(resourceMetadata.FrameCount > 1)
-			{
-				uint32_t newBarrierIndex = (uint32_t)(mD3d12GraphToBuild->mResourceBarriers.size() - 1);
-
-				ModernFrameGraph::MultiframeBarrierInfo multiframeBarrierInfo;
-				multiframeBarrierInfo.BarrierIndex  = newBarrierIndex;
-				multiframeBarrierInfo.BaseTexIndex  = resourceMetadata.FirstFrameHandle;
-				multiframeBarrierInfo.TexturePeriod = resourceMetadata.FrameCount;
-
-				mD3d12GraphToBuild->mMultiframeBarrierInfos.push_back(multiframeBarrierInfo);
-			}
 		}
 	}
 
@@ -980,14 +868,7 @@ void D3D12::FrameGraphBuilder::AddAfterPassBarriers(const PassMetadata& passMeta
 
 void D3D12::FrameGraphBuilder::InitializeTraverseData() const
 {
-	mD3d12GraphToBuild->mFrameRecordedGraphicsCommandLists.resize(mD3d12GraphToBuild->mGraphicsPassSpans.size());
-
-	//Add a plug present pass
-	mD3d12GraphToBuild->mPassFrameSpans.push_back(ModernFrameGraph::RenderPassSpanInfo
-	{
-		.PassSpanBegin = (uint32_t)mD3d12GraphToBuild->mRenderPasses.size(),
-		.OwnFrames     = 0
-	});
+	mD3d12GraphToBuild->mFrameRecordedGraphicsCommandLists.resize(mD3d12GraphToBuild->mGraphicsPassSpansPerDependencyLevel.size());
 }
 
 uint32_t D3D12::FrameGraphBuilder::GetSwapchainImageCount() const

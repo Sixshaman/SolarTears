@@ -3,7 +3,7 @@
 #include <vulkan/vulkan.h>
 #include "../../Logging/LoggerQueue.hpp"
 #include "VulkanDeviceParameters.hpp"
-#include <vector>
+#include <span>
 
 namespace Vulkan
 {
@@ -19,8 +19,8 @@ namespace Vulkan
 		MemoryManager(LoggerQueue* logger, VkPhysicalDevice physicalDevice, const DeviceParameters& deviceParameters);
 		~MemoryManager();
 
-		VkDeviceMemory AllocateImagesMemory(VkDevice device, const std::vector<VkImage>& images, std::vector<VkDeviceSize>& outMemoryOffsets)                                         const;
-		VkDeviceMemory AllocateBuffersMemory(VkDevice device, const std::vector<VkBuffer>& buffers, BufferAllocationType allocationType, std::vector<VkDeviceSize>& outMemoryOffsets) const;
+		VkDeviceMemory AllocateImagesMemory(VkDevice device, std::span<VkBindImageMemoryInfo> inoutBindMemoryInfos) const;
+		VkDeviceMemory AllocateBuffersMemory(VkDevice device, const std::span<VkBuffer> buffers, BufferAllocationType allocationType, std::vector<VkDeviceSize>& outMemoryOffsets) const;
 
 		VkDeviceMemory AllocateIntermediateBufferMemory(VkDevice device, VkBuffer buffer) const;
 

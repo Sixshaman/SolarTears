@@ -18,7 +18,7 @@ namespace D3D12
 		inline static bool PropagateSubresourceInfos(std::span<SubresourceMetadataPayload> inoutMetadataPayloads);
 
 	public:
-		CopyImagePass(const FrameGraphBuilder* frameGraphBuilder, uint32_t passIndex, uint32_t frame);
+		CopyImagePass(const FrameGraphBuilder* frameGraphBuilder, uint32_t passIndex);
 		~CopyImagePass();
 
 		ID3D12PipelineState* FirstPipeline() const override;

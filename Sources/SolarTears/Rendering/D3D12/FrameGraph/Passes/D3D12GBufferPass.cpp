@@ -8,7 +8,7 @@
 #include "../../../../Core/Util.hpp"
 #include <array>
 
-D3D12::GBufferPass::GBufferPass(const FrameGraphBuilder* frameGraphBuilder, uint32_t frameGraphPassId, uint32_t frame)
+D3D12::GBufferPass::GBufferPass(const FrameGraphBuilder* frameGraphBuilder, uint32_t frameGraphPassId)
 {
 	wil::com_ptr_t<IDxcBlobEncoding> staticVertexShaderBlob;
 	wil::com_ptr_t<IDxcBlobEncoding> rigidVertexShaderBlob;
@@ -21,7 +21,7 @@ D3D12::GBufferPass::GBufferPass(const FrameGraphBuilder* frameGraphBuilder, uint
 	CreateGBufferPipelineState(frameGraphBuilder->GetDevice(), staticVertexShaderBlob.get(), pixelShaderBlob.get(), mStaticPipelineState.put());
 	CreateGBufferPipelineState(frameGraphBuilder->GetDevice(), rigidVertexShaderBlob.get(),  pixelShaderBlob.get(), mRigidPipelineState.put());
 
-	mColorsRenderTarget = frameGraphBuilder->GetRegisteredSubresourceRtv(frameGraphPassId, (uint_fast16_t)PassSubresourceId::ColorBufferImage, frame);
+	mColorsRenderTarget = frameGraphBuilder->GetRegisteredSubresourceRtv(frameGraphPassId, (uint_fast16_t)PassSubresourceId::ColorBufferImage);
 
 	mOutputFormat = frameGraphBuilder->GetRegisteredSubresourceFormat(frameGraphPassId, (uint_fast16_t)PassSubresourceId::ColorBufferImage);
 

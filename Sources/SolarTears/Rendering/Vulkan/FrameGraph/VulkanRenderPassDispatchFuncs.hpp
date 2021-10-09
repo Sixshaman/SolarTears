@@ -80,19 +80,19 @@ namespace Vulkan
 	}
 
 	template<typename Pass>
-	std::unique_ptr<RenderPass> MakeUniquePass(const FrameGraphBuilder* builder, uint32_t passIndex, uint32_t frame)
+	std::unique_ptr<RenderPass> MakeUniquePass(const FrameGraphBuilder* builder, uint32_t passId)
 	{
-		return std::make_unique<Pass>(builder, passIndex, frame);
+		return std::make_unique<Pass>(builder, passId);
 	};
 
-	std::unique_ptr<RenderPass> MakeUniquePass(RenderPassType passType, const FrameGraphBuilder* builder, uint32_t passIndex, uint32_t frame)
+	std::unique_ptr<RenderPass> MakeUniquePass(RenderPassType passType, const FrameGraphBuilder* builder, uint32_t passId)
 	{ 
-		using MakePassFunc = std::unique_ptr<RenderPass>(*)(const FrameGraphBuilder*, uint32_t, uint32_t);
+		using MakePassFunc = std::unique_ptr<RenderPass>(*)(const FrameGraphBuilder*, uint32_t);
 
 		MakePassFunc MakePass;
 		CHOOSE_PASS_FUNCTION(passType, MakeUniquePass, MakePass);
 
 		assert(MakePass != nullptr);
-		return MakePass(builder, passIndex, frame);
+		return MakePass(builder, passId);
 	}
 }

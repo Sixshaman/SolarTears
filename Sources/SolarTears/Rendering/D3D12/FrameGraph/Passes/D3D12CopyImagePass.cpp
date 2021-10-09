@@ -3,10 +3,10 @@
 #include "../D3D12FrameGraphBuilder.hpp"
 #include <array>
 
-D3D12::CopyImagePass::CopyImagePass(const FrameGraphBuilder* frameGraphBuilder, uint32_t passIndex, uint32_t frame)
+D3D12::CopyImagePass::CopyImagePass(const FrameGraphBuilder* frameGraphBuilder, uint32_t passIndex)
 {
-	mSrcImageRef = frameGraphBuilder->GetRegisteredResource(passIndex, (uint_fast16_t)PassSubresourceId::SrcImage, frame);
-	mDstImageRef = frameGraphBuilder->GetRegisteredResource(passIndex, (uint_fast16_t)PassSubresourceId::DstImage, frame);
+	mSrcImageRef = frameGraphBuilder->GetRegisteredResource(passIndex, (uint_fast16_t)PassSubresourceId::SrcImage);
+	mDstImageRef = frameGraphBuilder->GetRegisteredResource(passIndex, (uint_fast16_t)PassSubresourceId::DstImage);
 }
 
 D3D12::CopyImagePass::~CopyImagePass()

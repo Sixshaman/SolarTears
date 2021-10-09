@@ -43,3 +43,9 @@ enum class RenderPassFrameSwapType
 	PerLinearFrame,
 	PerBackbufferImage,
 };
+
+enum class TextureSourceType 
+{
+	PassTexture,
+	Backbuffer
+};

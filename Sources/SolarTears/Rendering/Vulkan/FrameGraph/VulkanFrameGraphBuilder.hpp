@@ -42,8 +42,8 @@ namespace Vulkan
 		
 		ShaderDatabase* GetShaderDatabase() const;
 
-		VkImage              GetRegisteredResource(uint32_t passIndex,    uint_fast16_t subresourceIndex, uint32_t frame) const;
-		VkImageView          GetRegisteredSubresource(uint32_t passIndex, uint_fast16_t subresourceIndex, uint32_t frame) const;
+		VkImage              GetRegisteredResource(uint32_t passIndex,    uint_fast16_t subresourceIndex) const;
+		VkImageView          GetRegisteredSubresource(uint32_t passIndex, uint_fast16_t subresourceIndex) const;
 
 		VkFormat             GetRegisteredSubresourceFormat(uint32_t passIndex,      uint_fast16_t subresourceIndex) const;
 		VkImageLayout        GetRegisteredSubresourceLayout(uint32_t passIndex,      uint_fast16_t subresourceIndex) const;
@@ -97,8 +97,8 @@ namespace Vulkan
 		//Creates image view objects
 		void CreateTextureViews() override final;
 
-		//Creates a new render pass
-		void CreateObjectsForPass(uint32_t passMetadataIndex, uint32_t passSwapchainImageCount) override final;
+		//Build the render pass objects
+		void BuildPassObjects() override final;
 
 		//Adds subresource barriers to execute before a pass
 		void AddBeforePassBarriers(const PassMetadata& passMetadata, uint32_t barrierSpanIndex) override final;

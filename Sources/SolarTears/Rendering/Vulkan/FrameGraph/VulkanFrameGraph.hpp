@@ -29,7 +29,6 @@ namespace Vulkan
 	private:
 		void CreateSemaphores();
 
-		void        SwitchBarrierImages(uint32_t swapchainImageIndex, uint32_t frameIndex);
 		RenderPass* ChoosePass(const PassFrameSpan& passFrameSpan, uint32_t swapchainImageIndex, uint32_t frameIndex) const;
 
 		void BeginCommandBuffer(VkCommandBuffer cmdBuffer, VkCommandPool cmdPool) const;
@@ -57,5 +56,7 @@ namespace Vulkan
 
 		//Used to track the command buffers that were used to record render passes
 		std::vector<VkCommandBuffer> mFrameRecordedGraphicsCommandBuffers;
+
+		std::vector<Span<uint32_t>> mOwnedImageSpans;
 	};
 }

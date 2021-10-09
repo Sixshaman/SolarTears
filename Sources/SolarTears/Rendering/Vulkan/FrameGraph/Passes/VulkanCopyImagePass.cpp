@@ -4,10 +4,10 @@
 #include "../VulkanFrameGraphBuilder.hpp"
 #include <array>
 
-Vulkan::CopyImagePass::CopyImagePass(const FrameGraphBuilder* frameGraphBuilder, uint32_t frameGraphPassId, uint32_t frame): RenderPass(frameGraphBuilder->GetDevice())
+Vulkan::CopyImagePass::CopyImagePass(const FrameGraphBuilder* frameGraphBuilder, uint32_t frameGraphPassId): RenderPass(frameGraphBuilder->GetDevice())
 {
-	mSrcImageRef = frameGraphBuilder->GetRegisteredResource(frameGraphPassId, (uint_fast16_t)PassSubresourceId::SrcImage, frame);
-	mDstImageRef = frameGraphBuilder->GetRegisteredResource(frameGraphPassId, (uint_fast16_t)PassSubresourceId::DstImage, frame);
+	mSrcImageRef = frameGraphBuilder->GetRegisteredResource(frameGraphPassId, (uint_fast16_t)PassSubresourceId::SrcImage);
+	mDstImageRef = frameGraphBuilder->GetRegisteredResource(frameGraphPassId, (uint_fast16_t)PassSubresourceId::DstImage);
 
 	mSrcImageAspectFlags = frameGraphBuilder->GetRegisteredSubresourceAspectFlags(frameGraphPassId, (uint_fast16_t)PassSubresourceId::SrcImage);
 	mDstImageAspectFlags = frameGraphBuilder->GetRegisteredSubresourceAspectFlags(frameGraphPassId, (uint_fast16_t)PassSubresourceId::DstImage);

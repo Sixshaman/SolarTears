@@ -30,7 +30,7 @@ namespace D3D12
 		inline static bool PropagateSubresourceInfos(std::span<SubresourceMetadataPayload> inoutMetadataPayloads);
 
 	public:
-		GBufferPass(const FrameGraphBuilder* frameGraphBuilder, uint32_t passIndex, uint32_t frame);
+		GBufferPass(const FrameGraphBuilder* frameGraphBuilder, uint32_t passIndex);
 		~GBufferPass();
 
 		void RecordExecution(ID3D12GraphicsCommandList6* commandList, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig, uint32_t frameResourceIndex) const override;

@@ -33,10 +33,10 @@ namespace D3D12
 
 		const ShaderManager* GetShaderManager() const;
 
-		ID3D12Resource2*            GetRegisteredResource(uint32_t passIndex,          uint_fast16_t subresourceIndex, uint32_t frame) const;
-		D3D12_GPU_DESCRIPTOR_HANDLE GetRegisteredSubresourceSrvUav(uint32_t passIndex, uint_fast16_t subresourceIndex, uint32_t frame) const;
-		D3D12_CPU_DESCRIPTOR_HANDLE GetRegisteredSubresourceRtv(uint32_t passIndex,    uint_fast16_t subresourceIndex, uint32_t frame) const;
-		D3D12_CPU_DESCRIPTOR_HANDLE GetRegisteredSubresourceDsv(uint32_t passIndex,    uint_fast16_t subresourceIndex, uint32_t frame) const;
+		ID3D12Resource2*            GetRegisteredResource(uint32_t passIndex,          uint_fast16_t subresourceIndex) const;
+		D3D12_GPU_DESCRIPTOR_HANDLE GetRegisteredSubresourceSrvUav(uint32_t passIndex, uint_fast16_t subresourceIndex) const;
+		D3D12_CPU_DESCRIPTOR_HANDLE GetRegisteredSubresourceRtv(uint32_t passIndex,    uint_fast16_t subresourceIndex) const;
+		D3D12_CPU_DESCRIPTOR_HANDLE GetRegisteredSubresourceDsv(uint32_t passIndex,    uint_fast16_t subresourceIndex) const;
 
 		DXGI_FORMAT           GetRegisteredSubresourceFormat(uint32_t passIndex, uint_fast16_t subresourceIndex) const;
 		D3D12_RESOURCE_STATES GetRegisteredSubresourceState(uint32_t passIndex, uint_fast16_t subresourceIndex)  const;
@@ -75,8 +75,8 @@ namespace D3D12
 		//Creates image view objects
 		void CreateTextureViews() override final;
 
-		//Creates a new render pass
-		void CreateObjectsForPass(uint32_t passMetadataIndex, uint32_t passSwapchainImageCount) override final;
+		//Build the render pass objects
+		void BuildPassObjects() override final;
 
 		//Adds subresource barriers to execute before a pass
 		void AddBeforePassBarriers(const PassMetadata& passMetadata, uint32_t barrierSpanIndex) override final;

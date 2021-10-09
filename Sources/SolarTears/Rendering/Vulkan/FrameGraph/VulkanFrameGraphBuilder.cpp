@@ -46,158 +46,131 @@ Vulkan::ShaderDatabase* Vulkan::FrameGraphBuilder::GetShaderDatabase() const
 	return mShaderDatabase.get();
 }
 
-VkImage Vulkan::FrameGraphBuilder::GetRegisteredResource(uint32_t passIndex, uint_fast16_t subresourceIndex, uint32_t frame) const
+VkImage Vulkan::FrameGraphBuilder::GetRegisteredResource(uint32_t passIndex, uint_fast16_t subresourceIndex) const
 {
-	Span<uint32_t> metadataSpan = mPassMetadatas[passIndex].SubresourceMetadataSpan;
+	Span<uint32_t> metadataSpan = mTotalPassMetadatas[passIndex].SubresourceMetadataSpan;
 
 	const SubresourceMetadataNode& metadataNode = mSubresourceMetadataNodesFlat[metadataSpan.Begin + subresourceIndex];
-	const ResourceMetadata& resourceMetadata = mResourceMetadatas[metadataNode.ResourceMetadataIndex];
-	if(resourceMetadata.FirstFrameHandle == (uint32_t)(-1))
-	{
-		return VK_NULL_HANDLE;
-	}
-	else
-	{
-		if(resourceMetadata.FirstFrameHandle == GetBackbufferImageSpan().Begin)
-		{
-			uint32_t passPeriod = mPassMetadatas[passIndex].OwnPeriod;
-			return mVulkanGraphToBuild->mImages[resourceMetadata.FirstFrameHandle + frame / passPeriod];
-		}
-		else
-		{
-			
-			return mVulkanGraphToBuild->mImages[resourceMetadata.FirstFrameHandle + frame % resourceMetadata.FrameCount];
-		}
-	}
+	return mVulkanGraphToBuild->mImages[metadataNode.ResourceMetadataIndex];
 }
 
-VkImageView Vulkan::FrameGraphBuilder::GetRegisteredSubresource(uint32_t passIndex, uint_fast16_t subresourceIndex, uint32_t frame) const
+VkImageView Vulkan::FrameGraphBuilder::GetRegisteredSubresource(uint32_t passIndex, uint_fast16_t subresourceIndex) const
 {
-	Span<uint32_t> metadataSpan = mPassMetadatas[passIndex].SubresourceMetadataSpan;
+	Span<uint32_t> metadataSpan = mTotalPassMetadatas[passIndex].SubresourceMetadataSpan;
 
 	const SubresourceMetadataNode& metadataNode = mSubresourceMetadataNodesFlat[metadataSpan.Begin + subresourceIndex];
-	const ResourceMetadata& resourceMetadata = mResourceMetadatas[metadataNode.ResourceMetadataIndex];
-	if(metadataNode.FirstFrameViewHandle == (uint32_t)(-1))
+	if(metadataNode.ImageViewHandle == (uint32_t)(-1))
 	{
 		return VK_NULL_HANDLE;
 	}
 	else
 	{
-		if(resourceMetadata.FirstFrameHandle == GetBackbufferImageSpan().Begin)
-		{
-			uint32_t passPeriod = mPassMetadatas[passIndex].OwnPeriod;
-			return mVulkanGraphToBuild->mImageViews[metadataNode.FirstFrameViewHandle + frame / passPeriod];
-		}
-		else
-		{
-			
-			return mVulkanGraphToBuild->mImageViews[metadataNode.FirstFrameViewHandle + frame % resourceMetadata.FrameCount];
-		}
+		return mVulkanGraphToBuild->mImageViews[metadataNode.ImageViewHandle];
 	}
 }
 
 VkFormat Vulkan::FrameGraphBuilder::GetRegisteredSubresourceFormat(uint32_t passIndex, uint_fast16_t subresourceIndex) const
 {
-	Span<uint32_t> metadataSpan = mPassMetadatas[passIndex].SubresourceMetadataSpan;
+	Span<uint32_t> metadataSpan = mTotalPassMetadatas[passIndex].SubresourceMetadataSpan;
 	return mSubresourceMetadataPayloads[metadataSpan.Begin + subresourceIndex].Format;
 }
 
 VkImageLayout Vulkan::FrameGraphBuilder::GetRegisteredSubresourceLayout(uint32_t passIndex, uint_fast16_t subresourceIndex) const
 {
-	Span<uint32_t> metadataSpan = mPassMetadatas[passIndex].SubresourceMetadataSpan;
+	Span<uint32_t> metadataSpan = mTotalPassMetadatas[passIndex].SubresourceMetadataSpan;
 	return mSubresourceMetadataPayloads[metadataSpan.Begin + subresourceIndex].Layout;
 }
 
 VkImageUsageFlags Vulkan::FrameGraphBuilder::GetRegisteredSubresourceUsage(uint32_t passIndex, uint_fast16_t subresourceIndex) const
 {
-	Span<uint32_t> metadataSpan = mPassMetadatas[passIndex].SubresourceMetadataSpan;
+	Span<uint32_t> metadataSpan = mTotalPassMetadatas[passIndex].SubresourceMetadataSpan;
 	return mSubresourceMetadataPayloads[metadataSpan.Begin + subresourceIndex].Usage;
 }
 
 VkPipelineStageFlags Vulkan::FrameGraphBuilder::GetRegisteredSubresourceStageFlags(uint32_t passIndex, uint_fast16_t subresourceIndex) const
 {
-	Span<uint32_t> metadataSpan = mPassMetadatas[passIndex].SubresourceMetadataSpan;
+	Span<uint32_t> metadataSpan = mTotalPassMetadatas[passIndex].SubresourceMetadataSpan;
 	return mSubresourceMetadataPayloads[metadataSpan.Begin + subresourceIndex].Stage;
 }
 
 VkImageAspectFlags Vulkan::FrameGraphBuilder::GetRegisteredSubresourceAspectFlags(uint32_t passIndex, uint_fast16_t subresourceIndex) const
 {
-	Span<uint32_t> metadataSpan = mPassMetadatas[passIndex].SubresourceMetadataSpan;
+	Span<uint32_t> metadataSpan = mTotalPassMetadatas[passIndex].SubresourceMetadataSpan;
 	return mSubresourceMetadataPayloads[metadataSpan.Begin + subresourceIndex].Aspect;
 }
 
 VkAccessFlags Vulkan::FrameGraphBuilder::GetRegisteredSubresourceAccessFlags(uint32_t passIndex, uint_fast16_t subresourceIndex) const
 {
-	Span<uint32_t> metadataSpan = mPassMetadatas[passIndex].SubresourceMetadataSpan;
+	Span<uint32_t> metadataSpan = mTotalPassMetadatas[passIndex].SubresourceMetadataSpan;
 	return mSubresourceMetadataPayloads[metadataSpan.Begin + subresourceIndex].Access;
 }
 
 VkImageLayout Vulkan::FrameGraphBuilder::GetPreviousPassSubresourceLayout(uint32_t passIndex, uint_fast16_t subresourceIndex) const
 {
-	Span<uint32_t> metadataSpan = mPassMetadatas[passIndex].SubresourceMetadataSpan;
+	Span<uint32_t> metadataSpan = mTotalPassMetadatas[passIndex].SubresourceMetadataSpan;
 	uint32_t prevNodeIndex = mSubresourceMetadataNodesFlat[metadataSpan.Begin + subresourceIndex].PrevPassNodeIndex;
 	return mSubresourceMetadataPayloads[prevNodeIndex].Layout;
 }
 
 VkImageUsageFlags Vulkan::FrameGraphBuilder::GetPreviousPassSubresourceUsage(uint32_t passIndex, uint_fast16_t subresourceIndex) const
 {
-	Span<uint32_t> metadataSpan = mPassMetadatas[passIndex].SubresourceMetadataSpan;
+	Span<uint32_t> metadataSpan = mTotalPassMetadatas[passIndex].SubresourceMetadataSpan;
 	uint32_t prevNodeIndex = mSubresourceMetadataNodesFlat[metadataSpan.Begin + subresourceIndex].PrevPassNodeIndex;
 	return mSubresourceMetadataPayloads[prevNodeIndex].Usage;
 }
 
 VkPipelineStageFlags Vulkan::FrameGraphBuilder::GetPreviousPassSubresourceStageFlags(uint32_t passIndex, uint_fast16_t subresourceIndex) const
 {
-	Span<uint32_t> metadataSpan = mPassMetadatas[passIndex].SubresourceMetadataSpan;
+	Span<uint32_t> metadataSpan = mTotalPassMetadatas[passIndex].SubresourceMetadataSpan;
 	uint32_t prevNodeIndex = mSubresourceMetadataNodesFlat[metadataSpan.Begin + subresourceIndex].PrevPassNodeIndex;
 	return mSubresourceMetadataPayloads[prevNodeIndex].Stage;
 }
 
 VkImageAspectFlags Vulkan::FrameGraphBuilder::GetPreviousPassSubresourceAspectFlags(uint32_t passIndex, uint_fast16_t subresourceIndex) const
 {
-	Span<uint32_t> metadataSpan = mPassMetadatas[passIndex].SubresourceMetadataSpan;
+	Span<uint32_t> metadataSpan = mTotalPassMetadatas[passIndex].SubresourceMetadataSpan;
 	uint32_t prevNodeIndex = mSubresourceMetadataNodesFlat[metadataSpan.Begin + subresourceIndex].PrevPassNodeIndex;
 	return mSubresourceMetadataPayloads[prevNodeIndex].Aspect;
 }
 
 VkAccessFlags Vulkan::FrameGraphBuilder::GetPreviousPassSubresourceAccessFlags(uint32_t passIndex, uint_fast16_t subresourceIndex) const
 {
-	Span<uint32_t> metadataSpan = mPassMetadatas[passIndex].SubresourceMetadataSpan;
+	Span<uint32_t> metadataSpan = mTotalPassMetadatas[passIndex].SubresourceMetadataSpan;
 	uint32_t prevNodeIndex = mSubresourceMetadataNodesFlat[metadataSpan.Begin + subresourceIndex].PrevPassNodeIndex;
 	return mSubresourceMetadataPayloads[prevNodeIndex].Access;
 }
 
 VkImageLayout Vulkan::FrameGraphBuilder::GetNextPassSubresourceLayout(uint32_t passIndex, uint_fast16_t subresourceIndex) const
 {
-	Span<uint32_t> metadataSpan = mPassMetadatas[passIndex].SubresourceMetadataSpan;
+	Span<uint32_t> metadataSpan = mTotalPassMetadatas[passIndex].SubresourceMetadataSpan;
 	uint32_t nextNodeIndex = mSubresourceMetadataNodesFlat[metadataSpan.Begin + subresourceIndex].NextPassNodeIndex;
 	return mSubresourceMetadataPayloads[nextNodeIndex].Layout;
 }
 
 VkImageUsageFlags Vulkan::FrameGraphBuilder::GetNextPassSubresourceUsage(uint32_t passIndex, uint_fast16_t subresourceIndex) const
 {
-	Span<uint32_t> metadataSpan = mPassMetadatas[passIndex].SubresourceMetadataSpan;
+	Span<uint32_t> metadataSpan = mTotalPassMetadatas[passIndex].SubresourceMetadataSpan;
 	uint32_t nextNodeIndex = mSubresourceMetadataNodesFlat[metadataSpan.Begin + subresourceIndex].NextPassNodeIndex;
 	return mSubresourceMetadataPayloads[nextNodeIndex].Usage;
 }
 
 VkPipelineStageFlags Vulkan::FrameGraphBuilder::GetNextPassSubresourceStageFlags(uint32_t passIndex, uint_fast16_t subresourceIndex) const
 {
-	Span<uint32_t> metadataSpan = mPassMetadatas[passIndex].SubresourceMetadataSpan;
+	Span<uint32_t> metadataSpan = mTotalPassMetadatas[passIndex].SubresourceMetadataSpan;
 	uint32_t nextNodeIndex = mSubresourceMetadataNodesFlat[metadataSpan.Begin + subresourceIndex].NextPassNodeIndex;
 	return mSubresourceMetadataPayloads[nextNodeIndex].Stage;
 }
 
 VkImageAspectFlags Vulkan::FrameGraphBuilder::GetNextPassSubresourceAspectFlags(uint32_t passIndex, uint_fast16_t subresourceIndex) const
 {
-	Span<uint32_t> metadataSpan = mPassMetadatas[passIndex].SubresourceMetadataSpan;
+	Span<uint32_t> metadataSpan = mTotalPassMetadatas[passIndex].SubresourceMetadataSpan;
 	uint32_t nextNodeIndex = mSubresourceMetadataNodesFlat[metadataSpan.Begin + subresourceIndex].NextPassNodeIndex;
 	return mSubresourceMetadataPayloads[nextNodeIndex].Aspect;
 }
 
 VkAccessFlags Vulkan::FrameGraphBuilder::GetNextPassSubresourceAccessFlags(uint32_t passIndex, uint_fast16_t subresourceIndex) const
 {
-	Span<uint32_t> metadataSpan = mPassMetadatas[passIndex].SubresourceMetadataSpan;
+	Span<uint32_t> metadataSpan = mTotalPassMetadatas[passIndex].SubresourceMetadataSpan;
 	uint32_t nextNodeIndex = mSubresourceMetadataNodesFlat[metadataSpan.Begin + subresourceIndex].NextPassNodeIndex;
 	return mSubresourceMetadataPayloads[nextNodeIndex].Access;
 }
@@ -389,8 +362,10 @@ void Vulkan::FrameGraphBuilder::InitMetadataPayloads()
 {
 	mSubresourceMetadataPayloads.resize(mSubresourceMetadataNodesFlat.size(), SubresourceMetadataPayload());
 
-	for(const PassMetadata& passMetadata: mPassMetadatas)
+	for(uint32_t passIndex = mRenderPassMetadataSpan.Begin; passIndex < mRenderPassMetadataSpan.End; passIndex++)
 	{
+		const PassMetadata& passMetadata = mTotalPassMetadatas[passIndex];
+
 		Span<uint32_t> passMetadataSpan = passMetadata.SubresourceMetadataSpan;
 		std::span<SubresourceMetadataPayload> payloadSpan = {mSubresourceMetadataPayloads.begin() + passMetadataSpan.Begin, mSubresourceMetadataPayloads.begin() + passMetadataSpan.End};
 
@@ -399,14 +374,19 @@ void Vulkan::FrameGraphBuilder::InitMetadataPayloads()
 		mShaderDatabase->RegisterPass(passMetadata.Type);
 	}
 
-	uint32_t backbufferPayloadIndex = mPresentPassMetadata.SubresourceMetadataSpan.Begin + (uint32_t)PresentPassSubresourceId::Backbuffer;
-	mSubresourceMetadataPayloads[backbufferPayloadIndex].Format = mSwapChain->GetBackbufferFormat();
-	mSubresourceMetadataPayloads[backbufferPayloadIndex].Aspect = VK_IMAGE_ASPECT_COLOR_BIT;
-	mSubresourceMetadataPayloads[backbufferPayloadIndex].Layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-	mSubresourceMetadataPayloads[backbufferPayloadIndex].Usage  = 0;
-	mSubresourceMetadataPayloads[backbufferPayloadIndex].Stage  = VK_PIPELINE_STAGE_NONE_KHR;
-	mSubresourceMetadataPayloads[backbufferPayloadIndex].Access = 0;
-	mSubresourceMetadataPayloads[backbufferPayloadIndex].Flags  = 0;
+	for(uint32_t presentPassIndex = mPresentPassMetadataSpan.Begin; presentPassIndex < mPresentPassMetadataSpan.End; presentPassIndex++)
+	{
+		const PassMetadata& passMetadata = mTotalPassMetadatas[presentPassIndex];
+
+		uint32_t backbufferPayloadIndex = passMetadata.SubresourceMetadataSpan.Begin + (uint32_t)PresentPassSubresourceId::Backbuffer;
+		mSubresourceMetadataPayloads[backbufferPayloadIndex].Format = mSwapChain->GetBackbufferFormat();
+		mSubresourceMetadataPayloads[backbufferPayloadIndex].Aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+		mSubresourceMetadataPayloads[backbufferPayloadIndex].Layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		mSubresourceMetadataPayloads[backbufferPayloadIndex].Usage  = 0;
+		mSubresourceMetadataPayloads[backbufferPayloadIndex].Stage  = VK_PIPELINE_STAGE_NONE_KHR;
+		mSubresourceMetadataPayloads[backbufferPayloadIndex].Access = 0;
+		mSubresourceMetadataPayloads[backbufferPayloadIndex].Flags  = 0;
+	}
 }
 
 bool Vulkan::FrameGraphBuilder::IsReadSubresource(uint32_t subresourceInfoIndex)
@@ -495,177 +475,144 @@ bool Vulkan::FrameGraphBuilder::PropagateSubresourcePayloadDataHorizontally(cons
 
 void Vulkan::FrameGraphBuilder::CreateTextures()
 {
-	mVulkanGraphToBuild->mImages.clear();
-	uint32_t backbufferResourceIndex = mSubresourceMetadataNodesFlat[mPresentPassMetadata.SubresourceMetadataSpan.Begin + (size_t)PresentPassSubresourceId::Backbuffer].ResourceMetadataIndex;
+	mVulkanGraphToBuild->mImages.resize(mResourceMetadatas.size());
+	mVulkanGraphToBuild->mOwnedImageSpans.clear();
 
+
+	std::vector<VkBindImageMemoryInfo> bindImageMemoryInfos;
 	std::vector<VkImageMemoryBarrier> imageInitialStateBarriers; //Barriers to initialize images
+
+	uint32_t nextBackbufferImageIndex = 0;
+	TextureSourceType lastSourceType = TextureSourceType::Backbuffer;
 	for(uint32_t resourceMetadataIndex = 0; resourceMetadataIndex < mResourceMetadatas.size(); resourceMetadataIndex++)
 	{
-		if(resourceMetadataIndex == backbufferResourceIndex)
+		ResourceMetadata& textureMetadata = mResourceMetadatas[resourceMetadataIndex];
+
+		if(textureMetadata.SourceType == TextureSourceType::PassTexture)
 		{
-			continue; //Backbuffer is handled separately
+			std::array<uint32_t, 1> imageQueueIndices = {mDeviceQueues->GetGraphicsQueueFamilyIndex()};
+
+			VkImageCreateInfo imageCreateInfo;
+			imageCreateInfo.sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+			imageCreateInfo.pNext                 = nullptr;
+			imageCreateInfo.flags                 = 0;
+			imageCreateInfo.imageType             = VK_IMAGE_TYPE_2D;
+			imageCreateInfo.format                = VK_FORMAT_UNDEFINED;
+			imageCreateInfo.extent.width          = GetConfig()->GetViewportWidth();
+			imageCreateInfo.extent.height         = GetConfig()->GetViewportHeight();
+			imageCreateInfo.extent.depth          = 1;
+			imageCreateInfo.mipLevels             = 1;
+			imageCreateInfo.arrayLayers           = 1;
+			imageCreateInfo.samples               = VK_SAMPLE_COUNT_1_BIT;
+			imageCreateInfo.tiling                = VK_IMAGE_TILING_OPTIMAL;
+			imageCreateInfo.usage                 = 0;
+			imageCreateInfo.sharingMode           = VK_SHARING_MODE_EXCLUSIVE;
+			imageCreateInfo.queueFamilyIndexCount = (uint32_t)imageQueueIndices.size();
+			imageCreateInfo.pQueueFamilyIndices   = imageQueueIndices.data();
+			imageCreateInfo.initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED;
+
+			uint8_t formatChanges = 0;
+
+			uint32_t headNodeIndex    = textureMetadata.HeadNodeIndex;
+			uint32_t currentNodeIndex = headNodeIndex;
+			do
+			{
+				const SubresourceMetadataNode&    subresourceMetadata        = mSubresourceMetadataNodesFlat[currentNodeIndex];
+				const SubresourceMetadataPayload& subresourceMetadataPayload = mSubresourceMetadataPayloads[currentNodeIndex];
+
+				imageCreateInfo.usage |= subresourceMetadataPayload.Usage;
+
+				//TODO: mutable format lists
+				assert(subresourceMetadataPayload.Format != VK_FORMAT_UNDEFINED);
+				if(imageCreateInfo.format != subresourceMetadataPayload.Format)
+				{
+					assert(formatChanges < 255);
+					formatChanges++;
+
+					imageCreateInfo.format = subresourceMetadataPayload.Format;
+				}
+
+				assert(subresourceMetadataPayload.Layout != VK_IMAGE_LAYOUT_UNDEFINED);
+
+				currentNodeIndex = subresourceMetadata.NextPassNodeIndex;
+
+			} while(currentNodeIndex != headNodeIndex);
+
+
+			if(formatChanges > 1)
+			{
+				imageCreateInfo.flags |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
+			}
+
+			VkImage image = VK_NULL_HANDLE;
+			ThrowIfFailed(vkCreateImage(mVulkanGraphToBuild->mDeviceRef, &imageCreateInfo, nullptr, &image));
+			mVulkanGraphToBuild->mImages[resourceMetadataIndex] = image;
+
+			bindImageMemoryInfos.push_back(VkBindImageMemoryInfo
+			{
+				.sType        = VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO,
+				.pNext        = nullptr,
+				.image        = image,
+				.memory       = VK_NULL_HANDLE,
+				.memoryOffset = 0
+			});
+
+			if(lastSourceType != TextureSourceType::PassTexture)
+			{
+				mVulkanGraphToBuild->mOwnedImageSpans.push_back(Span<uint32_t>
+				{
+					.Begin = resourceMetadataIndex,
+					.End   = resourceMetadataIndex + 1
+				});
+			}
+			else
+			{
+				mVulkanGraphToBuild->mOwnedImageSpans.back().End += 1;
+			}
+		}
+		else if(textureMetadata.SourceType == TextureSourceType::Backbuffer)
+		{
+			mVulkanGraphToBuild->mImages[resourceMetadataIndex] = mSwapChain->GetSwapchainImage(nextBackbufferImageIndex);
+			nextBackbufferImageIndex++;
 		}
 
-		ResourceMetadata& textureMetadata = mResourceMetadatas[resourceMetadataIndex];
-		std::array<uint32_t, 1> imageQueueIndices = {mDeviceQueues->GetGraphicsQueueFamilyIndex()};
+		lastSourceType = textureMetadata.SourceType;
 
-		VkImageCreateInfo imageCreateInfo;
-		imageCreateInfo.sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-		imageCreateInfo.pNext                 = nullptr;
-		imageCreateInfo.flags                 = 0;
-		imageCreateInfo.imageType             = VK_IMAGE_TYPE_2D;
-		imageCreateInfo.format                = VK_FORMAT_UNDEFINED;
-		imageCreateInfo.extent.width          = GetConfig()->GetViewportWidth();
-		imageCreateInfo.extent.height         = GetConfig()->GetViewportHeight();
-		imageCreateInfo.extent.depth          = 1;
-		imageCreateInfo.mipLevels             = 1;
-		imageCreateInfo.arrayLayers           = 1;
-		imageCreateInfo.samples               = VK_SAMPLE_COUNT_1_BIT;
-		imageCreateInfo.tiling                = VK_IMAGE_TILING_OPTIMAL;
-		imageCreateInfo.usage                 = 0;
-		imageCreateInfo.sharingMode           = VK_SHARING_MODE_EXCLUSIVE;
-		imageCreateInfo.queueFamilyIndexCount = (uint32_t)imageQueueIndices.size();
-		imageCreateInfo.pQueueFamilyIndices   = imageQueueIndices.data();
-		imageCreateInfo.initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED;
+
+		uint32_t lastSubresourceNodeIndex = mSubresourceMetadataNodesFlat[textureMetadata.HeadNodeIndex].PrevPassNodeIndex;
+		const SubresourceMetadataNode&    lastSubresourceMetadata = mSubresourceMetadataNodesFlat[lastSubresourceNodeIndex];
+		const SubresourceMetadataPayload& lastSubresourcePayload  = mSubresourceMetadataPayloads[lastSubresourceNodeIndex];
 
 		VkImageMemoryBarrier imageInitialBarrier;
 		imageInitialBarrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 		imageInitialBarrier.pNext                           = nullptr;
 		imageInitialBarrier.srcAccessMask                   = 0;
-		imageInitialBarrier.dstAccessMask                   = 0;
+		imageInitialBarrier.dstAccessMask                   = lastSubresourcePayload.Access;
 		imageInitialBarrier.oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;
-		imageInitialBarrier.newLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;
-		imageInitialBarrier.srcQueueFamilyIndex             = imageQueueIndices[0]; //Resources were created with that queue ownership
-		imageInitialBarrier.dstQueueFamilyIndex             = imageQueueIndices[0];
-		imageInitialBarrier.image                           = VK_NULL_HANDLE;
-		imageInitialBarrier.subresourceRange.aspectMask     = 0;
+		imageInitialBarrier.newLayout                       = lastSubresourcePayload.Layout;
+		imageInitialBarrier.srcQueueFamilyIndex             = mDeviceQueues->GetGraphicsQueueFamilyIndex(); //Resources were created with that queue ownership
+		imageInitialBarrier.dstQueueFamilyIndex             = PassClassToQueueIndex(lastSubresourceMetadata.PassClass);
+		imageInitialBarrier.image                           = mVulkanGraphToBuild->mImages[resourceMetadataIndex];
+		imageInitialBarrier.subresourceRange.aspectMask     = lastSubresourcePayload.Aspect;
 		imageInitialBarrier.subresourceRange.baseMipLevel   = 0;
 		imageInitialBarrier.subresourceRange.levelCount     = VK_REMAINING_MIP_LEVELS;
 		imageInitialBarrier.subresourceRange.baseArrayLayer = 0;
 		imageInitialBarrier.subresourceRange.layerCount     = VK_REMAINING_ARRAY_LAYERS;
-
-
-		uint8_t formatChanges = 0;
-
-		uint32_t headNodeIndex    = textureMetadata.HeadNodeIndex;
-		uint32_t currentNodeIndex = headNodeIndex;
-		do
-		{
-			const SubresourceMetadataNode&    subresourceMetadata        = mSubresourceMetadataNodesFlat[currentNodeIndex];
-			const SubresourceMetadataPayload& subresourceMetadataPayload = mSubresourceMetadataPayloads[currentNodeIndex];
-
-			imageQueueIndices[0] = PassClassToQueueIndex(subresourceMetadata.PassClass);
-			imageCreateInfo.usage |= subresourceMetadataPayload.Usage;
-			
-			imageInitialBarrier.dstAccessMask               = subresourceMetadataPayload.Access;
-			imageInitialBarrier.dstQueueFamilyIndex         = PassClassToQueueIndex(subresourceMetadata.PassClass);
-			imageInitialBarrier.subresourceRange.aspectMask = subresourceMetadataPayload.Aspect;
-
-			//TODO: mutable format lists
-			assert(subresourceMetadataPayload.Format != VK_FORMAT_UNDEFINED);
-			if(imageCreateInfo.format != subresourceMetadataPayload.Format)
-			{
-				assert(formatChanges < 255);
-				formatChanges++;
-
-				imageCreateInfo.format = subresourceMetadataPayload.Format;
-			}
-
-			if(subresourceMetadataPayload.Layout != VK_FORMAT_UNDEFINED)
-			{
-				imageInitialBarrier.newLayout = subresourceMetadataPayload.Layout;
-			}
-
-			currentNodeIndex = subresourceMetadata.NextPassNodeIndex;
-
-		} while(currentNodeIndex != headNodeIndex);
-
-		if(formatChanges > 1)
-		{
-			imageCreateInfo.flags |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
-		}
-
-		uint32_t newImageIndex = (uint32_t)mVulkanGraphToBuild->mImages.size();
-		for(uint32_t frame = 0; frame < textureMetadata.FrameCount; frame++)
-		{
-			VkImage image = VK_NULL_HANDLE;
-			ThrowIfFailed(vkCreateImage(mVulkanGraphToBuild->mDeviceRef, &imageCreateInfo, nullptr, &image));
-
-			imageInitialBarrier.image = image;
-			imageInitialStateBarriers.push_back(imageInitialBarrier);
+		
+		imageInitialStateBarriers[resourceMetadataIndex] = imageInitialBarrier;
 
 #if defined(DEBUG) || defined(_DEBUG)
-			if(mInstanceParameters->IsDebugUtilsExtensionEnabled())
-			{
-				if(textureMetadata.FrameCount == 1)
-				{
-					VulkanUtils::SetDebugObjectName(mVulkanGraphToBuild->mDeviceRef, image, textureMetadata.Name);
-				}
-				else
-				{
-					VulkanUtils::SetDebugObjectName(mVulkanGraphToBuild->mDeviceRef, image, textureMetadata.Name + std::to_string(frame));
-				}
-			}
-#endif
+		if(mInstanceParameters->IsDebugUtilsExtensionEnabled())
+		{
+			VulkanUtils::SetDebugObjectName(mVulkanGraphToBuild->mDeviceRef, mVulkanGraphToBuild->mImages[resourceMetadataIndex], textureMetadata.Name);
 		}
-
-		textureMetadata.FirstFrameHandle = newImageIndex;
+#endif
 	}
 
 
 	//Allocate the memory
 	SafeDestroyObject(vkFreeMemory, mVulkanGraphToBuild->mDeviceRef, mVulkanGraphToBuild->mImageMemory);
-
-	std::vector<VkDeviceSize> textureMemoryOffsets;
-	mVulkanGraphToBuild->mImageMemory = mMemoryManager->AllocateImagesMemory(mVulkanGraphToBuild->mDeviceRef, mVulkanGraphToBuild->mImages, textureMemoryOffsets);
-
-	std::vector<VkBindImageMemoryInfo> bindImageMemoryInfos(mVulkanGraphToBuild->mImages.size());
-	for(size_t i = 0; i < mVulkanGraphToBuild->mImages.size(); i++)
-	{
-		//TODO: mGPU?
-		bindImageMemoryInfos[i].sType        = VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO;
-		bindImageMemoryInfos[i].pNext        = nullptr;
-		bindImageMemoryInfos[i].memory       = mVulkanGraphToBuild->mImageMemory;
-		bindImageMemoryInfos[i].memoryOffset = textureMemoryOffsets[i];
-		bindImageMemoryInfos[i].image        = mVulkanGraphToBuild->mImages[i];
-	}
-
-	ThrowIfFailed(vkBindImageMemory2(mVulkanGraphToBuild->mDeviceRef, (uint32_t)(bindImageMemoryInfos.size()), bindImageMemoryInfos.data()));
-
-
-	//Process the backbuffer
-	ResourceMetadata& backbufferMetadata = mResourceMetadatas[backbufferResourceIndex];
-
-	uint32_t backbufferImageIndex = (uint32_t)mVulkanGraphToBuild->mImages.size();
-	backbufferMetadata.FirstFrameHandle = backbufferImageIndex;
-	for(uint32_t frame = 0; frame < backbufferMetadata.FrameCount; frame++)
-	{
-		VkImage swapchainImage = mSwapChain->GetSwapchainImage(frame);
-
-#if defined(DEBUG) || defined(_DEBUG)
-		VulkanUtils::SetDebugObjectName(mVulkanGraphToBuild->mDeviceRef, swapchainImage, backbufferMetadata.Name + std::to_string(frame));
-#endif
-
-		VkImageMemoryBarrier imageBarrier;
-		imageBarrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-		imageBarrier.pNext                           = nullptr;
-		imageBarrier.srcAccessMask                   = 0;
-		imageBarrier.dstAccessMask                   = 0;
-		imageBarrier.oldLayout                       = VK_IMAGE_LAYOUT_UNDEFINED;
-		imageBarrier.newLayout                       = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-		imageBarrier.srcQueueFamilyIndex             = 0; 
-		imageBarrier.dstQueueFamilyIndex             = PassClassToQueueIndex(RenderPassClass::Present);
-		imageBarrier.image                           = swapchainImage;
-		imageBarrier.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-		imageBarrier.subresourceRange.baseMipLevel   = 0;
-		imageBarrier.subresourceRange.levelCount     = VK_REMAINING_MIP_LEVELS;
-		imageBarrier.subresourceRange.baseArrayLayer = 0;
-		imageBarrier.subresourceRange.layerCount     = VK_REMAINING_ARRAY_LAYERS;
-
-		mVulkanGraphToBuild->mImages.push_back(swapchainImage);
-		imageInitialStateBarriers.push_back(imageBarrier);
-	}
-
+	mVulkanGraphToBuild->mImageMemory = mMemoryManager->AllocateImagesMemory(mVulkanGraphToBuild->mDeviceRef, bindImageMemoryInfos);
 
 	//Barrier the images
 	VkCommandPool   graphicsCommandPool   = mWorkerCommandBuffers->GetMainThreadGraphicsCommandPool(0);
@@ -699,8 +646,10 @@ void Vulkan::FrameGraphBuilder::CreateTextures()
 void Vulkan::FrameGraphBuilder::CreateTextureViews()
 {
 	mVulkanGraphToBuild->mImageViews.clear();
-	for(const ResourceMetadata& resourceMetadata: mResourceMetadatas)
+	for(uint32_t resourceMetadataIndex = 0; resourceMetadataIndex < mResourceMetadatas.size(); resourceMetadataIndex++)
 	{
+		const ResourceMetadata& resourceMetadata = mResourceMetadatas[resourceMetadataIndex];
+
 		std::unordered_map<uint64_t, uint32_t> imageViewIndicesForViewInfos; //To only create different image views if the format + aspect flags differ
 
 		uint32_t headNodeIndex = resourceMetadata.HeadNodeIndex;
@@ -721,20 +670,16 @@ void Vulkan::FrameGraphBuilder::CreateTextureViews()
 			auto imageViewIt = imageViewIndicesForViewInfos.find(viewInfoKey);
 			if(imageViewIt != imageViewIndicesForViewInfos.end())
 			{
-				subresourceMetadata.FirstFrameViewHandle = imageViewIt->second;
+				subresourceMetadata.ImageViewHandle = imageViewIt->second;
 			}
 			else
 			{
 				uint32_t newImageViewIndex = (uint32_t)mVulkanGraphToBuild->mImageViews.size();
-				mVulkanGraphToBuild->mImageViews.resize(mVulkanGraphToBuild->mImageViews.size() + resourceMetadata.FrameCount);
 
-				for(uint32_t frameIndex = 0; frameIndex < resourceMetadata.FrameCount; frameIndex++)
-				{
-					VkImage image = mVulkanGraphToBuild->mImages[resourceMetadata.FirstFrameHandle + frameIndex];
-					mVulkanGraphToBuild->mImageViews[newImageViewIndex + frameIndex] = CreateImageView(image, subresourceMetadataPayload.Format, subresourceMetadataPayload.Aspect);
-				}
+				VkImage image = mVulkanGraphToBuild->mImages[resourceMetadataIndex];
+				mVulkanGraphToBuild->mImageViews.push_back(CreateImageView(image, subresourceMetadataPayload.Format, subresourceMetadataPayload.Aspect));
 
-				subresourceMetadata.FirstFrameViewHandle  = newImageViewIndex;
+				subresourceMetadata.ImageViewHandle       = newImageViewIndex;
 				imageViewIndicesForViewInfos[viewInfoKey] = newImageViewIndex;
 			}
 			
@@ -744,26 +689,12 @@ void Vulkan::FrameGraphBuilder::CreateTextureViews()
 	}
 }
 
-void Vulkan::FrameGraphBuilder::CreateObjectsForPass(uint32_t passMetadataIndex, uint32_t passSwapchainImageCount)
+void Vulkan::FrameGraphBuilder::BuildPassObjects()
 {
-	uint32_t oldPassCount = (uint32_t)mVulkanGraphToBuild->mRenderPasses.size();
-
-	const PassMetadata& passMetadata = mPassMetadatas[passMetadataIndex];
-	for(uint32_t swapchainImageIndex = 0; swapchainImageIndex < passSwapchainImageCount; swapchainImageIndex++)
+	for(uint32_t passIndex = mRenderPassMetadataSpan.Begin; passIndex < mRenderPassMetadataSpan.End; passIndex++)
 	{
-		for(uint32_t passFrame = 0; passFrame < passMetadata.OwnPeriod; passFrame++)
-		{
-			uint32_t frame = passMetadata.OwnPeriod * swapchainImageIndex + passFrame;
-			
-			mVulkanGraphToBuild->mRenderPasses.emplace_back(MakeUniquePass(passMetadata.Type, this, passMetadataIndex, frame));
-		}
+		mVulkanGraphToBuild->mRenderPasses.emplace_back(MakeUniquePass(mTotalPassMetadatas[passIndex].Type, this, passIndex));
 	}
-
-	ModernFrameGraph::RenderPassSpanInfo passSpanInfo;
-	passSpanInfo.PassSpanBegin = oldPassCount;
-	passSpanInfo.OwnFrames     = passMetadata.OwnPeriod;
-
-	mVulkanGraphToBuild->mPassFrameSpans.push_back(passSpanInfo);
 }
 
 void Vulkan::FrameGraphBuilder::AddBeforePassBarriers(const PassMetadata& passMetadata, uint32_t barrierSpanIndex)
@@ -777,8 +708,6 @@ void Vulkan::FrameGraphBuilder::AddBeforePassBarriers(const PassMetadata& passMe
 
 		const SubresourceMetadataPayload& currMetadataPayload = mSubresourceMetadataPayloads[metadataIndex];
 		const SubresourceMetadataPayload& prevMetadataPayload = mSubresourceMetadataPayloads[currMetadataNode.PrevPassNodeIndex];
-
-		const ResourceMetadata& resourceMetadata = mResourceMetadatas[currMetadataNode.ResourceMetadataIndex];
 
 		if(!(currMetadataPayload.Flags & TextureFlagAutoBeforeBarrier) && !(prevMetadataPayload.Flags & TextureFlagAutoAfterBarrier))
 		{
@@ -819,7 +748,7 @@ void Vulkan::FrameGraphBuilder::AddBeforePassBarriers(const PassMetadata& passMe
 				imageMemoryBarrier.newLayout                       = currMetadataPayload.Layout;
 				imageMemoryBarrier.srcQueueFamilyIndex             = PassClassToQueueIndex(prevMetadataNode.PassClass);
 				imageMemoryBarrier.dstQueueFamilyIndex             = PassClassToQueueIndex(currMetadataNode.PassClass);
-				imageMemoryBarrier.image                           = mVulkanGraphToBuild->mImages[resourceMetadata.FirstFrameHandle];
+				imageMemoryBarrier.image                           = mVulkanGraphToBuild->mImages[currMetadataNode.ResourceMetadataIndex];
 				imageMemoryBarrier.subresourceRange.aspectMask     = prevMetadataPayload.Aspect | currMetadataPayload.Aspect;
 				imageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
 				imageMemoryBarrier.subresourceRange.layerCount     = 1;
@@ -827,18 +756,6 @@ void Vulkan::FrameGraphBuilder::AddBeforePassBarriers(const PassMetadata& passMe
 				imageMemoryBarrier.subresourceRange.levelCount     = 1;
 
 				mVulkanGraphToBuild->mImageBarriers.push_back(imageMemoryBarrier);
-
-				if(resourceMetadata.FrameCount > 1)
-				{
-					uint32_t newBarrierIndex = (uint32_t)(mVulkanGraphToBuild->mImageBarriers.size() - 1);
-
-					ModernFrameGraph::MultiframeBarrierInfo multiframeBarrierInfo;
-					multiframeBarrierInfo.BarrierIndex  = newBarrierIndex;
-					multiframeBarrierInfo.BaseTexIndex  = resourceMetadata.FirstFrameHandle;
-					multiframeBarrierInfo.TexturePeriod = resourceMetadata.FrameCount;
-
-					mVulkanGraphToBuild->mMultiframeBarrierInfos.push_back(multiframeBarrierInfo);
-				}
 			}
 		}
 	}
@@ -857,8 +774,6 @@ void Vulkan::FrameGraphBuilder::AddAfterPassBarriers(const PassMetadata& passMet
 
 		const SubresourceMetadataPayload& currMetadataPayload = mSubresourceMetadataPayloads[metadataIndex];
 		const SubresourceMetadataPayload& nextMetadataPayload = mSubresourceMetadataPayloads[currMetadataNode.NextPassNodeIndex];
-
-		const ResourceMetadata& resourceMetadata = mResourceMetadatas[currMetadataNode.ResourceMetadataIndex];
 
 		if(!(currMetadataPayload.Flags & TextureFlagAutoAfterBarrier) && !(nextMetadataPayload.Flags & TextureFlagAutoBeforeBarrier))
 		{
@@ -898,7 +813,7 @@ void Vulkan::FrameGraphBuilder::AddAfterPassBarriers(const PassMetadata& passMet
 				imageMemoryBarrier.newLayout                       = nextMetadataPayload.Layout;
 				imageMemoryBarrier.srcQueueFamilyIndex             = PassClassToQueueIndex(currMetadataNode.PassClass);
 				imageMemoryBarrier.dstQueueFamilyIndex             = PassClassToQueueIndex(nextMetadataNode.PassClass);
-				imageMemoryBarrier.image                           = mVulkanGraphToBuild->mImages[resourceMetadata.FirstFrameHandle];
+				imageMemoryBarrier.image                           = mVulkanGraphToBuild->mImages[currMetadataNode.ResourceMetadataIndex];
 				imageMemoryBarrier.subresourceRange.aspectMask     = currMetadataPayload.Aspect | nextMetadataPayload.Aspect;
 				imageMemoryBarrier.subresourceRange.baseArrayLayer = 0;
 				imageMemoryBarrier.subresourceRange.layerCount     = 1;
@@ -906,18 +821,6 @@ void Vulkan::FrameGraphBuilder::AddAfterPassBarriers(const PassMetadata& passMet
 				imageMemoryBarrier.subresourceRange.levelCount     = 1;
 
 				mVulkanGraphToBuild->mImageBarriers.push_back(imageMemoryBarrier);
-
-				if(resourceMetadata.FrameCount > 1)
-				{
-					uint32_t newBarrierIndex = (uint32_t)(mVulkanGraphToBuild->mImageBarriers.size() - 1);
-
-					ModernFrameGraph::MultiframeBarrierInfo multiframeBarrierInfo;
-					multiframeBarrierInfo.BarrierIndex  = newBarrierIndex;
-					multiframeBarrierInfo.BaseTexIndex  = resourceMetadata.FirstFrameHandle;
-					multiframeBarrierInfo.TexturePeriod = resourceMetadata.FrameCount;
-
-					mVulkanGraphToBuild->mMultiframeBarrierInfos.push_back(multiframeBarrierInfo);
-				}
 			}
 		}
 	}
@@ -927,14 +830,7 @@ void Vulkan::FrameGraphBuilder::AddAfterPassBarriers(const PassMetadata& passMet
 
 void Vulkan::FrameGraphBuilder::InitializeTraverseData() const
 {
-	mVulkanGraphToBuild->mFrameRecordedGraphicsCommandBuffers.resize(mVulkanGraphToBuild->mGraphicsPassSpans.size());
-
-	//Add a plug present pass
-	mVulkanGraphToBuild->mPassFrameSpans.push_back(ModernFrameGraph::RenderPassSpanInfo
-	{
-		.PassSpanBegin = (uint32_t)mVulkanGraphToBuild->mRenderPasses.size(),
-		.OwnFrames     = 0
-	});
+	mVulkanGraphToBuild->mFrameRecordedGraphicsCommandBuffers.resize(mVulkanGraphToBuild->mGraphicsPassSpansPerDependencyLevel.size());
 }
 
 uint32_t Vulkan::FrameGraphBuilder::GetSwapchainImageCount() const

@@ -32,36 +32,28 @@ const FrameGraphConfig* ModernFrameGraphBuilder::GetConfig() const
 	return &mGraphToBuild->mFrameGraphConfig;
 }
 
-const Span<uint32_t> ModernFrameGraphBuilder::GetBackbufferImageSpan() const
-{
-	return mGraphToBuild->mBackbufferImageSpan;
-}
-
 void ModernFrameGraphBuilder::RegisterPasses(const std::unordered_map<RenderPassName, RenderPassType>& renderPassTypes, const std::vector<SubresourceNamingInfo>& subresourceNames, const ResourceName& backbufferName)
 {
 	InitPassList(renderPassTypes);
 	InitSubresourceList(subresourceNames, backbufferName);
-	InitMetadataPayloads();
 }
 
 void ModernFrameGraphBuilder::InitPassList(const std::unordered_map<RenderPassName, RenderPassType>& renderPassTypes)
 {
-	mPassMetadatas.reserve(renderPassTypes.size());
+	mTotalPassMetadatas.reserve(renderPassTypes.size() + 1);
 	for(const auto& passNameWithType: renderPassTypes)
 	{
 		uint32_t currentMetadataNodeCount = (uint32_t)mSubresourceMetadataNodesFlat.size();
 		uint32_t newMetadataNodeCount     = currentMetadataNodeCount + GetPassSubresourceCount(passNameWithType.second);
 
-		mPassMetadatas.push_back(PassMetadata
+		mTotalPassMetadatas.push_back(PassMetadata
 		{
 			.Name = passNameWithType.first,
 
 			.Class = GetPassClass(passNameWithType.second),
 			.Type  = passNameWithType.second,
 
-			.DependencyLevel = 0,
-			.OwnPeriod       = 1,
-
+			.DependencyLevel         = 0,
 			.SubresourceMetadataSpan =
 			{
 				.Begin = currentMetadataNodeCount,
@@ -75,37 +67,40 @@ void ModernFrameGraphBuilder::InitPassList(const std::unordered_map<RenderPassNa
 			.NextPassNodeIndex     = (uint32_t)(-1),
 			.ResourceMetadataIndex = (uint32_t)(-1),
 
-			.FirstFrameViewHandle = (uint32_t)(-1),
-			.PassClass            = mPassMetadatas.back().Class,
+			.ImageViewHandle = (uint32_t)(-1),
+			.PassClass       = mTotalPassMetadatas.back().Class,
 		});
 	}
+
+	mRenderPassMetadataSpan  = {0,                                    (uint32_t)mTotalPassMetadatas.size()};
+	mPresentPassMetadataSpan = {(uint32_t)mTotalPassMetadatas.size(), (uint32_t)(mTotalPassMetadatas.size() + 1)};
 	
 	static_assert((uint32_t)PresentPassSubresourceId::Count == 1);
-	mPresentPassMetadata = PassMetadata
+	Span<uint32_t> presentSubresourceSpan =
+	{
+		.Begin = (uint32_t)mSubresourceMetadataNodesFlat.size(),
+		.End   = (uint32_t)(mSubresourceMetadataNodesFlat.size() + (size_t)PresentPassSubresourceId::Count)
+	};
+
+	mTotalPassMetadatas.push_back(PassMetadata
 	{
 		.Name = RenderPassName(PresentPassName),
 
 		.Class = RenderPassClass::Present,
 		.Type  = RenderPassType::None,
 
-		.DependencyLevel = 0,
-		.OwnPeriod       = 1,
+		.DependencyLevel         = 0,
+		.SubresourceMetadataSpan = presentSubresourceSpan
+	});
 
-		.SubresourceMetadataSpan =
-		{
-			.Begin = (uint32_t)mSubresourceMetadataNodesFlat.size(),
-			.End   = (uint32_t)(mSubresourceMetadataNodesFlat.size() + (size_t)PresentPassSubresourceId::Count)
-		}
-	};
-
-	mSubresourceMetadataNodesFlat.resize(mPresentPassMetadata.SubresourceMetadataSpan.End, SubresourceMetadataNode
+	mSubresourceMetadataNodesFlat.resize(presentSubresourceSpan.End, SubresourceMetadataNode
 	{
 		.PrevPassNodeIndex     = (uint32_t)(-1),
 		.NextPassNodeIndex     = (uint32_t)(-1),
 		.ResourceMetadataIndex = (uint32_t)(-1),
 
-		.FirstFrameViewHandle = (uint32_t)(-1),
-		.PassClass            = RenderPassClass::Present,
+		.ImageViewHandle = (uint32_t)(-1),
+		.PassClass       = RenderPassClass::Present,
 	});
 }
 
@@ -113,9 +108,9 @@ void ModernFrameGraphBuilder::InitSubresourceList(const std::vector<SubresourceN
 {
 	std::unordered_set<RenderPassType> uniquePassTypes;
 	std::unordered_map<RenderPassName, uint32_t> passMetadataIndices;
-	for(uint32_t passMetadataIndex = 0; passMetadataIndex < (uint32_t)mPassMetadatas.size(); passMetadataIndex++)
+	for(uint32_t passMetadataIndex = mRenderPassMetadataSpan.Begin; passMetadataIndex < mRenderPassMetadataSpan.End; passMetadataIndex++)
 	{
-		const PassMetadata& passMetadata = mPassMetadatas[passMetadataIndex];
+		const PassMetadata& passMetadata = mTotalPassMetadatas[passMetadataIndex];
 
 		uniquePassTypes.insert(passMetadata.Type);
 		passMetadataIndices[passMetadata.Name] = passMetadataIndex;
@@ -137,7 +132,7 @@ void ModernFrameGraphBuilder::InitSubresourceList(const std::vector<SubresourceN
 		uint32_t passIndex = passMetadataIndices[subresourceNaming.PassName];
 
 		uint_fast16_t passSubresourceIndex = passSubresourceIndices.at(subresourceNaming.PassSubresourceId);
-		uint32_t      flatMetadataIndex    = mPassMetadatas[passIndex].SubresourceMetadataSpan.Begin + passSubresourceIndex;
+		uint32_t      flatMetadataIndex    = mTotalPassMetadatas[passIndex].SubresourceMetadataSpan.Begin + passSubresourceIndex;
 		
 		uint32_t subresourceFrameCount = 1; //TODO: per-subresource frame count
 
@@ -147,22 +142,15 @@ void ModernFrameGraphBuilder::InitSubresourceList(const std::vector<SubresourceN
 			uint32_t resourceMetadataIndex = resourceMetadataIt->second;
 
 			mSubresourceMetadataNodesFlat[flatMetadataIndex].ResourceMetadataIndex = resourceMetadataIndex;
-
-			//Frame count for all nodes should be the same. As for calculating the value, we can do it
-			//two ways: with max or with lcm. Since it's only related to a single resource, swapping 
-			//can be made as fine with 3 ping-pong data as with 2. So max will suffice
-			mResourceMetadatas[resourceMetadataIndex].FrameCount = std::max(mResourceMetadatas[resourceMetadataIndex].FrameCount, subresourceFrameCount);
 		}
 		else
 		{
 			resourceMetadataIndices[subresourceNaming.PassSubresourceName] = (uint32_t)mResourceMetadatas.size();
 			mResourceMetadatas.push_back(ResourceMetadata
 			{
-				.Name = subresourceNaming.PassSubresourceName,
-
-				.HeadNodeIndex    = (uint32_t)(-1),
-				.FirstFrameHandle = (uint32_t)(-1),
-				.FrameCount       = subresourceFrameCount
+				.Name          = subresourceNaming.PassSubresourceName,
+				.SourceType    = TextureSourceType::PassTexture,
+				.HeadNodeIndex = (uint32_t)(-1)
 			});
 
 			mSubresourceMetadataNodesFlat[flatMetadataIndex].ResourceMetadataIndex = (uint32_t)(mResourceMetadatas.size() - 1);
@@ -172,15 +160,15 @@ void ModernFrameGraphBuilder::InitSubresourceList(const std::vector<SubresourceN
 	
 	ResourceMetadata backbufferResourceMetadata = 
 	{
-		.Name = backbufferName,
-
-		.HeadNodeIndex    = (uint32_t)(-1),
-		.FirstFrameHandle = (uint32_t)(-1),
-		.FrameCount       = GetSwapchainImageCount()
+		.Name          = backbufferName,
+		.SourceType    = TextureSourceType::Backbuffer,
+		.HeadNodeIndex = (uint32_t)(-1)
 	};
 
 	mResourceMetadatas.push_back(backbufferResourceMetadata);
-	mSubresourceMetadataNodesFlat[mPresentPassMetadata.SubresourceMetadataSpan.Begin + (size_t)PresentPassSubresourceId::Backbuffer].ResourceMetadataIndex = (uint32_t)(mResourceMetadatas.size() - 1);
+
+	const PassMetadata& presentPassMetadata = mTotalPassMetadatas[mPresentPassMetadataSpan.Begin];
+	mSubresourceMetadataNodesFlat[presentPassMetadata.SubresourceMetadataSpan.Begin + (size_t)PresentPassSubresourceId::Backbuffer].ResourceMetadataIndex = (uint32_t)(mResourceMetadatas.size() - 1);
 }
 
 void ModernFrameGraphBuilder::SortPasses()
@@ -202,8 +190,10 @@ void ModernFrameGraphBuilder::SortPasses()
 
 void ModernFrameGraphBuilder::BuildReadWriteSubresourceSpans(std::vector<std::span<std::uint32_t>>& outReadIndexSpans, std::vector<std::span<std::uint32_t>>& outWriteIndexSpans, std::vector<uint32_t>& outIndicesFlat)
 {
-	for(const PassMetadata& renderPassMetadata: mPassMetadatas)
+	for(uint32_t passMetadataIndex = mRenderPassMetadataSpan.Begin; passMetadataIndex < mRenderPassMetadataSpan.End; passMetadataIndex++)
 	{
+		const PassMetadata& renderPassMetadata = mTotalPassMetadatas[passMetadataIndex];
+
 		std::span<uint32_t> readSpan  = {outIndicesFlat.end(), outIndicesFlat.end()};
 		std::span<uint32_t> writeSpan = {outIndicesFlat.end(), outIndicesFlat.end()};
 
@@ -239,12 +229,12 @@ void ModernFrameGraphBuilder::BuildAdjacencyList(const std::vector<std::span<uin
 	outAdjacencyList.clear();
 	outAdjacentPassIndicesFlat.clear();
 
-	for(uint32_t writePassIndex = 0; writePassIndex < mPassMetadatas.size(); writePassIndex++)
+	for(uint32_t writePassIndex = 0; writePassIndex < sortedwriteNameSpansPerPass.size(); writePassIndex++)
 	{
 		std::span<uint32_t> writtenResourceIndices = sortedwriteNameSpansPerPass[writePassIndex];
 
 		auto spanStart = outAdjacentPassIndicesFlat.end();
-		for(uint32_t readPassIndex = 0; readPassIndex < mPassMetadatas.size(); readPassIndex++)
+		for(uint32_t readPassIndex = 0; readPassIndex < sortedReadNameSpansPerPass.size(); readPassIndex++)
 		{
 			if(readPassIndex == writePassIndex)
 			{
@@ -291,14 +281,14 @@ bool ModernFrameGraphBuilder::SpansIntersect(const std::span<uint32_t> leftSorte
 
 void ModernFrameGraphBuilder::AssignDependencyLevels(const std::vector<std::span<uint32_t>>& adjacencyList)
 {
-	for(uint32_t passIndex = 0; passIndex < mPassMetadatas.size(); passIndex++)
+	for(uint32_t passIndex = mRenderPassMetadataSpan.Begin; passIndex < mRenderPassMetadataSpan.End; passIndex++)
 	{
-		uint32_t mainPassDependencyLevel = mPassMetadatas[passIndex].DependencyLevel;
+		uint32_t mainPassDependencyLevel = mTotalPassMetadatas[passIndex].DependencyLevel;
 
 		const std::span<uint32_t> adjacentPassIndices = adjacencyList.at(passIndex);
 		for(const uint32_t adjacentPassIndex: adjacentPassIndices)
 		{
-			mPassMetadatas[adjacentPassIndex].DependencyLevel = std::max(mPassMetadatas[adjacentPassIndex].DependencyLevel, mainPassDependencyLevel + 1);
+			mTotalPassMetadatas[adjacentPassIndex].DependencyLevel = std::max(mTotalPassMetadatas[adjacentPassIndex].DependencyLevel, mainPassDependencyLevel + 1);
 		}
 	}
 }
@@ -306,17 +296,17 @@ void ModernFrameGraphBuilder::AssignDependencyLevels(const std::vector<std::span
 void ModernFrameGraphBuilder::SortRenderPassesByTopology(const std::vector<std::span<uint32_t>>& unsortedPassAdjacencyList)
 {
 	std::vector<PassMetadata> sortedPasses;
-	sortedPasses.reserve(mPassMetadatas.size());
+	sortedPasses.reserve(mRenderPassMetadataSpan.End - mRenderPassMetadataSpan.Begin);
 
-	std::vector<uint8_t> traversalMarkFlags(mPassMetadatas.size(), 0);
-	for(uint32_t passIndex = 0; passIndex < mPassMetadatas.size(); passIndex++)
+	std::vector<uint8_t> traversalMarkFlags(mRenderPassMetadataSpan.End - mRenderPassMetadataSpan.Begin, 0);
+	for(uint32_t passIndex = 0; passIndex < unsortedPassAdjacencyList.size(); passIndex++)
 	{
 		TopologicalSortNode(passIndex, unsortedPassAdjacencyList, traversalMarkFlags, sortedPasses);
 	}
 	
 	for(size_t i = 0; i < sortedPasses.size(); i++) //Reverse the order and save the sorted order
 	{
-		mPassMetadatas[i] = sortedPasses[sortedPasses.size() - i - 1];
+		mTotalPassMetadatas[mRenderPassMetadataSpan.Begin + i] = sortedPasses[sortedPasses.size() - i - 1];
 	}
 }
 
@@ -343,12 +333,12 @@ void ModernFrameGraphBuilder::TopologicalSortNode(uint32_t passIndex, const std:
 	}
 
 	inoutTraversalMarkFlags[passIndex] &= (~OnStackFlag);
-	inoutSortedPasses.push_back(mPassMetadatas[passIndex]);
+	inoutSortedPasses.push_back(mTotalPassMetadatas[mRenderPassMetadataSpan.Begin + passIndex]);
 }
 
 void ModernFrameGraphBuilder::SortRenderPassesByDependency()
 {
-	std::stable_sort(mPassMetadatas.begin(), mPassMetadatas.end(), [](const PassMetadata& left, const PassMetadata& right)
+	std::stable_sort(mTotalPassMetadatas.begin() + mRenderPassMetadataSpan.Begin, mTotalPassMetadatas.begin() + mRenderPassMetadataSpan.End, [](const PassMetadata& left, const PassMetadata& right)
 	{
 		return left.DependencyLevel < right.DependencyLevel;
 	});
@@ -357,119 +347,10 @@ void ModernFrameGraphBuilder::SortRenderPassesByDependency()
 void ModernFrameGraphBuilder::InitAugmentedData()
 {
 	AdjustPassClasses();
-	PropagateSubresourcePassClasses();
 	BuildPassSpans();	
 
-	struct TextureRemapInfo
-	{
-		uint32_t BaseTextureIndex;
-		uint32_t FrameCount;
-	};
-
-	std::vector<TextureRemapInfo> resourceRemapInfos(mResourceMetadatas.size(), {.BaseTextureIndex = (uint32_t)(-1), .FrameCount = 1});
-	for(const PassMetadata& passMetadata: mPassMetadatas)
-	{
-		for(uint32_t subresourceIndex = passMetadata.SubresourceMetadataSpan.Begin; subresourceIndex < passMetadata.SubresourceMetadataSpan.End; subresourceIndex++)
-		{
-			uint32_t resourceFrameCount = GetPassSubresourceFrameCount(resourceFrameCount);
-
-			uint32_t resourceIndex = mSubresourceMetadataNodesFlat[subresourceIndex].ResourceMetadataIndex;
-			assert(resourceRemapInfos[resourceIndex].FrameCount == 1 || resourceFrameCount == 1); //Do not allow M -> N connections between passes
-
-			resourceRemapInfos[resourceIndex].FrameCount = std::lcm(resourceRemapInfos[resourceIndex].FrameCount, resourceFrameCount);
-		}
-	}
-
-	std::vector<ResourceMetadata> amplifiedResources;
-	for(uint32_t resourceIndex = 0; resourceIndex < mResourceMetadatas.size(); resourceIndex++)
-	{
-		resourceRemapInfos[resourceIndex].BaseTextureIndex = (uint32_t)amplifiedResources.size();
-		for(uint32_t frameIndex = 0; frameIndex < resourceRemapInfos[resourceIndex].FrameCount; frameIndex++)
-		{
-			amplifiedResources.push_back(ResourceMetadata
-			{
-				.Name          = mResourceMetadatas[resourceIndex].Name + "#" + frameIndex,
-				.HeadNodeIndex = (uint32_t)(-1),
-				.ImageHandle   = (uint32_t)(-1)
-			});
-		}
-	}
-
-	uint32_t backbufferResourceIndex = mSubresourceMetadataNodesFlat[mPresentPassMetadata.SubresourceMetadataSpan.Begin].ResourceMetadataIndex;
-
-	std::vector<PassMetadata>            amplifiedPassMetadatas;
-	std::vector<SubresourceMetadataNode> amplifiedSubresourceMetadatas;
-	for(uint32_t passIndex = 0; passIndex < mPassMetadatas.size(); passIndex++)
-	{
-		const PassMetadata& passMetadata = mPassMetadatas[passIndex];
-
-		RenderPassFrameSwapType swapType = RenderPassFrameSwapType::Constant;
-
-		uint32_t passFrameCount = 1;
-		for(uint32_t subresourceIndex = passMetadata.SubresourceMetadataSpan.Begin; subresourceIndex < passMetadata.SubresourceMetadataSpan.End; subresourceIndex++)
-		{
-			uint32_t resourceIndex = mSubresourceMetadataNodesFlat[subresourceIndex].ResourceMetadataIndex;
-			passFrameCount = std::lcm(resourceRemapInfos[resourceIndex].FrameCount, passFrameCount);
-
-			RenderPassFrameSwapType resourceType = RenderPassFrameSwapType::Constant;
-			if(resourceRemapInfos[resourceIndex].FrameCount > 1)
-			{
-				if(resourceIndex == backbufferResourceIndex)
-				{
-					resourceType = RenderPassFrameSwapType::PerBackbufferImage;
-				}
-				else
-				{
-					resourceType = RenderPassFrameSwapType::PerLinearFrame;
-				}
-
-				//Do not allow resources with different swap types
-				assert(swapType == RenderPassFrameSwapType::Constant || resourceType == swapType);
-				swapType = resourceType;
-			}
-		}
-
-		mGraphToBuild->mFrameSpansPerRenderPass.push_back
-		({
-			.Begin    = (uint32_t)amplifiedPassMetadatas.size(),
-			.End      = (uint32_t)amplifiedPassMetadatas.size() + passFrameCount,
-			.SwapType = swapType
-		});
-
-		uint32_t passSubresourceCount = passMetadata.SubresourceMetadataSpan.End - passMetadata.SubresourceMetadataSpan.Begin;
-		for(uint32_t passFrameIndex = 0; passFrameIndex < passFrameCount; passFrameIndex++)
-		{
-			Span<uint32_t> newSubresourceMetadataSpan = Span<uint32_t>
-			{
-				.Begin = (uint32_t)(amplifiedSubresourceMetadatas.size()),
-				.End   = (uint32_t)(amplifiedSubresourceMetadatas.size() + passSubresourceCount)
-			};
-
-			amplifiedPassMetadatas.push_back(PassMetadata
-			{
-				.Name                    = passMetadata.Name + "#" + std::to_string(passFrameIndex),
-				.Class                   = passMetadata.Class,
-				.Type                    = passMetadata.Type,
-				.DependencyLevel         = passMetadata.DependencyLevel,
-				.SubresourceMetadataSpan = newSubresourceMetadataSpan
-			});
-
-			for(uint32_t subresourceIndex = passMetadata.SubresourceMetadataSpan.Begin; subresourceIndex < passMetadata.SubresourceMetadataSpan.End; subresourceIndex++)
-			{
-				uint32_t newSubresourceIndex = newSubresourceMetadataSpan.Begin + (subresourceIndex - passMetadata.SubresourceMetadataSpan.Begin);
-
-				uint32_t oldResourceIndex = mSubresourceMetadataNodesFlat[subresourceIndex].ResourceMetadataIndex;
-				amplifiedSubresourceMetadatas[newSubresourceIndex] = SubresourceMetadataNode
-				{
-					.PrevPassNodeIndex     = (uint32_t)(-1),
-					.NextPassNodeIndex     = (uint32_t)(-1),
-					.ResourceMetadataIndex = resourceRemapInfos[oldResourceIndex].BaseTextureIndex + passFrameIndex % resourceRemapInfos[oldResourceIndex].FrameCount,
-					.ImageViewHandle       = (uint32_t)(-1),
-					.PassClass             = passMetadata.Class
-				};
-			}
-		}
-	}
+	AmplifyResourcesAndPasses();
+	InitMetadataPayloads();
 
 	ValidateSubresourceLinks();
 	PropagateSubresourcePayloadData();
@@ -478,78 +359,183 @@ void ModernFrameGraphBuilder::InitAugmentedData()
 void ModernFrameGraphBuilder::AdjustPassClasses()
 {
 	//The loop will wrap around 0
-	size_t renderPassIndex = mPassMetadatas.size() - 1;
-	while(renderPassIndex < mPassMetadatas.size())
+	uint32_t renderPassIndex = mRenderPassMetadataSpan.End - 1;
+	while(renderPassIndex >= mRenderPassMetadataSpan.Begin && renderPassIndex < mRenderPassMetadataSpan.End)
 	{
 		//Graphics queue only for now
 		//Async compute passes should be in the end of the frame. BUT! They should be executed AT THE START of THE PREVIOUS frame. Need to reorder stuff for that
-		mPassMetadatas[renderPassIndex].Class = RenderPassClass::Graphics;
+		mTotalPassMetadatas[renderPassIndex].Class = RenderPassClass::Graphics;
 
 		renderPassIndex--;
-	}
-
-	//Just make sure this is unchanged
-	assert(mPresentPassMetadata.Class == RenderPassClass::Present);
-}
-
-void ModernFrameGraphBuilder::PropagateSubresourcePassClasses()
-{
-	for(const PassMetadata& passMetadata: mPassMetadatas)
-	{
-		for(uint32_t subresourceIndex = passMetadata.SubresourceMetadataSpan.Begin; subresourceIndex < passMetadata.SubresourceMetadataSpan.End; subresourceIndex++)
-		{
-			mSubresourceMetadataNodesFlat[subresourceIndex].PassClass = passMetadata.Class;
-		}
-	}
-
-	for(uint32_t subresourceIndex = mPresentPassMetadata.SubresourceMetadataSpan.Begin; subresourceIndex < mPresentPassMetadata.SubresourceMetadataSpan.End; subresourceIndex++)
-	{
-		mSubresourceMetadataNodesFlat[subresourceIndex].PassClass = mPresentPassMetadata.Class;
 	}
 }
 
 void ModernFrameGraphBuilder::BuildPassSpans()
 {
-	mGraphToBuild->mGraphicsPassSpans.clear();
+	mGraphToBuild->mGraphicsPassSpansPerDependencyLevel.clear();
 
 	uint32_t currentDependencyLevel = 0;
-	mGraphToBuild->mGraphicsPassSpans.push_back(Span<uint32_t>{.Begin = 0, .End = 0});
-	for(size_t passIndex = 0; passIndex < mPassMetadatas.size(); passIndex++)
+	mGraphToBuild->mGraphicsPassSpansPerDependencyLevel.push_back(Span<uint32_t>{.Begin = 0, .End = 0});
+	for(uint32_t passIndex = mRenderPassMetadataSpan.Begin; passIndex < mRenderPassMetadataSpan.End; passIndex++)
 	{
-		uint32_t dependencyLevel = mPassMetadatas[passIndex].DependencyLevel;
+		uint32_t dependencyLevel = mTotalPassMetadatas[passIndex].DependencyLevel;
 		if(currentDependencyLevel != dependencyLevel)
 		{
-			mGraphToBuild->mGraphicsPassSpans.push_back(Span<uint32_t>{.Begin = dependencyLevel, .End = dependencyLevel + 1});
+			mGraphToBuild->mGraphicsPassSpansPerDependencyLevel.push_back(Span<uint32_t>{.Begin = dependencyLevel, .End = dependencyLevel + 1});
 			currentDependencyLevel = dependencyLevel;
 		}
 		else
 		{
-			mGraphToBuild->mGraphicsPassSpans.back().End++;
+			mGraphToBuild->mGraphicsPassSpansPerDependencyLevel.back().End++;
 		}
 	}
 }
 
-void ModernFrameGraphBuilder::CalculatePassPeriods()
+void ModernFrameGraphBuilder::AmplifyResourcesAndPasses()
 {
-	uint32_t backbufferResourceIndex = mSubresourceMetadataNodesFlat[mPresentPassMetadata.SubresourceMetadataSpan.Begin + (size_t)PresentPassSubresourceId::Backbuffer].ResourceMetadataIndex;
-
-	for(PassMetadata& passMetadata: mPassMetadatas)
+	std::vector<TextureRemapInfo> resourceRemapInfos(mResourceMetadatas.size(), {.BaseTextureIndex = (uint32_t)(-1), .FrameCount = 1});
+	for(uint32_t passIndex = mRenderPassMetadataSpan.Begin; passIndex < mRenderPassMetadataSpan.End; passIndex++)
 	{
-		uint32_t passPeriod = 1;
-		for(uint32_t metadataIndex = passMetadata.SubresourceMetadataSpan.Begin; metadataIndex < passMetadata.SubresourceMetadataSpan.End; metadataIndex++)
+		const PassMetadata& passMetadata = mTotalPassMetadatas[passIndex];
+		for(uint32_t subresourceIndex = passMetadata.SubresourceMetadataSpan.Begin; subresourceIndex < passMetadata.SubresourceMetadataSpan.End; subresourceIndex++)
 		{
-			const SubresourceMetadataNode& metadataNode = mSubresourceMetadataNodesFlat[metadataIndex];
-			if(metadataNode.ResourceMetadataIndex != backbufferResourceIndex) //Swapchain images don't count as render pass own period
-			{
-				const ResourceMetadata& resourceMetadata = mResourceMetadatas[metadataNode.ResourceMetadataIndex];
-				passPeriod = std::lcm(resourceMetadata.FrameCount, passPeriod);
-			}
-		}
+			uint32_t resourceFrameCount = 1;
 
-		passMetadata.OwnPeriod = passPeriod;
+			uint32_t resourceIndex = mSubresourceMetadataNodesFlat[subresourceIndex].ResourceMetadataIndex;
+			assert(resourceRemapInfos[resourceIndex].FrameCount == 1 || resourceFrameCount == 1); //Do not allow M -> N connections between passes
+
+			resourceRemapInfos[resourceIndex].FrameCount = std::lcm(resourceRemapInfos[resourceIndex].FrameCount, resourceFrameCount);
+		}
 	}
 
-	mPresentPassMetadata.OwnPeriod = 0;
+	static_assert((uint32_t)PresentPassSubresourceId::Count == 1);
+	for(uint32_t passIndex = mPresentPassMetadataSpan.Begin; passIndex < mPresentPassMetadataSpan.End; passIndex++)
+	{
+		const PassMetadata& passMetadata = mTotalPassMetadatas[passIndex];
+		for(uint32_t subresourceIndex = passMetadata.SubresourceMetadataSpan.Begin; subresourceIndex < passMetadata.SubresourceMetadataSpan.End; subresourceIndex++)
+		{
+			uint32_t resourceFrameCount = GetSwapchainImageCount();
+
+			uint32_t swapchainResourceIndex = mSubresourceMetadataNodesFlat[subresourceIndex].ResourceMetadataIndex;
+			assert(resourceRemapInfos[swapchainResourceIndex].FrameCount == 1 || resourceFrameCount == 1); //Do not allow M -> N connections between passes
+
+			resourceRemapInfos[swapchainResourceIndex].FrameCount = std::lcm(resourceRemapInfos[swapchainResourceIndex].FrameCount, resourceFrameCount);
+		}
+	}
+
+	std::vector<ResourceMetadata> oldResourceMetadatas;
+	mResourceMetadatas.swap(oldResourceMetadatas);
+
+	std::vector<PassMetadata> oldPassMetadatas;
+	mTotalPassMetadatas.swap(oldPassMetadatas);
+
+	std::vector<SubresourceMetadataNode> oldSubresourceMetadatas;
+	mSubresourceMetadataNodesFlat.swap(oldSubresourceMetadatas);
+
+
+	for(uint32_t resourceIndex = 0; resourceIndex < oldResourceMetadatas.size(); resourceIndex++)
+	{
+		resourceRemapInfos[resourceIndex].BaseTextureIndex = (uint32_t)oldResourceMetadatas.size();
+		for(uint32_t frameIndex = 0; frameIndex < resourceRemapInfos[resourceIndex].FrameCount; frameIndex++)
+		{
+			mResourceMetadatas.push_back(ResourceMetadata
+			{
+				.Name          = oldResourceMetadatas[resourceIndex].Name + "#" + std::to_string(frameIndex),
+				.HeadNodeIndex = (uint32_t)(-1)
+			});
+		}
+	}
+
+	Span<uint32_t> amplifiedRenderPassMetadataSpan = {.Begin = (uint32_t)mTotalPassMetadatas.size(), .End = (uint32_t)mTotalPassMetadatas.size()};
+	for(uint32_t passIndex = mRenderPassMetadataSpan.Begin; passIndex < mRenderPassMetadataSpan.End; passIndex++)
+	{
+		const PassMetadata& passMetadata = mTotalPassMetadatas[passIndex];
+		AddAmplifiedPassMetadata(passMetadata, resourceRemapInfos);
+	}
+
+	amplifiedRenderPassMetadataSpan.End = (uint32_t)mTotalPassMetadatas.size();
+	mRenderPassMetadataSpan = amplifiedRenderPassMetadataSpan;
+
+	Span<uint32_t> amplifiedPresentPassMetadataSpan = {.Begin = (uint32_t)mTotalPassMetadatas.size(), .End = (uint32_t)mTotalPassMetadatas.size()};
+	for(uint32_t passIndex = mPresentPassMetadataSpan.Begin; passIndex < mPresentPassMetadataSpan.End; passIndex++)
+	{
+		const PassMetadata& passMetadata = mTotalPassMetadatas[passIndex];
+		AddAmplifiedPassMetadata(passMetadata, resourceRemapInfos);
+	}
+
+	amplifiedPresentPassMetadataSpan.End = (uint32_t)mTotalPassMetadatas.size();
+	mPresentPassMetadataSpan = amplifiedPresentPassMetadataSpan;
+}
+
+void ModernFrameGraphBuilder::AddAmplifiedPassMetadata(const PassMetadata& passMetadata, const std::vector<TextureRemapInfo>& resourceRemapInfos)
+{
+	RenderPassFrameSwapType swapType = RenderPassFrameSwapType::Constant;
+
+	uint32_t passFrameCount = 1;
+	for(uint32_t subresourceIndex = passMetadata.SubresourceMetadataSpan.Begin; subresourceIndex < passMetadata.SubresourceMetadataSpan.End; subresourceIndex++)
+	{
+		uint32_t resourceIndex = mSubresourceMetadataNodesFlat[subresourceIndex].ResourceMetadataIndex;
+		passFrameCount = std::lcm(resourceRemapInfos[resourceIndex].FrameCount, passFrameCount);
+
+		RenderPassFrameSwapType resourceType = RenderPassFrameSwapType::Constant;
+		if(resourceRemapInfos[resourceIndex].FrameCount > 1)
+		{
+			if(mResourceMetadatas[resourceIndex].SourceType == TextureSourceType::Backbuffer)
+			{
+				resourceType = RenderPassFrameSwapType::PerBackbufferImage;
+			}
+			else
+			{
+				resourceType = RenderPassFrameSwapType::PerLinearFrame;
+			}
+
+			//Do not allow resources with different swap types
+			assert(swapType == RenderPassFrameSwapType::Constant || resourceType == swapType);
+			swapType = resourceType;
+		}
+	}
+
+	mGraphToBuild->mFrameSpansPerRenderPass.push_back
+	({
+		.Begin    = (uint32_t)mTotalPassMetadatas.size(),
+		.End      = (uint32_t)mTotalPassMetadatas.size() + passFrameCount,
+		.SwapType = swapType
+	});
+
+	uint32_t passSubresourceCount = passMetadata.SubresourceMetadataSpan.End - passMetadata.SubresourceMetadataSpan.Begin;
+	for(uint32_t passFrameIndex = 0; passFrameIndex < passFrameCount; passFrameIndex++)
+	{
+		Span<uint32_t> newSubresourceMetadataSpan = Span<uint32_t>
+		{
+			.Begin = (uint32_t)(mTotalPassMetadatas.size()),
+			.End   = (uint32_t)(mTotalPassMetadatas.size() + passSubresourceCount)
+		};
+
+		mTotalPassMetadatas.push_back(PassMetadata
+		{
+			.Name                    = passMetadata.Name + "#" + std::to_string(passFrameIndex),
+			.Class                   = passMetadata.Class,
+			.Type                    = passMetadata.Type,
+			.DependencyLevel         = passMetadata.DependencyLevel,
+			.SubresourceMetadataSpan = newSubresourceMetadataSpan
+		});
+
+		mSubresourceMetadataNodesFlat.resize(newSubresourceMetadataSpan.End);
+		for(uint32_t subresourceIndex = passMetadata.SubresourceMetadataSpan.Begin; subresourceIndex < passMetadata.SubresourceMetadataSpan.End; subresourceIndex++)
+		{
+			uint32_t newSubresourceIndex = newSubresourceMetadataSpan.Begin + (subresourceIndex - passMetadata.SubresourceMetadataSpan.Begin);
+
+			uint32_t oldResourceIndex = mSubresourceMetadataNodesFlat[subresourceIndex].ResourceMetadataIndex;
+			mSubresourceMetadataNodesFlat[newSubresourceIndex] = SubresourceMetadataNode
+			{
+				.PrevPassNodeIndex     = (uint32_t)(-1),
+				.NextPassNodeIndex     = (uint32_t)(-1),
+				.ResourceMetadataIndex = resourceRemapInfos[oldResourceIndex].BaseTextureIndex + passFrameIndex % resourceRemapInfos[oldResourceIndex].FrameCount,
+				.ImageViewHandle       = (uint32_t)(-1),
+				.PassClass             = passMetadata.Class
+			};
+		}
+	}
 }
 
 void ModernFrameGraphBuilder::ValidateSubresourceLinks()
@@ -557,7 +543,7 @@ void ModernFrameGraphBuilder::ValidateSubresourceLinks()
 	std::vector<uint32_t> lastNodeIndicesPerResource(mResourceMetadatas.size(), (uint32_t)(-1));
 
 	//Connect previous passes
-	for(const PassMetadata& passMetadata: mPassMetadatas)
+	for(const PassMetadata& passMetadata: mTotalPassMetadatas)
 	{
 		for(uint32_t metadataIndex = passMetadata.SubresourceMetadataSpan.Begin; metadataIndex < passMetadata.SubresourceMetadataSpan.End; metadataIndex++)
 		{
@@ -582,37 +568,13 @@ void ModernFrameGraphBuilder::ValidateSubresourceLinks()
 		}
 	}
 
-
-	//Validate backbuffer links
-	uint32_t backbufferPresentSubresourceIndex = mPresentPassMetadata.SubresourceMetadataSpan.Begin + (uint32_t)PresentPassSubresourceId::Backbuffer;
-	uint32_t backbufferResourceIndex           = mSubresourceMetadataNodesFlat[backbufferPresentSubresourceIndex].ResourceMetadataIndex;
-
-	uint32_t backbufferFirstNodeIndex = mResourceMetadatas[backbufferResourceIndex].HeadNodeIndex;
-	uint32_t backbufferLastNodeIndex  = lastNodeIndicesPerResource[backbufferResourceIndex];
-
-	SubresourceMetadataNode& backbufferFirstNode   = mSubresourceMetadataNodesFlat[backbufferFirstNodeIndex];
-	SubresourceMetadataNode& backbufferLastNode    = mSubresourceMetadataNodesFlat[backbufferLastNodeIndex];
-	SubresourceMetadataNode& backbufferPresentNode = mSubresourceMetadataNodesFlat[backbufferPresentSubresourceIndex];
-
-	backbufferFirstNode.PrevPassNodeIndex = backbufferPresentSubresourceIndex;
-	backbufferLastNode.NextPassNodeIndex  = backbufferPresentSubresourceIndex;
-
-	backbufferPresentNode.PrevPassNodeIndex = backbufferLastNodeIndex;
-	backbufferPresentNode.NextPassNodeIndex = backbufferFirstNodeIndex;
-
-
 	//Validate cyclic links (so first pass knows what state to barrier from, and the last pass knows what state to barrier to)
-	for(const PassMetadata& passMetadata: mPassMetadatas)
+	for(const PassMetadata& passMetadata: mTotalPassMetadatas)
 	{
 		for(uint32_t metadataIndex = passMetadata.SubresourceMetadataSpan.Begin; metadataIndex < passMetadata.SubresourceMetadataSpan.End; metadataIndex++)
 		{
 			SubresourceMetadataNode& subresourceNode = mSubresourceMetadataNodesFlat[metadataIndex];
 			uint32_t resourceIndex = subresourceNode.ResourceMetadataIndex;
-
-			if(resourceIndex == backbufferResourceIndex) //Backbuffer is already processed
-			{
-				continue;
-			}
 
 			if(subresourceNode.PrevPassNodeIndex == (uint32_t)(-1))
 			{
@@ -625,7 +587,7 @@ void ModernFrameGraphBuilder::ValidateSubresourceLinks()
 
 			if(subresourceNode.NextPassNodeIndex == (uint32_t)(-1))
 			{
-				uint32_t nextNodeIndex = mResourceMetadatas[backbufferResourceIndex].HeadNodeIndex;
+				uint32_t nextNodeIndex = mResourceMetadatas[resourceIndex].HeadNodeIndex;
 				SubresourceMetadataNode& nextSubresourceMetadata = mSubresourceMetadataNodesFlat[nextNodeIndex];
 
 				subresourceNode.NextPassNodeIndex         = nextNodeIndex;
@@ -648,8 +610,9 @@ void ModernFrameGraphBuilder::PropagateSubresourcePayloadData()
 			propagationHappened |= PropagateSubresourcePayloadDataVertically(resourceMetadata);
 		}
 
-		for(const PassMetadata& passMetadata: mPassMetadatas)
+		for(uint32_t passIndex = mRenderPassMetadataSpan.Begin; passIndex < mRenderPassMetadataSpan.End; passIndex++)
 		{
+			const PassMetadata& passMetadata = mTotalPassMetadatas[passIndex];
 			propagationHappened |= PropagateSubresourcePayloadDataHorizontally(passMetadata);
 		}
 	}
@@ -661,32 +624,9 @@ void ModernFrameGraphBuilder::BuildResources()
 	CreateTextureViews();
 }
 
-void ModernFrameGraphBuilder::BuildPassObjects()
-{
-	uint32_t backbufferResourceIndex = mSubresourceMetadataNodesFlat[mPresentPassMetadata.SubresourceMetadataSpan.Begin + (size_t)PresentPassSubresourceId::Backbuffer].ResourceMetadataIndex;
-
-	for(uint32_t passMetadataIndex = 0; passMetadataIndex < mPassMetadatas.size(); passMetadataIndex++)
-	{
-		Span<uint32_t> passNodeSpan = mPassMetadatas[passMetadataIndex].SubresourceMetadataSpan;
-
-		uint32_t passSwapchainImageCount = 1;
-		for(uint32_t metadataIndex = passNodeSpan.Begin; metadataIndex < passNodeSpan.End; metadataIndex++)
-		{
-			if(mSubresourceMetadataNodesFlat[metadataIndex].ResourceMetadataIndex == backbufferResourceIndex)
-			{
-				passSwapchainImageCount = GetSwapchainImageCount();
-				break;
-			}
-		}
-
-		CreateObjectsForPass(passMetadataIndex, passSwapchainImageCount);
-	}
-}
-
 void ModernFrameGraphBuilder::BuildBarriers()
 {
-	mGraphToBuild->mMultiframeBarrierInfos.clear();
-	mGraphToBuild->mRenderPassBarriers.resize(mPassMetadatas.size() + 1, ModernFrameGraph::BarrierSpan
+	mGraphToBuild->mRenderPassBarriers.resize(mTotalPassMetadatas.size(), ModernFrameGraph::BarrierPassSpan
 	{
 		.BeforePassBegin = 0,
 		.BeforePassEnd   = 0,
@@ -694,14 +634,11 @@ void ModernFrameGraphBuilder::BuildBarriers()
 		.AfterPassEnd    = 0
 	});
 
-	for(uint32_t passIndex = 0; passIndex < mPassMetadatas.size() - 1; passIndex++)
+	for(uint32_t passIndex = 0; passIndex < mTotalPassMetadatas.size(); passIndex++)
 	{
-		const PassMetadata& passMetadata = mPassMetadatas[passIndex];
+		const PassMetadata& passMetadata = mTotalPassMetadatas[passIndex];
 
 		AddBeforePassBarriers(passMetadata, passIndex);
 		AddAfterPassBarriers(passMetadata,  passIndex);
 	}
-
-	AddBeforePassBarriers(mPresentPassMetadata, (uint32_t)(mPassMetadatas.size() - 1));
-	AddAfterPassBarriers(mPresentPassMetadata,  (uint32_t)(mPassMetadatas.size() - 1));
 }

@@ -14,6 +14,13 @@ class FrameGraphConfig;
 
 class ModernFrameGraphBuilder
 {
+private:
+	struct TextureRemapInfo
+	{
+		uint32_t BaseTextureIndex;
+		uint32_t FrameCount;
+	};
+
 protected:
 	//Describes a single render pass
 	struct PassMetadata
@@ -33,8 +40,8 @@ protected:
 	{
 		ResourceName Name; //The name of the resource
 
-		uint32_t HeadNodeIndex; //The index of the head SubresourceMetadataNode
-		uint32_t ImageHandle;   //The id of the resource in the frame graph texture list
+		TextureSourceType SourceType;    //Defines ownership of the texture (frame graph, swapchain, etc) 
+		uint32_t          HeadNodeIndex; //The index of the head SubresourceMetadataNode
 	};
 
 	//Describes a particular pass usage of the resource
@@ -96,11 +103,13 @@ private:
 	//Changes pass classes according to async compute/transfer use
 	void AdjustPassClasses();
 
-	//Propagates pass classes in each subresource info
-	void PropagateSubresourcePassClasses();
-
-	//Builds frame graph pass spans
+	//Builds pass spans for each dependency level
 	void BuildPassSpans();
+
+	//Creates multiple copies of passes and resources, one for each separate frame
+	void AmplifyResourcesAndPasses();
+
+	void AddAmplifiedPassMetadata(const PassMetadata& passMetadata, const std::vector<TextureRemapInfo>& resourceRemapInfos);
 
 	//Validates PrevPassMetadata and NextPassMetadata links in each subresource info
 	void ValidateSubresourceLinks();
@@ -111,14 +120,8 @@ private:
 	//Creates textures and views
 	void BuildResources();
 
-	//Build the render pass objects
-	void BuildPassObjects();
-
 	//Build the between-pass barriers
 	void BuildBarriers();
-
-protected:
-	const Span<uint32_t> GetBackbufferImageSpan() const;
 
 protected:
 	//Registers subresource api-specific metadata
@@ -143,7 +146,7 @@ protected:
 	virtual void CreateTextureViews() = 0;
 
 	//Creates render pass objects
-	virtual void CreateObjectsForPass(uint32_t passMetadataIndex, uint32_t passSwapchainImageCount) = 0;
+	virtual void BuildPassObjects() = 0;
 
 	//Add barriers to execute before a pass
 	virtual void AddBeforePassBarriers(const PassMetadata& passMetadata, uint32_t barrierSpanIndex) = 0;
@@ -161,8 +164,9 @@ protected:
 	ModernFrameGraph* mGraphToBuild;
 
 	std::vector<SubresourceMetadataNode> mSubresourceMetadataNodesFlat;
-	std::vector<PassMetadata>            mPassMetadatas;
+	std::vector<PassMetadata>            mTotalPassMetadatas;
 	std::vector<ResourceMetadata>        mResourceMetadatas;
 
-	//PassMetadata mPresentPassMetadata;
+	Span<uint32_t> mRenderPassMetadataSpan;
+	Span<uint32_t> mPresentPassMetadataSpan;
 };
