@@ -11,7 +11,10 @@
 #include "FrameGraph/VulkanFrameGraphBuilder.hpp"
 #include "Scene/VulkanScene.hpp"
 #include "Scene/VulkanSceneBuilder.hpp"
-#include "Scene/VulkanSceneDescriptorDatabase.hpp"
+#include "VulkanSamplers.hpp"
+#include "VulkanDescriptors.hpp"
+#include "VulkanSharedDescriptorDatabaseBuilder.hpp"
+#include "VulkanPassDescriptorDatabaseBuilder.hpp"
 #include "../Common/RenderingUtils.hpp"
 #include "../../Core/Util.hpp"
 #include "../../Core/ThreadPool.hpp"
@@ -23,7 +26,6 @@
 Vulkan::Renderer::Renderer(LoggerQueue* loggerQueue, FrameCounter* frameCounter, ThreadPool* threadPool): ::Renderer(loggerQueue), mInstanceParameters(loggerQueue), mDeviceParameters(loggerQueue), mThreadPoolRef(threadPool), mFrameCounterRef(frameCounter)
 {
 	mDynamicLibrary = std::make_unique<FunctionsLibrary>();
-
 	mDynamicLibrary->LoadGlobalFunctions();
 
 	InitInstance();
@@ -50,6 +52,9 @@ Vulkan::Renderer::Renderer(LoggerQueue* loggerQueue, FrameCounter* frameCounter,
 	CreateFences();
 
 	mMemoryAllocator = std::make_unique<MemoryManager>(mLoggingBoard, mPhysicalDevice, mDeviceParameters);
+
+	mDescriptorDatabase = std::make_unique<DescriptorDatabase>(mDevice);
+	mSamplerManager     = std::make_unique<SamplerManager>(mDevice);
 }
 
 Vulkan::Renderer::~Renderer()
@@ -125,7 +130,9 @@ BaseRenderableScene* Vulkan::Renderer::InitScene(const RenderableSceneDescriptio
 
 	sceneBuilder.Build(sceneDescription, sceneMeshInitialLocations, outObjectHandles);
 
-	mSceneDescriptorDatabase->UpdateDescriptorSets(mScene.get());
+	SharedDescriptorDatabaseBuilder sharedDatabaseBuilder;
+	sharedDatabaseBuilder.RecreateSharedSets(mDescriptorDatabase.get(), mScene.get(), mSamplerManager.get());
+
 	return mScene.get();
 }
 
@@ -139,17 +146,18 @@ void Vulkan::Renderer::InitFrameGraph(FrameGraphConfig&& frameGraphConfig, Frame
 		.DeviceParams    = &mDeviceParameters,
 		.MemoryAllocator = mMemoryAllocator.get(),
 		.Queues          = mDeviceQueues.get(),
-		.CommandBuffers  = mCommandBuffers.get(),
-
-		.DescriptorDatabaseScene    = mSceneDescriptorDatabase.get(),
-		.DescriptorDatabasePasses   = passDescriptorDatabase,
-		.DescriptorDatabaseSamplers = samplerDescriptorDatabase
+		.CommandBuffers  = mCommandBuffers.get()
 	};
 
-	FrameGraphBuilder frameGraphBuilder(mLoggingBoard, mFrameGraph.get(), std::move(frameGraphDescription), mSwapChain.get());
-	frameGraphBuilder.Build(frameGraphBuildInfo);
+	FrameGraphBuilder frameGraphBuilder(mLoggingBoard, mFrameGraph.get(), mSwapChain.get());
+	frameGraphBuilder.Build(std::move(frameGraphDescription), frameGraphBuildInfo);
+	frameGraphBuilder.UpdateDescriptorMappings(mDescriptorDatabase.get());
 
-	mSceneDescriptorDatabase->RecreateDescriptorSets(mScene.get());
+	PassDescriptorDatabaseBuilder passDatabaseBuilder;
+	passDatabaseBuilder.RecreatePassSets(mDescriptorDatabase.get(), &frameGraphBuilder);
+
+	SharedDescriptorDatabaseBuilder sharedDatabaseBuilder;
+	sharedDatabaseBuilder.RecreateSharedSets(mDescriptorDatabase.get(), mScene.get(), mSamplerManager.get());
 }
 
 void Vulkan::Renderer::Render()

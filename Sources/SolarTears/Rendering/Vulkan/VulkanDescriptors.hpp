@@ -16,32 +16,25 @@ namespace Vulkan
 	//The database for all common descriptor sets and set layouts (samplers, scene data)
 	class DescriptorDatabase
 	{
-		friend class ShaderDatabase;
+		friend class SharedDescriptorDatabaseBuilder;
+		friend class PassDescriptorDatabaseBuilder;
 
 		struct SharedSetCreateMetadata
 		{
 			VkDescriptorSetLayout SetLayout;
-			uint32_t              SetCount;
+			uint32_t              SetFrameIndex;
 			Span<uint32_t>        BindingSpan;
 		};
 
 		struct SharedSetRecord
 		{
-			uint32_t FlatCreateSetIndex; //The index of the set that can be calculated from mSharedSetCreateMetadatas taking set count into account
-			uint32_t SetDatabaseIndex;   //The index of the sets in mDescriptorSets
+			uint32_t SetCreateMetadataIndex; //The index of the set in mSharedSetCreateMetadatas
+			uint32_t SetDatabaseIndex;       //The index of the sets in mDescriptorSets
 		};
 
 	public:
 		DescriptorDatabase(const VkDevice device);
 		~DescriptorDatabase();
-
-		//Creates sets from registered set layouts
-		void RecreateSharedSets(const RenderableScene* sceneToCreateDescriptors, const SamplerManager* samplerManager);
-
-	private:
-		void RecreateSharedDescriptorPool(const RenderableScene* sceneToCreateDescriptors, const SamplerManager* samplerManager);
-		void AllocateSharedDescriptorSets(const RenderableScene* sceneToCreateDescriptors, const SamplerManager* samplerManager, std::vector<VkDescriptorSet>& outSharedDescriptorSets);
-		void UpdateSharedDescriptorSets(const RenderableScene* sceneToCreateDescriptors,   const std::vector<VkDescriptorSet>& sharedDescriptorSets);
 
 	private:
 		const VkDevice mDeviceRef;

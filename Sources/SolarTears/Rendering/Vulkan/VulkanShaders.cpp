@@ -3,6 +3,8 @@
 #include "VulkanFunctions.hpp"
 #include "VulkanSamplers.hpp"
 #include "VulkanDescriptorsMisc.hpp"
+#include "VulkanSharedDescriptorDatabaseBuilder.hpp"
+#include "VulkanPassDescriptorDatabaseBuilder.hpp"
 #include "FrameGraph/VulkanRenderPassDispatchFuncs.hpp"
 #include "../../Core/Util.hpp"
 #include "../../Logging/LoggerQueue.hpp"
@@ -37,10 +39,15 @@ Vulkan::ShaderDatabase::ShaderDatabase(VkDevice device, SamplerManager* samplerM
 
 Vulkan::ShaderDatabase::~ShaderDatabase()
 {
-	//Destroy the non-flushed layouts
-	for(SetLayoutRecordNode setLayoutNode: mSetLayoutRecordNodes)
+	//Destroy the non-flushed domains
+	for(DomainRecord& domainRecord: mDomainRecords)
 	{
-		SafeDestroyObject(vkDestroyDescriptorSetLayout, mDeviceRef, setLayoutNode.SetLayout);
+		uint32_t layoutNodeIndex = domainRecord.FirstLayoutNodeIndex;
+		while(layoutNodeIndex != (uint32_t)(-1))
+		{
+			SafeDestroyObject(vkDestroyDescriptorSetLayout, mDeviceRef, mSetLayoutRecordNodes[layoutNodeIndex].SetLayout);
+			layoutNodeIndex = mSetLayoutRecordNodes[layoutNodeIndex].NextNodeIndex;
+		}
 	}
 }
 
@@ -162,15 +169,15 @@ void Vulkan::ShaderDatabase::CreateMatchingPipelineLayout(std::span<std::string_
 	}
 }
 
-std::span<VkDescriptorSet> Vulkan::ShaderDatabase::AssignPassSets(DescriptorDatabase* databaseToStore, const std::span<std::string_view> shaderGroupSequence, std::span<Span<uint32_t>> outBindSubspansPerGroup, std::span<uint32_t> outBindPointsPerGroup) const
+std::span<VkDescriptorSet> Vulkan::ShaderDatabase::AssignPassSets(const std::span<std::string_view> shaderGroupSequence, std::span<Span<uint32_t>> outBindSubspansPerGroup, std::span<uint32_t> outBindPointsPerGroup) const
 {
 	assert(shaderGroupSequence.size() == outBindSubspansPerGroup.size());
 	assert(shaderGroupSequence.size() == outBindPointsPerGroup.size());
 
-	std::vector<uint32_t> totalLayoutRecordIndices;
-	std::vector<uint32_t> currentLayoutRecordIndices;
+	uint32_t startLayoutIndexCount = (uint32_t)mLayoutRecordNodeIndicesForGroupSequences.size();
 
 	//Try to match each shader group layout span with currentLayoutRecordIndices, and find the first non-matching element
+	std::vector<uint32_t> currentLayoutRecordIndices;
 	for(uint32_t shaderGroupIndex = 0; shaderGroupIndex < shaderGroupSequence.size(); shaderGroupIndex++)
 	{
 		const std::string_view shaderGroupName = shaderGroupSequence[shaderGroupIndex];
@@ -188,104 +195,57 @@ std::span<VkDescriptorSet> Vulkan::ShaderDatabase::AssignPassSets(DescriptorData
 			currIndexToMatch++;
 		}
 
-		uint32_t oldLayoutIndexCount = (uint32_t)totalLayoutRecordIndices.size();
+		uint32_t oldLayoutIndexCount = (uint32_t)mLayoutRecordNodeIndicesForGroupSequences.size() - startLayoutIndexCount;
 
 		outBindSubspansPerGroup[shaderGroupIndex].Begin = oldLayoutIndexCount;
 		outBindSubspansPerGroup[shaderGroupIndex].End   = oldLayoutIndexCount + (uint32_t)(groupLayoutRecordIndices.size() - currIndexToMatch);
 		outBindPointsPerGroup[shaderGroupIndex]         = currIndexToMatch;
 
-		totalLayoutRecordIndices.insert(totalLayoutRecordIndices.end(), groupLayoutRecordIndices.begin() + currIndexToMatch, groupLayoutRecordIndices.end());
+		mLayoutRecordNodeIndicesForGroupSequences.insert(mLayoutRecordNodeIndicesForGroupSequences.end(), groupLayoutRecordIndices.begin() + currIndexToMatch, groupLayoutRecordIndices.end());
 		
 		currentLayoutRecordIndices.resize(groupLayoutRecordIndices.size());
 		std::copy(groupLayoutRecordIndices.begin() + currIndexToMatch, groupLayoutRecordIndices.end(), currentLayoutRecordIndices.begin() + currIndexToMatch);
 	}
 
-	//Store new sets in the database
-	uint32_t oldSetCount = databaseToStore->mDescriptorSets.size();
-	AddSetsToDatabase(totalLayoutRecordIndices);
-
-	return std::span(databaseToStore->mDescriptorSets.begin() + oldSetCount, databaseToStore->mDescriptorSets.end());
+	//Since std::span is gonna be invalidated within many calls to AssignPassSets, return mock span starting from NULL
+	uintptr_t newDescriptorRecordStart = startLayoutIndexCount;
+	size_t    newDescriptorRecordCount = mLayoutRecordNodeIndicesForGroupSequences.size() - startLayoutIndexCount;
+	return std::span((VkDescriptorSet*)newDescriptorRecordStart, (VkDescriptorSet*)newDescriptorRecordStart + newDescriptorRecordCount);
 }
 
-void Vulkan::ShaderDatabase::FlushSharedSetLayouts(DescriptorDatabase* databaseToBuild)
+void Vulkan::ShaderDatabase::InitializePassSets(SharedDescriptorDatabaseBuilder* sharedDatabaseBuilder, PassDescriptorDatabaseBuilder* passDatabaseBuilder) const
 {
-	databaseToBuild->mSharedSetCreateMetadatas.clear();
-	databaseToBuild->mSharedSetFormatsFlat.clear();
+	for(uint32_t layoutRecordIndex: mLayoutRecordNodeIndicesForGroupSequences)
+	{
+		const SetLayoutRecordNode& setLayoutRecord = mSetLayoutRecordNodes[layoutRecordIndex];
+		if(setLayoutRecord.Domain == SharedSetDomain)
+		{
+			sharedDatabaseBuilder->AddSharedSetInfo((uintptr_t)setLayoutRecord.SetLayout, frame);
+		}
+		else
+		{
+			std::span setLayoutBindingSpan = {mLayoutBindingTypesFlat.begin() + setLayoutRecord.BindingSpan.Begin, mLayoutBindingTypesFlat.begin() + setLayoutRecord.BindingSpan.End};
+			passDatabaseBuilder->AddPassSetInfo(setLayoutRecord.SetLayout, passIndex, setLayoutBindingSpan);
+		}
+	}
+}
 
+void Vulkan::ShaderDatabase::FlushSharedSetLayouts(SharedDescriptorDatabaseBuilder* sharedDatabaseBuilder)
+{
 	DomainRecord sharedDomainRecord = mDomainRecords[SharedSetDomain];
 	uint32_t layoutNodeIndex = sharedDomainRecord.FirstLayoutNodeIndex;
 
 	while(layoutNodeIndex != (uint32_t)(-1))
 	{
-		SetLayoutRecordNode setLayoutNode      = mSetLayoutRecordNodes[layoutNodeIndex];
-		uint32_t            layoutBindingCount = setLayoutNode.BindingSpan.End - setLayoutNode.BindingSpan.Begin;
+		SetLayoutRecordNode& setLayoutNode = mSetLayoutRecordNodes[layoutNodeIndex];
+		std::span<uint16_t> setLayoutBindings = {mLayoutBindingTypesFlat.begin() + setLayoutNode.BindingSpan.Begin, mLayoutBindingTypesFlat.begin() + setLayoutNode.BindingSpan.End};
 
-		uint32_t oldFormatCount = (uint32_t)databaseToBuild->mSharedSetFormatsFlat.size();
-		databaseToBuild->mSharedSetFormatsFlat.resize(databaseToBuild->mSharedSetFormatsFlat.size() + layoutBindingCount);
-		
-		Span<uint32_t> formatSpan =
-		{
-			.Begin = oldFormatCount,
-			.End   = oldFormatCount + layoutBindingCount
-		};
-
-		uint32_t layoutSetCount = 1;
-		for(uint32_t bindingIndex = setLayoutNode.BindingSpan.Begin; bindingIndex < setLayoutNode.BindingSpan.End; bindingIndex++)
-		{
-			uint32_t layoutBindingIndex = bindingIndex - setLayoutNode.BindingSpan.Begin;
-
-			uint_fast16_t bindingTypeIndex = mLayoutBindingTypesFlat[bindingIndex];
-			layoutSetCount = std::lcm(layoutSetCount, FrameCountsPerSharedBinding[bindingTypeIndex]);
-
-			databaseToBuild->mSharedSetFormatsFlat[formatSpan.Begin + layoutBindingIndex] = (SharedDescriptorBindingType)bindingTypeIndex;
-		}
-
-		databaseToBuild->mSharedSetCreateMetadatas.push_back(DescriptorDatabase::SharedSetCreateMetadata
-		{
-			.SetLayout   = setLayoutNode.SetLayout,
-			.SetCount    = layoutSetCount,
-			.BindingSpan = formatSpan
-		});
-
-		mSetLayoutRecordNodes[layoutNodeIndex].SetLayout = VK_NULL_HANDLE; //Ownership is transferred
+		setLayoutNode.SetLayout = (VkDescriptorSetLayout)(sharedDatabaseBuilder->RegisterSharedSetInfo(setLayoutNode.SetLayout, setLayoutBindings));
+		layoutNodeIndex = setLayoutNode.NextNodeIndex;
 	}
 
 	//Clear the linked list. No memory is freed, but the ownership of set layouts is taken away
 	mDomainRecords[SharedSetDomain].FirstLayoutNodeIndex = (uint32_t)(-1);
-}
-
-void Vulkan::ShaderDatabase::BuildUniquePassSetInfos(std::vector<PassSetInfo>& outPassSetInfos, std::vector<uint16_t>& outPassBindingTypes) const
-{
-	for(uint32_t domainIndex = 0; domainIndex < mDomainRecords.size(); domainIndex++)
-	{
-		if(domainIndex == SharedSetDomain)
-		{
-			continue;
-		}
-
-		DomainRecord domainRecord = mDomainRecords[domainIndex];
-		uint32_t layoutNodeIndex = domainRecord.FirstLayoutNodeIndex;
-		while(layoutNodeIndex != (uint32_t)(-1))
-		{
-			const SetLayoutRecordNode& setLayoutRecordNode = mSetLayoutRecordNodes[layoutNodeIndex];
-			uint32_t layoutBindingCount = setLayoutRecordNode.BindingSpan.End - setLayoutRecordNode.BindingSpan.Begin;
-
-			uint32_t oldPassBindingTypeCount = outPassBindingTypes.size();
-			outPassBindingTypes.resize(oldPassBindingTypeCount + layoutBindingCount);
-			for(uint32_t layoutBindingIndex = 0; layoutBindingIndex < layoutBindingCount; layoutBindingIndex++)
-			{
-				outPassBindingTypes[oldPassBindingTypeCount + layoutBindingIndex] = mLayoutBindingTypesFlat[setLayoutRecordNode.BindingSpan.Begin + layoutBindingIndex];
-			}
-
-			PassSetInfo passSetInfo;
-			passSetInfo.PassType          = domainRecord.PassType;
-			passSetInfo.SetLayout         = setLayoutRecordNode.SetLayout;
-			passSetInfo.BindingSpan.Begin = oldPassBindingTypeCount;
-			passSetInfo.BindingSpan.End   = oldPassBindingTypeCount + layoutBindingCount;
-
-			outPassSetInfos.push_back(passSetInfo);
-		}
-	}
 }
 
 void Vulkan::ShaderDatabase::RegisterBindings(const std::string_view groupName, const std::span<std::wstring> shaderModuleNames)

@@ -112,9 +112,11 @@
     <ClInclude Include="Rendering\Vulkan\VulkanFunctionsLibrary.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanInstanceParameters.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanMemory.hpp" />
+    <ClInclude Include="Rendering\Vulkan\VulkanPassDescriptorDatabaseBuilder.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanRenderer.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanSamplers.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanShaders.hpp" />
+    <ClInclude Include="Rendering\Vulkan\VulkanSharedDescriptorDatabaseBuilder.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanSwapChain.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanUtils.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanWorkerCommandBuffers.hpp" />
@@ -189,9 +191,11 @@
     <ClCompile Include="Rendering\Vulkan\VulkanFunctionsLibrary.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanInstanceParameters.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanMemory.cpp" />
+    <ClCompile Include="Rendering\Vulkan\VulkanPassDescriptorDatabaseBuilder.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanRenderer.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanSamplers.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanShaders.cpp" />
+    <ClCompile Include="Rendering\Vulkan\VulkanSharedDescriptorDatabaseBuilder.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanSwapChain.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanUtils.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanWorkerCommandBuffers.cpp" />

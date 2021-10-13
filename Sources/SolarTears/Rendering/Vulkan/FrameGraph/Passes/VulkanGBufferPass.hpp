@@ -34,7 +34,7 @@ namespace Vulkan
 
 		void RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* renderableScene, const FrameGraphConfig& frameGraphConfig, uint32_t frameResourceIndex) const override;
 
-		void ValidateDescriptorSets(const ShaderDatabase* shaderDatabase, DescriptorDatabase* descriptorDatabase) override;
+		void ValidateDescriptorSets(const ShaderDatabase* shaderDatabase, SharedDescriptorDatabaseBuilder* sharedDatabaseBuilder, PassDescriptorDatabaseBuilder* passDatabaseBuilder) override;
 
 	private:
 		void CreateRenderPass(const FrameGraphBuilder* frameGraphBuilder, uint32_t frameGraphPassId, const DeviceParameters* deviceParameters);

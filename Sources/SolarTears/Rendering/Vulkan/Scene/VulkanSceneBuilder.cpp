@@ -373,21 +373,16 @@ void Vulkan::RenderableSceneBuilder::AllocateImageMemory()
 {
 	SafeDestroyObject(vkFreeMemory, mVulkanSceneToBuild->mDeviceRef, mVulkanSceneToBuild->mTextureMemory);
 
-	std::vector<VkDeviceSize> textureMemoryOffsets;
-	mVulkanSceneToBuild->mTextureMemory = mMemoryAllocator->AllocateImagesMemory(mVulkanSceneToBuild->mDeviceRef, mVulkanSceneToBuild->mSceneTextures, textureMemoryOffsets);
-
 	std::vector<VkBindImageMemoryInfo> bindImageMemoryInfos(mVulkanSceneToBuild->mSceneTextures.size());
 	for(size_t i = 0; i < mVulkanSceneToBuild->mSceneTextures.size(); i++)
 	{
 		//TODO: mGPU?
-		bindImageMemoryInfos[i].sType        = VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO;
-		bindImageMemoryInfos[i].pNext        = nullptr;
-		bindImageMemoryInfos[i].memory       = mVulkanSceneToBuild->mTextureMemory;
-		bindImageMemoryInfos[i].memoryOffset = textureMemoryOffsets[i];
-		bindImageMemoryInfos[i].image        = mVulkanSceneToBuild->mSceneTextures[i];
+		bindImageMemoryInfos[i].sType = VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_INFO;
+		bindImageMemoryInfos[i].pNext = nullptr;
+		bindImageMemoryInfos[i].image = mVulkanSceneToBuild->mSceneTextures[i];
 	}
 
-	ThrowIfFailed(vkBindImageMemory2(mVulkanSceneToBuild->mDeviceRef, (uint32_t)(bindImageMemoryInfos.size()), bindImageMemoryInfos.data()));
+	mVulkanSceneToBuild->mTextureMemory = mMemoryAllocator->AllocateImagesMemory(mVulkanSceneToBuild->mDeviceRef, bindImageMemoryInfos);
 }
 
 void Vulkan::RenderableSceneBuilder::AllocateBuffersMemory()

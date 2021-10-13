@@ -19,6 +19,7 @@ namespace Vulkan
 	class RenderableScene;
 	class DeviceParameters;
 	class ShaderDatabase;
+	class DescriptorDatabase;
 
 	struct FrameGraphBuildInfo
 	{
@@ -31,6 +32,8 @@ namespace Vulkan
 
 	class FrameGraphBuilder final: public ModernFrameGraphBuilder
 	{
+		friend class PassDescriptorDatabaseBuilder;
+
 	public:
 		FrameGraphBuilder(LoggerQueue* logger, FrameGraph* graphToBuild, const SwapChain* swapchain);
 		~FrameGraphBuilder();
@@ -65,8 +68,7 @@ namespace Vulkan
 		VkAccessFlags        GetNextPassSubresourceAccessFlags(uint32_t passIndex, uint_fast16_t subresourceIndex) const;
 
 		void Build(FrameGraphDescription&& frameGraphDescription, const FrameGraphBuildInfo& buildInfo);
-
-		void BuildPassDescriptorSets();
+		void UpdateDescriptorMappings(DescriptorDatabase* databaseToUpdateMappings);
 
 	private:
 		//Converts pass type to a queue family index

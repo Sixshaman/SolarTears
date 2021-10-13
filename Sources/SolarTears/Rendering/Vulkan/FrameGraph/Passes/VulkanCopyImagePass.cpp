@@ -42,7 +42,7 @@ void Vulkan::CopyImagePass::RecordExecution(VkCommandBuffer commandBuffer, [[may
 	vkCmdCopyImage(commandBuffer, mSrcImageRef, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, mDstImageRef, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, (uint32_t)(copyRegions.size()), copyRegions.data());
 }
 
-void Vulkan::CopyImagePass::ValidateDescriptorSets([[maybe_unused]] const ShaderDatabase* shaderDatabase, [[maybe_unused]] DescriptorDatabase* descriptorDatabase)
+void Vulkan::CopyImagePass::ValidateDescriptorSets([[maybe_unused]] const ShaderDatabase* shaderDatabase, [[maybe_unused]] SharedDescriptorDatabaseBuilder* sharedDatabaseBuilder, [[maybe_unused]] PassDescriptorDatabaseBuilder* passDatabaseBuilder)
 {
 	//No descriptors are handled in this pass
 }

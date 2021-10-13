@@ -24,13 +24,9 @@ namespace Vulkan
 	//This is all to avoid loading the shaders twice - once to obtain the reflection data, once to create pipelines
 
 	class SamplerManager;
-
-	struct PassSetInfo
-	{
-		RenderPassType        PassType;
-		VkDescriptorSetLayout SetLayout;
-		Span<uint32_t>        BindingSpan;
-	};
+	class DescriptorDatabase;
+	class SharedDescriptorDatabaseBuilder;
+	class PassDescriptorDatabaseBuilder;
 
 	class ShaderDatabase
 	{
@@ -102,16 +98,17 @@ namespace Vulkan
 		//Returns nullptr if no matching pipeline layout can be created
 		void CreateMatchingPipelineLayout(std::span<std::string_view> groupNamesForSets, std::span<std::string_view> groupNamesForPushConstants, VkPipelineLayout* outPipelineLayout) const;
 
-		//Calculates and returns the optimal VkDescriptorSet span for shaderGroupSequence. The span gets stored in databaseToStore.
+		//Calculates and returns the optimal VkDescriptorSet span for shaderGroupSequence. The span returned is not yet ready-to-be-used; it's gonna be revalidated after a call to FillPassSets
 		//The span is built in such a way that binding pipelines according to order in shaderGroupSequence would produce the least amount of descriptors needed to be rebound
 		//Returns the descriptor sub-span for each entry in shaderGroupSequence in outBindSubspansPerGroup
 		//Returns the firstSet parameter for vkBindDescriptorSets for each entry in shaderGroupSequence in outBindPointsPerGroup
-		std::span<VkDescriptorSet> AssignPassSets(DescriptorDatabase* databaseToStore, const std::span<std::string_view> shaderGroupSequence, std::span<Span<uint32_t>> outBindSubspansPerGroup, std::span<uint32_t> outBindPointsPerGroup) const;
+		std::span<VkDescriptorSet> AssignPassSets(const std::span<std::string_view> shaderGroupSequence, std::span<Span<uint32_t>> outBindSubspansPerGroup, std::span<uint32_t> outBindPointsPerGroup) const;
 
-		//Transfers the ownership of all set layouts from shared domain to shared descriptor database, also saving the information about layouts
-		void FlushSharedSetLayouts(DescriptorDatabase* databaseToBuild);
+		//Creates the sets 
+		void InitializePassSets(SharedDescriptorDatabaseBuilder* sharedDatabaseBuilder, PassDescriptorDatabaseBuilder* passDatabaseBuilder) const;
 
-		void BuildUniquePassSetInfos(std::vector<PassSetInfo>& outPassSetInfos, std::vector<uint16_t>& outPassBindingTypes) const;
+		//Transfers the ownership of all set layouts from shared domain to shared descriptor database
+		void FlushSharedSetLayouts(SharedDescriptorDatabaseBuilder* sharedDatabaseBuilder);
 
 	private:
 		//Functions for collecting bindings and push constants

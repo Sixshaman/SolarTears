@@ -136,7 +136,7 @@ void Vulkan::GBufferPass::RecordExecution(VkCommandBuffer commandBuffer, const R
 	vkCmdEndRenderPass(commandBuffer);
 }
 
-void Vulkan::GBufferPass::ValidateDescriptorSets(const ShaderDatabase* shaderDatabase, DescriptorDatabase* descriptorDatabase)
+void Vulkan::GBufferPass::ValidateDescriptorSets(const ShaderDatabase* shaderDatabase, SharedDescriptorDatabaseBuilder* sharedDatabaseBuilder, PassDescriptorDatabaseBuilder* passDatabaseBuilder)
 {
 	//The pipelines will be bound in this order
 	constexpr uint32_t staticGroupIndex          = 0;
@@ -153,7 +153,7 @@ void Vulkan::GBufferPass::ValidateDescriptorSets(const ShaderDatabase* shaderDat
 	
 	for(uint32_t frameResourceIndex = 0; frameResourceIndex < Utils::InFlightFrameCount; frameResourceIndex++)
 	{
-		mDescriptorSets[frameResourceIndex] = shaderDatabase->AssignPassSets(descriptorDatabase, shaderGroupPipelineOrder, setSubspansPerShaderGroup, setBindOffsetsPerShaderGroup);
+		mDescriptorSets[frameResourceIndex] = shaderDatabase->AssignPassSets(sharedDatabaseBuilder, passDatabaseBuilder, shaderGroupPipelineOrder, setSubspansPerShaderGroup, setBindOffsetsPerShaderGroup);
 	}
 
 	//Static and static instanced sets should match

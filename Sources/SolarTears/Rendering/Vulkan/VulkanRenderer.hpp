@@ -20,7 +20,8 @@ namespace Vulkan
 	class DeviceQueues;
 	class RenderableScene;
 	class FrameGraph;
-	class SceneDescriptorDatabase;
+	class DescriptorDatabase;
+	class SamplerManager;
 
 	class Renderer: public ::Renderer
 	{
@@ -71,7 +72,8 @@ namespace Vulkan
 
 		std::unique_ptr<MemoryManager> mMemoryAllocator;
 
-		std::unique_ptr<SceneDescriptorDatabase> mSceneDescriptorDatabase;
+		std::unique_ptr<DescriptorDatabase> mDescriptorDatabase;
+		std::unique_ptr<SamplerManager>     mSamplerManager;
 
 #if (defined(DEBUG) || defined(_DEBUG)) && defined(VK_EXT_debug_utils)
 		VkDebugUtilsMessengerEXT mDebugMessenger;
