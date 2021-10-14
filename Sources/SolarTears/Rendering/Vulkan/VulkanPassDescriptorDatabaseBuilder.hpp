@@ -20,7 +20,7 @@ namespace Vulkan
 		};
 
 	public:
-		PassDescriptorDatabaseBuilder();
+		PassDescriptorDatabaseBuilder(DescriptorDatabase* databaseToBuild);
 		~PassDescriptorDatabaseBuilder();
 
 		void AddPassSetInfo(VkDescriptorSetLayout setLayout, uint32_t passIndex, std::span<const uint16_t> setBindingTypes);

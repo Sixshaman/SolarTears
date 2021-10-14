@@ -186,12 +186,14 @@ void Vulkan::FrameGraphBuilder::Build(FrameGraphDescription&& frameGraphDescript
 	ModernFrameGraphBuilder::Build(std::move(frameGraphDescription));
 }
 
-void Vulkan::FrameGraphBuilder::UpdateDescriptorMappings(DescriptorDatabase* databaseToUpdateMappings)
+void Vulkan::FrameGraphBuilder::ValidateDescriptors(DescriptorDatabase* descriptorDatabase, SharedDescriptorDatabaseBuilder* sharedDatabaseBuilder, PassDescriptorDatabaseBuilder* passDatabaseBuilder)
 {
-	mShaderDatabase->FlushSharedSetLayouts(databaseToUpdateMappings);
+	descriptorDatabase->ClearDatabase();
+
+	mShaderDatabase->FlushDescriptorSetData(sharedDatabaseBuilder, passDatabaseBuilder);
 	for(uint32_t passIndex = mRenderPassMetadataSpan.Begin; passIndex < mRenderPassMetadataSpan.End; passIndex++)
 	{
-		mVulkanGraphToBuild->mRenderPasses[passIndex]->ValidateDescriptorSets(mShaderDatabase.get(), databaseToUpdateMappings);
+		mVulkanGraphToBuild->mRenderPasses[passIndex]->ValidateDescriptorSetSpans(descriptorDatabase, mShaderDatabase->GetOriginalDescriptorSpanStart());
 	}
 }
 

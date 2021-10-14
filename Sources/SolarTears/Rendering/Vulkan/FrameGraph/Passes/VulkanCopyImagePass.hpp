@@ -25,7 +25,7 @@ namespace Vulkan
 
 		void RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig, uint32_t frameResourceIndex) const override;
 
-		void ValidateDescriptorSets(const ShaderDatabase* shaderDatabase, SharedDescriptorDatabaseBuilder* sharedDatabaseBuilder, PassDescriptorDatabaseBuilder* passDatabaseBuilder) override;
+		void ValidateDescriptorSetSpans(DescriptorDatabase* descriptorDatabase, const VkDescriptorSet* originalSetStartPoint) override;
 
 	private:
 		VkImage mSrcImageRef;

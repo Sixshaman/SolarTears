@@ -23,7 +23,7 @@ void Vulkan::SharedDescriptorDatabaseBuilder::ClearRegisteredSharedSetInfos()
 	mDatabaseToBuild->mSharedSetFormatsFlat.clear();
 }
 
-uintptr_t Vulkan::SharedDescriptorDatabaseBuilder::RegisterSharedSetInfo(VkDescriptorSetLayout setLayout, std::span<const uint16_t> setBindings)
+uint32_t Vulkan::SharedDescriptorDatabaseBuilder::RegisterSharedSetInfo(VkDescriptorSetLayout setLayout, std::span<const uint16_t> setBindings)
 {
 	Span<uint32_t> formatSpan =
 	{
@@ -42,7 +42,7 @@ uintptr_t Vulkan::SharedDescriptorDatabaseBuilder::RegisterSharedSetInfo(VkDescr
 		mDatabaseToBuild->mSharedSetFormatsFlat[formatSpan.Begin + layoutBindingIndex] = (SharedDescriptorBindingType)bindingTypeIndex;
 	}
 
-	uintptr_t setLayoutOffset = mDatabaseToBuild->mSharedSetCreateMetadatas.size();
+	uint32_t setLayoutStart = mDatabaseToBuild->mSharedSetCreateMetadatas.size();
 	for(uint32_t frameIndex = 0; frameIndex < layoutFrameCount; frameIndex++)
 	{
 		mDatabaseToBuild->mSharedSetCreateMetadatas.push_back(DescriptorDatabase::SharedSetCreateMetadata
@@ -53,10 +53,10 @@ uintptr_t Vulkan::SharedDescriptorDatabaseBuilder::RegisterSharedSetInfo(VkDescr
 		});
 	}
 
-	return (uintptr_t)(setLayoutOffset);
+	return setLayoutStart;
 }
 
-void Vulkan::SharedDescriptorDatabaseBuilder::AddSharedSetInfo(uintptr_t setLayoutOffset, uint32_t frame)
+void Vulkan::SharedDescriptorDatabaseBuilder::AddSharedSetInfo(uint32_t setLayoutOffset, uint32_t frame)
 {
 	mDatabaseToBuild->mSharedSetRecords.push_back(DescriptorDatabase::SharedSetRecord
 	{

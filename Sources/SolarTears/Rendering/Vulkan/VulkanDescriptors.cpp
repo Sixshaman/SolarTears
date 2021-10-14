@@ -12,6 +12,14 @@ Vulkan::DescriptorDatabase::DescriptorDatabase(const VkDevice device): mDeviceRe
 
 Vulkan::DescriptorDatabase::~DescriptorDatabase()
 {
+	ClearDatabase();
+
+	SafeDestroyObject(vkDestroyDescriptorPool, mDeviceRef, mSharedDescriptorPool);
+	SafeDestroyObject(vkDestroyDescriptorPool, mDeviceRef, mPassDescriptorPool);
+}
+
+void Vulkan::DescriptorDatabase::ClearDatabase()
+{
 	SafeDestroyObject(vkDestroyDescriptorPool, mDeviceRef, mSharedDescriptorPool);
 	for(size_t entryIndex = 0; entryIndex < mSharedSetCreateMetadatas.size(); entryIndex++)
 	{
@@ -24,4 +32,16 @@ Vulkan::DescriptorDatabase::~DescriptorDatabase()
 			mSharedSetCreateMetadatas[entryIndex].SetLayout = VK_NULL_HANDLE;
 		}
 	}
+
+	mSharedSetCreateMetadatas.clear();
+	mSharedSetFormatsFlat.clear();
+	mSharedSetRecords.clear();
+}
+
+std::span<VkDescriptorSet> Vulkan::DescriptorDatabase::ValidateSetSpan(std::span<VkDescriptorSet> setToValidate, const VkDescriptorSet* originalSpanStartPoint)
+{
+	ptrdiff_t spanStart = setToValidate.data() - originalSpanStartPoint;
+	size_t    spanSize  = setToValidate.size();
+
+	return std::span<VkDescriptorSet>{mDescriptorSets.begin() + spanStart, mDescriptorSets.begin() + spanStart + spanSize};
 }

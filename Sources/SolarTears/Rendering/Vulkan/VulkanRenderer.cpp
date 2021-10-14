@@ -130,8 +130,8 @@ BaseRenderableScene* Vulkan::Renderer::InitScene(const RenderableSceneDescriptio
 
 	sceneBuilder.Build(sceneDescription, sceneMeshInitialLocations, outObjectHandles);
 
-	SharedDescriptorDatabaseBuilder sharedDatabaseBuilder;
-	sharedDatabaseBuilder.RecreateSharedSets(mDescriptorDatabase.get(), mScene.get(), mSamplerManager.get());
+	SharedDescriptorDatabaseBuilder sharedDatabaseBuilder(mDescriptorDatabase.get());
+	sharedDatabaseBuilder.RecreateSharedSets(mScene.get(), mSamplerManager.get());
 
 	return mScene.get();
 }
@@ -151,13 +151,13 @@ void Vulkan::Renderer::InitFrameGraph(FrameGraphConfig&& frameGraphConfig, Frame
 
 	FrameGraphBuilder frameGraphBuilder(mLoggingBoard, mFrameGraph.get(), mSwapChain.get());
 	frameGraphBuilder.Build(std::move(frameGraphDescription), frameGraphBuildInfo);
-	frameGraphBuilder.UpdateDescriptorMappings(mDescriptorDatabase.get());
 
-	PassDescriptorDatabaseBuilder passDatabaseBuilder;
-	passDatabaseBuilder.RecreatePassSets(mDescriptorDatabase.get(), &frameGraphBuilder);
+	PassDescriptorDatabaseBuilder   passDatabaseBuilder(mDescriptorDatabase.get());
+	SharedDescriptorDatabaseBuilder sharedDatabaseBuilder(mDescriptorDatabase.get());
+	frameGraphBuilder.ValidateDescriptors(mDescriptorDatabase.get(), &sharedDatabaseBuilder, &passDatabaseBuilder);
 
-	SharedDescriptorDatabaseBuilder sharedDatabaseBuilder;
-	sharedDatabaseBuilder.RecreateSharedSets(mDescriptorDatabase.get(), mScene.get(), mSamplerManager.get());
+	passDatabaseBuilder.RecreatePassSets(&frameGraphBuilder);
+	sharedDatabaseBuilder.RecreateSharedSets(mScene.get(), mSamplerManager.get());
 }
 
 void Vulkan::Renderer::Render()

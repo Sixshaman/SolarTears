@@ -7,7 +7,7 @@
 #include <span>
 #include <algorithm>
 
-Vulkan::PassDescriptorDatabaseBuilder::PassDescriptorDatabaseBuilder()
+Vulkan::PassDescriptorDatabaseBuilder::PassDescriptorDatabaseBuilder(DescriptorDatabase* databaseToBuild): mDatabaseToBuild(databaseToBuild)
 {
 }
 

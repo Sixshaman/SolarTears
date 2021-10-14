@@ -7,6 +7,7 @@
 #include "../../Core/DataStructures/Span.hpp"
 #include "../Common/FrameGraph/ModernFrameGraphMisc.hpp"
 #include "FrameGraph/VulkanRenderPass.hpp"
+#include "FrameGraph/VulkanFrameGraphMisc.hpp"
 #include "VulkanDescriptors.hpp"
 
 class LoggerQueue;
@@ -76,6 +77,14 @@ namespace Vulkan
 			Span<uint32_t> RangeSpan;  //Span of VkPushConstantRanges
 		};
 
+		//The data structure to create descriptor set span
+		struct DescriptorSetSpanMetadata
+		{
+			uint32_t       PassId;             //Frame graph-specific pass id for pass sets
+			uint32_t       FrameResourceIndex; //Frame resource index for scene sets
+			Span<uint32_t> SetLayoutNodeSpan;  //The span in mSetLayoutIndicesPerGroupSequences for this descriptor set span
+		};
+
 	public:
 		ShaderDatabase(VkDevice device, SamplerManager* samplerManager, LoggerQueue* logger);
 		~ShaderDatabase();
@@ -102,13 +111,14 @@ namespace Vulkan
 		//The span is built in such a way that binding pipelines according to order in shaderGroupSequence would produce the least amount of descriptors needed to be rebound
 		//Returns the descriptor sub-span for each entry in shaderGroupSequence in outBindSubspansPerGroup
 		//Returns the firstSet parameter for vkBindDescriptorSets for each entry in shaderGroupSequence in outBindPointsPerGroup
-		std::span<VkDescriptorSet> AssignPassSets(const std::span<std::string_view> shaderGroupSequence, std::span<Span<uint32_t>> outBindSubspansPerGroup, std::span<uint32_t> outBindPointsPerGroup) const;
+		std::span<VkDescriptorSet> AssignPassSets(uint32_t passIndex, uint32_t frame, std::span<const std::string_view> shaderGroupSequence, std::span<DescriptorSetBindRange> outBindRangesPerGroup);
 
-		//Creates the sets 
-		void InitializePassSets(SharedDescriptorDatabaseBuilder* sharedDatabaseBuilder, PassDescriptorDatabaseBuilder* passDatabaseBuilder) const;
+		//Registers the set create infos in databases and transfers the ownership of all set layouts from shared domain to shared descriptor database 
+		void FlushDescriptorSetData(SharedDescriptorDatabaseBuilder* sharedDatabaseBuilder, PassDescriptorDatabaseBuilder* passDatabaseBuilder);
 
-		//Transfers the ownership of all set layouts from shared domain to shared descriptor database
-		void FlushSharedSetLayouts(SharedDescriptorDatabaseBuilder* sharedDatabaseBuilder);
+		//Returns the start of the mock spans that AssignPassSets calls return
+		//DO NOT dereference this pointer! It's only used in address calculations
+		VkDescriptorSet* GetOriginalDescriptorSpanStart() const;
 
 	private:
 		//Functions for collecting bindings and push constants
@@ -181,7 +191,7 @@ namespace Vulkan
 		//Each entry in mLayoutRecordNodeIndicesFlat references an entry in mSetLayoutRecordNodes
 		//The mSetLayoutsForCreatePipelineFlat list is non-owning and only used by vkCreatePipelineLayout call
 		std::unordered_map<std::string_view, Span<uint32_t>> mLayoutNodeRecordIndexSpansPerShaderGroup;
-		std::vector<uint32_t>                                mLayoutRecordNodeIndicesFlat;              
+		std::vector<uint32_t>                                mLayoutRecordNodeIndicesFlat;      
 		std::vector<VkDescriptorSetLayout>                   mSetLayoutsForCreatePipelineFlat;
 
 		//Push constant ranges and records for each shader group name
@@ -206,6 +216,10 @@ namespace Vulkan
 		std::vector<VkDescriptorBindingFlags>     mLayoutBindingFlagsFlat; //Binding flags
 		std::vector<uint16_t>                     mLayoutBindingTypesFlat; //Pass-specific binding types
 		
+		//Registered information needed to create optimal descriptor sets for shader group sequences
+		std::vector<DescriptorSetSpanMetadata> mSetSpanMetadatasPerGroupSequences;
+		std::vector<uint32_t>                  mSetLayoutIndicesForGroupSequences;
+
 		//Domain records per pass type
 		std::unordered_map<RenderPassType, BindingDomain> mPassDomainMap;
 

@@ -10,11 +10,7 @@
 
 namespace Vulkan
 {
-	class FrameGraphBuilder;
 	class DeviceParameters;
-	class DescriptorManager;
-	class RenderableScene;
-	class ShaderDatabase;
 
 	class GBufferPass: public RenderPass, public GBufferPassBase
 	{
@@ -34,12 +30,15 @@ namespace Vulkan
 
 		void RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* renderableScene, const FrameGraphConfig& frameGraphConfig, uint32_t frameResourceIndex) const override;
 
-		void ValidateDescriptorSets(const ShaderDatabase* shaderDatabase, SharedDescriptorDatabaseBuilder* sharedDatabaseBuilder, PassDescriptorDatabaseBuilder* passDatabaseBuilder) override;
+		void ValidateDescriptorSetSpans(DescriptorDatabase* descriptorDatabase, const VkDescriptorSet* originalSetStartPoint) override;
 
 	private:
+		void ObtainDescriptorData(ShaderDatabase* shaderDatabase, uint32_t passIndex);
 		void CreateRenderPass(const FrameGraphBuilder* frameGraphBuilder, uint32_t frameGraphPassId, const DeviceParameters* deviceParameters);
 		void CreateFramebuffer(const FrameGraphBuilder* frameGraphBuilder, uint32_t frameGraphPassId, const FrameGraphConfig* frameGraphConfig);
-		void CreatePipelineLayout(std::span<VkDescriptorSetLayout> setLayouts, std::span<VkPushConstantRange> pushConstantRanges, VkPipelineLayout* outPipelineLayout);
+		void CreatePipelineLayouts(const ShaderDatabase* shaderDatabase);
+		void CreatePipelines(const ShaderDatabase* shaderDatabase, const FrameGraphConfig* frameGraphConfig);
+
 		void CreateGBufferPipeline(const uint32_t* vertexShaderModule, uint32_t vertexShaderModuleSize, const uint32_t* fragmentShaderModule, uint32_t fragmetShaderModuleSize, VkPipelineLayout pipelineLayout, const FrameGraphConfig* frameGraphConfig, VkPipeline* outPipeline);
 
 	private:

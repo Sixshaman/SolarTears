@@ -29,4 +29,11 @@ namespace Vulkan
 
 		uint32_t Flags;
 	};
+
+	struct DescriptorSetBindRange
+	{
+		uint32_t Begin;
+		uint32_t End;
+		uint32_t BindPoint;
+	};
 }

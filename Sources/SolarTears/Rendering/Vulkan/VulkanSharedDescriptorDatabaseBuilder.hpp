@@ -17,9 +17,9 @@ namespace Vulkan
 		SharedDescriptorDatabaseBuilder(DescriptorDatabase* databaseToBuild);
 		~SharedDescriptorDatabaseBuilder();
 
-		void      ClearRegisteredSharedSetInfos();
-		uintptr_t RegisterSharedSetInfo(VkDescriptorSetLayout setLayout, std::span<const uint16_t> setBindings);
-		void      AddSharedSetInfo(uintptr_t setLayoutOffset, uint32_t frame);
+		void     ClearRegisteredSharedSetInfos();
+		uint32_t RegisterSharedSetInfo(VkDescriptorSetLayout setLayout, std::span<const uint16_t> setBindings);
+		void     AddSharedSetInfo(uint32_t setLayoutId, uint32_t frame);
 
 		//Creates sets from registered set layouts
 		void RecreateSharedSets(const RenderableScene* scene, const SamplerManager* samplerManager);

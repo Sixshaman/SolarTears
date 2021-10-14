@@ -20,6 +20,8 @@ namespace Vulkan
 	class DeviceParameters;
 	class ShaderDatabase;
 	class DescriptorDatabase;
+	class SharedDescriptorDatabaseBuilder;
+	class PassDescriptorDatabaseBuilder;
 
 	struct FrameGraphBuildInfo
 	{
@@ -68,7 +70,7 @@ namespace Vulkan
 		VkAccessFlags        GetNextPassSubresourceAccessFlags(uint32_t passIndex, uint_fast16_t subresourceIndex) const;
 
 		void Build(FrameGraphDescription&& frameGraphDescription, const FrameGraphBuildInfo& buildInfo);
-		void UpdateDescriptorMappings(DescriptorDatabase* databaseToUpdateMappings);
+		void ValidateDescriptors(DescriptorDatabase* descriptorDatabase, SharedDescriptorDatabaseBuilder* sharedDatabaseBuilder, PassDescriptorDatabaseBuilder* passDatabaseBuilder);
 
 	private:
 		//Converts pass type to a queue family index

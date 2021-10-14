@@ -36,6 +36,10 @@ namespace Vulkan
 		DescriptorDatabase(const VkDevice device);
 		~DescriptorDatabase();
 
+		void ClearDatabase();
+
+		std::span<VkDescriptorSet> ValidateSetSpan(std::span<VkDescriptorSet> setToValidate, const VkDescriptorSet* originalSpanStartPoint);
+
 	private:
 		const VkDevice mDeviceRef;
 
