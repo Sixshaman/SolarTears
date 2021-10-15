@@ -1,12 +1,15 @@
 #pragma once
 
 #include "../VulkanRenderPass.hpp"
-#include "../../../Common/FrameGraph/Passes/GBufferPass.hpp"
-#include "../../../../Core/DataStructures/Span.hpp"
 #include "../VulkanFrameGraphMisc.hpp"
-#include "../../../../Core/Util.hpp"
+#include "../../VulkanShaders.hpp"
+#include "../../../Common/FrameGraph/Passes/GBufferPass.hpp"
 #include "../../../Common/RenderingUtils.hpp"
+#include "../../../../Core/DataStructures/Span.hpp"
+#include "../../../../Core/Util.hpp"
 #include <span>
+#include <string>
+#include <array>
 
 namespace Vulkan
 {

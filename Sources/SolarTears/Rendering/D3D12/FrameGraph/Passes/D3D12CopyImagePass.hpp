@@ -14,7 +14,7 @@ namespace D3D12
 	class CopyImagePass: public RenderPass, public CopyImagePassBase
 	{
 	public:
-		inline static void RegisterSubesources(std::span<SubresourceMetadataPayload> inoutMetadataPayloads);
+		inline static void RegisterSubresources(std::span<SubresourceMetadataPayload> inoutMetadataPayloads);
 		inline static bool PropagateSubresourceInfos(std::span<SubresourceMetadataPayload> inoutMetadataPayloads);
 
 	public:

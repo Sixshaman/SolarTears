@@ -178,9 +178,9 @@ void Engine::CreateFrameGraph(Window* window)
 	frameGraphDescription.AddRenderPass(GBufferPassBase::PassType,   "GBuffer");
 	frameGraphDescription.AddRenderPass(CopyImagePassBase::PassType, "CopyImage");
 
-	frameGraphDescription.AssignSubresourceName("GBuffer",   GBufferPassBase::ColorBufferImageId, "ColorBuffer");
-	frameGraphDescription.AssignSubresourceName("CopyImage", CopyImagePassBase::SrcImageId,       "ColorBuffer");
-	frameGraphDescription.AssignSubresourceName("CopyImage", CopyImagePassBase::DstImageId,       "Backbuffer");
+	frameGraphDescription.AssignSubresourceName("GBuffer",   GBufferPassBase::GetSubresourceStringId(GBufferPassBase::PassSubresourceId::ColorBufferImage), "ColorBuffer");
+	frameGraphDescription.AssignSubresourceName("CopyImage", CopyImagePassBase::GetSubresourceStringId(CopyImagePassBase::PassSubresourceId::SrcImage),     "ColorBuffer");
+	frameGraphDescription.AssignSubresourceName("CopyImage", CopyImagePassBase::GetSubresourceStringId(CopyImagePassBase::PassSubresourceId::DstImage),     "Backbuffer");
 
 	frameGraphDescription.AssignBackbufferName("Backbuffer");
 

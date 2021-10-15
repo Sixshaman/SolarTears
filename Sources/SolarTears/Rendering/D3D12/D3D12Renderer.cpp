@@ -74,9 +74,14 @@ void D3D12::Renderer::InitFrameGraph(FrameGraphConfig&& frameGraphConfig, FrameG
 	mDeviceQueues->AllQueuesWaitStrong();
 
 	mFrameGraph = std::make_unique<D3D12::FrameGraph>(std::move(frameGraphConfig), mWorkerCommandLists.get(), mDescriptorManager.get(), mDeviceQueues.get());
-	D3D12::FrameGraphBuilder frameGraphBuilder(mFrameGraph.get(), std::move(frameGraphDescription), mSwapChain.get());
+	D3D12::FrameGraphBuilder frameGraphBuilder(mFrameGraph.get(), mSwapChain.get());
 
-	frameGraphBuilder.Build(mDevice.get(), mShaderManager.get(), mMemoryAllocator.get());
+	D3D12::FrameGraphBuildInfo buildInfo;
+	buildInfo.Device          = mDevice.get();
+	buildInfo.ShaderMgr       = mShaderManager.get();
+	buildInfo.MemoryAllocator = mMemoryAllocator.get();
+
+	frameGraphBuilder.Build(std::move(frameGraphDescription), buildInfo);
 
 	RecreateSceneAndFrameGraphDescriptors();
 }

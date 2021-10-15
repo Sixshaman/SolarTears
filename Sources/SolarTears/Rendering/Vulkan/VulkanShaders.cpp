@@ -59,7 +59,7 @@ void Vulkan::ShaderDatabase::RegisterPass(RenderPassType passType)
 		.FirstLayoutNodeIndex = (uint32_t)(-1)
 	});
 
-	BindingDomain newDomain = (uint32_t)(mDomainRecords.size() - 1);
+	BindingDomain newDomain = (BindingDomain)(mDomainRecords.size() - 1);
 	mPassDomainMap[passType] = newDomain;
 
 	uint_fast16_t passSubresourceCount = GetPassSubresourceCount(passType);
@@ -116,9 +116,9 @@ void Vulkan::ShaderDatabase::GetPushConstantInfo(std::string_view groupName, std
 
 	const auto rangeBegin = mPushConstantRecordsFlat.begin() + pushConstantSpan.Begin;
 	const auto rangeEnd   = mPushConstantRecordsFlat.begin() + pushConstantSpan.End;
-	auto pushConstantRecord = std::lower_bound(rangeBegin, rangeEnd, [pushConstantName](const PushConstantRecord& rec)
+	auto pushConstantRecord = std::lower_bound(rangeBegin, rangeEnd, pushConstantName, [](const PushConstantRecord& left, const std::string_view& right)
 	{
-		return pushConstantName == rec.Name;
+		return left.Name < right;
 	});
 
 	if(pushConstantRecord != rangeEnd)
@@ -188,10 +188,10 @@ std::span<VkDescriptorSet> Vulkan::ShaderDatabase::AssignPassSets(uint32_t passI
 			currIndexToMatch++;
 		}
 
-		uint32_t oldLayoutIndexCount = (uint32_t)mSetLayoutIndicesForGroupSequences.size() - oldLayoutIndexCount;
+		uint32_t prevLayoutIndexCount = (uint32_t)mSetLayoutIndicesForGroupSequences.size() - oldLayoutIndexCount;
 
-		outBindRangesPerGroup[shaderGroupIndex].Begin     = oldLayoutIndexCount;
-		outBindRangesPerGroup[shaderGroupIndex].End       = oldLayoutIndexCount + (uint32_t)(groupLayoutRecordIndices.size() - currIndexToMatch);
+		outBindRangesPerGroup[shaderGroupIndex].Begin     = prevLayoutIndexCount;
+		outBindRangesPerGroup[shaderGroupIndex].End       = prevLayoutIndexCount + (uint32_t)(groupLayoutRecordIndices.size() - currIndexToMatch);
 		outBindRangesPerGroup[shaderGroupIndex].BindPoint = currIndexToMatch;
 
 		mSetLayoutIndicesForGroupSequences.insert(mSetLayoutIndicesForGroupSequences.end(), groupLayoutRecordIndices.begin() + currIndexToMatch, groupLayoutRecordIndices.end());
@@ -439,8 +439,7 @@ void Vulkan::ShaderDatabase::MergeExistingSetBindings(const std::span<SpvReflect
 	if(firstSetIndexToUpdate == inoutSetSpans.size() - 1)
 	{
 		//If the first existing set to update is also the last one, there's only one existing set to update
-		SpvReflectDescriptorSet* moduleSet     = setUpdates[0];
-		uint32_t                 moduleSetSize = moduleSetSizes[0];
+		uint32_t moduleSetSize = moduleSetSizes[0];
 
 		uint32_t recordedSetSize = inoutSetSpans.back().End - inoutSetSpans.back().Begin;
 		uint32_t sizeDiff        = moduleSetSize - recordedSetSize;
@@ -527,7 +526,11 @@ void Vulkan::ShaderDatabase::MergeExistingSetBindings(const std::span<SpvReflect
 void Vulkan::ShaderDatabase::MergeNewSetBindings(const std::span<SpvReflectDescriptorSet*> newSets, std::vector<SpvReflectDescriptorBinding*>& inoutBindings, std::vector<Span<uint32_t>>& inoutSetSpans)
 {
 	uint32_t oldBindingCount = (uint32_t)inoutBindings.size();
-	uint32_t newBindingCount = std::accumulate(newSets.begin(), newSets.end(), oldBindingCount);
+	uint32_t newBindingCount = std::accumulate(newSets.begin(), newSets.end(), oldBindingCount, [](uint32_t acc, SpvReflectDescriptorSet* set)
+	{
+		return acc + set->binding_count;
+	});
+
 	inoutBindings.resize(newBindingCount, nullptr);
 
 	uint32_t oldSetCount = (uint32_t)inoutSetSpans.size();
@@ -1068,8 +1071,6 @@ uint32_t Vulkan::ShaderDatabase::RegisterSetLayout(uint16_t setDomain, const std
 	else
 	{
 		Span<uint32_t> layoutBindingSpan = mSetLayoutRecordNodes[currNodeIndex].BindingSpan;
-
-		VkShaderStageFlags setStageFlags;
 		for(uint32_t bindingIndex = 0; bindingIndex < setBindings.size(); bindingIndex++)
 		{
 			const VkDescriptorSetLayoutBinding& newBindingInfo = setBindings[bindingIndex];
@@ -1108,10 +1109,7 @@ uint16_t Vulkan::ShaderDatabase::ValidateSetDomain(const std::span<BindingRecord
 
 void Vulkan::ShaderDatabase::BuildSetLayouts()
 {
-	size_t layoutCount       = mSetLayoutRecordNodes.size();
-	size_t totalBindingCount = mLayoutBindingsFlat.size();
-
-	for(size_t layoutIndex = 0; layoutIndex < layoutCount; layoutIndex++)
+	for(size_t layoutIndex = 0; layoutIndex < mSetLayoutRecordNodes.size(); layoutIndex++)
 	{
 		SetLayoutRecordNode& layoutRecordNode   = mSetLayoutRecordNodes[layoutIndex];
 		uint32_t             layoutBindingCount = layoutRecordNode.BindingSpan.End - layoutRecordNode.BindingSpan.Begin;

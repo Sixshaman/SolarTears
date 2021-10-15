@@ -43,7 +43,6 @@ D3D12_GPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceSr
 
 	const SubresourceMetadataNode&    metadataNode     = mSubresourceMetadataNodesFlat[metadataSpan.Begin + subresourceIndex];
 	const SubresourceMetadataPayload& metadataPayload  = mSubresourceMetadataPayloads[metadataSpan.Begin + subresourceIndex];
-	const ResourceMetadata&           resourceMetadata = mResourceMetadatas[metadataNode.ResourceMetadataIndex];
 
 	const D3D12_RESOURCE_STATES resourceState = (D3D12_RESOURCE_STATE_UNORDERED_ACCESS | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	assert((metadataPayload.State & resourceState) && (metadataNode.ImageViewHandle != (uint32_t)(-1)));
@@ -62,7 +61,6 @@ D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceRt
 
 	const SubresourceMetadataNode&    metadataNode     = mSubresourceMetadataNodesFlat[metadataSpan.Begin + subresourceIndex];
 	const SubresourceMetadataPayload& metadataPayload  = mSubresourceMetadataPayloads[metadataSpan.Begin + subresourceIndex];
-	const ResourceMetadata&           resourceMetadata = mResourceMetadatas[metadataNode.ResourceMetadataIndex];
 
 	const D3D12_RESOURCE_STATES resourceState = D3D12_RESOURCE_STATE_RENDER_TARGET;
 	assert((metadataPayload.State & resourceState) && (metadataNode.ImageViewHandle != (uint32_t)(-1)));
@@ -81,7 +79,6 @@ D3D12_CPU_DESCRIPTOR_HANDLE D3D12::FrameGraphBuilder::GetRegisteredSubresourceDs
 
 	const SubresourceMetadataNode&    metadataNode     = mSubresourceMetadataNodesFlat[metadataSpan.Begin + subresourceIndex];
 	const SubresourceMetadataPayload& metadataPayload  = mSubresourceMetadataPayloads[metadataSpan.Begin + subresourceIndex];
-	const ResourceMetadata&           resourceMetadata = mResourceMetadatas[metadataNode.ResourceMetadataIndex];
 
 	const D3D12_RESOURCE_STATES resourceState = (D3D12_RESOURCE_STATE_DEPTH_READ | D3D12_RESOURCE_STATE_DEPTH_WRITE);
 	assert((metadataPayload.State & resourceState) && (metadataNode.ImageViewHandle != (uint32_t)(-1)));
@@ -299,7 +296,6 @@ void D3D12::FrameGraphBuilder::CreateTextures()
 		uint32_t currentNodeIndex = headNodeIndex;
 		do
 		{
-			const SubresourceMetadataNode&    subresourceMetadata        = mSubresourceMetadataNodesFlat[currentNodeIndex];
 			const SubresourceMetadataPayload& subresourceMetadataPayload = mSubresourceMetadataPayloads[currentNodeIndex];
 
 			assert(subresourceMetadataPayload.Format != DXGI_FORMAT_UNKNOWN);
@@ -367,9 +363,7 @@ void D3D12::FrameGraphBuilder::CreateTextures()
 		if(textureMetadata.SourceType == TextureSourceType::PassTexture)
 		{
 			uint32_t textureDescIndex = textureDescIndicesPerResource[metadataIndex];
-
 			const D3D12_RESOURCE_DESC1& resourceDesc = textureDescs[textureDescIndex];
-			UINT64                      heapOffset   = textureHeapOffsets[textureDescIndex];
 
 			D3D12_CLEAR_VALUE  clearValue;
 			D3D12_CLEAR_VALUE* clearValuePtr = nullptr;

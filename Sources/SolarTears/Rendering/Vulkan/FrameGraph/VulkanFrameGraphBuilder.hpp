@@ -18,6 +18,7 @@ namespace Vulkan
 	class InstanceParameters;
 	class RenderableScene;
 	class DeviceParameters;
+	class SamplerManager;
 	class ShaderDatabase;
 	class DescriptorDatabase;
 	class SharedDescriptorDatabaseBuilder;
@@ -37,7 +38,7 @@ namespace Vulkan
 		friend class PassDescriptorDatabaseBuilder;
 
 	public:
-		FrameGraphBuilder(LoggerQueue* logger, FrameGraph* graphToBuild, const SwapChain* swapchain);
+		FrameGraphBuilder(LoggerQueue* logger, FrameGraph* graphToBuild, SamplerManager* samplerManager, const SwapChain* swapchain);
 		~FrameGraphBuilder();
 
 		const VkDevice          GetDevice()           const;

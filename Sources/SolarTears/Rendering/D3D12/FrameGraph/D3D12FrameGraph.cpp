@@ -149,7 +149,6 @@ void D3D12::FrameGraph::RecordGraphicsPasses(ID3D12GraphicsCommandList6* command
 
 D3D12::RenderPass* D3D12::FrameGraph::ChoosePass(const PassFrameSpan& passFrameSpan, uint32_t swapchainImageIndex, uint32_t frameIndex) const
 {
-	uint32_t passToRecordIndex = passFrameSpan.Begin;
 	switch(passFrameSpan.SwapType)
 	{
 	case RenderPassFrameSwapType::PerLinearFrame:

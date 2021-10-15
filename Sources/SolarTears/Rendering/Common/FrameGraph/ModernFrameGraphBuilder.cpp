@@ -134,8 +134,6 @@ void ModernFrameGraphBuilder::InitSubresourceList(const std::vector<SubresourceN
 		uint_fast16_t passSubresourceIndex = passSubresourceIndices.at(subresourceNaming.PassSubresourceId);
 		uint32_t      flatMetadataIndex    = mTotalPassMetadatas[passIndex].SubresourceMetadataSpan.Begin + passSubresourceIndex;
 		
-		uint32_t subresourceFrameCount = 1; //TODO: per-subresource frame count
-
 		auto resourceMetadataIt = resourceMetadataIndices.find(subresourceNaming.PassSubresourceName);
 		if(resourceMetadataIt != resourceMetadataIndices.end())
 		{
@@ -190,6 +188,9 @@ void ModernFrameGraphBuilder::SortPasses()
 
 void ModernFrameGraphBuilder::BuildReadWriteSubresourceSpans(std::vector<std::span<std::uint32_t>>& outReadIndexSpans, std::vector<std::span<std::uint32_t>>& outWriteIndexSpans, std::vector<uint32_t>& outIndicesFlat)
 {
+	outReadIndexSpans.clear();
+	outWriteIndexSpans.clear();
+
 	for(uint32_t passMetadataIndex = mRenderPassMetadataSpan.Begin; passMetadataIndex < mRenderPassMetadataSpan.End; passMetadataIndex++)
 	{
 		const PassMetadata& renderPassMetadata = mTotalPassMetadatas[passMetadataIndex];
@@ -221,6 +222,9 @@ void ModernFrameGraphBuilder::BuildReadWriteSubresourceSpans(std::vector<std::sp
 
 		std::sort(readSpan.begin(),  readSpan.end());
 		std::sort(writeSpan.begin(), writeSpan.end());
+
+		outReadIndexSpans.push_back(readSpan);
+		outWriteIndexSpans.push_back(writeSpan);
 	}
 }
 

@@ -256,20 +256,20 @@ void Vulkan::GBufferPass::CreatePipelines(const ShaderDatabase* shaderDatabase, 
 {
 	const std::wstring shaderFolder = Utils::GetMainDirectory() + L"Shaders/Vulkan/GBuffer/";
 
-	uint32_t* staticVertexShaderCode = nullptr;
-	uint32_t  staticVertexShaderSize = 0;
+	const uint32_t* staticVertexShaderCode = nullptr;
+	uint32_t        staticVertexShaderSize = 0;
 	shaderDatabase->GetRegisteredShaderInfo(shaderFolder + L"GBufferDrawStatic.vert.spv", &staticVertexShaderCode, &staticVertexShaderSize);
 
-	uint32_t* staticInstancedVertexShaderCode = nullptr;
-	uint32_t  staticInstancedVertexShaderSize = 0;
+	const uint32_t* staticInstancedVertexShaderCode = nullptr;
+	uint32_t        staticInstancedVertexShaderSize = 0;
 	shaderDatabase->GetRegisteredShaderInfo(shaderFolder + L"GBufferDrawStaticInstanced.vert.spv", &staticInstancedVertexShaderCode, &staticInstancedVertexShaderSize);
 
-	uint32_t* rigidVertexShaderCode = nullptr;
-	uint32_t  rigidVertexShaderSize = 0;
+	const uint32_t* rigidVertexShaderCode = nullptr;
+	uint32_t        rigidVertexShaderSize = 0;
 	shaderDatabase->GetRegisteredShaderInfo(shaderFolder + L"GBufferDrawRigid.vert.spv", &rigidVertexShaderCode, &rigidVertexShaderSize);
 
-	uint32_t* fragmentShaderCode = nullptr;
-	uint32_t  fragmentShaderSize = 0;
+	const uint32_t* fragmentShaderCode = nullptr;
+	uint32_t        fragmentShaderSize = 0;
 	shaderDatabase->GetRegisteredShaderInfo(shaderFolder + L"GBufferDraw.frag.spv", &fragmentShaderCode, &fragmentShaderSize);
 
 	//Create pipelines

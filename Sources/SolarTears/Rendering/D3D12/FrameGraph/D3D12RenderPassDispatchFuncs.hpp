@@ -16,7 +16,7 @@ namespace D3D12
 		return Pass::RegisterSubresources(metadataPayloads);
 	}
 
-	constexpr uint_fast16_t RegisterPassSubresources(RenderPassType passType, std::span<SubresourceMetadataPayload> metadataPayloads)
+	void RegisterPassSubresources(RenderPassType passType, std::span<SubresourceMetadataPayload> metadataPayloads)
 	{
 		using RegisterSubresourcesFunc = void(*)(std::span<SubresourceMetadataPayload>);
 
@@ -28,12 +28,12 @@ namespace D3D12
 	}
 
 	template<typename Pass>
-	bool PropagateSubresourceInfos(std::span<SubresourceMetadataPayload> metadataPayloads)
+	constexpr bool PropagateSubresourceInfos(std::span<SubresourceMetadataPayload> metadataPayloads)
 	{
 		return Pass::PropagateSubresourceInfos(metadataPayloads);
 	};
 
-	constexpr bool PropagateSubresourceInfos(RenderPassType passType, std::span<SubresourceMetadataPayload> metadataPayloads)
+	bool PropagateSubresourceInfos(RenderPassType passType, std::span<SubresourceMetadataPayload> metadataPayloads)
 	{
 		using PropagateInfosFunc = bool(*)(std::span<SubresourceMetadataPayload>);
 
@@ -41,20 +41,20 @@ namespace D3D12
 		CHOOSE_PASS_FUNCTION(passType, PropagateSubresourceInfos, PropagateInfos);
 
 		assert(PropagateInfos != nullptr);
-		PropagateInfos(metadataPayloads);
+		return PropagateInfos(metadataPayloads);
 	}
 
 	template<typename Pass>
 	std::unique_ptr<RenderPass> MakeUniquePass(const FrameGraphBuilder* frameGraphBuilder, uint32_t passId)
 	{
-		return std::make_unique<Pass>(builder, passId);
+		return std::make_unique<Pass>(frameGraphBuilder, passId);
 	};
 
 	std::unique_ptr<RenderPass> MakeUniquePass(RenderPassType passType, const FrameGraphBuilder* builder, uint32_t passId)
 	{ 
 		using MakePassFunc = std::unique_ptr<RenderPass>(*)(const FrameGraphBuilder*, uint32_t);
 
-		MakePassFunc MakePass;
+		MakePassFunc MakePass = nullptr;
 		CHOOSE_PASS_FUNCTION(passType, MakeUniquePass, MakePass);
 
 		assert(MakePass != nullptr);

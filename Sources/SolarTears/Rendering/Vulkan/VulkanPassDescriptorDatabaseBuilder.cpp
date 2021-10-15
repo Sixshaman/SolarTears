@@ -116,10 +116,7 @@ void Vulkan::PassDescriptorDatabaseBuilder::WriteDescriptorSets(const FrameGraph
 		for(uint32_t bindingIndex = passSetInfo.BindingIndexSpan.Begin; bindingIndex < passSetInfo.BindingIndexSpan.End; bindingIndex++)
 		{
 			uint32_t subresourceIndex = passMetadata.SubresourceMetadataSpan.Begin + mPassSetBindingTypes[bindingIndex];
-
-			const SubresourceMetadataPayload&                 metadataPayload  = frameGraphBuilder->mSubresourceMetadataPayloads[subresourceIndex];
-			const FrameGraphBuilder::SubresourceMetadataNode& metadataNode     = frameGraphBuilder->mSubresourceMetadataNodesFlat[subresourceIndex];
-			const FrameGraphBuilder::ResourceMetadata&        resourceMetadata = frameGraphBuilder->mResourceMetadatas[metadataNode.ResourceMetadataIndex];
+			const SubresourceMetadataPayload& metadataPayload = frameGraphBuilder->mSubresourceMetadataPayloads[subresourceIndex];
 
 			VkDescriptorType type = VK_DESCRIPTOR_TYPE_MAX_ENUM;
 			if(metadataPayload.Usage == VK_IMAGE_USAGE_SAMPLED_BIT)

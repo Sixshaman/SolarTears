@@ -16,9 +16,9 @@
 	(The end) 
 */
 
-class FrameGraphConfig;
-class FrameGraphDescription;
-class BaseRenderableScene;
+struct FrameGraphDescription;
+class  FrameGraphConfig;
+class  BaseRenderableScene;
 
 class Renderer
 {

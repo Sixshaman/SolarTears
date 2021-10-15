@@ -125,7 +125,7 @@ BaseRenderableScene* Vulkan::Renderer::InitScene(const RenderableSceneDescriptio
 {
 	ThrowIfFailed(vkDeviceWaitIdle(mDevice));
 
-	mScene = std::make_unique<RenderableScene>(mDevice, mFrameCounterRef, mDeviceParameters);
+	mScene = std::make_unique<RenderableScene>(mDevice, mDeviceParameters);
 	RenderableSceneBuilder sceneBuilder(mScene.get(), mMemoryAllocator.get(), mDeviceQueues.get(), mCommandBuffers.get(), &mDeviceParameters);
 
 	sceneBuilder.Build(sceneDescription, sceneMeshInitialLocations, outObjectHandles);
@@ -149,7 +149,7 @@ void Vulkan::Renderer::InitFrameGraph(FrameGraphConfig&& frameGraphConfig, Frame
 		.CommandBuffers  = mCommandBuffers.get()
 	};
 
-	FrameGraphBuilder frameGraphBuilder(mLoggingBoard, mFrameGraph.get(), mSwapChain.get());
+	FrameGraphBuilder frameGraphBuilder(mLoggingBoard, mFrameGraph.get(), mSamplerManager.get(), mSwapChain.get());
 	frameGraphBuilder.Build(std::move(frameGraphDescription), frameGraphBuildInfo);
 
 	PassDescriptorDatabaseBuilder   passDatabaseBuilder(mDescriptorDatabase.get());

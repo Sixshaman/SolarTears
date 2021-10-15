@@ -12,9 +12,9 @@
 #include <algorithm>
 #include <numeric>
 
-Vulkan::FrameGraphBuilder::FrameGraphBuilder(LoggerQueue* logger, FrameGraph* graphToBuild, const SwapChain* swapchain): ModernFrameGraphBuilder(graphToBuild), mLogger(logger), mVulkanGraphToBuild(graphToBuild), mSwapChain(swapchain)
+Vulkan::FrameGraphBuilder::FrameGraphBuilder(LoggerQueue* logger, FrameGraph* graphToBuild, SamplerManager* samplerManager, const SwapChain* swapchain): ModernFrameGraphBuilder(graphToBuild), mLogger(logger), mVulkanGraphToBuild(graphToBuild), mSwapChain(swapchain)
 {
-	mShaderDatabase = std::make_unique<ShaderDatabase>(mLogger);
+	mShaderDatabase = std::make_unique<ShaderDatabase>(mVulkanGraphToBuild->mDeviceRef, samplerManager, mLogger);
 }
 
 Vulkan::FrameGraphBuilder::~FrameGraphBuilder()
@@ -204,13 +204,13 @@ void Vulkan::FrameGraphBuilder::InitMetadataPayloads()
 	for(uint32_t passIndex = mRenderPassMetadataSpan.Begin; passIndex < mRenderPassMetadataSpan.End; passIndex++)
 	{
 		const PassMetadata& passMetadata = mTotalPassMetadatas[passIndex];
+		mShaderDatabase->RegisterPass(passMetadata.Type);
 
 		Span<uint32_t> passMetadataSpan = passMetadata.SubresourceMetadataSpan;
 		std::span<SubresourceMetadataPayload> payloadSpan = {mSubresourceMetadataPayloads.begin() + passMetadataSpan.Begin, mSubresourceMetadataPayloads.begin() + passMetadataSpan.End};
 
 		RegisterPassSubresources(passMetadata.Type, payloadSpan);
-
-		mShaderDatabase->RegisterPass(passMetadata.Type);
+		RegisterPassShaders(passMetadata.Type, mShaderDatabase.get());
 	}
 
 	for(uint32_t presentPassIndex = mPresentPassMetadataSpan.Begin; presentPassIndex < mPresentPassMetadataSpan.End; presentPassIndex++)
@@ -504,7 +504,7 @@ void Vulkan::FrameGraphBuilder::CreateTextureViews()
 				continue;
 			}
 
-			uint64_t viewInfoKey = (subresourceMetadataPayload.Aspect << 32) | (subresourceMetadataPayload.Format);
+			uint64_t viewInfoKey = ((uint64_t)subresourceMetadataPayload.Aspect << 32ull) | (subresourceMetadataPayload.Format);
 			
 			auto imageViewIt = imageViewIndicesForViewInfos.find(viewInfoKey);
 			if(imageViewIt != imageViewIndicesForViewInfos.end())

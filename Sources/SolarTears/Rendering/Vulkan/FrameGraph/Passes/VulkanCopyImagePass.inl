@@ -44,7 +44,7 @@ inline bool Vulkan::CopyImagePass::PropagateSubresourceInfos(std::span<Subresour
 	return propagationHappened;
 }
 
-inline VkDescriptorType Vulkan::CopyImagePass::GetSubresourceDescriptorType(uint_fast16_t subresourceId)
+inline VkDescriptorType Vulkan::CopyImagePass::GetSubresourceDescriptorType([[maybe_unused]] uint_fast16_t subresourceId)
 {
 	return VK_DESCRIPTOR_TYPE_MAX_ENUM; //No subresources in this pass have an associated descriptor type
 }

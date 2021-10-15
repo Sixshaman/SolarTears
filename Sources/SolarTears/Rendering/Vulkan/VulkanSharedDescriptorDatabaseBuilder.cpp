@@ -42,7 +42,7 @@ uint32_t Vulkan::SharedDescriptorDatabaseBuilder::RegisterSharedSetInfo(VkDescri
 		mDatabaseToBuild->mSharedSetFormatsFlat[formatSpan.Begin + layoutBindingIndex] = (SharedDescriptorBindingType)bindingTypeIndex;
 	}
 
-	uint32_t setLayoutStart = mDatabaseToBuild->mSharedSetCreateMetadatas.size();
+	uint32_t setLayoutStart = (uint32_t)mDatabaseToBuild->mSharedSetCreateMetadatas.size();
 	for(uint32_t frameIndex = 0; frameIndex < layoutFrameCount; frameIndex++)
 	{
 		mDatabaseToBuild->mSharedSetCreateMetadatas.push_back(DescriptorDatabase::SharedSetCreateMetadata
@@ -60,7 +60,7 @@ void Vulkan::SharedDescriptorDatabaseBuilder::AddSharedSetInfo(uint32_t setLayou
 {
 	mDatabaseToBuild->mSharedSetRecords.push_back(DescriptorDatabase::SharedSetRecord
 	{
-		.SetCreateMetadataIndex = (uint32_t)setLayoutOffset,
+		.SetCreateMetadataIndex = setLayoutOffset + frame,
 		.SetDatabaseIndex       = (uint32_t)mDatabaseToBuild->mDescriptorSets.size()
 	});
 
@@ -230,12 +230,12 @@ void Vulkan::SharedDescriptorDatabaseBuilder::UpdateSharedDescriptorSets(const R
 	std::vector<VkDescriptorImageInfo>  imageDescriptorInfos;
 	std::vector<VkDescriptorBufferInfo> bufferDescriptorInfos;
 
-	constexpr auto addSamplerBindingsFunc = [](const RenderableScene* sceneToCreateDescriptors, std::vector<VkDescriptorImageInfo>& imageDescriptorInfos, std::vector<VkDescriptorBufferInfo>& bufferDescriptorInfos, uint32_t samplerIndex, uint32_t bindingFrameIndex)
+	constexpr auto addSamplerBindingsFunc = []([[maybe_unused]] const RenderableScene* sceneToCreateDescriptors, [[maybe_unused]] std::vector<VkDescriptorImageInfo>& imageDescriptorInfos, [[maybe_unused]] std::vector<VkDescriptorBufferInfo>& bufferDescriptorInfos, [[maybe_unused]] uint32_t samplerIndex, [[maybe_unused]] uint32_t bindingFrameIndex)
 	{
 		//Do nothing
 	};
 
-	constexpr auto addTextureBindingFunc = [](const RenderableScene* sceneToCreateDescriptors, std::vector<VkDescriptorImageInfo>& imageDescriptorInfos, std::vector<VkDescriptorBufferInfo>& bufferDescriptorInfos, uint32_t textureIndex, uint32_t bindingFrameIndex)
+	constexpr auto addTextureBindingFunc = [](const RenderableScene* sceneToCreateDescriptors, std::vector<VkDescriptorImageInfo>& imageDescriptorInfos, [[maybe_unused]] std::vector<VkDescriptorBufferInfo>& bufferDescriptorInfos, uint32_t textureIndex, [[maybe_unused]] uint32_t bindingFrameIndex)
 	{
 		imageDescriptorInfos.push_back(VkDescriptorImageInfo
 		{
@@ -245,7 +245,7 @@ void Vulkan::SharedDescriptorDatabaseBuilder::UpdateSharedDescriptorSets(const R
 		});
 	};
 
-	constexpr auto addMaterialBindingsFunc = [](const RenderableScene* sceneToCreateDescriptors, std::vector<VkDescriptorImageInfo>& imageDescriptorInfos, std::vector<VkDescriptorBufferInfo>& bufferDescriptorInfos, uint32_t materialIndex, uint32_t bindingFrameIndex)
+	constexpr auto addMaterialBindingsFunc = [](const RenderableScene* sceneToCreateDescriptors, [[maybe_unused]] std::vector<VkDescriptorImageInfo>& imageDescriptorInfos, std::vector<VkDescriptorBufferInfo>& bufferDescriptorInfos, uint32_t materialIndex, [[maybe_unused]] uint32_t bindingFrameIndex)
 	{
 		bufferDescriptorInfos.push_back(VkDescriptorBufferInfo
 		{
@@ -255,7 +255,7 @@ void Vulkan::SharedDescriptorDatabaseBuilder::UpdateSharedDescriptorSets(const R
 		});
 	};
 
-	constexpr auto addStaticObjectBindingsFunc = [](const RenderableScene* sceneToCreateDescriptors, std::vector<VkDescriptorImageInfo>& imageDescriptorInfos, std::vector<VkDescriptorBufferInfo>& bufferDescriptorInfos, uint32_t staticObjectIndex, uint32_t bindingFrameIndex)
+	constexpr auto addStaticObjectBindingsFunc = [](const RenderableScene* sceneToCreateDescriptors, [[maybe_unused]] std::vector<VkDescriptorImageInfo>& imageDescriptorInfos, std::vector<VkDescriptorBufferInfo>& bufferDescriptorInfos, uint32_t staticObjectIndex, [[maybe_unused]] uint32_t bindingFrameIndex)
 	{
 		bufferDescriptorInfos.push_back(VkDescriptorBufferInfo
 		{
@@ -265,7 +265,7 @@ void Vulkan::SharedDescriptorDatabaseBuilder::UpdateSharedDescriptorSets(const R
 		});
 	};
 
-	constexpr auto addRigidObjectBindingsFunc = [](const RenderableScene* sceneToCreateDescriptors, std::vector<VkDescriptorImageInfo>& imageDescriptorInfos, std::vector<VkDescriptorBufferInfo>& bufferDescriptorInfos, uint32_t rigidObjectIndex, uint32_t bindingFrameIndex)
+	constexpr auto addRigidObjectBindingsFunc = [](const RenderableScene* sceneToCreateDescriptors, [[maybe_unused]] std::vector<VkDescriptorImageInfo>& imageDescriptorInfos, std::vector<VkDescriptorBufferInfo>& bufferDescriptorInfos, uint32_t rigidObjectIndex, uint32_t bindingFrameIndex)
 	{
 		bufferDescriptorInfos.push_back(VkDescriptorBufferInfo
 		{
@@ -275,7 +275,7 @@ void Vulkan::SharedDescriptorDatabaseBuilder::UpdateSharedDescriptorSets(const R
 		});
 	};
 
-	constexpr auto addFrameDataBindingsFunc = [](const RenderableScene* sceneToCreateDescriptors, std::vector<VkDescriptorImageInfo>& imageDescriptorInfos, std::vector<VkDescriptorBufferInfo>& bufferDescriptorInfos, uint32_t bindingIndex, uint32_t bindingFrameIndex)
+	constexpr auto addFrameDataBindingsFunc = [](const RenderableScene* sceneToCreateDescriptors, [[maybe_unused]] std::vector<VkDescriptorImageInfo>& imageDescriptorInfos, std::vector<VkDescriptorBufferInfo>& bufferDescriptorInfos, [[maybe_unused]] uint32_t bindingIndex, uint32_t bindingFrameIndex)
 	{
 		bufferDescriptorInfos.push_back(VkDescriptorBufferInfo
 		{
@@ -286,19 +286,17 @@ void Vulkan::SharedDescriptorDatabaseBuilder::UpdateSharedDescriptorSets(const R
 	};
 
 	using AddBindingFunc = void(*)(const RenderableScene*, std::vector<VkDescriptorImageInfo>&, std::vector<VkDescriptorBufferInfo>&, uint32_t, uint32_t);
-	constexpr std::array<AddBindingFunc, TotalSharedBindings> bindingAddFuncs = std::to_array
-	({
-		(AddBindingFunc)addSamplerBindingsFunc,
-		(AddBindingFunc)addTextureBindingFunc,
-		(AddBindingFunc)addMaterialBindingsFunc,
-		(AddBindingFunc)addStaticObjectBindingsFunc,
-		(AddBindingFunc)addRigidObjectBindingsFunc,
-		(AddBindingFunc)addFrameDataBindingsFunc
-	});
+	std::array<AddBindingFunc, TotalSharedBindings> bindingAddFuncs;
+	bindingAddFuncs[(uint32_t)SharedDescriptorBindingType::SamplerList]           = addSamplerBindingsFunc;
+	bindingAddFuncs[(uint32_t)SharedDescriptorBindingType::TextureList]           = addTextureBindingFunc;
+	bindingAddFuncs[(uint32_t)SharedDescriptorBindingType::MaterialList]          = addMaterialBindingsFunc;
+	bindingAddFuncs[(uint32_t)SharedDescriptorBindingType::StaticObjectDataList]  = addStaticObjectBindingsFunc;
+	bindingAddFuncs[(uint32_t)SharedDescriptorBindingType::DynamicObjectDataList] = addRigidObjectBindingsFunc;
+	bindingAddFuncs[(uint32_t)SharedDescriptorBindingType::FrameDataList]         = addFrameDataBindingsFunc;
 
 	constexpr uint32_t UniqueBindingCount = std::accumulate(FrameCountsPerSharedBinding.begin(), FrameCountsPerSharedBinding.end(), 0u);
 
-	constexpr std::array<uint32_t, TotalSharedBindings> uniqueBindingStarts = {0};
+	std::array<uint32_t, TotalSharedBindings> uniqueBindingStarts = {0};
 	std::exclusive_scan(FrameCountsPerSharedBinding.begin(), FrameCountsPerSharedBinding.end(), uniqueBindingStarts.begin(), 0u);
 
 	std::array<VkDescriptorImageInfo*,  UniqueBindingCount> imageDescriptorInfosPerUniqueBinding       = {0};

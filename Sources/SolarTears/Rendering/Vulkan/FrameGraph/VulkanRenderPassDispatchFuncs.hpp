@@ -12,12 +12,12 @@ namespace Vulkan
 	class FrameGraphBuilder;
 
 	template<typename Pass>
-	constexpr void RegisterPassSubresources(std::span<SubresourceMetadataPayload> metadataPayloads)
+	inline constexpr void RegisterPassSubresources(std::span<SubresourceMetadataPayload> metadataPayloads)
 	{
-		return Pass::RegisterSubresources(metadataPayloads);
+		Pass::RegisterSubresources(metadataPayloads);
 	}
 
-	uint_fast16_t RegisterPassSubresources(RenderPassType passType, std::span<SubresourceMetadataPayload> metadataPayloads)
+	inline void RegisterPassSubresources(RenderPassType passType, std::span<SubresourceMetadataPayload> metadataPayloads)
 	{
 		using RegisterSubresourcesFunc = void(*)(std::span<SubresourceMetadataPayload>);
 
@@ -29,12 +29,12 @@ namespace Vulkan
 	}
 
 	template<typename Pass>
-	constexpr void RegisterPassShaders(ShaderDatabase* shaderDatabase)
+	inline constexpr void RegisterPassShaders(ShaderDatabase* shaderDatabase)
 	{
 		return Pass::RegisterShaders(shaderDatabase);
 	}
 
-	constexpr void RegisterPassShaders(RenderPassType passType, ShaderDatabase* shaderDatabase)
+	inline void RegisterPassShaders(RenderPassType passType, ShaderDatabase* shaderDatabase)
 	{
 		using RegisterShadersFunc = void(*)(ShaderDatabase*);
 
@@ -46,12 +46,12 @@ namespace Vulkan
 	}
 
 	template<typename Pass>
-	bool PropagateSubresourceInfos(std::span<SubresourceMetadataPayload> metadataPayloads)
+	inline bool PropagateSubresourceInfos(std::span<SubresourceMetadataPayload> metadataPayloads)
 	{
 		return Pass::PropagateSubresourceInfos(metadataPayloads);
 	};
 
-	bool PropagateSubresourceInfos(RenderPassType passType, std::span<SubresourceMetadataPayload> metadataPayloads)
+	inline bool PropagateSubresourceInfos(RenderPassType passType, std::span<SubresourceMetadataPayload> metadataPayloads)
 	{
 		using PropagateInfosFunc = bool(*)(std::span<SubresourceMetadataPayload>);
 
@@ -59,16 +59,16 @@ namespace Vulkan
 		CHOOSE_PASS_FUNCTION(passType, PropagateSubresourceInfos, PropagateInfos);
 
 		assert(PropagateInfos != nullptr);
-		PropagateInfos(metadataPayloads);
+		return PropagateInfos(metadataPayloads);
 	}
 
 	template<typename Pass>
-	VkDescriptorType GetPassSubresourceDescriptorType(uint_fast16_t subresourceIndex)
+	inline VkDescriptorType GetPassSubresourceDescriptorType(uint_fast16_t subresourceIndex)
 	{
 		return Pass::GetSubresourceDescriptorType(subresourceIndex);
 	};
 
-	VkDescriptorType GetPassSubresourceDescriptorType(RenderPassType passType, uint_fast16_t subresourceIndex)
+	inline VkDescriptorType GetPassSubresourceDescriptorType(RenderPassType passType, uint_fast16_t subresourceIndex)
 	{
 		using GetDescriptorTypeFunc = VkDescriptorType(*)(uint_fast16_t);
 
@@ -76,20 +76,20 @@ namespace Vulkan
 		CHOOSE_PASS_FUNCTION(passType, GetPassSubresourceDescriptorType, GetDescriptorType);
 
 		assert(GetDescriptorType != nullptr);
-		GetDescriptorType(subresourceIndex);
+		return GetDescriptorType(subresourceIndex);
 	}
 
 	template<typename Pass>
-	std::unique_ptr<RenderPass> MakeUniquePass(const FrameGraphBuilder* builder, uint32_t passId)
+	inline std::unique_ptr<RenderPass> MakeUniquePass(const FrameGraphBuilder* builder, uint32_t passId)
 	{
 		return std::make_unique<Pass>(builder, passId);
 	};
 
-	std::unique_ptr<RenderPass> MakeUniquePass(RenderPassType passType, const FrameGraphBuilder* builder, uint32_t passId)
+	inline std::unique_ptr<RenderPass> MakeUniquePass(RenderPassType passType, const FrameGraphBuilder* builder, uint32_t passId)
 	{ 
 		using MakePassFunc = std::unique_ptr<RenderPass>(*)(const FrameGraphBuilder*, uint32_t);
 
-		MakePassFunc MakePass;
+		MakePassFunc MakePass = nullptr;
 		CHOOSE_PASS_FUNCTION(passType, MakeUniquePass, MakePass);
 
 		assert(MakePass != nullptr);

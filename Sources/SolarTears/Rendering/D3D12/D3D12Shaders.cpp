@@ -98,16 +98,15 @@ void D3D12::ShaderManager::CollectBindingInfos(ID3D12ShaderReflection* reflectio
 	case D3D12_SHVER_COMPUTE_SHADER:
 		visibility = D3D12_SHADER_VISIBILITY_ALL;
 		break;
-	//case D3D12_SHVER_MESH_SHADER:
-	//	visibility = D3D12_SHADER_VISIBILITY_MESH;
-	//	*rootSignatureFlags &= ~D3D12_ROOT_SIGNATURE_FLAG_DENY_MESH_SHADER_ROOT_ACCESS;
-	//	break;
-	//case D3D12_SHVER_AMPLIFICATION_SHADER:
-	//	visibility = D3D12_SHADER_VISIBILITY_AMPLIFICATION;
-	//	*rootSignatureFlags &= ~D3D12_ROOT_SIGNATURE_FLAG_DENY_AMPLIFICATION_SHADER_ROOT_ACCESS;
-	//	break;
+	case D3D12_SHVER_MESH_SHADER:
+		visibility = D3D12_SHADER_VISIBILITY_MESH;
+		*rootSignatureFlags &= ~D3D12_ROOT_SIGNATURE_FLAG_DENY_MESH_SHADER_ROOT_ACCESS;
+		break;
+	case D3D12_SHVER_AMPLIFICATION_SHADER:
+		visibility = D3D12_SHADER_VISIBILITY_AMPLIFICATION;
+		*rootSignatureFlags &= ~D3D12_ROOT_SIGNATURE_FLAG_DENY_AMPLIFICATION_SHADER_ROOT_ACCESS;
+		break;
 	default:
-		static_assert(IsDateInFuture("2021-08-25"), "Please check https://github.com/microsoft/DirectX-Headers/pull/15 and if it's on, update submodule and uncomment the code above");
 		visibility = D3D12_SHADER_VISIBILITY_ALL;
 		break;
 	}

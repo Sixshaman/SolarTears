@@ -1,14 +1,5 @@
 #include "FrameGraphDescription.hpp"
-#include "Passes/PresentPass.hpp"
 #include <cassert>
-
-FrameGraphDescription::FrameGraphDescription()
-{
-}
-
-FrameGraphDescription::~FrameGraphDescription()
-{
-}
 
 void FrameGraphDescription::AddRenderPass(RenderPassType passType, const std::string_view passName)
 {

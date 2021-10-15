@@ -1,4 +1,4 @@
-void D3D12::CopyImagePass::RegisterSubesources(std::span<SubresourceMetadataPayload> inoutMetadataPayloads)
+void D3D12::CopyImagePass::RegisterSubresources(std::span<SubresourceMetadataPayload> inoutMetadataPayloads)
 {
 	assert(inoutMetadataPayloads.size() == (size_t)PassSubresourceId::Count);
 
