@@ -90,6 +90,12 @@ void SceneDescription::GetRenderableObjectLocations(std::unordered_map<std::stri
 {
 	for(const SceneDescriptionObject& descriptionObject: mSceneObjects)
 	{
+		const std::string& meshComponentName = descriptionObject.GetMeshComponentName();
+		if(meshComponentName.empty())
+		{
+			continue;
+		}
+
 		outLocations[descriptionObject.GetMeshComponentName()] = descriptionObject.GetLocation();
 	}
 }

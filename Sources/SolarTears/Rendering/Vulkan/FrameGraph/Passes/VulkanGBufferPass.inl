@@ -7,7 +7,7 @@ inline void Vulkan::GBufferPass::RegisterSubresources(std::span<SubresourceMetad
 	inoutMetadataPayloads[(size_t)PassSubresourceId::ColorBufferImage].Usage  = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 	inoutMetadataPayloads[(size_t)PassSubresourceId::ColorBufferImage].Stage  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 	inoutMetadataPayloads[(size_t)PassSubresourceId::ColorBufferImage].Access = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-	inoutMetadataPayloads[(size_t)PassSubresourceId::ColorBufferImage].Flags  = (TextureFlagAutoBeforeBarrier | TextureFlagAutoBeforeBarrier);
+	inoutMetadataPayloads[(size_t)PassSubresourceId::ColorBufferImage].Flags  = (TextureFlagAutoBeforeBarrier | TextureFlagAutoAfterBarrier);
 }
 
 inline void Vulkan::GBufferPass::RegisterShaders(ShaderDatabase* shaderDatabase)

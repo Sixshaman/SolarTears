@@ -55,7 +55,7 @@ namespace Vulkan
 
 	constexpr static std::array<VkDescriptorBindingFlags, TotalSharedBindings> DescriptorFlagsPerSharedBinding = std::to_array
 	({
-		(VkDescriptorBindingFlags)VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT, //Variable sampler count
+		(VkDescriptorBindingFlags)0,                                                   //Variable sampler count is not supported, even though samplers are dynamically accessed
 		(VkDescriptorBindingFlags)VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT, //Variable texture count
 		(VkDescriptorBindingFlags)VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT, //Variable material count
 		(VkDescriptorBindingFlags)VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT, //Variable static object count

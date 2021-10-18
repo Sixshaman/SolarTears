@@ -53,6 +53,11 @@ protected:
 
 		uint32_t        ImageViewHandle; //The id of the subresource in the frame graph texture view list
 		RenderPassClass PassClass;       //The pass class (Graphics/Compute/Copy) that uses the node
+
+#if defined(DEBUG) || defined(_DEBUG)
+		std::string_view PassName;
+		std::string_view ResourceName;
+#endif
 	};
 
 public:
@@ -86,13 +91,13 @@ private:
 	bool SpansIntersect(const std::span<uint32_t> leftSortedSpan, const std::span<uint32_t> rightSortedSpan);
 
 	//Assign dependency levels to the render passes
-	void AssignDependencyLevels(const std::vector<std::span<uint32_t>>& adjacencyList);
+	void AssignDependencyLevels(const std::vector<uint32_t>& passIndexRemap, const std::vector<std::span<uint32_t>>& oldAdjacencyList);
 
 	//Sorts frame graph passes topologically
-	void SortRenderPassesByTopology(const std::vector<std::span<uint32_t>>& unsortedPassAdjacencyList);
+	void SortRenderPassesByTopology(const std::vector<std::span<uint32_t>>& unsortedPassAdjacencyList, std::vector<uint32_t>& outPassIndexRemap);
 
 	//Recursively sort subtree topologically
-	void TopologicalSortNode(uint32_t passIndex, const std::vector<std::span<uint32_t>>& unsortedPassAdjacencyList, std::vector<uint8_t>& inoutTraversalMarkFlags, std::vector<PassMetadata>& inoutSortedPasses);
+	void TopologicalSortNode(uint32_t passIndex, const std::vector<std::span<uint32_t>>& unsortedPassAdjacencyList, std::vector<uint8_t>& inoutTraversalMarkFlags, std::vector<uint32_t>& inoutPassIndexRemap);
 
 	//Sorts frame graph passes (already sorted topologically) by dependency level
 	void SortRenderPassesByDependency();
@@ -109,7 +114,12 @@ private:
 	//Creates multiple copies of passes and resources, one for each separate frame
 	void AmplifyResourcesAndPasses();
 
-	void AddAmplifiedPassMetadata(const PassMetadata& passMetadata, const std::vector<TextureRemapInfo>& resourceRemapInfos);
+	//Helper function to add several multiple copies of a single pass to mTotalPassMetadatas
+	void FindFrameCountAndSwapType(const std::vector<TextureRemapInfo>& resourceRemapInfos, std::span<const SubresourceMetadataNode> oldPassSubresourceMetadataSpan, uint32_t* outFrameCount, RenderPassFrameSwapType* outSwapType);
+
+	uint32_t CalcAmplifiedPrevSubresourceIndex(uint32_t currPassFrameSpanIndex, uint32_t prevPassFrameSpanIndex, uint32_t currPassFrameIndex, uint32_t prevPassSubresourceId);
+
+	uint32_t CalcAmplifiedNextSubresourceIndex(uint32_t currPassFrameSpanIndex, uint32_t nextPassFrameSpanIndex, uint32_t currPassFrameIndex, uint32_t nextPassSubresourceId);
 
 	//Validates PrevPassMetadata and NextPassMetadata links in each subresource info
 	void ValidateSubresourceLinks();
@@ -126,12 +136,6 @@ private:
 protected:
 	//Registers subresource api-specific metadata
 	virtual void InitMetadataPayloads() = 0;
-
-	//Checks if the usage of the subresource with subresourceInfoIndex includes reading
-	virtual bool IsReadSubresource(uint32_t subresourceInfoIndex) = 0;
-
-	//Checks if the usage of the subresource with subresourceInfoIndex includes writing
-	virtual bool IsWriteSubresource(uint32_t subresourceInfoIndex) = 0;
 
 	//Propagates API-specific subresource data from one subresource to another, within a single resource
 	virtual bool PropagateSubresourcePayloadDataVertically(const ResourceMetadata& resourceMetadata) = 0;
@@ -169,4 +173,8 @@ protected:
 
 	Span<uint32_t> mRenderPassMetadataSpan;
 	Span<uint32_t> mPresentPassMetadataSpan;
+
+	//The sole purpose of helper subresource spans for each subresources is to connect PrevPassNodeIndex and NextPassNodeIndex in multi-frame scenarios
+	Span<uint32_t>              mPrimarySubresourceNodeSpan;
+	std::vector<Span<uint32_t>> mHelperNodeSpansPerPassSubresource;
 };

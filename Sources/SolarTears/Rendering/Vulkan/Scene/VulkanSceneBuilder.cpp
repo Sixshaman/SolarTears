@@ -83,7 +83,7 @@ void Vulkan::RenderableSceneBuilder::PreCreateStaticConstantBuffer(size_t consta
 	uniformBufferCreateInfo.pNext                 = nullptr;
 	uniformBufferCreateInfo.flags                 = 0;
 	uniformBufferCreateInfo.size                  = constantDataSize;
-	uniformBufferCreateInfo.usage                 = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+	uniformBufferCreateInfo.usage                 = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 	uniformBufferCreateInfo.sharingMode           = VK_SHARING_MODE_EXCLUSIVE;
 	uniformBufferCreateInfo.queueFamilyIndexCount = (uint32_t)bufferQueueFamilies.size();
 	uniformBufferCreateInfo.pQueueFamilyIndices   = bufferQueueFamilies.data();

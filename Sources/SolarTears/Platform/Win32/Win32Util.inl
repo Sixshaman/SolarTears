@@ -32,12 +32,18 @@ void SystemDebugMessage(const std::wstring_view str)
 
 void SystemDebugMessage(const char* str)
 {
-	OutputDebugStringA(str);
+	if(IsDebuggerPresent())
+	{
+		OutputDebugStringA(str);
+	}
 }
 
 void SystemDebugMessage(const wchar_t* str)
 {
-	OutputDebugStringW(str);
+	if(IsDebuggerPresent())
+	{
+		OutputDebugStringW(str);
+	}
 }
 
 std::wstring GetMainDirectory()

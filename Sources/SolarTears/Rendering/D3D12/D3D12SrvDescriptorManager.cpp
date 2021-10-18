@@ -15,7 +15,7 @@ ID3D12DescriptorHeap* D3D12::SrvDescriptorManager::GetDescriptorHeap() const
 
 void D3D12::SrvDescriptorManager::ValidateDescriptorHeaps(ID3D12Device* device, UINT newDescriptorCount)
 {
-	if(newDescriptorCount > mSrvUavCbvDescriptorHeap->GetDesc().NumDescriptors) //Need to recreate the whole descriptor heap
+	if(mSrvUavCbvDescriptorHeap == nullptr || newDescriptorCount > mSrvUavCbvDescriptorHeap->GetDesc().NumDescriptors) //Need to recreate the whole descriptor heap
 	{
 		mSrvUavCbvDescriptorHeap.reset();
 

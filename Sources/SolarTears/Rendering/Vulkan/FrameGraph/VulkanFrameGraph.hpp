@@ -29,8 +29,6 @@ namespace Vulkan
 	private:
 		void CreateSemaphores();
 
-		RenderPass* ChoosePass(const PassFrameSpan& passFrameSpan, uint32_t swapchainImageIndex, uint32_t frameIndex) const;
-
 		void BeginCommandBuffer(VkCommandBuffer cmdBuffer, VkCommandPool cmdPool) const;
 		void EndCommandBuffer(VkCommandBuffer cmdBuffer)                          const;
 

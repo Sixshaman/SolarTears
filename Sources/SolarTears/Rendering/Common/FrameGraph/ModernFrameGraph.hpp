@@ -30,6 +30,9 @@ public:
 	~ModernFrameGraph();
 
 protected:
+	uint32_t CalcPassIndex(const PassFrameSpan& passFrameSpan, uint32_t swapchainImageIndex, uint32_t frameIndex) const;
+
+protected:
 	FrameGraphConfig mFrameGraphConfig;
 
 	std::vector<BarrierPassSpan> mRenderPassBarriers; //The ith element refers to barrier spans for ith render pass. The last element refers to barrier spans for swapchain acquire-present "pass"

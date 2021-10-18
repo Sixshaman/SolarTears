@@ -71,6 +71,9 @@ Vulkan::Renderer::~Renderer()
 	mSwapChain.reset();
 	mCommandBuffers.reset();
 
+	mDescriptorDatabase.reset();
+	mSamplerManager.reset();
+
 	SafeDestroyDevice(mDevice);
 
 #if (defined(DEBUG) || defined(_DEBUG)) && defined(VK_EXT_debug_report)
@@ -225,9 +228,9 @@ void Vulkan::Renderer::InitInstance()
 
 void Vulkan::Renderer::InitDebuggingEnvironment()
 {
-	mDebugMessenger = nullptr;
-
 #if (defined(DEBUG) || defined(_DEBUG)) && defined(VK_EXT_debug_utils)
+	mDebugMessenger = VK_NULL_HANDLE;
+
 	VkDebugUtilsMessengerCreateInfoEXT debugMessengerCreateInfo;
 	debugMessengerCreateInfo.sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
 	debugMessengerCreateInfo.pNext           = nullptr;

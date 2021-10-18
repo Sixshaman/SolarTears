@@ -135,12 +135,12 @@ void Vulkan::GBufferPass::ObtainDescriptorData(ShaderDatabase* shaderDatabase, u
 	}
 
 	//Static and static instanced sets should match
-	assert(setBindRangesPerShaderGroup[staticInstancedGroupIndex].Begin == setBindRangesPerShaderGroup[staticInstancedGroupIndex].End);
+	assert(setBindRangesPerShaderGroup[staticInstancedGroupIndex].BindPoint == setBindRangesPerShaderGroup[staticInstancedGroupIndex].Begin);
 
-	mStaticDrawChangedSetSpan = Span<uint32_t>{.Begin = setBindRangesPerShaderGroup[staticInstancedGroupIndex].Begin, .End = setBindRangesPerShaderGroup[staticInstancedGroupIndex].End};
-	mRigidDrawChangedSetSpan  = Span<uint32_t>{.Begin = setBindRangesPerShaderGroup[rigidGroupIndex].Begin,           .End = setBindRangesPerShaderGroup[rigidGroupIndex].End};
+	mStaticDrawChangedSetSpan = Span<uint32_t>{.Begin = setBindRangesPerShaderGroup[staticGroupIndex].Begin, .End = setBindRangesPerShaderGroup[staticInstancedGroupIndex].End};
+	mRigidDrawChangedSetSpan  = Span<uint32_t>{.Begin = setBindRangesPerShaderGroup[rigidGroupIndex].Begin,  .End = setBindRangesPerShaderGroup[rigidGroupIndex].End};
 
-	mStaticDrawSetBindOffset = setBindRangesPerShaderGroup[staticInstancedGroupIndex].BindPoint;
+	mStaticDrawSetBindOffset = setBindRangesPerShaderGroup[staticGroupIndex].BindPoint;
 	mRigidDrawSetBindOffset  = setBindRangesPerShaderGroup[rigidGroupIndex].BindPoint;
 }
 

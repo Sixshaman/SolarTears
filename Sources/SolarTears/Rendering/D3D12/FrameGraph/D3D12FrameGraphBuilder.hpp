@@ -57,12 +57,6 @@ namespace D3D12
 		//Registers subresource api-specific metadata
 		void InitMetadataPayloads() override final;
 
-		//Checks if the usage of the subresource with subresourceInfoIndex includes reading
-		bool IsReadSubresource(uint32_t subresourceInfoIndex) override final;
-
-		//Checks if the usage of the subresource with subresourceInfoIndex includes writing
-		bool IsWriteSubresource(uint32_t subresourceInfoIndex) override final;
-
 		//Propagates API-specific subresource data from one subresource to another, within a single resource
 		bool PropagateSubresourcePayloadDataVertically(const ResourceMetadata& resourceMetadata) override final;
 

@@ -61,3 +61,5 @@ DXC
 *.cso
 /Compiled/Bin_Debug/SolarTearsd.ilk
 /Compiled/Bin_Debug/SolarTearsd.exp
+/Compiled/Bin
+/Compiled/Shaders/Vulkan/GBuffer

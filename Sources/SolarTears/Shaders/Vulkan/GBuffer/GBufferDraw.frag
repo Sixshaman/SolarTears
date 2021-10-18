@@ -30,7 +30,7 @@ layout(set = 2, binding = 0) uniform texture2D SceneTextures[];
 
 layout(push_constant) uniform MaterialPushConstants
 {
-	uint MaterialIndex;
+	layout(offset = 0) uint MaterialIndex;
 } PushConstants;
 
 //================================================================

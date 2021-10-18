@@ -3,6 +3,7 @@
 #include "../ModernFrameGraphMisc.hpp"
 #include <cassert>
 #include <string_view>
+#include <array>
 
 class CopyImagePassBase
 {
@@ -16,6 +17,16 @@ public:
 		DstImage,
 
 		Count
+	};
+
+	constexpr static std::array ReadSubresourceIds =
+	{
+		PassSubresourceId::SrcImage
+	};
+
+	constexpr static std::array WriteSubresourceIds =
+	{
+		PassSubresourceId::DstImage
 	};
 
 	static inline constexpr std::string_view GetSubresourceStringId(PassSubresourceId subresourceId)

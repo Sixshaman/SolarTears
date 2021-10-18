@@ -226,39 +226,15 @@ void Vulkan::FrameGraphBuilder::InitMetadataPayloads()
 		mSubresourceMetadataPayloads[backbufferPayloadIndex].Access = 0;
 		mSubresourceMetadataPayloads[backbufferPayloadIndex].Flags  = 0;
 	}
-}
 
-bool Vulkan::FrameGraphBuilder::IsReadSubresource(uint32_t subresourceInfoIndex)
-{
-	return mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_GENERAL
-		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
-		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
-		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
-		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL
-		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL
-		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL
-		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_OPTIMAL
-		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL
-		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_STENCIL_READ_ONLY_OPTIMAL
-		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
-		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_SHARED_PRESENT_KHR
-		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR
-		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_FRAGMENT_DENSITY_MAP_OPTIMAL_EXT
-		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL_KHR
-		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL_KHR;
-}
-
-bool Vulkan::FrameGraphBuilder::IsWriteSubresource(uint32_t subresourceInfoIndex)
-{
-	return mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
-		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
-		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL
-		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL
-		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL
-		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_STENCIL_ATTACHMENT_OPTIMAL
-		|| mSubresourceMetadataPayloads[subresourceInfoIndex].Layout == VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL_KHR;
+	for(uint32_t primarySubresourceSpanIndex = mPrimarySubresourceNodeSpan.Begin; primarySubresourceSpanIndex < mPrimarySubresourceNodeSpan.End; primarySubresourceSpanIndex++)
+	{
+		Span<uint32_t> helperSpan = mHelperNodeSpansPerPassSubresource[primarySubresourceSpanIndex];
+		if(helperSpan.Begin != helperSpan.End)
+		{
+			std::fill(mSubresourceMetadataPayloads.begin() + helperSpan.Begin, mSubresourceMetadataPayloads.begin() + helperSpan.End, mSubresourceMetadataPayloads[primarySubresourceSpanIndex]);
+		}
+	}
 }
 
 bool Vulkan::FrameGraphBuilder::PropagateSubresourcePayloadDataVertically(const ResourceMetadata& resourceMetadata)
@@ -299,6 +275,8 @@ bool Vulkan::FrameGraphBuilder::PropagateSubresourcePayloadDataVertically(const 
 			propagationHappened = true;
 		}
 
+		currNodeIndex = subresourceNode.NextPassNodeIndex;
+
 	} while (headNodeIndex != currNodeIndex);
 
 	return propagationHappened;
@@ -319,7 +297,7 @@ void Vulkan::FrameGraphBuilder::CreateTextures()
 
 
 	std::vector<VkBindImageMemoryInfo> bindImageMemoryInfos;
-	std::vector<VkImageMemoryBarrier> imageInitialStateBarriers; //Barriers to initialize images
+	std::vector<VkImageMemoryBarrier> imageInitialStateBarriers(mResourceMetadatas.size()); //Barriers to initialize images
 
 	uint32_t nextBackbufferImageIndex = 0;
 	TextureSourceType lastSourceType = TextureSourceType::Backbuffer;
@@ -498,30 +476,38 @@ void Vulkan::FrameGraphBuilder::CreateTextureViews()
 			SubresourceMetadataNode&          subresourceMetadata        = mSubresourceMetadataNodesFlat[currNodeIndex];
 			const SubresourceMetadataPayload& subresourceMetadataPayload = mSubresourceMetadataPayloads[currNodeIndex];
 
-			if(subresourceMetadataPayload.Format == VK_FORMAT_UNDEFINED || subresourceMetadataPayload.Aspect == 0)
+			if(currNodeIndex < mPrimarySubresourceNodeSpan.Begin || currNodeIndex >= mPrimarySubresourceNodeSpan.End)
 			{
-				//The resource doesn't require a view in the pass
+				//Helper subresources don't create views
+				currNodeIndex = subresourceMetadata.NextPassNodeIndex;
 				continue;
 			}
 
-			uint64_t viewInfoKey = ((uint64_t)subresourceMetadataPayload.Aspect << 32ull) | (subresourceMetadataPayload.Format);
-			
-			auto imageViewIt = imageViewIndicesForViewInfos.find(viewInfoKey);
-			if(imageViewIt != imageViewIndicesForViewInfos.end())
-			{
-				subresourceMetadata.ImageViewHandle = imageViewIt->second;
-			}
-			else
-			{
-				uint32_t newImageViewIndex = (uint32_t)mVulkanGraphToBuild->mImageViews.size();
+			VkImageUsageFlags imageViewUsages = (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT 
+				                               | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT 
+				                               | VK_IMAGE_USAGE_FRAGMENT_DENSITY_MAP_BIT_EXT | VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR);
 
-				VkImage image = mVulkanGraphToBuild->mImages[resourceMetadataIndex];
-				mVulkanGraphToBuild->mImageViews.push_back(CreateImageView(image, subresourceMetadataPayload.Format, subresourceMetadataPayload.Aspect));
-
-				subresourceMetadata.ImageViewHandle       = newImageViewIndex;
-				imageViewIndicesForViewInfos[viewInfoKey] = newImageViewIndex;
-			}
+			if(subresourceMetadataPayload.Usage & imageViewUsages)
+			{
+				uint64_t viewInfoKey = ((uint64_t)subresourceMetadataPayload.Aspect << 32ull) | (subresourceMetadataPayload.Format);
 			
+				auto imageViewIt = imageViewIndicesForViewInfos.find(viewInfoKey);
+				if(imageViewIt != imageViewIndicesForViewInfos.end())
+				{
+					subresourceMetadata.ImageViewHandle = imageViewIt->second;
+				}
+				else
+				{
+					uint32_t newImageViewIndex = (uint32_t)mVulkanGraphToBuild->mImageViews.size();
+
+					VkImage image = mVulkanGraphToBuild->mImages[resourceMetadataIndex];
+					mVulkanGraphToBuild->mImageViews.push_back(CreateImageView(image, subresourceMetadataPayload.Format, subresourceMetadataPayload.Aspect));
+
+					subresourceMetadata.ImageViewHandle       = newImageViewIndex;
+					imageViewIndicesForViewInfos[viewInfoKey] = newImageViewIndex;
+				}
+			}
+
 			currNodeIndex = subresourceMetadata.NextPassNodeIndex;
 
 		} while(currNodeIndex != headNodeIndex);
@@ -530,6 +516,7 @@ void Vulkan::FrameGraphBuilder::CreateTextureViews()
 
 void Vulkan::FrameGraphBuilder::BuildPassObjects()
 {
+	mShaderDatabase->BuildSetLayouts(mDeviceParameters);
 	for(uint32_t passIndex = mRenderPassMetadataSpan.Begin; passIndex < mRenderPassMetadataSpan.End; passIndex++)
 	{
 		mVulkanGraphToBuild->mRenderPasses.emplace_back(MakeUniquePass(mTotalPassMetadatas[passIndex].Type, this, passIndex));

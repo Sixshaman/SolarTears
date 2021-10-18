@@ -17,14 +17,14 @@ layout(set = 3, binding = 0) uniform FrameConstants
 	mat4 ViewProjMatrix;
 } SceneFrameData;
 
-layout(set = 3, binding = 1) uniform ObjectConstants
+layout(set = 4, binding = 0) uniform ObjectConstants
 {
 	mat4 ModelMatrix;
 } SceneStaticObjectDatas[];
 
 layout(push_constant) uniform ObjectPushConstants
 {
-	uint ObjectIndex;
+	layout(offset = 4) uint ObjectIndex;
 } PushConstants;
 
 //================================================================
@@ -35,4 +35,7 @@ void main()
 
 	mat4 modelMatrix = SceneStaticObjectDatas[PushConstants.ObjectIndex].ModelMatrix;
 	gl_Position = SceneFrameData.ViewProjMatrix * modelMatrix * vec4(inPosition, 1.0f);
+
+	//The --invert-y option doesn't actually flip the coordinate system, it only flips the viewport
+	gl_Position.y = -gl_Position.y;
 }

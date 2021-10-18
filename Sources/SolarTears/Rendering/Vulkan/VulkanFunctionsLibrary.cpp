@@ -479,6 +479,10 @@ void Vulkan::FunctionsLibrary::LoadDeviceFunctions(VkDevice device)
 	vkCmdDrawMultiIndexedEXT                          = (PFN_vkCmdDrawMultiIndexedEXT)(vkGetDeviceProcAddr(device,                          "vkCmdDrawMultiIndexedEXT"));
 #endif
 
+#if defined(VK_EXT_PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION_NAME)
+	vkSetDeviceMemoryPriorityEXT                      = (PFN_vkSetDeviceMemoryPriorityEXT)(vkGetDeviceProcAddr(device,                      "vkSetDeviceMemoryPriorityEXT"));
+#endif
+
 #if defined(VK_EXT_PRIVATE_DATA_EXTENSION_NAME)
 	vkCreatePrivateDataSlotEXT                        = (PFN_vkCreatePrivateDataSlotEXT)(vkGetDeviceProcAddr(device,                        "vkCreatePrivateDataSlotEXT"));
 	vkDestroyPrivateDataSlotEXT                       = (PFN_vkDestroyPrivateDataSlotEXT)(vkGetDeviceProcAddr(device,                       "vkDestroyPrivateDataSlotEXT"));
@@ -515,8 +519,12 @@ void Vulkan::FunctionsLibrary::LoadDeviceFunctions(VkDevice device)
 	vkGetPastPresentationTimingGOOGLE                 = (PFN_vkGetPastPresentationTimingGOOGLE)(vkGetDeviceProcAddr(device,                 "vkGetPastPresentationTimingGOOGLE"));
 #endif
 
+#if defined(VK_HUAWEI_INVOCATION_MASK_EXTENSION_NAME)
+	vkCmdBindInvocationMaskHUAWEI                     = (PFN_vkCmdBindInvocationMaskHUAWEI)(vkGetDeviceProcAddr(device,                     "vkCmdBindInvocationMaskHUAWEI"));
+#endif
+
 #if defined(VK_HUAWEI_SUBPASS_SHADING_EXTENSION_NAME)
-	vkGetSubpassShadingMaxWorkgroupSizeHUAWEI         = (PFN_vkGetSubpassShadingMaxWorkgroupSizeHUAWEI)(vkGetDeviceProcAddr(device,         "vkGetSubpassShadingMaxWorkgroupSizeHUAWEI"));
+	vkGetDeviceSubpassShadingMaxWorkgroupSizeHUAWEI   = (PFN_vkGetDeviceSubpassShadingMaxWorkgroupSizeHUAWEI)(vkGetDeviceProcAddr(device,   "vkGetDeviceSubpassShadingMaxWorkgroupSizeHUAWEI"));
 	vkCmdSubpassShadingHUAWEI                         = (PFN_vkCmdSubpassShadingHUAWEI)(vkGetDeviceProcAddr(device,                         "vkCmdSubpassShadingHUAWEI"));
 #endif
 
@@ -601,6 +609,12 @@ void Vulkan::FunctionsLibrary::LoadDeviceFunctions(VkDevice device)
 	vkCmdSetFragmentShadingRateKHR                    = (PFN_vkCmdSetFragmentShadingRateKHR)(vkGetDeviceProcAddr(device,                    "vkCmdSetFragmentShadingRateKHR"));
 #endif
 
+#if defined(VK_KHR_MAINTENANCE_4_EXTENSION_NAME)
+	vkGetDeviceBufferMemoryRequirementsKHR            = (PFN_vkGetDeviceBufferMemoryRequirementsKHR)(vkGetDeviceProcAddr(device,            "vkGetDeviceBufferMemoryRequirementsKHR"));
+	vkGetDeviceImageMemoryRequirementsKHR             = (PFN_vkGetDeviceImageMemoryRequirementsKHR)(vkGetDeviceProcAddr(device,             "vkGetDeviceImageMemoryRequirementsKHR"));
+	vkGetDeviceImageSparseMemoryRequirementsKHR       = (PFN_vkGetDeviceImageSparseMemoryRequirementsKHR)(vkGetDeviceProcAddr(device,       "vkGetDeviceImageSparseMemoryRequirementsKHR"));
+#endif
+
 #if defined(VK_KHR_PERFORMANCE_QUERY_EXTENSION_NAME)
 	vkAcquireProfilingLockKHR                         = (PFN_vkAcquireProfilingLockKHR)(vkGetDeviceProcAddr(device,                         "vkAcquireProfilingLockKHR"));
 	vkReleaseProfilingLockKHR                         = (PFN_vkReleaseProfilingLockKHR)(vkGetDeviceProcAddr(device,                         "vkReleaseProfilingLockKHR"));
@@ -610,6 +624,10 @@ void Vulkan::FunctionsLibrary::LoadDeviceFunctions(VkDevice device)
 	vkGetPipelineExecutablePropertiesKHR              = (PFN_vkGetPipelineExecutablePropertiesKHR)(vkGetDeviceProcAddr(device,              "vkGetPipelineExecutablePropertiesKHR"));
 	vkGetPipelineExecutableStatisticsKHR              = (PFN_vkGetPipelineExecutableStatisticsKHR)(vkGetDeviceProcAddr(device,              "vkGetPipelineExecutableStatisticsKHR"));
 	vkGetPipelineExecutableInternalRepresentationsKHR = (PFN_vkGetPipelineExecutableInternalRepresentationsKHR)(vkGetDeviceProcAddr(device, "vkGetPipelineExecutableInternalRepresentationsKHR"));
+#endif
+
+#if defined(VK_KHR_PRESENT_WAIT_EXTENSION_NAME)
+	vkWaitForPresentKHR                               = (PFN_vkWaitForPresentKHR)(vkGetDeviceProcAddr(device,                               "vkWaitForPresentKHR"));
 #endif
 
 #if defined(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME)
@@ -680,6 +698,10 @@ void Vulkan::FunctionsLibrary::LoadDeviceFunctions(VkDevice device)
 	vkDestroyIndirectCommandsLayoutNV                 = (PFN_vkDestroyIndirectCommandsLayoutNV)(vkGetDeviceProcAddr(device,                 "vkDestroyIndirectCommandsLayoutNV"));
 #endif
 
+#if defined(VK_NV_EXTERNAL_MEMORY_RDMA_EXTENSION_NAME)
+	vkGetMemoryRemoteAddressNV                        = (PFN_vkGetMemoryRemoteAddressNV)(vkGetDeviceProcAddr(device,                        "vkGetMemoryRemoteAddressNV"));
+#endif
+
 #if defined(VK_NV_FRAGMENT_SHADING_RATE_ENUMS_EXTENSION_NAME)
 	vkCmdSetFragmentShadingRateEnumNV                 = (PFN_vkCmdSetFragmentShadingRateEnumNV)(vkGetDeviceProcAddr(device,                 "vkCmdSetFragmentShadingRateEnumNV"));
 #endif
@@ -740,11 +762,19 @@ void Vulkan::FunctionsLibrary::LoadDeviceFunctions(VkDevice device)
 	vkGetMemoryAndroidHardwareBufferANDROID           = (PFN_vkGetMemoryAndroidHardwareBufferANDROID)(vkGetDeviceProcAddr(device,           "vkGetMemoryAndroidHardwareBufferANDROID"));
 #endif
 
-#if defined(VK_ANDROID_NATIVE_BUFFER_NAME) && defined(VK_USE_PLATFORM_ANDROID_KHR)
+#if defined(VK_ANDROID_NATIVE_BUFFER_EXTENSION_NAME) && defined(VK_USE_PLATFORM_ANDROID_KHR)
 	vkGetSwapchainGrallocUsageANDROID                 = (PFN_vkGetSwapchainGrallocUsageANDROID)(vkGetDeviceProcAddr(device,                 "vkGetSwapchainGrallocUsageANDROID"));
 	vkGetSwapchainGrallocUsage2ANDROID                = (PFN_vkGetSwapchainGrallocUsage2ANDROID)(vkGetDeviceProcAddr(device,                "vkGetSwapchainGrallocUsage2ANDROID"));
 	vkAcquireImageANDROID                             = (PFN_vkAcquireImageANDROID)(vkGetDeviceProcAddr(device,                             "vkAcquireImageANDROID"));
 	vkQueueSignalReleaseImageANDROID                  = (PFN_vkQueueSignalReleaseImageANDROID)(vkGetDeviceProcAddr(device,                  "vkQueueSignalReleaseImageANDROID"));
+#endif
+
+#if defined(VK_FUCHSIA_BUFFER_COLLECTION_EXTENSION_NAME) && defined(VK_USE_PLATFORM_FUCHSIA)
+	vkCreateBufferCollectionFUCHSIA                   = (PFN_vkCreateBufferCollectionFUCHSIA)(vkGetDeviceProcAddr(device,                   "vkCreateBufferCollectionFUCHSIA"));
+	vkSetBufferCollectionBufferConstraintsFUCHSIA     = (PFN_vkSetBufferCollectionBufferConstraintsFUCHSIA)(vkGetDeviceProcAddr(device,     "vkSetBufferCollectionBufferConstraintsFUCHSIA"));
+	vkSetBufferCollectionImageConstraintsFUCHSIA      = (PFN_vkSetBufferCollectionImageConstraintsFUCHSIA)(vkGetDeviceProcAddr(device,      "vkSetBufferCollectionImageConstraintsFUCHSIA"));
+	vkDestroyBufferCollectionFUCHSIA                  = (PFN_vkDestroyBufferCollectionFUCHSIA)(vkGetDeviceProcAddr(device,                  "vkDestroyBufferCollectionFUCHSIA"));
+	vkGetBufferCollectionPropertiesFUCHSIA            = (PFN_vkGetBufferCollectionPropertiesFUCHSIA)(vkGetDeviceProcAddr(device,            "vkGetBufferCollectionPropertiesFUCHSIA"));
 #endif
 
 #if defined(VK_FUCHSIA_EXTERNAL_MEMORY_EXTENSION_NAME) && defined(VK_USE_PLATFORM_FUCHSIA)

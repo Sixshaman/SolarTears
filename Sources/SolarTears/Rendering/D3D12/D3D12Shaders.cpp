@@ -139,9 +139,13 @@ void D3D12::ShaderManager::BuildRootSignature(ID3D12Device* device, const std::u
 {
 	assert(shaderInputTypes.size() == shaderInputNames.size());
 
-	//Create root signature
-	std::vector<D3D12_ROOT_PARAMETER1>   rootParameters;
+	std::vector<D3D12_ROOT_PARAMETER1> rootParameters;
+	rootParameters.reserve(shaderInputTypes.size());
+
 	std::vector<D3D12_DESCRIPTOR_RANGE1> rootDescriptorRanges;
+	rootDescriptorRanges.reserve(shaderInputTypes.size());
+
+	//Create root signature
 	for(size_t i = 0; i < shaderInputNames.size(); i++)
 	{
 		D3D12_ROOT_PARAMETER1 rootParameter;
@@ -171,6 +175,8 @@ void D3D12::ShaderManager::BuildRootSignature(ID3D12Device* device, const std::u
 		default:
 			break;
 		}
+
+		rootParameters.push_back(rootParameter);
 	}
 
 	//Gather sampler inputs
@@ -294,13 +300,26 @@ D3D12_DESCRIPTOR_RANGE1 D3D12::ShaderManager::CreateRootDescriptorRange(const D3
 		break;
 	}
 
+	UINT bindCount = inputBindDesc.BindCount;
+	if(bindCount == 0)
+	{
+		//Texture unbounded arrays don't show bind count as -1 for some reason
+		bindCount = UINT_MAX;
+	}
+
+	D3D12_DESCRIPTOR_RANGE_FLAGS descriptorFlags = flags;
+	if(bindCount == UINT_MAX)
+	{
+		descriptorFlags |= D3D12_DESCRIPTOR_RANGE_FLAG_DESCRIPTORS_VOLATILE;
+	}
+
 	return D3D12_DESCRIPTOR_RANGE1
 	{
 		.RangeType                         = rangeType,
-		.NumDescriptors                    = inputBindDesc.BindCount,
+		.NumDescriptors                    = bindCount,
 		.BaseShaderRegister                = inputBindDesc.BindPoint,
 		.RegisterSpace                     = inputBindDesc.Space,
-		.Flags                             = flags,
+		.Flags                             = descriptorFlags,
 		.OffsetInDescriptorsFromTableStart = offsetFromTableStart
 	};
 }

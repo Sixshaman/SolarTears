@@ -4,7 +4,7 @@
 
 Vulkan::SamplerManager::SamplerManager(VkDevice device): mDeviceRef(device)
 {
-	std::fill(mSamplers.begin(), mSamplers.end(), (VkSampler)VK_NULL_HANDLE);
+	InitializeSamplers();
 }
 
 Vulkan::SamplerManager::~SamplerManager()

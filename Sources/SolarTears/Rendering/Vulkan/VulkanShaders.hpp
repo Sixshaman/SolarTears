@@ -101,6 +101,9 @@ namespace Vulkan
 		//Get the offset + shader stages for the registered push constant pushConstantName in shader group groupName
 		void GetPushConstantInfo(std::string_view groupName, std::string_view pushConstantName, uint32_t* outPushConstantOffset, VkShaderStageFlags* outShaderStages) const;
 
+		//Create set layouts from the database infos
+		void BuildSetLayouts(const DeviceParameters* deviceParameters);
+
 		//Creates a pipeline layout compatible for multiple shader groups
 		//The set layouts in the pipeline layout are minimal matching set in groupNamesForSets
 		//The push constants are minimal matching set in groupNamesForPushConstants
@@ -142,9 +145,6 @@ namespace Vulkan
 
 		//Validate set domain for binding list
 		uint16_t ValidateSetDomain(const std::span<BindingRecord> setBindingRecords);
-
-		//Create set layouts from the database infos
-		void BuildSetLayouts();
 
 	private:
 		//Collects all push constant records from shader modules

@@ -2,7 +2,9 @@
 
 #include "Passes/GBufferPass.hpp"
 #include "Passes/CopyImagePass.hpp"
+#include "RenderPassTraits.h"
 #include <cassert>
+#include <algorithm>
 
 #define CHOOSE_PASS_FUNCTION_WITH_TYPE(PassType, FuncName, FuncVariable, TypeMangle)                 \
 switch(PassType)                                                                                     \
@@ -14,12 +16,12 @@ switch(PassType)                                                                
 #define CHOOSE_PASS_FUNCTION(PassType, FuncName, FuncVariable) CHOOSE_PASS_FUNCTION_WITH_TYPE(PassType, FuncName, FuncVariable, )
 
 template<typename Pass>
-constexpr RenderPassClass GetPassClass()
+inline constexpr RenderPassClass GetPassClass()
 {
 	return Pass::PassClass;
 }
 
-constexpr RenderPassClass GetPassClass(RenderPassType passType)
+inline RenderPassClass GetPassClass(RenderPassType passType)
 {
 	using GetPassClassFunc = RenderPassClass(*)();
 
@@ -31,12 +33,12 @@ constexpr RenderPassClass GetPassClass(RenderPassType passType)
 }
 
 template<typename Pass>
-constexpr uint_fast16_t GetPassSubresourceCount()
+inline constexpr uint_fast16_t GetPassSubresourceCount()
 {
 	return (uint_fast16_t)Pass::PassSubresourceId::Count;
 }
 
-constexpr uint_fast16_t GetPassSubresourceCount(RenderPassType passType)
+inline uint_fast16_t GetPassSubresourceCount(RenderPassType passType)
 {
 	using GetSubresourceCountFunc = uint_fast16_t(*)();
 
@@ -48,7 +50,7 @@ constexpr uint_fast16_t GetPassSubresourceCount(RenderPassType passType)
 }
 
 template<typename Pass>
-constexpr std::string_view GetPassSubresourceStringId(uint_fast16_t passSubresourceIndex)
+inline constexpr std::string_view GetPassSubresourceStringId(uint_fast16_t passSubresourceIndex)
 {
 	assert(passSubresourceIndex < GetPassSubresourceCount<Pass>());
 
@@ -56,7 +58,7 @@ constexpr std::string_view GetPassSubresourceStringId(uint_fast16_t passSubresou
 	return Pass::GetSubresourceStringId((SubresourceIdType)passSubresourceIndex);
 }
 
-constexpr std::string_view GetPassSubresourceStringId(RenderPassType passType, uint_fast16_t passSubresourceIndex)
+inline std::string_view GetPassSubresourceStringId(RenderPassType passType, uint_fast16_t passSubresourceIndex)
 { 
 	using GetSubresourceIdFunc = std::string_view(*)(uint_fast16_t);
 	assert(passSubresourceIndex < GetPassSubresourceCount(passType));
@@ -66,4 +68,112 @@ constexpr std::string_view GetPassSubresourceStringId(RenderPassType passType, u
 
 	assert(GetSubresourceStringId != nullptr);
 	return GetSubresourceStringId(passSubresourceIndex);
+}
+
+template<typename Pass>
+inline constexpr uint32_t GetPassReadSubresourceCount()
+{
+	if constexpr(HasReadSubresourceIds<Pass>::value)
+	{
+		return (uint32_t)Pass::ReadSubresourceIds.size();
+	}
+	else
+	{
+		return 0;
+	}
+}
+
+inline uint32_t GetPassReadSubresourceCount(RenderPassType passType)
+{
+	using GetReadSubresourceCountFunc = uint32_t(*)();
+	
+	GetReadSubresourceCountFunc GetReadSubresourceCount = nullptr;
+	CHOOSE_PASS_FUNCTION_WITH_TYPE(passType, GetPassReadSubresourceCount, GetReadSubresourceCount, Base);
+
+	assert(GetReadSubresourceCount != nullptr);
+	return GetReadSubresourceCount();
+}
+
+template<typename Pass>
+inline constexpr uint32_t GetPassWriteSubresourceCount()
+{
+	if constexpr(HasWriteSubresourceIds<Pass>::value)
+	{
+		return (uint32_t)Pass::WriteSubresourceIds.size();
+	}
+	else
+	{
+		return 0;
+	}
+}
+
+inline uint32_t GetPassWriteSubresourceCount(RenderPassType passType)
+{
+	using GetWriteSubresourceCountFunc = uint32_t(*)();
+	
+	GetWriteSubresourceCountFunc GetWriteSubresourceCount = nullptr;
+	CHOOSE_PASS_FUNCTION_WITH_TYPE(passType, GetPassWriteSubresourceCount, GetWriteSubresourceCount, Base);
+
+	assert(GetWriteSubresourceCount != nullptr);
+	return GetWriteSubresourceCount();
+}
+
+template<typename Pass>
+inline constexpr void FillPassReadSubresourceIds(std::span<uint_fast16_t> outReadIdSpan)
+{
+	if constexpr(GetPassReadSubresourceCount<Pass>() == 0)
+	{
+		return;
+	}
+	else
+	{
+		assert(outReadIdSpan.size() == GetPassReadSubresourceCount<Pass>());
+
+		using SubresourceIdType = Pass::PassSubresourceId;
+		std::transform(Pass::ReadSubresourceIds.begin(), Pass::ReadSubresourceIds.end(), outReadIdSpan.begin(), [](SubresourceIdType subresourceId)
+		{
+			return (uint_fast16_t)subresourceId;
+		});
+	}
+}
+
+inline void FillPassReadSubresourceIds(RenderPassType passType, std::span<uint_fast16_t> outReadIdSpan)
+{
+	using FillPassReadSubresourceIdsFunc = void(*)(std::span<uint_fast16_t>);
+	
+	FillPassReadSubresourceIdsFunc FillReadSubresourceIds = nullptr;
+	CHOOSE_PASS_FUNCTION_WITH_TYPE(passType, FillPassReadSubresourceIds, FillReadSubresourceIds, Base);
+
+	assert(FillReadSubresourceIds != nullptr);
+	return FillReadSubresourceIds(outReadIdSpan);
+}
+
+template<typename Pass>
+inline constexpr void FillPassWriteSubresourceIds(std::span<uint_fast16_t> outWriteIdSpan)
+{
+	if constexpr(GetPassWriteSubresourceCount<Pass>() == 0)
+	{
+		return;
+	}
+	else
+	{
+		assert(outWriteIdSpan.size() == GetPassWriteSubresourceCount<Pass>());
+
+		using SubresourceIdType = Pass::PassSubresourceId;
+		std::transform(Pass::WriteSubresourceIds.begin(), Pass::WriteSubresourceIds.end(), outWriteIdSpan.begin(), [](SubresourceIdType subresourceId)
+		{
+			return (uint_fast16_t)subresourceId;
+		});
+	}
+}
+
+inline void FillPassWriteSubresourceIds(RenderPassType passType, std::span<uint_fast16_t> outWriteIdSpan)
+{
+	using FillPassWriteSubresourceIdsFunc = void(*)(std::span<uint_fast16_t>);
+	
+	FillPassWriteSubresourceIdsFunc FillWriteSubresourceIds = nullptr;
+	CHOOSE_PASS_FUNCTION_WITH_TYPE(passType, FillPassWriteSubresourceIds, FillWriteSubresourceIds, Base);
+
+	assert(FillWriteSubresourceIds != nullptr);
+	return FillWriteSubresourceIds(outWriteIdSpan);
 }

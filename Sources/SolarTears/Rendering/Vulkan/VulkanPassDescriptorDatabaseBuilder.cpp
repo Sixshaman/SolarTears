@@ -49,6 +49,11 @@ void Vulkan::PassDescriptorDatabaseBuilder::RecreatePassDescriptorPool(const Fra
 {
 	SafeDestroyObject(vkDestroyDescriptorPool, mDatabaseToBuild->mDeviceRef, mDatabaseToBuild->mPassDescriptorPool);
 
+	if(mPassSetInfosPerLayout.empty())
+	{
+		return;
+	}
+
 	VkDescriptorPoolSize sampledImagePoolSize    = {.type = VK_DESCRIPTOR_TYPE_SAMPLER,        .descriptorCount = 0};
 	VkDescriptorPoolSize storageImagePoolSize    = {.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,  .descriptorCount = 0};
 	VkDescriptorPoolSize inputAttachmentPoolSize = {.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, .descriptorCount = 0};
@@ -76,15 +81,23 @@ void Vulkan::PassDescriptorDatabaseBuilder::RecreatePassDescriptorPool(const Fra
 		}
 	}
 
-
-	std::array poolSizes = {sampledImagePoolSize, storageImagePoolSize, storageImagePoolSize};
+	uint32_t poolSizeCount = 0;
+	std::array<VkDescriptorPoolSize, 3> poolSizes;
+	for(const VkDescriptorPoolSize& poolSize: {sampledImagePoolSize, storageImagePoolSize, inputAttachmentPoolSize })
+	{
+		if(poolSize.descriptorCount != 0)
+		{
+			poolSizes[poolSizeCount] = poolSize;
+			poolSizeCount++;
+		}
+	}
 
 	VkDescriptorPoolCreateInfo descriptorPoolCreateInfo;
 	descriptorPoolCreateInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	descriptorPoolCreateInfo.pNext         = nullptr;
 	descriptorPoolCreateInfo.flags         = 0;
 	descriptorPoolCreateInfo.maxSets       = (uint32_t)mPassSetLayouts.size();
-	descriptorPoolCreateInfo.poolSizeCount = (uint32_t)(poolSizes.size());
+	descriptorPoolCreateInfo.poolSizeCount = poolSizeCount;
 	descriptorPoolCreateInfo.pPoolSizes    = poolSizes.data();
 
 	ThrowIfFailed(vkCreateDescriptorPool(mDatabaseToBuild->mDeviceRef, &descriptorPoolCreateInfo, nullptr, &mDatabaseToBuild->mPassDescriptorPool));
@@ -93,6 +106,11 @@ void Vulkan::PassDescriptorDatabaseBuilder::RecreatePassDescriptorPool(const Fra
 void Vulkan::PassDescriptorDatabaseBuilder::AllocateDescriptorSets(std::vector<VkDescriptorSet>& outAllocatedSetsPerLayout)
 {
 	outAllocatedSetsPerLayout.resize(mPassSetLayouts.size());
+
+	if(mPassSetInfosPerLayout.empty())
+	{
+		return;
+	}
 
 	VkDescriptorSetAllocateInfo setAllocateInfo;
 	setAllocateInfo.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;

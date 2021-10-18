@@ -126,7 +126,9 @@ void D3D12::FrameGraph::RecordGraphicsPasses(ID3D12GraphicsCommandList6* command
 	Span<uint32_t> levelSpan = mGraphicsPassSpansPerDependencyLevel[dependencyLevelSpanIndex];
 	for(uint32_t passSpanIndex = levelSpan.Begin; passSpanIndex < levelSpan.End; passSpanIndex++)
 	{
-		const BarrierPassSpan& barrierSpan            = mRenderPassBarriers[passSpanIndex];
+		uint32_t passIndex = CalcPassIndex(mFrameSpansPerRenderPass[passSpanIndex], frameIndex, swapchainImageIndex);
+
+		const BarrierPassSpan& barrierSpan            = mRenderPassBarriers[passIndex];
 		UINT                   beforePassBarrierCount = barrierSpan.BeforePassEnd - barrierSpan.BeforePassBegin;
 		UINT                   afterPassBarrierCount  = barrierSpan.AfterPassEnd  - barrierSpan.AfterPassBegin;
 
@@ -136,8 +138,7 @@ void D3D12::FrameGraph::RecordGraphicsPasses(ID3D12GraphicsCommandList6* command
 			commandList->ResourceBarrier(beforePassBarrierCount, barrierPointer);
 		}
 
-		const RenderPass* pass = ChoosePass(mFrameSpansPerRenderPass[passSpanIndex], frameIndex, swapchainImageIndex);
-		pass->RecordExecution(commandList, scene, mFrameGraphConfig, frameIndex % Utils::InFlightFrameCount);
+		mRenderPasses[passIndex]->RecordExecution(commandList, scene, mFrameGraphConfig, frameIndex % Utils::InFlightFrameCount);
 
 		if(afterPassBarrierCount != 0)
 		{
@@ -145,21 +146,4 @@ void D3D12::FrameGraph::RecordGraphicsPasses(ID3D12GraphicsCommandList6* command
 			commandList->ResourceBarrier(afterPassBarrierCount, barrierPointer);
 		}
 	}
-}
-
-D3D12::RenderPass* D3D12::FrameGraph::ChoosePass(const PassFrameSpan& passFrameSpan, uint32_t swapchainImageIndex, uint32_t frameIndex) const
-{
-	switch(passFrameSpan.SwapType)
-	{
-	case RenderPassFrameSwapType::PerLinearFrame:
-		return mRenderPasses[passFrameSpan.Begin + frameIndex % (passFrameSpan.End - passFrameSpan.Begin)].get();
-
-	case RenderPassFrameSwapType::PerBackbufferImage:
-		return mRenderPasses[passFrameSpan.Begin + swapchainImageIndex].get();
-
-	default:
-		break;
-	}
-
-	return mRenderPasses[passFrameSpan.Begin].get();
 }

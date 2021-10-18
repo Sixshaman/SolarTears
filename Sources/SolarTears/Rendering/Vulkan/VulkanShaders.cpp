@@ -3,6 +3,7 @@
 #include "VulkanFunctions.hpp"
 #include "VulkanSamplers.hpp"
 #include "VulkanDescriptorsMisc.hpp"
+#include "VulkanDeviceParameters.hpp"
 #include "VulkanSharedDescriptorDatabaseBuilder.hpp"
 #include "VulkanPassDescriptorDatabaseBuilder.hpp"
 #include "FrameGraph/VulkanRenderPassDispatchFuncs.hpp"
@@ -144,8 +145,8 @@ void Vulkan::ShaderDatabase::CreateMatchingPipelineLayout(std::span<std::string_
 
 	if(matchingSetLayoutSpan.End != matchingSetLayoutSpan.Begin && matchingPushConstantRangeSpan.End != matchingPushConstantRangeSpan.Begin)
 	{
-		std::span setLayouts    = { mSetLayoutsForCreatePipelineFlat.begin() + matchingSetLayoutSpan.Begin,         mSetLayoutsForCreatePipelineFlat.begin() + matchingSetLayoutSpan.End};
-		std::span pushConstants = {mPushConstantRangesFlat.begin()           + matchingPushConstantRangeSpan.Begin, mPushConstantRangesFlat.begin()          + matchingPushConstantRangeSpan.End};
+		std::span setLayouts    = {mSetLayoutsForCreatePipelineFlat.begin() + matchingSetLayoutSpan.Begin,         mSetLayoutsForCreatePipelineFlat.begin() + matchingSetLayoutSpan.End};
+		std::span pushConstants = {mPushConstantRangesFlat.begin()          + matchingPushConstantRangeSpan.Begin, mPushConstantRangesFlat.begin()          + matchingPushConstantRangeSpan.End};
 
 		VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo;
 		pipelineLayoutCreateInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -270,6 +271,7 @@ VkDescriptorSet* Vulkan::ShaderDatabase::GetOriginalDescriptorSpanStart() const
 
 void Vulkan::ShaderDatabase::RegisterBindings(const std::string_view groupName, const std::span<std::wstring> shaderModuleNames)
 {
+	std::vector<Span<uint32_t>> prevBindingSpansPerSet;
 	std::vector<Span<uint32_t>> bindingSpansPerSet;
 
 	std::vector<SpvReflectDescriptorBinding*> spvSetLayoutBindings;
@@ -296,6 +298,26 @@ void Vulkan::ShaderDatabase::RegisterBindings(const std::string_view groupName, 
 		VkShaderStageFlags shaderStage = SpvToVkShaderStage(shaderModule.GetShaderStage());
 		bindingStageFlags.resize(spvSetLayoutBindings.size(), (VkShaderStageFlags)0);
 
+		//Move previous sets. The loop will wrap around 0
+		for(size_t setIndex = prevBindingSpansPerSet.size() - 1; setIndex < prevBindingSpansPerSet.size(); setIndex--)
+		{
+			Span<uint32_t> prevSpan = prevBindingSpansPerSet[setIndex];
+			Span<uint32_t> currSpan = bindingSpansPerSet[setIndex];
+
+			uint32_t prevSpanSize = prevSpan.End - prevSpan.Begin;
+			uint32_t currSpanSize = currSpan.End - currSpan.Begin;
+
+			for(uint32_t spanBindingIndex = 0; spanBindingIndex < prevSpanSize; spanBindingIndex++)
+			{
+				bindingStageFlags[currSpan.Begin + spanBindingIndex] = bindingStageFlags[prevSpan.Begin + spanBindingIndex];
+			}
+
+			for(uint32_t spanBindingIndex = prevSpanSize; spanBindingIndex < currSpanSize; spanBindingIndex++)
+			{
+				bindingStageFlags[currSpan.Begin + spanBindingIndex] = 0;
+			}
+		}
+
 		for(SpvReflectDescriptorSet* moduleSet: moduleSets)
 		{
 			Span<uint32_t> setSpan = bindingSpansPerSet[moduleSet->set];
@@ -305,6 +327,8 @@ void Vulkan::ShaderDatabase::RegisterBindings(const std::string_view groupName, 
 				bindingStageFlags[setSpan.Begin + binding->binding] |= shaderStage;
 			}
 		}
+
+		prevBindingSpansPerSet = bindingSpansPerSet;
 	}
 
 	//Construct binding list and name list
@@ -339,7 +363,7 @@ void Vulkan::ShaderDatabase::RegisterBindings(const std::string_view groupName, 
 	};
 
 	mLayoutNodeRecordIndexSpansPerShaderGroup[groupName] = groupSetSpan;
-	mLayoutRecordNodeIndicesFlat.resize(mLayoutRecordNodeIndicesFlat.size() + bindingSpansPerSet.size());
+	mLayoutRecordNodeIndicesFlat.resize(mLayoutRecordNodeIndicesFlat.size() + bindingSpansPerSet.size(), (uint32_t)(-1));
 
 	for(uint32_t bindingSpanIndex = 0; bindingSpanIndex < (uint32_t)bindingSpansPerSet.size(); bindingSpanIndex++)
 	{
@@ -457,7 +481,7 @@ void Vulkan::ShaderDatabase::MergeExistingSetBindings(const std::span<SpvReflect
 		//Copy the bindings that don't need to be re-sorted
 		uint32_t preservedBindingCount = inoutSetSpans[firstSetIndexToUpdate].Begin;
 		newSetLayoutBindings.resize(preservedBindingCount);
-		memcpy(newSetLayoutBindings.data(), inoutBindings.data(), preservedBindingCount);
+		std::copy(inoutBindings.begin(), inoutBindings.begin() + preservedBindingCount, newSetLayoutBindings.begin());
 
 		//Recalculate new set sizes. To do it in-place, first shift the beginning points of spans left while leaving end points untouched
 		for(size_t moduleSetIndex = 0; moduleSetIndex < setUpdates.size(); moduleSetIndex++)
@@ -482,9 +506,7 @@ void Vulkan::ShaderDatabase::MergeExistingSetBindings(const std::span<SpvReflect
 		for(uint32_t setIndex = firstSetIndexToUpdate; setIndex < (uint32_t)inoutSetSpans.size(); setIndex++)
 		{
 			//Restore the original span from the original end point
-			Span<uint32_t> originalSpan     = {.Begin = originalSpanBegin, .End = inoutSetSpans[setIndex].End};
-			uint32_t       originalSpanSize = originalSpan.End - originalSpan.Begin;
-
+			Span<uint32_t> originalSpan = {.Begin = originalSpanBegin, .End = inoutSetSpans[setIndex].End};
 			originalSpanBegin = inoutSetSpans[setIndex].End; //Shift to the next span
 
 			//Calculate the real new span (shifted to newSpanBegin)
@@ -492,8 +514,9 @@ void Vulkan::ShaderDatabase::MergeExistingSetBindings(const std::span<SpvReflect
 			Span<uint32_t> newSpan     = {.Begin = (uint32_t)newSetLayoutBindings.size(), .End = (uint32_t)newSetLayoutBindings.size() + newSpanSize};
 			inoutSetSpans[setIndex] = newSpan;
 
+			//Copy the already known bindings
 			newSetLayoutBindings.resize(newSetLayoutBindings.size() + newSpanSize, nullptr);
-			memcpy(newSetLayoutBindings.data() + newSpan.Begin, inoutBindings.data() + originalSpan.Begin, originalSpanSize);
+			std::copy(inoutBindings.begin() + originalSpan.Begin, inoutBindings.begin() + originalSpan.End, newSetLayoutBindings.begin() + newSpan.Begin);
 		}
 
 		inoutBindings.swap(newSetLayoutBindings);
@@ -540,6 +563,7 @@ void Vulkan::ShaderDatabase::MergeNewSetBindings(const std::span<SpvReflectDescr
 		newSetCount = std::max(newSetCount, newSet->set + 1);
 	}
 
+	//Allocate spans (only span sizes matter at this point)
 	inoutSetSpans.resize(newSetCount, Span<uint32_t>{.Begin = 0, .End = 0});
 	for(auto newSet: newSets)
 	{
@@ -558,6 +582,7 @@ void Vulkan::ShaderDatabase::MergeNewSetBindings(const std::span<SpvReflectDescr
 		inoutSetSpans[newSet->set] = bindingSpan;
 	}
 
+	//Validate all allocated spans, reordering them (but keeping the size)
 	uint32_t spanOffset = oldBindingCount;
 	for(uint32_t setIndex = oldSetCount; setIndex < newSetCount; setIndex++)
 	{
@@ -569,6 +594,7 @@ void Vulkan::ShaderDatabase::MergeNewSetBindings(const std::span<SpvReflectDescr
 		spanOffset = inoutSetSpans[setIndex].End;
 	}
 
+	//Fill binding spans
 	for(auto newSet: newSets)
 	{
 		size_t bindingStart = inoutSetSpans[newSet->set].Begin;
@@ -595,9 +621,9 @@ void Vulkan::ShaderDatabase::CollectPushConstantRecords(const std::span<std::wst
 		VkShaderStageFlags moduleStageFlags = SpvToVkShaderStage(shaderModule.GetShaderStage());
 
 		outPushConstantRecords.reserve(outPushConstantRecords.size() + pushConstantBlockCount);
-		for(SpvReflectBlockVariable* pushConstantBlock: pushConstantBlocks)
+		for(const SpvReflectBlockVariable* pushConstantBlock: pushConstantBlocks)
 		{
-			for(uint32_t memberIndex = 0; memberIndex < pushConstantBlock->member_count; pushConstantBlock++)
+			for(uint32_t memberIndex = 0; memberIndex < pushConstantBlock->member_count; memberIndex++)
 			{
 				const SpvReflectBlockVariable& memberBlock = pushConstantBlock->members[memberIndex];
 				assert(memberBlock.size == sizeof(uint32_t)); //We only support 32-bit constants atm
@@ -742,7 +768,7 @@ Span<uint32_t> Vulkan::ShaderDatabase::RegisterPushConstantRanges(const std::spa
 	}
 
 	uint32_t oldRangeCount = (uint32_t)mPushConstantRangesFlat.size();
-	mPushConstantRangesFlat.insert(mPushConstantRangesFlat.end(), mPushConstantRangesFlat.begin(), mPushConstantRangesFlat.begin() + pushConstantRangeCount);
+	mPushConstantRangesFlat.insert(mPushConstantRangesFlat.end(), pushConstantRanges.begin(), pushConstantRanges.begin() + pushConstantRangeCount);
 
 	return Span<uint32_t>
 	{
@@ -978,7 +1004,7 @@ uint32_t Vulkan::ShaderDatabase::RegisterSetLayout(uint16_t setDomain, const std
 	{
 		SetLayoutRecordNode currNode = mSetLayoutRecordNodes[currNodeIndex];
 
-		uint32_t layoutBindingCount = currNode.BindingSpan.Begin - currNode.BindingSpan.End;
+		uint32_t layoutBindingCount = currNode.BindingSpan.End - currNode.BindingSpan.Begin;
 		if(layoutBindingCount == (uint32_t)setBindings.size())
 		{
 			//Try to match the set
@@ -1015,7 +1041,7 @@ uint32_t Vulkan::ShaderDatabase::RegisterSetLayout(uint16_t setDomain, const std
 		newSetBindingNode.BindingSpan.Begin = (uint32_t)registeredBindingCount;
 		newSetBindingNode.BindingSpan.End   = (uint32_t)(registeredBindingCount + addedBindingCount);
 		newSetBindingNode.SetLayout         = nullptr;
-		newSetBindingNode.NextNodeIndex     = (uint16_t)-1;
+		newSetBindingNode.NextNodeIndex     = (uint32_t)-1;
 
 		mSetLayoutRecordNodes.push_back(newSetBindingNode);
 		currNodeIndex = (uint32_t)(mSetLayoutRecordNodes.size() - 1);
@@ -1038,34 +1064,35 @@ uint32_t Vulkan::ShaderDatabase::RegisterSetLayout(uint16_t setDomain, const std
 		{
 			uint32_t layoutBindingIndex = bindingIndex - newSetBindingNode.BindingSpan.Begin;
 	
-			const VkDescriptorSetLayoutBinding& bindingInfo   = setBindings[layoutBindingIndex];
-			const BindingRecord&                bindingRecord = setBindingRecords[layoutBindingIndex];
+			const VkDescriptorSetLayoutBinding& bindingInfo = setBindings[layoutBindingIndex];
+
+#if defined(DEBUG) || defined(_DEBUG)
+			const BindingRecord& bindingRecord = setBindingRecords[layoutBindingIndex];
 
 			assert(ValidateNewBinding(bindingInfo, bindingRecord.DescriptorType, bindingRecord.DescriptorFlags));
 			assert(bindingInfo.descriptorCount != (uint32_t)(-1) || bindingInfo.binding == (setBindings.size() - 1)); //Only the last binding can be variable sized
 			assert(bindingInfo.binding == layoutBindingIndex);
+#endif
 
-			mLayoutBindingsFlat[layoutBindingIndex] = bindingInfo;
-			if(setDomain == SharedSetDomain && bindingRecord.Type == (uint16_t)SharedDescriptorBindingType::SamplerList)
-			{
-				mLayoutBindingsFlat[layoutBindingIndex].pImmutableSamplers = mSamplerManagerRef->GetSamplerVariableArray();
-			}
+			mLayoutBindingsFlat[bindingIndex] = bindingInfo;
 		}
 
+		//Initialize binding flags
 		for(uint32_t bindingIndex = newSetBindingNode.BindingSpan.Begin; bindingIndex < newSetBindingNode.BindingSpan.End; bindingIndex++)
 		{
 			uint32_t layoutBindingIndex = bindingIndex - newSetBindingNode.BindingSpan.Begin;
 
 			const BindingRecord& bindingRecord = setBindingRecords[layoutBindingIndex];
-			mLayoutBindingFlagsFlat[layoutBindingIndex] = bindingRecord.DescriptorFlags;
+			mLayoutBindingFlagsFlat[bindingIndex] = bindingRecord.DescriptorFlags;
 		}
 
+		//Initialize binding types
 		for(uint32_t bindingIndex = newSetBindingNode.BindingSpan.Begin; bindingIndex < newSetBindingNode.BindingSpan.End; bindingIndex++)
 		{
 			uint32_t layoutBindingIndex = bindingIndex - newSetBindingNode.BindingSpan.Begin;
 
 			const BindingRecord& bindingRecord = setBindingRecords[layoutBindingIndex];
-			mLayoutBindingTypesFlat[layoutBindingIndex] = bindingRecord.Type;
+			mLayoutBindingTypesFlat[bindingIndex] = bindingRecord.Type;
 		}
 	}
 	else
@@ -1107,8 +1134,59 @@ uint16_t Vulkan::ShaderDatabase::ValidateSetDomain(const std::span<BindingRecord
 	return firstDomain;
 }
 
-void Vulkan::ShaderDatabase::BuildSetLayouts()
+void Vulkan::ShaderDatabase::BuildSetLayouts(const DeviceParameters* deviceParameters)
 {
+	//Fix descriptor count of -1
+	for(VkDescriptorSetLayoutBinding& binding: mLayoutBindingsFlat)
+	{
+		if(binding.descriptorCount == (uint32_t)(-1))
+		{
+			const VkPhysicalDeviceLimits& limits = deviceParameters->GetDeviceProperties().limits;
+
+			switch(binding.descriptorType)
+			{
+			case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+			case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+				binding.descriptorCount = limits.maxPerStageDescriptorSampledImages;
+				break;
+			case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+				binding.descriptorCount = limits.maxPerStageDescriptorStorageImages;
+				break;
+			case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+			case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+				binding.descriptorCount = limits.maxPerStageDescriptorUniformBuffers;
+				break;
+			case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+			case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+				binding.descriptorCount = limits.maxPerStageDescriptorStorageBuffers;
+				break;
+			case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+				binding.descriptorCount = limits.maxPerStageDescriptorInputAttachments;
+				break;
+			default:
+				break;
+			}
+		}
+	}
+
+	//Validate samplers
+	uint32_t sharedLayoutRecordIndex = mDomainRecords[SharedSetDomain].FirstLayoutNodeIndex;
+	while(sharedLayoutRecordIndex != (uint32_t)(-1))
+	{
+		const SetLayoutRecordNode& sharedRecord = mSetLayoutRecordNodes[sharedLayoutRecordIndex];
+
+		for(uint32_t bindingIndex = sharedRecord.BindingSpan.Begin; bindingIndex < sharedRecord.BindingSpan.End; bindingIndex++)
+		{
+			if(mLayoutBindingTypesFlat[bindingIndex] == (uint16_t)SharedDescriptorBindingType::SamplerList)
+			{
+				mLayoutBindingsFlat[bindingIndex].descriptorCount    = (uint32_t)mSamplerManagerRef->GetSamplerVariableArrayLength();
+				mLayoutBindingsFlat[bindingIndex].pImmutableSamplers = mSamplerManagerRef->GetSamplerVariableArray();
+			}
+		}
+
+		sharedLayoutRecordIndex = sharedRecord.NextNodeIndex;
+	}
+
 	for(size_t layoutIndex = 0; layoutIndex < mSetLayoutRecordNodes.size(); layoutIndex++)
 	{
 		SetLayoutRecordNode& layoutRecordNode   = mSetLayoutRecordNodes[layoutIndex];
@@ -1147,6 +1225,11 @@ bool Vulkan::ShaderDatabase::ValidateNewBinding(const VkDescriptorSetLayoutBindi
 	}
 
 	if(bindingInfo.descriptorCount == (uint32_t)(-1) && (expectedDescriptorFlags & VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT) == 0)
+	{
+		return false;
+	}
+
+	if(bindingInfo.descriptorCount != (uint32_t)(-1) && (expectedDescriptorFlags & VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT) != 0)
 	{
 		return false;
 	}

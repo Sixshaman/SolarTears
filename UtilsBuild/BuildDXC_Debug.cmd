@@ -9,4 +9,4 @@ cd Utils
 if not exist "DXC" mkdir DXC
 cd ..
 
-move /Y "UtilsBuild/DirectXShaderCompiler.bin/Debug" "Utils/DXC/Debug
+move /Y "UtilsBuild/DirectXShaderCompiler.bin/Debug" "Utils/DXC"

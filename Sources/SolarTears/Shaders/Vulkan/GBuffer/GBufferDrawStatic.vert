@@ -22,4 +22,7 @@ void main()
 	outTexCoord = inTexCoord;
 
 	gl_Position = SceneFrameData.ViewProjMatrix * vec4(inPosition, 1.0f);
+
+	//The --invert-y option doesn't actually flip the coordinate system, it only flips the viewport
+	gl_Position.y = -gl_Position.y;
 }

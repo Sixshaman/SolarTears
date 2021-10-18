@@ -3,6 +3,7 @@
 #include "../ModernFrameGraphMisc.hpp"
 #include <cassert>
 #include <string_view>
+#include <array>
 
 class GBufferPassBase
 {
@@ -15,6 +16,11 @@ public:
 		ColorBufferImage = 0,
 
 		Count
+	};
+
+	constexpr static std::array WriteSubresourceIds =
+	{
+		PassSubresourceId::ColorBufferImage
 	};
 
 	static inline constexpr std::string_view GetSubresourceStringId(PassSubresourceId subresourceId)

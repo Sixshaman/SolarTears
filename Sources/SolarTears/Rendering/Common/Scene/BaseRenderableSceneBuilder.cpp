@@ -284,7 +284,7 @@ void BaseRenderableSceneBuilder::FillMeshLists(const std::vector<std::span<const
 	mSceneToBuild->mStaticInstancedMeshSpan = {.Begin = (uint32_t)mSceneToBuild->mSceneMeshes.size(), .End = (uint32_t)mSceneToBuild->mSceneMeshes.size()};
 	mSceneToBuild->mRigidMeshSpan           = {.Begin = (uint32_t)mSceneToBuild->mSceneMeshes.size(), .End = (uint32_t)mSceneToBuild->mSceneMeshes.size()};
 
-	uint32_t objectDataIndex = (uint32_t)(-1);
+	uint32_t objectDataIndex = RenderableSceneObjectHandle::UndefinedObjectBufferIndex();
 	uint32_t meshIndex       = 0;
 	uint32_t submeshCount    = 0;
 	
@@ -503,7 +503,7 @@ void BaseRenderableSceneBuilder::AssignSubmeshMaterials(const std::unordered_map
 					{
 						material.TextureIndex = textureIndexIt->second;
 					}
-					else
+					else if (!materialData.TextureFilename.empty())
 					{
 						mTexturesToLoad.push_back(materialData.TextureFilename);
 
@@ -516,7 +516,7 @@ void BaseRenderableSceneBuilder::AssignSubmeshMaterials(const std::unordered_map
 					{
 						material.NormalMapIndex = textureIndexIt->second;
 					}
-					else
+					else if(!materialData.NormalMapFilename.empty())
 					{
 						mTexturesToLoad.push_back(materialData.NormalMapFilename);
 

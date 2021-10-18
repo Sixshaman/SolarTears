@@ -10,6 +10,10 @@
 
 D3D12::GBufferPass::GBufferPass(const FrameGraphBuilder* frameGraphBuilder, uint32_t frameGraphPassId)
 {
+	mColorsRenderTarget = frameGraphBuilder->GetRegisteredSubresourceRtv(frameGraphPassId, (uint_fast16_t)PassSubresourceId::ColorBufferImage);
+
+	mOutputFormat = frameGraphBuilder->GetRegisteredSubresourceFormat(frameGraphPassId, (uint_fast16_t)PassSubresourceId::ColorBufferImage);
+
 	wil::com_ptr_t<IDxcBlobEncoding> staticVertexShaderBlob;
 	wil::com_ptr_t<IDxcBlobEncoding> rigidVertexShaderBlob;
 	wil::com_ptr_t<IDxcBlobEncoding> pixelShaderBlob;
@@ -20,10 +24,6 @@ D3D12::GBufferPass::GBufferPass(const FrameGraphBuilder* frameGraphBuilder, uint
 	//TODO: bundles
 	CreateGBufferPipelineState(frameGraphBuilder->GetDevice(), staticVertexShaderBlob.get(), pixelShaderBlob.get(), mStaticPipelineState.put());
 	CreateGBufferPipelineState(frameGraphBuilder->GetDevice(), rigidVertexShaderBlob.get(),  pixelShaderBlob.get(), mRigidPipelineState.put());
-
-	mColorsRenderTarget = frameGraphBuilder->GetRegisteredSubresourceRtv(frameGraphPassId, (uint_fast16_t)PassSubresourceId::ColorBufferImage);
-
-	mOutputFormat = frameGraphBuilder->GetRegisteredSubresourceFormat(frameGraphPassId, (uint_fast16_t)PassSubresourceId::ColorBufferImage);
 
 	const FrameGraphConfig* frameGraphConfig = frameGraphBuilder->GetConfig();
 
@@ -151,10 +151,10 @@ void D3D12::GBufferPass::CreateRootSignature(const ShaderManager* shaderManager,
 	std::array<std::string_view, (UINT)GBufferRootBindings::Count> shaderInputs;
 	shaderInputs[(UINT)GBufferRootBindings::MaterialIndex]    = "cbMaterialIndex";
 	shaderInputs[(UINT)GBufferRootBindings::ObjectIndex]      = "cbObjectIndex";
-	shaderInputs[(UINT)GBufferRootBindings::PerObjectBuffers] = "cbPerObject";
-	shaderInputs[(UINT)GBufferRootBindings::PerFrameBuffer]   = "cbPerFrame";
+	shaderInputs[(UINT)GBufferRootBindings::PerObjectBuffers] = "cbObjectData";
+	shaderInputs[(UINT)GBufferRootBindings::PerFrameBuffer]   = "cbFrameData";
 	shaderInputs[(UINT)GBufferRootBindings::Materials]        = "cbMaterialData";
-	shaderInputs[(UINT)GBufferRootBindings::Textures]         = "gObjectTexture";
+	shaderInputs[(UINT)GBufferRootBindings::Textures]         = "gObjectTextures";
 
 	std::array<D3D12_ROOT_PARAMETER_TYPE, shaderInputs.size()> shaderInputTypes;
 	shaderInputTypes[(UINT)GBufferRootBindings::MaterialIndex]    = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;

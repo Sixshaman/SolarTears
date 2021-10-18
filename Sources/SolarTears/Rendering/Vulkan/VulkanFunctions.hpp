@@ -313,6 +313,10 @@ DECLARE_VULKAN_FUNCTION(vkGetDeviceMemoryOpaqueCaptureAddress)
 	DECLARE_VULKAN_FUNCTION(vkCmdDrawMultiIndexedEXT)
 #endif
 
+#if defined(VK_EXT_PAGEABLE_DEVICE_LOCAL_MEMORY_EXTENSION_NAME)
+	DECLARE_VULKAN_FUNCTION(vkSetDeviceMemoryPriorityEXT)
+#endif
+
 #if defined(VK_EXT_PRIVATE_DATA_EXTENSION_NAME)
 	DECLARE_VULKAN_FUNCTION(vkCreatePrivateDataSlotEXT)
 	DECLARE_VULKAN_FUNCTION(vkDestroyPrivateDataSlotEXT)
@@ -354,8 +358,12 @@ DECLARE_VULKAN_FUNCTION(vkGetDeviceMemoryOpaqueCaptureAddress)
 	DECLARE_VULKAN_FUNCTION(vkGetPastPresentationTimingGOOGLE)
 #endif
 
+#if defined(VK_HUAWEI_INVOCATION_MASK_EXTENSION_NAME)
+	DECLARE_VULKAN_FUNCTION(vkCmdBindInvocationMaskHUAWEI)
+#endif
+
 #if defined(VK_HUAWEI_SUBPASS_SHADING_EXTENSION_NAME)
-	DECLARE_VULKAN_FUNCTION(vkGetSubpassShadingMaxWorkgroupSizeHUAWEI)
+	DECLARE_VULKAN_FUNCTION(vkGetDeviceSubpassShadingMaxWorkgroupSizeHUAWEI)
 	DECLARE_VULKAN_FUNCTION(vkCmdSubpassShadingHUAWEI)
 #endif
 
@@ -464,6 +472,12 @@ DECLARE_VULKAN_FUNCTION(vkGetDeviceMemoryOpaqueCaptureAddress)
 	DECLARE_VULKAN_FUNCTION(vkGetPhysicalDeviceSurfaceFormats2KHR)
 #endif
 
+#if defined(VK_KHR_MAINTENANCE_4_EXTENSION_NAME)
+	DECLARE_VULKAN_FUNCTION(vkGetDeviceBufferMemoryRequirementsKHR)
+	DECLARE_VULKAN_FUNCTION(vkGetDeviceImageMemoryRequirementsKHR)
+	DECLARE_VULKAN_FUNCTION(vkGetDeviceImageSparseMemoryRequirementsKHR)
+#endif
+
 #if defined(VK_KHR_PERFORMANCE_QUERY_EXTENSION_NAME)
 	DECLARE_VULKAN_FUNCTION(vkEnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR)
 	DECLARE_VULKAN_FUNCTION(vkGetPhysicalDeviceQueueFamilyPerformanceQueryPassesKHR)
@@ -475,6 +489,10 @@ DECLARE_VULKAN_FUNCTION(vkGetDeviceMemoryOpaqueCaptureAddress)
 	DECLARE_VULKAN_FUNCTION(vkGetPipelineExecutablePropertiesKHR)
 	DECLARE_VULKAN_FUNCTION(vkGetPipelineExecutableStatisticsKHR)
 	DECLARE_VULKAN_FUNCTION(vkGetPipelineExecutableInternalRepresentationsKHR)
+#endif
+
+#if defined(VK_KHR_PRESENT_WAIT_EXTENSION_NAME)
+	DECLARE_VULKAN_FUNCTION(vkWaitForPresentKHR)
 #endif
 
 #if defined(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME)
@@ -565,6 +583,10 @@ DECLARE_VULKAN_FUNCTION(vkGetDeviceMemoryOpaqueCaptureAddress)
 	DECLARE_VULKAN_FUNCTION(vkGetPhysicalDeviceExternalImageFormatPropertiesNV)
 #endif
 
+#if defined(VK_NV_EXTERNAL_MEMORY_RDMA_EXTENSION_NAME)
+	DECLARE_VULKAN_FUNCTION(vkGetMemoryRemoteAddressNV)
+#endif
+
 #if defined(VK_NV_FRAGMENT_SHADING_RATE_ENUMS_EXTENSION_NAME)
 	DECLARE_VULKAN_FUNCTION(vkCmdSetFragmentShadingRateEnumNV)
 #endif
@@ -627,7 +649,7 @@ DECLARE_VULKAN_FUNCTION(vkGetDeviceMemoryOpaqueCaptureAddress)
 	DECLARE_VULKAN_FUNCTION(vkGetMemoryAndroidHardwareBufferANDROID)
 #endif
 
-#if defined(VK_ANDROID_NATIVE_BUFFER_NAME) && defined(VK_USE_PLATFORM_ANDROID_KHR)
+#if defined(VK_ANDROID_NATIVE_BUFFER_EXTENSION_NAME) && defined(VK_USE_PLATFORM_ANDROID_KHR)
 	DECLARE_VULKAN_FUNCTION(vkGetSwapchainGrallocUsageANDROID)
 	DECLARE_VULKAN_FUNCTION(vkGetSwapchainGrallocUsage2ANDROID)
 	DECLARE_VULKAN_FUNCTION(vkAcquireImageANDROID)
@@ -641,6 +663,14 @@ DECLARE_VULKAN_FUNCTION(vkGetDeviceMemoryOpaqueCaptureAddress)
 #if defined(VK_EXT_DIRECTFB_SURFACE_EXTENSION_NAME) && defined(VK_USE_PLATFORM_DIRECTFB_EXT)
 	DECLARE_VULKAN_FUNCTION(vkCreateDirectFBSurfaceEXT)
 	DECLARE_VULKAN_FUNCTION(vkGetPhysicalDeviceDirectFBPresentationSupportEXT)
+#endif
+
+#if defined(VK_FUCHSIA_BUFFER_COLLECTION_EXTENSION_NAME) && defined(VK_USE_PLATFORM_FUCHSIA)
+	DECLARE_VULKAN_FUNCTION(vkCreateBufferCollectionFUCHSIA)
+	DECLARE_VULKAN_FUNCTION(vkSetBufferCollectionBufferConstraintsFUCHSIA)
+	DECLARE_VULKAN_FUNCTION(vkSetBufferCollectionImageConstraintsFUCHSIA)
+	DECLARE_VULKAN_FUNCTION(vkDestroyBufferCollectionFUCHSIA)
+	DECLARE_VULKAN_FUNCTION(vkGetBufferCollectionPropertiesFUCHSIA)
 #endif
 
 #if defined(VK_FUCHSIA_EXTERNAL_MEMORY_EXTENSION_NAME) && defined(VK_USE_PLATFORM_FUCHSIA)
