@@ -31,10 +31,14 @@
     <ClInclude Include="Core\Engine.hpp" />
     <ClInclude Include="Core\FPSCounter.hpp" />
     <ClInclude Include="Core\FrameCounter.hpp" />
-    <ClInclude Include="Core\Scene\Camera.hpp" />
+    <ClInclude Include="Core\Math\QuaternionUtils.hpp" />
+    <ClInclude Include="Core\Scene\PinholeCamera.hpp" />
     <ClInclude Include="Core\Scene\Scene.hpp" />
-    <ClInclude Include="Core\Scene\SceneDescription.hpp" />
-    <ClInclude Include="Core\Scene\SceneDescriptionObject.hpp" />
+    <ClInclude Include="Core\Scene\SceneDescription\SceneDescription.hpp" />
+    <ClInclude Include="Core\Scene\SceneDescription\SceneDescriptionObject.hpp" />
+    <ClInclude Include="Core\Scene\SceneDescription\SpecialObjects\SceneCamera.hpp" />
+    <ClInclude Include="Core\Scene\SceneObject.hpp" />
+    <ClInclude Include="Core\Scene\SceneObjectLocation.hpp" />
     <ClInclude Include="Core\ThreadPool.hpp" />
     <ClInclude Include="Core\Timer.hpp" />
     <ClInclude Include="Core\Util.hpp" />
@@ -56,18 +60,24 @@
     <ClInclude Include="Platform\Win32\Win32Window.hpp" />
     <ClInclude Include="Rendering\Common\FrameGraph\FrameGraphConfig.hpp" />
     <ClInclude Include="Rendering\Common\FrameGraph\FrameGraphDescription.hpp" />
+    <ClInclude Include="Rendering\Common\FrameGraph\RenderPassTraits.h" />
     <ClInclude Include="Rendering\Common\FrameGraph\ModernFrameGraph.hpp" />
     <ClInclude Include="Rendering\Common\FrameGraph\ModernFrameGraphBuilder.hpp" />
     <ClInclude Include="Rendering\Common\FrameGraph\ModernFrameGraphMisc.hpp" />
     <ClInclude Include="Rendering\Common\FrameGraph\Passes\CopyImagePass.hpp" />
     <ClInclude Include="Rendering\Common\FrameGraph\Passes\GBufferPass.hpp" />
+    <ClInclude Include="Rendering\Common\FrameGraph\RenderPassDispatchFuncs.hpp" />
     <ClInclude Include="Rendering\Common\Renderer.hpp" />
     <ClInclude Include="Rendering\Common\RenderingUtils.hpp" />
+    <ClInclude Include="Rendering\Common\Scene\BaseRenderableScene.hpp" />
+    <ClInclude Include="Rendering\Common\Scene\BaseRenderableSceneBuilder.hpp" />
     <ClInclude Include="Rendering\Common\Scene\ModernRenderableScene.hpp" />
     <ClInclude Include="Rendering\Common\Scene\ModernRenderableSceneBuilder.hpp" />
-    <ClInclude Include="Rendering\Common\Scene\RenderableSceneBase.hpp" />
-    <ClInclude Include="Rendering\Common\Scene\RenderableSceneBuilderBase.hpp" />
+    <ClInclude Include="Rendering\Common\Scene\RenderableSceneDescription.hpp" />
+    <ClInclude Include="Rendering\Common\Scene\RenderableSceneDescriptionMisc.hpp" />
     <ClInclude Include="Rendering\Common\Scene\RenderableSceneMisc.hpp" />
+    <ClInclude Include="Rendering\Common\Scene\RenderableSceneObjectHandle.hpp" />
+    <ClInclude Include="Rendering\D3D12\D3D12DescriptorCreator.hpp" />
     <ClInclude Include="Rendering\D3D12\D3D12DeviceFeatures.hpp" />
     <ClInclude Include="Rendering\D3D12\D3D12DeviceQueues.hpp" />
     <ClInclude Include="Rendering\D3D12\D3D12Memory.hpp" />
@@ -79,30 +89,35 @@
     <ClInclude Include="Rendering\D3D12\D3D12SrvDescriptorManager.hpp" />
     <ClInclude Include="Rendering\D3D12\FrameGraph\D3D12FrameGraph.hpp" />
     <ClInclude Include="Rendering\D3D12\FrameGraph\D3D12FrameGraphBuilder.hpp" />
-    <ClInclude Include="Rendering\D3D12\FrameGraph\D3D12FrameGraphDescriptorCreator.hpp" />
+    <ClInclude Include="Rendering\D3D12\FrameGraph\D3D12FrameGraphMisc.hpp" />
     <ClInclude Include="Rendering\D3D12\FrameGraph\D3D12RenderPass.hpp" />
+    <ClInclude Include="Rendering\D3D12\FrameGraph\D3D12RenderPassDispatchFuncs.hpp" />
     <ClInclude Include="Rendering\D3D12\FrameGraph\Passes\D3D12CopyImagePass.hpp" />
     <ClInclude Include="Rendering\D3D12\FrameGraph\Passes\D3D12GBufferPass.hpp" />
     <ClInclude Include="Rendering\D3D12\Scene\D3D12Scene.hpp" />
     <ClInclude Include="Rendering\D3D12\Scene\D3D12SceneBuilder.hpp" />
-    <ClInclude Include="Rendering\D3D12\Scene\D3D12SceneDescriptorCreator.hpp" />
     <ClInclude Include="Rendering\Vulkan\FrameGraph\Passes\VulkanCopyImagePass.hpp" />
     <ClInclude Include="Rendering\Vulkan\FrameGraph\Passes\VulkanGBufferPass.hpp" />
     <ClInclude Include="Rendering\Vulkan\FrameGraph\VulkanFrameGraph.hpp" />
     <ClInclude Include="Rendering\Vulkan\FrameGraph\VulkanFrameGraphBuilder.hpp" />
+    <ClInclude Include="Rendering\Vulkan\FrameGraph\VulkanFrameGraphMisc.hpp" />
     <ClInclude Include="Rendering\Vulkan\FrameGraph\VulkanRenderPass.hpp" />
+    <ClInclude Include="Rendering\Vulkan\FrameGraph\VulkanRenderPassDispatchFuncs.hpp" />
     <ClInclude Include="Rendering\Vulkan\Scene\VulkanScene.hpp" />
     <ClInclude Include="Rendering\Vulkan\Scene\VulkanSceneBuilder.hpp" />
-    <ClInclude Include="Rendering\Vulkan\Scene\VulkanSceneDescriptorCreater.hpp" />
-    <ClInclude Include="Rendering\Vulkan\VulkanDescriptorManager.hpp" />
+    <ClInclude Include="Rendering\Vulkan\VulkanDescriptors.hpp" />
+    <ClInclude Include="Rendering\Vulkan\VulkanDescriptorsMisc.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanDeviceParameters.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanDeviceQueues.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanFunctions.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanFunctionsLibrary.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanInstanceParameters.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanMemory.hpp" />
+    <ClInclude Include="Rendering\Vulkan\VulkanPassDescriptorDatabaseBuilder.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanRenderer.hpp" />
+    <ClInclude Include="Rendering\Vulkan\VulkanSamplers.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanShaders.hpp" />
+    <ClInclude Include="Rendering\Vulkan\VulkanSharedDescriptorDatabaseBuilder.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanSwapChain.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanUtils.hpp" />
     <ClInclude Include="Rendering\Vulkan\VulkanWorkerCommandBuffers.hpp" />
@@ -115,10 +130,12 @@
     <ClCompile Include="Core\Engine.cpp" />
     <ClCompile Include="Core\FPSCounter.cpp" />
     <ClCompile Include="Core\FrameCounter.cpp" />
-    <ClCompile Include="Core\Scene\Camera.cpp" />
+    <ClCompile Include="Core\Math\QuaternionUtils.cpp" />
+    <ClCompile Include="Core\Scene\PinholeCamera.cpp" />
     <ClCompile Include="Core\Scene\Scene.cpp" />
-    <ClCompile Include="Core\Scene\SceneDescription.cpp" />
-    <ClCompile Include="Core\Scene\SceneDescriptionObject.cpp" />
+    <ClCompile Include="Core\Scene\SceneDescription\SceneDescription.cpp" />
+    <ClCompile Include="Core\Scene\SceneDescription\SceneDescriptionObject.cpp" />
+    <ClCompile Include="Core\Scene\SceneObjectLocation.cpp" />
     <ClCompile Include="Core\ThreadPool.cpp" />
     <ClCompile Include="Core\Timer.cpp" />
     <ClCompile Include="Core\Util.cpp" />
@@ -137,14 +154,14 @@
     <ClCompile Include="Rendering\Common\FrameGraph\FrameGraphDescription.cpp" />
     <ClCompile Include="Rendering\Common\FrameGraph\ModernFrameGraph.cpp" />
     <ClCompile Include="Rendering\Common\FrameGraph\ModernFrameGraphBuilder.cpp" />
-    <ClCompile Include="Rendering\Common\FrameGraph\Passes\CopyImagePass.cpp" />
-    <ClCompile Include="Rendering\Common\FrameGraph\Passes\GBufferPass.cpp" />
     <ClCompile Include="Rendering\Common\Renderer.cpp" />
     <ClCompile Include="Rendering\Common\RenderingUtils.cpp" />
+    <ClCompile Include="Rendering\Common\Scene\BaseRenderableScene.cpp" />
+    <ClCompile Include="Rendering\Common\Scene\BaseRenderableSceneBuilder.cpp" />
     <ClCompile Include="Rendering\Common\Scene\ModernRenderableScene.cpp" />
     <ClCompile Include="Rendering\Common\Scene\ModernRenderableSceneBuilder.cpp" />
-    <ClCompile Include="Rendering\Common\Scene\RenderableSceneBase.cpp" />
-    <ClCompile Include="Rendering\Common\Scene\RenderableSceneBuilderBase.cpp" />
+    <ClCompile Include="Rendering\Common\Scene\RenderableSceneDescription.cpp" />
+    <ClCompile Include="Rendering\D3D12\D3D12DescriptorCreator.cpp" />
     <ClCompile Include="Rendering\D3D12\D3D12SrvDescriptorManager.cpp" />
     <ClCompile Include="Rendering\D3D12\D3D12DeviceFeatures.cpp" />
     <ClCompile Include="Rendering\D3D12\D3D12DeviceQueues.cpp" />
@@ -156,13 +173,11 @@
     <ClCompile Include="Rendering\D3D12\D3D12WorkerCommandLists.cpp" />
     <ClCompile Include="Rendering\D3D12\FrameGraph\D3D12FrameGraph.cpp" />
     <ClCompile Include="Rendering\D3D12\FrameGraph\D3D12FrameGraphBuilder.cpp" />
-    <ClCompile Include="Rendering\D3D12\FrameGraph\D3D12FrameGraphDescriptorCreator.cpp" />
     <ClCompile Include="Rendering\D3D12\FrameGraph\D3D12RenderPass.cpp" />
     <ClCompile Include="Rendering\D3D12\FrameGraph\Passes\D3D12CopyImagePass.cpp" />
     <ClCompile Include="Rendering\D3D12\FrameGraph\Passes\D3D12GBufferPass.cpp" />
     <ClCompile Include="Rendering\D3D12\Scene\D3D12Scene.cpp" />
     <ClCompile Include="Rendering\D3D12\Scene\D3D12SceneBuilder.cpp" />
-    <ClCompile Include="Rendering\D3D12\Scene\D3D12SceneDescriptorCreator.cpp" />
     <ClCompile Include="Rendering\Vulkan\FrameGraph\Passes\VulkanCopyImagePass.cpp" />
     <ClCompile Include="Rendering\Vulkan\FrameGraph\Passes\VulkanGBufferPass.cpp" />
     <ClCompile Include="Rendering\Vulkan\FrameGraph\VulkanFrameGraph.cpp" />
@@ -170,48 +185,71 @@
     <ClCompile Include="Rendering\Vulkan\FrameGraph\VulkanRenderPass.cpp" />
     <ClCompile Include="Rendering\Vulkan\Scene\VulkanScene.cpp" />
     <ClCompile Include="Rendering\Vulkan\Scene\VulkanSceneBuilder.cpp" />
-    <ClCompile Include="Rendering\Vulkan\Scene\VulkanSceneDescriptorCreator.cpp" />
-    <ClCompile Include="Rendering\Vulkan\VulkanDescriptorManager.cpp" />
+    <ClCompile Include="Rendering\Vulkan\VulkanDescriptors.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanDeviceParameters.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanDeviceQueues.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanFunctions.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanFunctionsLibrary.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanInstanceParameters.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanMemory.cpp" />
+    <ClCompile Include="Rendering\Vulkan\VulkanPassDescriptorDatabaseBuilder.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanRenderer.cpp" />
+    <ClCompile Include="Rendering\Vulkan\VulkanSamplers.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanShaders.cpp" />
+    <ClCompile Include="Rendering\Vulkan\VulkanSharedDescriptorDatabaseBuilder.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanSwapChain.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanUtils.cpp" />
     <ClCompile Include="Rendering\Vulkan\VulkanWorkerCommandBuffers.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Core\Allocators\StackAllocator.inl" />
-    <None Include="Core\Scene\SceneObjectLocation.hpp" />
     <None Include="Platform\Win32\Win32Util.inl" />
     <CustomBuild Include="Shaders\Vulkan\GBuffer\GBufferDraw.frag">
       <FileType>Document</FileType>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">"$(VULKAN_SDK)\Bin\glslangValidator.exe" -V -o "$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv" "%(Identity)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">"$(VULKAN_SDK)\Bin\glslangValidator.exe" -V -Od -g -o "$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv" "%(Identity)"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling %(Identity): %(Command)</Message>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">"$(VULKAN_SDK)\Bin\glslangValidator.exe" -V -o "$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv" "%(Identity)"</Command>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compiling %(Identity): %(Command)</Message>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv</Outputs>
-    </CustomBuild>
-    <CustomBuild Include="Shaders\Vulkan\GBuffer\GBufferDraw.vert">
-      <FileType>Document</FileType>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">"$(VULKAN_SDK)\Bin\glslangValidator.exe" -V -o "$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv" "%(Identity)"</Command>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling %(Identity): %(Command)</Message>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">"$(VULKAN_SDK)\Bin\glslangValidator.exe" -V -o "$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv" "%(Identity)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">"$(VULKAN_SDK)\Bin\glslangValidator.exe" -V -g0 -o "$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv" "%(Identity)"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compiling %(Identity): %(Command)</Message>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv</Outputs>
     </CustomBuild>
     <None Include="Rendering\D3D12\D3D12Utils.inl" />
-    <None Include="Rendering\D3D12\FrameGraph\D3D12FrameGraphBuilder.inl" />
-    <None Include="Rendering\Vulkan\FrameGraph\VulkanFrameGraphBuilder.inl" />
+    <None Include="Rendering\D3D12\FrameGraph\Passes\D3D12CopyImagePass.inl" />
+    <None Include="Rendering\D3D12\FrameGraph\Passes\D3D12GBufferPass.inl" />
+    <None Include="Rendering\D3D12\Scene\D3D12Scene.inl" />
+    <None Include="Rendering\Vulkan\FrameGraph\Passes\VulkanCopyImagePass.inl" />
+    <None Include="Rendering\Vulkan\FrameGraph\Passes\VulkanGBufferPass.inl" />
+    <None Include="Rendering\Vulkan\Scene\VulkanScene.inl" />
     <None Include="Rendering\Vulkan\Scene\VulkanSceneBuilder.inl" />
     <None Include="Shaders\D3D12\CommonHeader.hlsli" />
     <None Include="Shaders\D3D12\GBuffer\GBufferInclude.hlsli" />
+    <CustomBuild Include="Shaders\Vulkan\GBuffer\GBufferDrawRigid.vert">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">"$(VULKAN_SDK)\Bin\glslangValidator.exe" -V -Od -g -o "$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv" "%(Identity)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling %(Identity): %(Command)</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">"$(VULKAN_SDK)\Bin\glslangValidator.exe" -V -g0 -o "$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv" "%(Identity)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compiling %(Identity): %(Command)</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="Shaders\Vulkan\GBuffer\GBufferDrawStatic.vert">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">"$(VULKAN_SDK)\Bin\glslangValidator.exe" -V -Od -g -o "$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv" "%(Identity)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling %(Identity): %(Command)</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">"$(VULKAN_SDK)\Bin\glslangValidator.exe" -V -g0 -o "$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv" "%(Identity)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compiling %(Identity): %(Command)</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="Shaders\Vulkan\GBuffer\GBufferDrawStaticInstanced.vert">
+      <FileType>Document</FileType>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling %(Identity): %(Command)</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compiling %(Identity): %(Command)</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">"$(VULKAN_SDK)\Bin\glslangValidator.exe" -V -g0 -o "$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv" "%(Identity)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">"$(VULKAN_SDK)\Bin\glslangValidator.exe" -V -Od -g -o "$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv" "%(Identity)"</Command>
+    </CustomBuild>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="Shaders\D3D12\GBuffer\GBufferDrawPS.hlsl">
@@ -219,11 +257,26 @@
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)..\Utils\DXC\Debug\bin\dxc.exe -Od -T ps_6_5 -all-resources-bound -E "main" -Zi -Zpr -Fo "$(OutDir)Shaders\D3D12\GBuffer\%(Filename).cso" -Fd "$(OutDir)Shaders\D3D12\GBuffer\%(Filename).pdb" "%(Identity)"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling %(Identity): %(Command)</Message>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Shaders\D3D12\GBuffer\%(Filename).cso;$(OutDir)Shaders\D3D12\GBuffer\%(Filename).pdb</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)..\Utils\DXC\Debug\bin\dxc.exe -O3 -T ps_6_5 -all-resources-bound -E "main" -Zpr -Fo "$(OutDir)Shaders\D3D12\GBuffer\%(Filename).cso" "%(Identity)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compiling %(Identity): %(Command)</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Shaders\D3D12\GBuffer\%(Filename).cso;</Outputs>
     </CustomBuild>
-    <CustomBuild Include="Shaders\D3D12\GBuffer\GBufferDrawVS.hlsl">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-      </ExcludedFromBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="Shaders\D3D12\GBuffer\GBufferDrawRigidVS.hlsl">
       <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)..\Utils\DXC\Debug\bin\dxc.exe -O3 -T vs_6_5 -all-resources-bound -E "main" -Zpr -Fo "$(OutDir)Shaders\D3D12\GBuffer\%(Filename).cso" "%(Identity)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compiling %(Identity): %(Command)</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Shaders\D3D12\GBuffer\%(Filename).cso;</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)..\Utils\DXC\Debug\bin\dxc.exe -Od -T vs_6_5 -all-resources-bound -E "main" -Zi -Zpr -Fo "$(OutDir)Shaders\D3D12\GBuffer\%(Filename).cso" -Fd "$(OutDir)Shaders\D3D12\GBuffer\%(Filename).pdb" "%(Identity)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling %(Identity): %(Command)</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Shaders\D3D12\GBuffer\%(Filename).cso;$(OutDir)Shaders\D3D12\GBuffer\%(Filename).pdb</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="Shaders\D3D12\GBuffer\GBufferDrawStaticVS.hlsl">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)..\Utils\DXC\Debug\bin\dxc.exe -O3 -T vs_6_5 -all-resources-bound -E "main" -Zpr -Fo "$(OutDir)Shaders\D3D12\GBuffer\%(Filename).cso" "%(Identity)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compiling %(Identity): %(Command)</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Shaders\D3D12\GBuffer\%(Filename).cso;</Outputs>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)..\Utils\DXC\Debug\bin\dxc.exe -Od -T vs_6_5 -all-resources-bound -E "main" -Zi -Zpr -Fo "$(OutDir)Shaders\D3D12\GBuffer\%(Filename).cso" -Fd "$(OutDir)Shaders\D3D12\GBuffer\%(Filename).pdb" "%(Identity)"</Command>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling %(Identity): %(Command)</Message>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Shaders\D3D12\GBuffer\%(Filename).cso;$(OutDir)Shaders\D3D12\GBuffer\%(Filename).pdb</Outputs>
@@ -298,11 +351,11 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(VULKAN_SDK)\Include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(VULKAN_SDK)\Lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(VULKAN_SDK)\Include;$(SolutionDir)3rdParty\DirectX-Headers\include\directx;$(SolutionDir)3rdParty\DirectXShaderCompiler\include;$(SolutionDir)\3rdParty\DirectXMath\Inc;$(SolutionDir)\3rdParty\VulkanGenericStructures\Include;$(IncludePath)</IncludePath>
+    <LibraryPath>$(VULKAN_SDK)\Lib;$(SolutionDir)..\Utils\DXC\Debug\lib;$(LibraryPath)</LibraryPath>
     <RunCodeAnalysis>false</RunCodeAnalysis>
     <TargetName>$(ProjectName)</TargetName>
-    <OutDir>$(SolutionDir)..\Compiled\</OutDir>
+    <OutDir>$(SolutionDir)..\Compiled\Bin\</OutDir>
   </PropertyGroup>
   <PropertyGroup Label="Vcpkg" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <VcpkgEnabled>true</VcpkgEnabled>
@@ -374,13 +427,16 @@ if not exist "$(SolutionDir)..\Utils\DXC\Debug\bin\dxil.dll" "$(SolutionDir)..\U
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <TreatWarningAsError>true</TreatWarningAsError>
+      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <OmitFramePointers>true</OmitFramePointers>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>vulkan-1.lib;d3d12.lib;dxgi.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>vulkan-1.lib;d3d12.lib;dxgi.lib;dxguid.lib;dxcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PreBuildEvent>
       <Command>if not exist "$(SolutionDir)..\Utils\DXC\Release\bin\dxc.exe" "$(SolutionDir)..\UtilsBuild\BuildDXC_Release.cmd"

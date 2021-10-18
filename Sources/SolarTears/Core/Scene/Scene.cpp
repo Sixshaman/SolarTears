@@ -1,5 +1,5 @@
 #include "Scene.hpp"
-#include "../../Rendering/Common/Scene/RenderableSceneBase.hpp"
+#include "../../Rendering/Common/Scene/BaseRenderableScene.hpp"
 #include "../../Input/Inputter.hpp"
 
 Scene::Scene()
@@ -12,7 +12,7 @@ Scene::~Scene()
 
 void Scene::ProcessControls(Inputter* inputter, float dt)
 {
-	SceneObjectLocation& cameraLocation = mSceneObjects[mCameraSceneObjectIndex].Location;
+	SceneObjectLocation& cameraLocation = mSceneObjects[(uint32_t)SpecialSceneObjects::Camera].Location;
 
 	DirectX::XMVECTOR cameraQuaternion = DirectX::XMLoadFloat4(&cameraLocation.RotationQuaternion);
 	DirectX::XMMATRIX cameraRotation   = DirectX::XMMatrixRotationQuaternion(cameraQuaternion);
@@ -73,32 +73,22 @@ void Scene::ProcessControls(Inputter* inputter, float dt)
 	DirectX::XMStoreFloat4(&cameraLocation.RotationQuaternion, resultQuaternion);
 }
 
-void Scene::UpdateScene()
+void Scene::UpdateScene(uint64_t frameNumber)
 {
-	UpdateRenderableComponent();
+	UpdateRenderableComponent(frameNumber);
 }
 
-void Scene::UpdateRenderableComponent()
+void Scene::UpdateRenderableComponent(uint64_t frameNumber)
 {
-	//TODO: keep only the list of changed objects (no dirty flag)
-	for(size_t i = 0; i < mSceneObjects.size(); i++)
+	//No objects move currently
+	std::span currentFrameMovedObjects = {mCurrFrameRenderableUpdates.begin(), mCurrFrameRenderableUpdates.begin()};
+
+	FrameDataUpdateInfo frameUpdateInfo =
 	{
-		if(mSceneObjects[i].RenderableHandle != INVALID_SCENE_MESH_HANDLE && mSceneObjects[i].DirtyFlag)
-		{
-			mRenderableComponentRef->UpdateSceneMeshData(mSceneObjects[i].RenderableHandle, mSceneObjects[i].Location);
-			mSceneObjects[i].DirtyFlag = false;
-		}
-	}
+		.CameraLocation = mSceneObjects[(uint32_t)SpecialSceneObjects::Camera].Location,
+		.ProjMatrix     = mCamera.GetProjMatrix()
+	};
 
-	//The matrix from camera space to world space
-	DirectX::XMVECTOR cameraPosition       = DirectX::XMLoadFloat3(&mSceneObjects[mCameraSceneObjectIndex].Location.Position);
-	DirectX::XMVECTOR cameraRotation       = DirectX::XMLoadFloat4(&mSceneObjects[mCameraSceneObjectIndex].Location.RotationQuaternion);
-	DirectX::XMVECTOR cameraRotationOrigin = DirectX::XMVectorZero();
-	DirectX::XMVECTOR cameraScale          = DirectX::XMVectorSplatOne();
-	DirectX::XMMATRIX invViewMatrix = DirectX::XMMatrixAffineTransformation(cameraScale, cameraRotationOrigin, cameraRotation, cameraPosition);
-
-	mCamera.RecalcProjMatrix();
-	mRenderableComponentRef->UpdateSceneCameraData(DirectX::XMMatrixInverse(nullptr, invViewMatrix), mCamera.GetProjMatrix());
-
-	mRenderableComponentRef->FinalizeSceneUpdating();
+	mRenderableComponentRef->UpdateFrameData(frameUpdateInfo, frameNumber);
+	mRenderableComponentRef->UpdateRigidSceneObjects(currentFrameMovedObjects, frameNumber);
 }

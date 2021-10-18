@@ -10,14 +10,41 @@
 #include <vector>
 
 D3D12::RenderableSceneBuilder::RenderableSceneBuilder(ID3D12Device8* device, RenderableScene* sceneToBuild, 
-	                                                  MemoryManager* memoryAllocator, DeviceQueues* deviceQueues, const WorkerCommandLists* commandLists): ModernRenderableSceneBuilder(sceneToBuild), mDeviceRef(device), mD3d12SceneToBuild(sceneToBuild),
-	                                                                                                                                                       mMemoryAllocator(memoryAllocator), mDeviceQueues(deviceQueues), mWorkerCommandLists(commandLists)
+	                                                  MemoryManager* memoryAllocator, DeviceQueues* deviceQueues, 
+	                                                  const WorkerCommandLists* commandLists): ModernRenderableSceneBuilder(sceneToBuild, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT), mDeviceRef(device), mD3d12SceneToBuild(sceneToBuild),
+	                                                                                           mMemoryAllocator(memoryAllocator), mDeviceQueues(deviceQueues), mWorkerCommandLists(commandLists)
 {
-	mVertexBufferDesc   = {};
-	mIndexBufferDesc    = {};
-	mConstantBufferDesc = {};
+	const D3D12_RESOURCE_DESC1 defaultBufferDesc = 
+	{
+		.Dimension        = D3D12_RESOURCE_DIMENSION_BUFFER,
+		.Alignment        = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT,
+		.Width            = 0,
+		.Height           = 1,
+		.DepthOrArraySize = 1,
+		.MipLevels        = 1,
+		.Format           = DXGI_FORMAT_UNKNOWN,
 
-	mTexturePlacementAlignment = D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
+		.SampleDesc = 
+		{
+			.Count   = 1,
+			.Quality = 0,
+		},
+
+		.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR,
+		.Flags  = D3D12_RESOURCE_FLAG_NONE,
+
+		.SamplerFeedbackMipRegion = 
+		{
+			.Width  = 0,
+			.Height = 0,
+			.Depth  = 0,
+		}
+	};
+
+	mVertexBufferDesc          = defaultBufferDesc;
+	mIndexBufferDesc           = defaultBufferDesc;
+	mStaticConstantBufferDesc  = defaultBufferDesc;
+	mDynamicConstantBufferDesc = defaultBufferDesc;
 }
 
 D3D12::RenderableSceneBuilder::~RenderableSceneBuilder()
@@ -26,56 +53,22 @@ D3D12::RenderableSceneBuilder::~RenderableSceneBuilder()
 
 void D3D12::RenderableSceneBuilder::PreCreateVertexBuffer(size_t vertexDataSize)
 {
-	mVertexBufferDesc.Dimension                       = D3D12_RESOURCE_DIMENSION_BUFFER;
-	mVertexBufferDesc.Alignment                       = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
-	mVertexBufferDesc.Width                           = vertexDataSize;
-	mVertexBufferDesc.Height                          = 1;
-	mVertexBufferDesc.DepthOrArraySize                = 1;
-	mVertexBufferDesc.MipLevels                       = 1;
-	mVertexBufferDesc.Format                          = DXGI_FORMAT_UNKNOWN;
-	mVertexBufferDesc.SampleDesc.Count                = 1;
-	mVertexBufferDesc.SampleDesc.Quality              = 0;
-	mVertexBufferDesc.Layout                          = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-	mVertexBufferDesc.Flags                           = D3D12_RESOURCE_FLAG_NONE;
-	mVertexBufferDesc.SamplerFeedbackMipRegion.Width  = 0;
-	mVertexBufferDesc.SamplerFeedbackMipRegion.Height = 0;
-	mVertexBufferDesc.SamplerFeedbackMipRegion.Depth  = 0;
+	mVertexBufferDesc.Width = vertexDataSize;
 }
 
 void D3D12::RenderableSceneBuilder::PreCreateIndexBuffer(size_t indexDataSize)
 {
-	mIndexBufferDesc.Dimension                       = D3D12_RESOURCE_DIMENSION_BUFFER;
-	mIndexBufferDesc.Alignment                       = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
-	mIndexBufferDesc.Width                           = indexDataSize;
-	mIndexBufferDesc.Height                          = 1;
-	mIndexBufferDesc.DepthOrArraySize                = 1;
-	mIndexBufferDesc.MipLevels                       = 1;
-	mIndexBufferDesc.Format                          = DXGI_FORMAT_UNKNOWN;
-	mIndexBufferDesc.SampleDesc.Count                = 1;
-	mIndexBufferDesc.SampleDesc.Quality              = 0;
-	mIndexBufferDesc.Layout                          = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-	mIndexBufferDesc.Flags                           = D3D12_RESOURCE_FLAG_NONE;
-	mIndexBufferDesc.SamplerFeedbackMipRegion.Width  = 1;
-	mIndexBufferDesc.SamplerFeedbackMipRegion.Height = 1;
-	mIndexBufferDesc.SamplerFeedbackMipRegion.Depth  = 1;
+	mIndexBufferDesc.Width = indexDataSize;
 }
 
-void D3D12::RenderableSceneBuilder::PreCreateConstantBuffer(size_t constantDataSize)
+void D3D12::RenderableSceneBuilder::PreCreateStaticConstantBuffer(size_t constantDataSize)
 {
-	mConstantBufferDesc.Dimension                       = D3D12_RESOURCE_DIMENSION_BUFFER;
-	mConstantBufferDesc.Alignment                       = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
-	mConstantBufferDesc.Width                           = constantDataSize;
-	mConstantBufferDesc.Height                          = 1;
-	mConstantBufferDesc.DepthOrArraySize                = 1;
-	mConstantBufferDesc.MipLevels                       = 1;
-	mConstantBufferDesc.Format                          = DXGI_FORMAT_UNKNOWN;
-	mConstantBufferDesc.SampleDesc.Count                = 1;
-	mConstantBufferDesc.SampleDesc.Quality              = 0;
-	mConstantBufferDesc.Layout                          = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-	mConstantBufferDesc.Flags                           = D3D12_RESOURCE_FLAG_NONE;
-	mConstantBufferDesc.SamplerFeedbackMipRegion.Width  = 1;
-	mConstantBufferDesc.SamplerFeedbackMipRegion.Height = 1;
-	mConstantBufferDesc.SamplerFeedbackMipRegion.Depth  = 1;
+	mStaticConstantBufferDesc.Width = constantDataSize;
+}
+
+void D3D12::RenderableSceneBuilder::PreCreateDynamicConstantBuffer(size_t constantDataSize)
+{
+	mDynamicConstantBufferDesc.Width = constantDataSize;
 }
 
 void D3D12::RenderableSceneBuilder::AllocateTextureMetadataArrays(size_t textureCount)
@@ -165,14 +158,14 @@ void D3D12::RenderableSceneBuilder::FinishTextureCreation()
 	CreateTextureObjects();
 }
 
-std::byte* D3D12::RenderableSceneBuilder::MapConstantBuffer()
+std::byte* D3D12::RenderableSceneBuilder::MapDynamicConstantBuffer()
 {
 	D3D12_RANGE readRange;
 	readRange.Begin = 0;
 	readRange.End   = 0;
 
 	std::byte* bufferPointer = nullptr;
-	THROW_IF_FAILED(mD3d12SceneToBuild->mSceneConstantBuffer->Map(0, &readRange, reinterpret_cast<void**>(&bufferPointer)));
+	THROW_IF_FAILED(mD3d12SceneToBuild->mSceneDynamicConstantBuffer->Map(0, &readRange, reinterpret_cast<void**>(&bufferPointer)));
 
 	return bufferPointer;
 }
@@ -251,10 +244,10 @@ void D3D12::RenderableSceneBuilder::WriteInitializationCommands() const
 	}
 
 
-	std::array sceneBuffers           = {mD3d12SceneToBuild->mSceneVertexBuffer.get(),             mD3d12SceneToBuild->mSceneIndexBuffer.get()};
-	std::array sceneBufferDataOffsets = {mIntermediateBufferVertexDataOffset,                      mIntermediateBufferIndexDataOffset};
-	std::array sceneBufferDataSizes   = {mVertexBufferData.size() * sizeof(RenderableSceneVertex), mIndexBufferData.size() * sizeof(RenderableSceneIndex)};
-	std::array sceneBufferStates      = {D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER,          D3D12_RESOURCE_STATE_INDEX_BUFFER};
+	std::array sceneBuffers           = {mD3d12SceneToBuild->mSceneVertexBuffer.get(),             mD3d12SceneToBuild->mSceneIndexBuffer.get(),            mD3d12SceneToBuild->mSceneStaticConstantBuffer.get()};
+	std::array sceneBufferDataOffsets = {mIntermediateBufferVertexDataOffset,                      mIntermediateBufferIndexDataOffset,                     mIntermediateBufferStaticConstantDataOffset};
+	std::array sceneBufferDataSizes   = {mVertexBufferData.size() * sizeof(RenderableSceneVertex), mIndexBufferData.size() * sizeof(RenderableSceneIndex), mStaticConstantData.size() * sizeof(std::byte)};
+	std::array sceneBufferStates      = {D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER,          D3D12_RESOURCE_STATE_INDEX_BUFFER,                      D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER};
 	for(size_t i = 0; i < sceneBuffers.size(); i++)
 	{
 		commandList->CopyBufferRegion(sceneBuffers[i], 0, mIntermediateBuffer.get(), sceneBufferDataOffsets[i], sceneBufferDataSizes[i]);
@@ -278,15 +271,15 @@ void D3D12::RenderableSceneBuilder::WriteInitializationCommands() const
 
 	for(int i = 0; i < sceneBuffers.size(); i++)
 	{
-		D3D12_RESOURCE_BARRIER textureBarrier;
-		textureBarrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		textureBarrier.Flags                  = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-		textureBarrier.Transition.pResource   = sceneBuffers[i];
-		textureBarrier.Transition.Subresource = 0;
-		textureBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
-		textureBarrier.Transition.StateAfter  = sceneBufferStates[i];
+		D3D12_RESOURCE_BARRIER bufferBarrier;
+		bufferBarrier.Type                   = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		bufferBarrier.Flags                  = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+		bufferBarrier.Transition.pResource   = sceneBuffers[i];
+		bufferBarrier.Transition.Subresource = 0;
+		bufferBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_COPY_DEST;
+		bufferBarrier.Transition.StateAfter  = sceneBufferStates[i];
 
-		barriers.push_back(textureBarrier);
+		barriers.push_back(bufferBarrier);
 	}
 
 	commandList->ResourceBarrier((UINT)barriers.size(), barriers.data());
@@ -314,8 +307,8 @@ void D3D12::RenderableSceneBuilder::AllocateBuffersHeap()
 	mD3d12SceneToBuild->mHeapForGpuBuffers.reset();
 	mD3d12SceneToBuild->mHeapForCpuVisibleBuffers.reset();
 
-	std::vector gpuBufferDescs          = {mVertexBufferDesc,             mIndexBufferDesc};
-	std::vector gpuBufferOffsetPointers = {&mVertexBufferGpuMemoryOffset, &mVertexBufferGpuMemoryOffset };
+	std::vector gpuBufferDescs          = {mVertexBufferDesc,             mIndexBufferDesc,             mStaticConstantBufferDesc};
+	std::vector gpuBufferOffsetPointers = {&mVertexBufferGpuMemoryOffset, &mIndexBufferGpuMemoryOffset, &mStaticConstantBufferGpuMemoryOffset};
 	
 	assert(gpuBufferDescs.size() == gpuBufferOffsetPointers.size()); //Just in case I add a new one and forget to add the other one
 
@@ -328,8 +321,8 @@ void D3D12::RenderableSceneBuilder::AllocateBuffersHeap()
 	}
 
 
-	std::vector cpuVisibleBufferDescs          = {mConstantBufferDesc};
-	std::vector cpuVisibleBufferOffsetPointers = {&mConstantBufferGpuMemoryOffset};
+	std::vector cpuVisibleBufferDescs          = {mDynamicConstantBufferDesc};
+	std::vector cpuVisibleBufferOffsetPointers = {&mDynamicConstantBufferGpuMemoryOffset};
 
 	std::vector<UINT64> cpuVisibleBufferOffsets;
 	mMemoryAllocator->AllocateBuffersMemory(mDeviceRef, cpuVisibleBufferDescs, MemoryManager::BufferAllocationType::CPU_VISIBLE, cpuVisibleBufferOffsets, mD3d12SceneToBuild->mHeapForCpuVisibleBuffers.put());
@@ -350,19 +343,19 @@ void D3D12::RenderableSceneBuilder::AllocateTexturesHeap()
 
 void D3D12::RenderableSceneBuilder::CreateBufferObjects()
 {
-	std::array gpuBufferPointers    = {mD3d12SceneToBuild->mSceneVertexBuffer.put(), mD3d12SceneToBuild->mSceneIndexBuffer.put()};
-	std::array gpuBufferDescs       = {mVertexBufferDesc,                            mIndexBufferDesc};
-	std::array gpuBufferHeapOffsets = {mVertexBufferGpuMemoryOffset,                 mIndexBufferGpuMemoryOffset};
-	std::array gpuBufferStates      = {D3D12_RESOURCE_STATE_COPY_DEST,               D3D12_RESOURCE_STATE_COPY_DEST};
+	std::array gpuBufferPointers    = {mD3d12SceneToBuild->mSceneVertexBuffer.put(), mD3d12SceneToBuild->mSceneIndexBuffer.put(), mD3d12SceneToBuild->mSceneStaticConstantBuffer.put()};
+	std::array gpuBufferDescs       = {mVertexBufferDesc,                            mIndexBufferDesc,                            mStaticConstantBufferDesc};
+	std::array gpuBufferHeapOffsets = {mVertexBufferGpuMemoryOffset,                 mIndexBufferGpuMemoryOffset,                 mStaticConstantBufferGpuMemoryOffset};
+	std::array gpuBufferStates      = {D3D12_RESOURCE_STATE_COPY_DEST,               D3D12_RESOURCE_STATE_COPY_DEST,              D3D12_RESOURCE_STATE_COPY_DEST};
 	for (size_t i = 0; i < gpuBufferPointers.size(); i++)
 	{
 		THROW_IF_FAILED(mDeviceRef->CreatePlacedResource1(mD3d12SceneToBuild->mHeapForGpuBuffers.get(), gpuBufferHeapOffsets[i], &gpuBufferDescs[i], gpuBufferStates[i], nullptr, IID_PPV_ARGS(gpuBufferPointers[i])));
 	}
 
 
-	std::array cpuVisibleBufferPointers    = {mD3d12SceneToBuild->mSceneConstantBuffer.put()};
-	std::array cpuVisibleBufferDescs       = {mConstantBufferDesc};
-	std::array cpuVisibleBufferHeapOffsets = {mConstantBufferGpuMemoryOffset};
+	std::array cpuVisibleBufferPointers    = {mD3d12SceneToBuild->mSceneDynamicConstantBuffer.put()};
+	std::array cpuVisibleBufferDescs       = {mDynamicConstantBufferDesc};
+	std::array cpuVisibleBufferHeapOffsets = {mDynamicConstantBufferGpuMemoryOffset};
 	std::array cpuVisibleBufferStates      = {D3D12_RESOURCE_STATE_GENERIC_READ};
 	for (size_t i = 0; i < cpuVisibleBufferPointers.size(); i++)
 	{

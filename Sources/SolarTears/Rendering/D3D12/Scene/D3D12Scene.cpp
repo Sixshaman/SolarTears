@@ -1,53 +1,38 @@
 #include "D3D12Scene.hpp"
 #include "../D3D12Utils.hpp"
 #include "../../Common/RenderingUtils.hpp"
-#include "../../../Core/Scene/SceneDescription.hpp"
 #include "../../Common/Scene/RenderableSceneMisc.hpp"
 #include "../D3D12Shaders.hpp"
 #include <array>
 
-D3D12::RenderableScene::RenderableScene(const FrameCounter* frameCounter): ModernRenderableScene(frameCounter)
+D3D12::RenderableScene::RenderableScene(): ModernRenderableScene(D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT)
 {
-	mCBufferAlignmentSize = D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT;
-
-	Init();
 }
 
 D3D12::RenderableScene::~RenderableScene()
 {
-	if(mSceneConstantBuffer)
+	if(mSceneDynamicConstantBuffer)
 	{
-		mSceneConstantBuffer->Unmap(0, nullptr);
+		mSceneDynamicConstantBuffer->Unmap(0, nullptr);
 	}
 }
 
-void D3D12::RenderableScene::DrawObjectsOntoGBuffer(ID3D12GraphicsCommandList* commandList, const ShaderManager* shaderManager) const
+void D3D12::RenderableScene::PrepareDrawBuffers(ID3D12GraphicsCommandList* cmdList) const
 {
 	std::array sceneVertexBuffers = {mSceneVertexBufferView};
-	commandList->IASetVertexBuffers(0, (UINT)sceneVertexBuffers.size(), sceneVertexBuffers.data());
+	cmdList->IASetVertexBuffers(0, (UINT)sceneVertexBuffers.size(), sceneVertexBuffers.data());
 
-	commandList->IASetIndexBuffer(&mSceneIndexBufferView);
-	commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	cmdList->IASetIndexBuffer(&mSceneIndexBufferView);
 
-	D3D12_GPU_VIRTUAL_ADDRESS constantBufferAddress = mSceneConstantBuffer->GetGPUVirtualAddress();
+	cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+}
 
-	uint32_t frameResourceIndex = mFrameCounterRef->GetFrameCount() % Utils::InFlightFrameCount;
-	UINT64 PerFrameOffset = CalculatePerFrameDataOffset(frameResourceIndex);
+D3D12_GPU_VIRTUAL_ADDRESS D3D12::RenderableScene::GetFrameData(uint32_t frameResourceIndex) const
+{
+	return mSceneDynamicConstantBuffer->GetGPUVirtualAddress() + GetBaseFrameDataOffset(frameResourceIndex);
+}
 
-	commandList->SetGraphicsRootConstantBufferView(shaderManager->GBufferPerFrameBufferBinding, constantBufferAddress + PerFrameOffset);
-	for(size_t meshIndex = 0; meshIndex < mSceneMeshes.size(); meshIndex++)
-	{
-		UINT64 PerObjectOffset = CalculatePerObjectDataOffset((uint32_t)meshIndex, frameResourceIndex);
-
-		for(uint32_t subobjectIndex = mSceneMeshes[meshIndex].FirstSubobjectIndex; subobjectIndex < mSceneMeshes[meshIndex].AfterLastSubobjectIndex; subobjectIndex++)
-		{
-			//Bind ROOT CONSTANTS for material index
-
-			//TODO: bindless
-			commandList->SetGraphicsRootConstantBufferView(shaderManager->GBufferPerObjectBufferBinding, constantBufferAddress + PerObjectOffset);
-			commandList->SetGraphicsRootDescriptorTable(shaderManager->GBufferTextureBinding, mSceneTextureDescriptors[mSceneSubobjects[subobjectIndex].TextureDescriptorSetIndex]);
-
-			commandList->DrawIndexedInstanced(mSceneSubobjects[subobjectIndex].IndexCount, 1, mSceneSubobjects[subobjectIndex].FirstIndex, mSceneSubobjects[subobjectIndex].VertexOffset, 0);
-		}
-	}
+D3D12_GPU_VIRTUAL_ADDRESS D3D12::RenderableScene::GetObjectData(uint32_t frameResourceIndex) const
+{
+	return mSceneDynamicConstantBuffer->GetGPUVirtualAddress() + GetBaseRigidObjectDataOffset(frameResourceIndex);
 }

@@ -20,8 +20,8 @@ namespace Vulkan
 	class DeviceQueues;
 	class RenderableScene;
 	class FrameGraph;
-	class ShaderManager;
-	class DescriptorManager;
+	class DescriptorDatabase;
+	class SamplerManager;
 
 	class Renderer: public ::Renderer
 	{
@@ -32,10 +32,10 @@ namespace Vulkan
 		void AttachToWindow(Window* window)      override;
 		void ResizeWindowBuffers(Window* window) override;
 
-		void InitScene(SceneDescription* sceneDescription) override;
-		void RenderScene()                                 override;
+		BaseRenderableScene* InitScene(const RenderableSceneDescription& sceneDescription, const std::unordered_map<std::string_view, SceneObjectLocation>& sceneMeshInitialLocations, std::unordered_map<std::string_view, RenderableSceneObjectHandle>& outObjectHandles) override;
+		void                 InitFrameGraph(FrameGraphConfig&& frameGraphConfig, FrameGraphDescription&& frameGraphDescription)                                                                                                                                             override;
 
-		void InitFrameGraph(FrameGraphConfig&& frameGraphConfig, FrameGraphDescription&& frameGraphDescription) override;
+		void Render() override;
 
 	private:
 		void InitInstance();
@@ -66,14 +66,14 @@ namespace Vulkan
 		
 		std::unique_ptr<FunctionsLibrary> mDynamicLibrary;
 
-		std::unique_ptr<ShaderManager>     mShaderManager;
-		std::unique_ptr<DescriptorManager> mDescriptorManager;
-
 		std::unique_ptr<SwapChain>            mSwapChain;
 		std::unique_ptr<DeviceQueues>         mDeviceQueues;
 		std::unique_ptr<WorkerCommandBuffers> mCommandBuffers;
 
 		std::unique_ptr<MemoryManager> mMemoryAllocator;
+
+		std::unique_ptr<DescriptorDatabase> mDescriptorDatabase;
+		std::unique_ptr<SamplerManager>     mSamplerManager;
 
 #if (defined(DEBUG) || defined(_DEBUG)) && defined(VK_EXT_debug_utils)
 		VkDebugUtilsMessengerEXT mDebugMessenger;

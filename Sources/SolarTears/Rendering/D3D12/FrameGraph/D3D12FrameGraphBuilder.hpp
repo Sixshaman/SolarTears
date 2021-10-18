@@ -2,6 +2,7 @@
 
 #include "D3D12RenderPass.hpp"
 #include "D3D12FrameGraph.hpp"
+#include "D3D12FrameGraphMisc.hpp"
 #include <unordered_map>
 #include <unordered_set>
 #include <memory>
@@ -15,87 +16,67 @@ namespace D3D12
 	class DeviceQueues;
 	class DeviceFeatures;
 
-	using RenderPassCreateFunc = std::unique_ptr<RenderPass>(*)(ID3D12Device8*, const FrameGraphBuilder*, const std::string&, uint32_t);
-	using RenderPassAddFunc    = void(*)(FrameGraphBuilder* frameGraphBuilder, const std::string& passName);
+	struct FrameGraphBuildInfo
+	{
+		ID3D12Device8*       Device; 
+		const ShaderManager* ShaderMgr;
+		const MemoryManager* MemoryAllocator;
+	};
 
 	class FrameGraphBuilder final: public ModernFrameGraphBuilder
 	{
-		struct SubresourceInfo
-		{
-			DXGI_FORMAT           Format;
-			D3D12_RESOURCE_STATES State;
-			bool                  BarrierPromotedFromCommon;
-		};
-
 	public:
-		FrameGraphBuilder(FrameGraph* graphToBuild, FrameGraphDescription&& frameGraphDescription, const SwapChain* swapChain);
+		FrameGraphBuilder(FrameGraph* graphToBuild, const SwapChain* swapChain);
 		~FrameGraphBuilder();
 
-		void SetPassSubresourceFormat(const std::string_view passName, const std::string_view subresourceId, DXGI_FORMAT format);
-		void SetPassSubresourceState(const std::string_view passName,  const std::string_view subresourceId, D3D12_RESOURCE_STATES state);
+		ID3D12Device8* GetDevice() const;
 
 		const ShaderManager* GetShaderManager() const;
 
-		ID3D12Resource2*            GetRegisteredResource(const std::string_view passName,          const std::string_view subresourceId, uint32_t frame) const;
-		D3D12_CPU_DESCRIPTOR_HANDLE GetRegisteredSubresourceSrvUav(const std::string_view passName, const std::string_view subresourceId, uint32_t frame) const;
-		D3D12_CPU_DESCRIPTOR_HANDLE GetRegisteredSubresourceRtv(const std::string_view passName,    const std::string_view subresourceId, uint32_t frame) const;
-		D3D12_CPU_DESCRIPTOR_HANDLE GetRegisteredSubresourceDsv(const std::string_view passName,    const std::string_view subresourceId, uint32_t frame) const;
+		ID3D12Resource2*            GetRegisteredResource(uint32_t passIndex,          uint_fast16_t subresourceIndex) const;
+		D3D12_GPU_DESCRIPTOR_HANDLE GetRegisteredSubresourceSrvUav(uint32_t passIndex, uint_fast16_t subresourceIndex) const;
+		D3D12_CPU_DESCRIPTOR_HANDLE GetRegisteredSubresourceRtv(uint32_t passIndex,    uint_fast16_t subresourceIndex) const;
+		D3D12_CPU_DESCRIPTOR_HANDLE GetRegisteredSubresourceDsv(uint32_t passIndex,    uint_fast16_t subresourceIndex) const;
 
-		DXGI_FORMAT           GetRegisteredSubresourceFormat(const std::string_view passName, const std::string_view subresourceId) const;
-		D3D12_RESOURCE_STATES GetRegisteredSubresourceState(const std::string_view passName,  const std::string_view subresourceId) const;
+		DXGI_FORMAT           GetRegisteredSubresourceFormat(uint32_t passIndex, uint_fast16_t subresourceIndex) const;
+		D3D12_RESOURCE_STATES GetRegisteredSubresourceState(uint32_t passIndex, uint_fast16_t subresourceIndex)  const;
 
-		D3D12_RESOURCE_STATES GetPreviousPassSubresourceState(const std::string_view passName, const std::string_view subresourceId) const;
-		D3D12_RESOURCE_STATES GetNextPassSubresourceState(const std::string_view passName,     const std::string_view subresourceId) const;
+		D3D12_RESOURCE_STATES GetPreviousPassSubresourceState(uint32_t passIndex, uint_fast16_t subresourceIndex) const;
+		D3D12_RESOURCE_STATES GetNextPassSubresourceState(uint32_t passIndex, uint_fast16_t subresourceIndex)     const;
 
-		D3D12_CPU_DESCRIPTOR_HANDLE GetFrameGraphSrvHeapStart() const;
+		D3D12_GPU_DESCRIPTOR_HANDLE GetFrameGraphSrvHeapStart() const;
 		D3D12_CPU_DESCRIPTOR_HANDLE GetFrameGraphRtvHeapStart() const;
 		D3D12_CPU_DESCRIPTOR_HANDLE GetFrameGraphDsvHeapStart() const;
 
-		void Build(ID3D12Device8* device, const ShaderManager* shaderManager, const MemoryManager* memoryManager);
+		void Build(FrameGraphDescription&& frameGraphDescription, const FrameGraphBuildInfo& buildInfo);
 
 	private:
-		//Adds a render pass of type Pass to the frame graph pass table
-		template<typename Pass>
-		void AddPassToTable();
-
-		//Initializes frame graph pass table
-		void InitPassTable();
-
 		D3D12_COMMAND_LIST_TYPE PassClassToListType(RenderPassClass passType);
 
 	private:
-		//Creates a new subresource info record
-		uint32_t AddSubresourceMetadata() override final;
+		//Registers subresource api-specific metadata
+		void InitMetadataPayloads() override final;
 
-		//Creates a new subresource info record for present pass
-		uint32_t AddPresentSubresourceMetadata() override final;
+		//Propagates API-specific subresource data from one subresource to another, within a single resource
+		bool PropagateSubresourcePayloadDataVertically(const ResourceMetadata& resourceMetadata) override final;
 
-		//Registers render pass inputs and outputs
-		void RegisterPassSubresources(RenderPassType passType, const FrameGraphDescription::RenderPassName& passName) override;
-
-		//Creates a new render pass
-		void CreatePassObject(const FrameGraphDescription::RenderPassName& passName, RenderPassType passType, uint32_t frame) override final;
-
-		//Gives a free render pass span id
-		uint32_t NextPassSpanId() override final;
-
-		//Propagates subresource info (format, access flags, etc.) to a node from the previous one. Also initializes view key. Returns true if propagation succeeded or wasn't needed
-		bool ValidateSubresourceViewParameters(SubresourceMetadataNode* currNode, SubresourceMetadataNode* prevNode) override final;
-
-		//Allocates the storage for image views defined by sort keys
-		void AllocateImageViews(const std::vector<uint64_t>& sortKeys, uint32_t frameCount, std::vector<uint32_t>& outViewIds) override final;
+		//Propagates API-specific subresource data from one subresource to another, within a single pass
+		bool PropagateSubresourcePayloadDataHorizontally(const PassMetadata& passMetadata) override final;
 
 		//Creates image objects
-		void CreateTextures(const std::vector<TextureResourceCreateInfo>& textureCreateInfos, const std::vector<TextureResourceCreateInfo>& backbufferCreateInfos, uint32_t totalTextureCount) const override final;
+		void CreateTextures() override final;
 
 		//Creates image view objects
-		void CreateTextureViews(const std::vector<TextureSubresourceCreateInfo>& textureViewCreateInfos) const override final;
+		void CreateTextureViews() override final;
 
-		//Add a barrier to execute before a pass
-		uint32_t AddBeforePassBarrier(uint32_t imageIndex, RenderPassClass prevPassClass, uint32_t prevPassSubresourceInfoIndex, RenderPassClass currPassClass, uint32_t currPassSubresourceInfoIndex) override final;
+		//Build the render pass objects
+		void BuildPassObjects() override final;
 
-		//Add a barrier to execute before a pass
-		uint32_t AddAfterPassBarrier(uint32_t imageIndex, RenderPassClass currPassClass, uint32_t currPassSubresourceInfoIndex, RenderPassClass nextPassClasse, uint32_t nextPassSubresourceInfoIndex) override final;
+		//Adds subresource barriers to execute before a pass
+		void AddBeforePassBarriers(const PassMetadata& passMetadata, uint32_t barrierSpanIndex) override final;
+
+		//Adds subresource barriers to execute before a pass
+		void AddAfterPassBarriers(const PassMetadata& passMetadata, uint32_t barrierSpanIndex) override final;
 
 		//Initializes per-traverse command buffer info
 		void InitializeTraverseData() const override final;
@@ -106,18 +87,7 @@ namespace D3D12
 	private:
 		FrameGraph* mD3d12GraphToBuild;
 
-		std::unordered_map<RenderPassType, RenderPassAddFunc>    mPassAddFuncTable;
-		std::unordered_map<RenderPassType, RenderPassCreateFunc> mPassCreateFuncTable;
-
-		std::vector<SubresourceInfo> mSubresourceInfos;
-
-		UINT mSrvUavCbvDescriptorCount;
-		UINT mRtvDescriptorCount;
-		UINT mDsvDescriptorCount;
-
-		UINT mSrvUavCbvDescriptorSize;
-		UINT mRtvDescriptorSize;
-		UINT mDsvDescriptorSize;
+		std::vector<SubresourceMetadataPayload> mSubresourceMetadataPayloads;
 
 		//Several things that might be needed to create some of the passes
 		ID3D12Device8*         mDevice;
@@ -126,5 +96,3 @@ namespace D3D12
 		const ShaderManager*   mShaderManager;
 	};
 }
-
-#include "D3D12FrameGraphBuilder.inl"

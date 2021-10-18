@@ -3,35 +3,24 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <span>
 #include "ModernFrameGraphMisc.hpp"
 
-class FrameGraphDescription
+struct SubresourceNamingInfo
 {
-	friend class ModernFrameGraphBuilder;
+	RenderPassName PassName;
+	SubresourceId  PassSubresourceId;
+	ResourceName   PassSubresourceName;
+};
 
-	constexpr static std::string_view PresentPassName         = "SPECIAL_PRESENT_ACQUIRE_PASS";
-	constexpr static std::string_view BackbufferPresentPassId = "SpecialPresentAcquirePass-Backbuffer";
+struct FrameGraphDescription
+{
+	std::unordered_map<RenderPassName, RenderPassType> mRenderPassTypes;
+	std::vector<SubresourceNamingInfo>                 mSubresourceNames;
+	ResourceName                                       mBackbufferName;
 
-public:
-	using RenderPassName  = std::string;
-	using SubresourceId   = std::string;
-	using SubresourceName = std::string;
-
-public:
-	FrameGraphDescription();
-	~FrameGraphDescription();
-
+	//Helper functions
 	void AddRenderPass(RenderPassType passType, const std::string_view passName);
-
 	void AssignSubresourceName(const std::string_view passName, const std::string_view subresourceId, const std::string_view subresourceName);
 	void AssignBackbufferName(const std::string_view backbufferName);
-
-private:
-	std::vector<RenderPassName> mRenderPassNames;
-
-	std::unordered_map<RenderPassName, RenderPassType> mRenderPassTypes;
-
-	std::unordered_map<RenderPassName, std::unordered_map<SubresourceName, SubresourceId>> mRenderPassesSubresourceNameIds;
-
-	SubresourceName mBackbufferName;
 };

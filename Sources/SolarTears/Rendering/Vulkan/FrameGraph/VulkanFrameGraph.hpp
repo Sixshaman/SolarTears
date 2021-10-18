@@ -29,8 +29,6 @@ namespace Vulkan
 	private:
 		void CreateSemaphores();
 
-		void SwitchBarrierImages(uint32_t swapchainImageIndex, uint32_t frameIndex);
-
 		void BeginCommandBuffer(VkCommandBuffer cmdBuffer, VkCommandPool cmdPool) const;
 		void EndCommandBuffer(VkCommandBuffer cmdBuffer)                          const;
 
@@ -46,6 +44,8 @@ namespace Vulkan
 
 		std::vector<VkImageMemoryBarrier> mImageBarriers;
 
+		std::vector<VkDescriptorSet> mDescriptorSets;
+
 		VkDeviceMemory mImageMemory;
 
 		VkSemaphore mAcquireSemaphores[Utils::InFlightFrameCount];
@@ -54,5 +54,7 @@ namespace Vulkan
 
 		//Used to track the command buffers that were used to record render passes
 		std::vector<VkCommandBuffer> mFrameRecordedGraphicsCommandBuffers;
+
+		std::vector<Span<uint32_t>> mOwnedImageSpans;
 	};
 }

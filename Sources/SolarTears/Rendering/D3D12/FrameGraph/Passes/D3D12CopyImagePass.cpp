@@ -3,25 +3,17 @@
 #include "../D3D12FrameGraphBuilder.hpp"
 #include <array>
 
-D3D12::CopyImagePass::CopyImagePass([[maybe_unused]] ID3D12Device8* device, const FrameGraphBuilder* frameGraphBuilder, const std::string& currentPassName, uint32_t frame)
+D3D12::CopyImagePass::CopyImagePass(const FrameGraphBuilder* frameGraphBuilder, uint32_t passIndex)
 {
-	mSrcImageRef = frameGraphBuilder->GetRegisteredResource(currentPassName, SrcImageId, frame);
-	mDstImageRef = frameGraphBuilder->GetRegisteredResource(currentPassName, DstImageId, frame);
+	mSrcImageRef = frameGraphBuilder->GetRegisteredResource(passIndex, (uint_fast16_t)PassSubresourceId::SrcImage);
+	mDstImageRef = frameGraphBuilder->GetRegisteredResource(passIndex, (uint_fast16_t)PassSubresourceId::DstImage);
 }
 
 D3D12::CopyImagePass::~CopyImagePass()
 {
 }
 
-void D3D12::CopyImagePass::OnAdd(FrameGraphBuilder* frameGraphBuilder, const std::string& passName)
-{
-	CopyImagePassBase::OnAdd(frameGraphBuilder, passName);
-
-	frameGraphBuilder->SetPassSubresourceState(passName, SrcImageId, D3D12_RESOURCE_STATE_COPY_SOURCE);
-	frameGraphBuilder->SetPassSubresourceState(passName, DstImageId, D3D12_RESOURCE_STATE_COPY_DEST);
-}
-
-void D3D12::CopyImagePass::RecordExecution(ID3D12GraphicsCommandList6* commandList, [[maybe_unused]] const RenderableScene* scene, [[maybe_unused]] const ShaderManager* shaderManager, const FrameGraphConfig& frameGraphConfig) const
+void D3D12::CopyImagePass::RecordExecution(ID3D12GraphicsCommandList6* commandList, [[maybe_unused]] const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig, [[maybe_unused]] uint32_t frameResourceIndex) const
 {
 	D3D12_TEXTURE_COPY_LOCATION dstRegion;
 	dstRegion.pResource        = mDstImageRef;
@@ -44,8 +36,25 @@ void D3D12::CopyImagePass::RecordExecution(ID3D12GraphicsCommandList6* commandLi
 	commandList->CopyTextureRegion(&dstRegion, 0, 0, 0, &srcRegion, &srcBox);
 }
 
-void D3D12::CopyImagePass::RevalidateSrvUavDescriptors([[maybe_unused]] D3D12_GPU_DESCRIPTOR_HANDLE prevHeapStart, [[maybe_unused]] D3D12_GPU_DESCRIPTOR_HANDLE newHeapStart)
+UINT D3D12::CopyImagePass::GetPassDescriptorCountNeeded()
 {
+	//No specific pass descriptors for this pass
+	return 0;
+}
+
+void D3D12::CopyImagePass::ValidatePassDescriptors([[maybe_unused]] D3D12_GPU_DESCRIPTOR_HANDLE prevHeapStart, [[maybe_unused]] D3D12_GPU_DESCRIPTOR_HANDLE newHeapStart)
+{
+	//No specific pass descriptors for this pass
+}
+
+void D3D12::CopyImagePass::RequestSceneDescriptors([[maybe_unused]] DescriptorCreator* sceneDescriptorCreator)
+{
+	//No specific scene descriptors for this pass
+}
+
+void D3D12::CopyImagePass::ValidateSceneDescriptors([[maybe_unused]] const DescriptorCreator* sceneDescriptorCreator)
+{
+	//No specific scene descriptors for this pass
 }
 
 ID3D12PipelineState* D3D12::CopyImagePass::FirstPipeline() const

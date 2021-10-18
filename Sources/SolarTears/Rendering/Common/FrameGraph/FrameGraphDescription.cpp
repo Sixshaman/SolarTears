@@ -1,33 +1,27 @@
 #include "FrameGraphDescription.hpp"
-
-FrameGraphDescription::FrameGraphDescription()
-{
-}
-
-FrameGraphDescription::~FrameGraphDescription()
-{
-}
+#include <cassert>
 
 void FrameGraphDescription::AddRenderPass(RenderPassType passType, const std::string_view passName)
 {
-	FrameGraphDescription::RenderPassName renderPassName(passName);
-	mRenderPassNames.push_back(renderPassName);
-
+	RenderPassName renderPassName(passName);
+	assert(!mRenderPassTypes.contains(renderPassName));
 	mRenderPassTypes[renderPassName] = passType;
 }
 
 void FrameGraphDescription::AssignSubresourceName(const std::string_view passName, const std::string_view subresourceId, const std::string_view subresourceName)
 {
-	FrameGraphDescription::RenderPassName  passNameStr(passName);
-	FrameGraphDescription::SubresourceId   subresourceIdStr(subresourceId);
-	FrameGraphDescription::SubresourceName subresourceNameStr(subresourceName);
+	RenderPassName renderPassName(passName);
+	assert(mRenderPassTypes.contains(renderPassName));
 
-	mRenderPassesSubresourceNameIds[passNameStr][subresourceNameStr] = subresourceIdStr;
+	mSubresourceNames.push_back(SubresourceNamingInfo
+	{
+		.PassName            = renderPassName,
+		.PassSubresourceId   = SubresourceId(subresourceId),
+		.PassSubresourceName = ResourceName(subresourceName)
+	});
 }
 
 void FrameGraphDescription::AssignBackbufferName(const std::string_view backbufferName)
 {
 	mBackbufferName = backbufferName;
-
-	AssignSubresourceName(PresentPassName, BackbufferPresentPassId, mBackbufferName);
 }

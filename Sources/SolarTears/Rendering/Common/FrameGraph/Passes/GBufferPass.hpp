@@ -1,17 +1,36 @@
 #pragma once
 
 #include "../ModernFrameGraphMisc.hpp"
-#include "../ModernFrameGraphBuilder.hpp"
+#include <cassert>
+#include <string_view>
+#include <array>
 
 class GBufferPassBase
 {
 public:
 	static constexpr RenderPassClass PassClass = RenderPassClass::Graphics;
-	static constexpr RenderPassType  PassType = RenderPassType::GBufferGenerate;
+	static constexpr RenderPassType  PassType  = RenderPassType::GBufferGenerate;
 
-public:
-	static constexpr std::string_view ColorBufferImageId = "GBufferPass-ColorBufferImage";
+	enum class PassSubresourceId: uint_fast16_t
+	{
+		ColorBufferImage = 0,
 
-public:
-	static void OnAdd(ModernFrameGraphBuilder* frameGraphBuilder, const std::string& passName);
+		Count
+	};
+
+	constexpr static std::array WriteSubresourceIds =
+	{
+		PassSubresourceId::ColorBufferImage
+	};
+
+	static inline constexpr std::string_view GetSubresourceStringId(PassSubresourceId subresourceId)
+	{
+		switch(subresourceId)
+		{
+			case PassSubresourceId::ColorBufferImage: return "GBufferColorImage";
+		}
+
+		assert(false);
+		return "";
+	}
 };

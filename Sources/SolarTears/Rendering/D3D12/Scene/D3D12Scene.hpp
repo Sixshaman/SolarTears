@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <wil/com.h>
+#include "../../Common/RenderingUtils.hpp"
 #include "../../Common/Scene/ModernRenderableScene.hpp"
 #include "../../../Core/FrameCounter.hpp"
 
@@ -14,29 +15,43 @@ namespace D3D12
 	class RenderableScene: public ModernRenderableScene
 	{
 		friend class RenderableSceneBuilder;
-		friend class SceneDescriptorCreator;
+		friend class DescriptorCreator;
 
 	public:
-		RenderableScene(const FrameCounter* frameCounter);
+		RenderableScene();
 		~RenderableScene();
 
 	public:
-		void DrawObjectsOntoGBuffer(ID3D12GraphicsCommandList* commandList, const ShaderManager* shaderManager) const;
+		void PrepareDrawBuffers(ID3D12GraphicsCommandList* cmdList) const;
+
+		template<typename SubmeshCallback>
+		inline void DrawStaticObjects(ID3D12GraphicsCommandList* cmdList, SubmeshCallback submeshCallback) const;
+
+		template<typename MeshCallback, typename SubmeshCallback>
+		inline void DrawStaticInstancedObjects(ID3D12GraphicsCommandList* cmdList, MeshCallback meshCallback, SubmeshCallback submeshCallback) const;
+
+		template<typename MeshCallback, typename SubmeshCallback>
+		inline void DrawRigidObjects(ID3D12GraphicsCommandList* cmdList, MeshCallback meshCallback, SubmeshCallback submeshCallback) const;
+
+		D3D12_GPU_VIRTUAL_ADDRESS GetFrameData(uint32_t frameResourceIndex)  const;
+		D3D12_GPU_VIRTUAL_ADDRESS GetObjectData(uint32_t frameResourceIndex) const;
 
 	private:
 		wil::com_ptr_nothrow<ID3D12Resource> mSceneVertexBuffer;
 		wil::com_ptr_nothrow<ID3D12Resource> mSceneIndexBuffer;
 
-		wil::com_ptr_nothrow<ID3D12Resource> mSceneConstantBuffer; //Common buffer for all constant buffer data
+		wil::com_ptr_nothrow<ID3D12Resource> mSceneStaticConstantBuffer;  //Common buffer for all static constant buffer data (GPU-local)
+		wil::com_ptr_nothrow<ID3D12Resource> mSceneDynamicConstantBuffer; //Common buffer for all dynamic constant buffer data (CPU-visible)
 
 		D3D12_VERTEX_BUFFER_VIEW mSceneVertexBufferView;
 		D3D12_INDEX_BUFFER_VIEW  mSceneIndexBufferView;
 
 		std::vector<wil::com_ptr_nothrow<ID3D12Resource2>> mSceneTextures;
-		std::vector<D3D12_GPU_DESCRIPTOR_HANDLE>           mSceneTextureDescriptors;
 
 		wil::com_ptr_nothrow<ID3D12Heap> mHeapForGpuBuffers;
 		wil::com_ptr_nothrow<ID3D12Heap> mHeapForCpuVisibleBuffers;
 		wil::com_ptr_nothrow<ID3D12Heap> mHeapForTextures;
 	};
+
+	#include "D3D12Scene.inl"
 }

@@ -5,27 +5,17 @@
 
 namespace D3D12
 {
-	class SceneDescriptorCreator;
-	class FrameGraphDescriptorCreator;
-
 	class SrvDescriptorManager
 	{
-	public:
-		static constexpr uint32_t FLAG_SCENE_UNCHANGED       = 0x1;
-		static constexpr uint32_t FLAG_FRAME_GRAPH_UNCHANGED = 0x2;
-
 	public:
 		SrvDescriptorManager();
 		~SrvDescriptorManager();
 
-		ID3D12DescriptorHeap* GetSrvUavCbvHeap() const;
+		ID3D12DescriptorHeap* GetDescriptorHeap() const;
 
-		void ValidateDescriptorHeaps(ID3D12Device* device, SceneDescriptorCreator* sceneDescriptorCreator, FrameGraphDescriptorCreator* frameGraphDescriptorCreator, uint32_t flags);
+		void ValidateDescriptorHeaps(ID3D12Device* device, UINT descriptorCountNeeded);
 
 	private:
 		wil::com_ptr_nothrow<ID3D12DescriptorHeap> mSrvUavCbvDescriptorHeap;
-
-		UINT mSceneSrvDescriptorCount;
-		UINT mFrameGraphSrvDescriptorCount;
 	};
 }

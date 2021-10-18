@@ -2,9 +2,12 @@
 
 #include "VulkanRenderPass.hpp"
 #include "VulkanFrameGraph.hpp"
+#include "VulkanFrameGraphMisc.hpp"
 #include <unordered_map>
 #include <memory>
 #include <array>
+#include <span>
+#include "../../../Core/DataStructures/Span.hpp"
 #include "../../Common/FrameGraph/ModernFrameGraphBuilder.hpp"
 
 namespace Vulkan
@@ -15,112 +18,92 @@ namespace Vulkan
 	class InstanceParameters;
 	class RenderableScene;
 	class DeviceParameters;
-	class ShaderManager;
-	class DescriptorManager;
+	class SamplerManager;
+	class ShaderDatabase;
+	class DescriptorDatabase;
+	class SharedDescriptorDatabaseBuilder;
+	class PassDescriptorDatabaseBuilder;
 
-	using RenderPassCreateFunc = std::unique_ptr<RenderPass>(*)(VkDevice, const FrameGraphBuilder*, const std::string&, uint32_t);
-	using RenderPassAddFunc    = void(*)(FrameGraphBuilder* frameGraphBuilder, const std::string& passName);
+	struct FrameGraphBuildInfo
+	{
+		const InstanceParameters*   InstanceParams;
+		const DeviceParameters*     DeviceParams; 
+		const MemoryManager*        MemoryAllocator; 
+		const DeviceQueues*         Queues;
+		const WorkerCommandBuffers* CommandBuffers;
+	};
 
 	class FrameGraphBuilder final: public ModernFrameGraphBuilder
 	{
-		struct SubresourceInfo
-		{
-			VkFormat             Format;
-			VkImageLayout        Layout;
-			VkImageUsageFlags    Usage;
-			VkImageAspectFlags   Aspect;
-			VkPipelineStageFlags Stage;
-			VkAccessFlags        Access;
-		};
+		friend class PassDescriptorDatabaseBuilder;
 
 	public:
-		FrameGraphBuilder(FrameGraph* graphToBuild, FrameGraphDescription&& frameGraphDescription, const SwapChain* swapchain);
+		FrameGraphBuilder(LoggerQueue* logger, FrameGraph* graphToBuild, SamplerManager* samplerManager, const SwapChain* swapchain);
 		~FrameGraphBuilder();
 
-		void SetPassSubresourceFormat(const std::string_view passName,      const std::string_view subresourceId, VkFormat format);
-		void SetPassSubresourceLayout(const std::string_view passName,      const std::string_view subresourceId, VkImageLayout layout);
-		void SetPassSubresourceUsage(const std::string_view passName,       const std::string_view subresourceId, VkImageUsageFlags usage);
-		void SetPassSubresourceAspectFlags(const std::string_view passName, const std::string_view subresourceId, VkImageAspectFlags aspect);
-		void SetPassSubresourceStageFlags(const std::string_view passName,  const std::string_view subresourceId, VkPipelineStageFlags stage);
-		void SetPassSubresourceAccessFlags(const std::string_view passName, const std::string_view subresourceId, VkAccessFlags accessFlags);
+		const VkDevice          GetDevice()           const;
+		const DeviceParameters* GetDeviceParameters() const;
+		const DeviceQueues*     GetDeviceQueues()     const;
+		const SwapChain*        GetSwapChain()        const;
+		
+		ShaderDatabase* GetShaderDatabase() const;
 
-		const DeviceParameters*  GetDeviceParameters()  const;
-		const ShaderManager*     GetShaderManager()     const;
-		const DescriptorManager* GetDescriptorManager() const;
-		const DeviceQueues*      GetDeviceQueues()      const;
-		const SwapChain*         GetSwapChain()         const;
+		VkImage              GetRegisteredResource(uint32_t passIndex,    uint_fast16_t subresourceIndex) const;
+		VkImageView          GetRegisteredSubresource(uint32_t passIndex, uint_fast16_t subresourceIndex) const;
 
-		VkImage              GetRegisteredResource(const std::string_view passName,    const std::string_view subresourceId, uint32_t frame) const;
-		VkImageView          GetRegisteredSubresource(const std::string_view passName, const std::string_view subresourceId, uint32_t frame) const;
+		VkFormat             GetRegisteredSubresourceFormat(uint32_t passIndex,      uint_fast16_t subresourceIndex) const;
+		VkImageLayout        GetRegisteredSubresourceLayout(uint32_t passIndex,      uint_fast16_t subresourceIndex) const;
+		VkImageUsageFlags    GetRegisteredSubresourceUsage(uint32_t passIndex,       uint_fast16_t subresourceIndex) const;
+		VkPipelineStageFlags GetRegisteredSubresourceStageFlags(uint32_t passIndex,  uint_fast16_t subresourceIndex) const;
+		VkImageAspectFlags   GetRegisteredSubresourceAspectFlags(uint32_t passIndex, uint_fast16_t subresourceIndex) const;
+		VkAccessFlags        GetRegisteredSubresourceAccessFlags(uint32_t passIndex, uint_fast16_t subresourceIndex) const;
 
-		VkFormat             GetRegisteredSubresourceFormat(const std::string_view passName,      const std::string_view subresourceId) const;
-		VkImageLayout        GetRegisteredSubresourceLayout(const std::string_view passName,      const std::string_view subresourceId) const;
-		VkImageUsageFlags    GetRegisteredSubresourceUsage(const std::string_view passName,       const std::string_view subresourceId) const;
-		VkPipelineStageFlags GetRegisteredSubresourceStageFlags(const std::string_view passName,  const std::string_view subresourceId) const;
-		VkImageAspectFlags   GetRegisteredSubresourceAspectFlags(const std::string_view passName, const std::string_view subresourceId) const;
-		VkAccessFlags        GetRegisteredSubresourceAccessFlags(const std::string_view passName, const std::string_view subresourceId) const;
+		VkImageLayout        GetPreviousPassSubresourceLayout(uint32_t passIndex,     uint_fast16_t subresourceIndex) const;
+		VkImageUsageFlags    GetPreviousPassSubresourceUsage(uint32_t passIndex,      uint_fast16_t subresourceIndex) const;
+		VkPipelineStageFlags GetPreviousPassSubresourceStageFlags(uint32_t passIndex, uint_fast16_t subresourceIndex) const;
+		VkImageAspectFlags   GetPreviousPassSubresourceAspectFlags(uint32_t passName, uint_fast16_t subresourceIndex) const;
+		VkAccessFlags        GetPreviousPassSubresourceAccessFlags(uint32_t passName, uint_fast16_t subresourceIndex) const;
 
-		VkImageLayout        GetPreviousPassSubresourceLayout(const std::string_view passName,      const std::string_view subresourceId) const;
-		VkImageUsageFlags    GetPreviousPassSubresourceUsage(const std::string_view passName,       const std::string_view subresourceId) const;
-		VkPipelineStageFlags GetPreviousPassSubresourceStageFlags(const std::string_view passName,  const std::string_view subresourceId) const;
-		VkImageAspectFlags   GetPreviousPassSubresourceAspectFlags(const std::string_view passName, const std::string_view subresourceId) const;
-		VkAccessFlags        GetPreviousPassSubresourceAccessFlags(const std::string_view passName, const std::string_view subresourceId) const;
+		VkImageLayout        GetNextPassSubresourceLayout(uint32_t passIndex,      uint_fast16_t subresourceIndex) const;
+		VkImageUsageFlags    GetNextPassSubresourceUsage(uint32_t passIndex,       uint_fast16_t subresourceIndex) const;
+		VkPipelineStageFlags GetNextPassSubresourceStageFlags(uint32_t passIndex,  uint_fast16_t subresourceIndex) const;
+		VkImageAspectFlags   GetNextPassSubresourceAspectFlags(uint32_t passIndex, uint_fast16_t subresourceIndex) const;
+		VkAccessFlags        GetNextPassSubresourceAccessFlags(uint32_t passIndex, uint_fast16_t subresourceIndex) const;
 
-		VkImageLayout        GetNextPassSubresourceLayout(const std::string_view passName,      const std::string_view subresourceId) const;
-		VkImageUsageFlags    GetNextPassSubresourceUsage(const std::string_view passName,       const std::string_view subresourceId) const;
-		VkPipelineStageFlags GetNextPassSubresourceStageFlags(const std::string_view passName,  const std::string_view subresourceId) const;
-		VkImageAspectFlags   GetNextPassSubresourceAspectFlags(const std::string_view passName, const std::string_view subresourceId) const;
-		VkAccessFlags        GetNextPassSubresourceAccessFlags(const std::string_view passName, const std::string_view subresourceId) const;
-
-		void Build(const InstanceParameters* instanceParameters, const DeviceParameters* deviceParameters, const DescriptorManager* descriptorManager, const MemoryManager* memoryManager, const ShaderManager* shaderManager, const DeviceQueues* deviceQueues, WorkerCommandBuffers* workerCommandBuffers);
+		void Build(FrameGraphDescription&& frameGraphDescription, const FrameGraphBuildInfo& buildInfo);
+		void ValidateDescriptors(DescriptorDatabase* descriptorDatabase, SharedDescriptorDatabaseBuilder* sharedDatabaseBuilder, PassDescriptorDatabaseBuilder* passDatabaseBuilder);
 
 	private:
-		//Adds a render pass of type Pass to the frame graph pass table
-		template<typename Pass>
-		void AddPassToTable();
-		
-		//Initializes frame graph pass table
-		void InitPassTable();
-
 		//Converts pass type to a queue family index
 		uint32_t PassClassToQueueIndex(RenderPassClass passClass) const;
 
 		//Creates an image view
-		VkImageView CreateImageView(VkImage image, uint32_t subresourceInfoIndex) const;
+		VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspect) const;
 
 	private:
-		//Creates a new subresource info record
-		uint32_t AddSubresourceMetadata() override final;
+		//Registers subresource api-specific metadata
+		void InitMetadataPayloads() override final;
 
-		//Creates a new subresource info record for present pass
-		uint32_t AddPresentSubresourceMetadata() override final;
+		//Propagates API-specific subresource data from one subresource to another, within a single resource
+		bool PropagateSubresourcePayloadDataVertically(const ResourceMetadata& resourceMetadata) override final;
 
-		//Registers render pass inputs and outputs
-		void RegisterPassSubresources(RenderPassType passType, const FrameGraphDescription::RenderPassName& passName) override;
-
-		//Creates a new render pass
-		void CreatePassObject(const FrameGraphDescription::RenderPassName& passName, RenderPassType passType, uint32_t frame) override final;
-
-		//Gives a free render pass span id
-		uint32_t NextPassSpanId() override final;
-
-		//Propagates subresource info (format, access flags, etc.) to a node from the previous one. Also initializes view key. Returns true if propagation succeeded or wasn't needed
-		bool ValidateSubresourceViewParameters(SubresourceMetadataNode* currNode, SubresourceMetadataNode* prevNode) override final;
-
-		//Allocates the storage for image views defined by sort keys
-		void AllocateImageViews(const std::vector<uint64_t>& sortKeys, uint32_t frameCount, std::vector<uint32_t>& outViewIds) override final;
+		//Propagates API-specific subresource data from one subresource to another, within a single pass
+		bool PropagateSubresourcePayloadDataHorizontally(const PassMetadata& passMetadata) override final;
 
 		//Creates image objects
-		void CreateTextures(const std::vector<TextureResourceCreateInfo>& textureCreateInfos, const std::vector<TextureResourceCreateInfo>& backbufferCreateInfos, uint32_t totalTextureCount) const override final;
+		void CreateTextures() override final;
 
 		//Creates image view objects
-		void CreateTextureViews(const std::vector<TextureSubresourceCreateInfo>& textureViewCreateInfos) const override final;
+		void CreateTextureViews() override final;
 
-		//Adds a barrier to execute before a pass
-		uint32_t AddBeforePassBarrier(uint32_t imageIndex, RenderPassClass prevPassClass, uint32_t prevPassSubresourceInfoIndex, RenderPassClass currPassClass, uint32_t currPassSubresourceInfoIndex) override final;
+		//Build the render pass objects
+		void BuildPassObjects() override final;
 
-		//Adds a barrier to execute before a pass
-		uint32_t AddAfterPassBarrier(uint32_t imageIndex, RenderPassClass currPassClass, uint32_t currPassSubresourceInfoIndex, RenderPassClass nextPassClass, uint32_t nextPassSubresourceInfoIndex) override final;
+		//Adds subresource barriers to execute before a pass
+		void AddBeforePassBarriers(const PassMetadata& passMetadata, uint32_t barrierSpanIndex) override final;
+
+		//Adds subresource barriers to execute before a pass
+		void AddAfterPassBarriers(const PassMetadata& passMetadata, uint32_t barrierSpanIndex) override final;
 
 		//Initializes per-traverse command buffer info
 		void InitializeTraverseData() const override final;
@@ -131,23 +114,18 @@ namespace Vulkan
 	private:
 		FrameGraph* mVulkanGraphToBuild;
 
-		std::unordered_map<RenderPassType, RenderPassAddFunc>    mPassAddFuncTable;
-		std::unordered_map<RenderPassType, RenderPassCreateFunc> mPassCreateFuncTable;
+		LoggerQueue* mLogger;
 
-		std::vector<SubresourceInfo> mSubresourceInfos;
-
-		uint32_t mImageViewCount;
+		std::vector<SubresourceMetadataPayload> mSubresourceMetadataPayloads;
 
 		//Several things that might be needed during build
 		const DeviceQueues*         mDeviceQueues;
 		const SwapChain*            mSwapChain;
 		const WorkerCommandBuffers* mWorkerCommandBuffers;
-		const DescriptorManager*    mDescriptorManager;
 		const InstanceParameters*   mInstanceParameters;
 		const DeviceParameters*     mDeviceParameters;
-		const ShaderManager*        mShaderManager;
 		const MemoryManager*        mMemoryManager;
+
+		std::unique_ptr<ShaderDatabase> mShaderDatabase;
 	};
 }
-
-#include "VulkanFrameGraphBuilder.inl"

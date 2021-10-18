@@ -4,6 +4,11 @@
 #include <string>
 #include <vector>
 #include <DirectXMath.h>
+#include "RenderableSceneObjectHandle.hpp"
+#include "../../../Core/Scene/SceneObjectLocation.hpp"
+
+using RenderableSceneObjectHandle = RenderableSceneObjectHandleGeneral<uint32_t>;
+
 
 struct RenderableSceneVertex
 {
@@ -14,19 +19,22 @@ struct RenderableSceneVertex
 
 using RenderableSceneIndex = uint32_t;
 
-struct RenderableSceneMesh
+
+struct RenderableSceneMaterial
 {
-	std::vector<RenderableSceneVertex> Vertices;
-	std::vector<RenderableSceneIndex>  Indices;
-	std::wstring                       TextureFilename;
+	uint32_t TextureIndex;
+	uint32_t NormalMapIndex;
 };
 
-struct RenderableSceneMeshHandle
-{
-	uint32_t Id;
 
-	bool operator==(const RenderableSceneMeshHandle right) {return Id == right.Id;}
-	bool operator!=(const RenderableSceneMeshHandle right) {return Id != right.Id;}
+struct ObjectDataUpdateInfo
+{
+	RenderableSceneObjectHandle ObjectId;
+	SceneObjectLocation         NewObjectLocation;
 };
 
-static constexpr RenderableSceneMeshHandle INVALID_SCENE_MESH_HANDLE = {.Id = (uint32_t)(-1)};
+struct FrameDataUpdateInfo
+{
+	SceneObjectLocation CameraLocation;
+	DirectX::XMFLOAT4X4 ProjMatrix;
+};

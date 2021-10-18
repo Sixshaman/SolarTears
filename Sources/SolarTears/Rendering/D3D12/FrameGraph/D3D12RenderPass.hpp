@@ -10,6 +10,7 @@ class FrameGraphConfig;
 namespace D3D12
 {
 	class FrameGraphBuilder;
+	class DescriptorCreator;
 
 	//An alternative approach would be a single class with Execute() callback and different render pass description classes.
 	//This would eliminate the cost of dereferencing class pointer, then dereferencing vtable, then indexing through vtable.
@@ -30,11 +31,12 @@ namespace D3D12
 	public:
 		virtual ID3D12PipelineState* FirstPipeline() const = 0;
 
-		virtual void RecordExecution(ID3D12GraphicsCommandList6* commandList, const RenderableScene* scene, const ShaderManager* shaderManager, const FrameGraphConfig& frameGraphConfig) const = 0;
+		virtual void RecordExecution(ID3D12GraphicsCommandList6* commandList, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig, uint32_t frameResourceIndex) const = 0;
 
-		//Parameter cpuOnlyHeapStart is the start of the cpu-only heap
-		//Parameter firstGpuDescriptor is the start of this newly allocated place
-		//The function calculates the new GPU descriptor address as newHeapStart + (currentAddress - prevHeapStart).
-		virtual void RevalidateSrvUavDescriptors(D3D12_GPU_DESCRIPTOR_HANDLE prevHeapStart, D3D12_GPU_DESCRIPTOR_HANDLE newHeapStart) = 0;
+		virtual UINT GetPassDescriptorCountNeeded()                                                                               = 0;
+		virtual void ValidatePassDescriptors(D3D12_GPU_DESCRIPTOR_HANDLE prevHeapStart, D3D12_GPU_DESCRIPTOR_HANDLE newHeapStart) = 0;
+
+		virtual void RequestSceneDescriptors(DescriptorCreator* sceneDescriptorCreator)        = 0;
+		virtual void ValidateSceneDescriptors(const DescriptorCreator* sceneDescriptorCreator) = 0;
 	};
 }

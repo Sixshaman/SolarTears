@@ -32,10 +32,10 @@ namespace D3D12
 		void AttachToWindow(Window* window)      override;
 		void ResizeWindowBuffers(Window* window) override;
 
-		void InitScene(SceneDescription* sceneDescription) override;
-		void RenderScene()                                 override;
+		BaseRenderableScene* InitScene(const RenderableSceneDescription& sceneDescription, const std::unordered_map<std::string_view, SceneObjectLocation>& sceneMeshInitialLocations, std::unordered_map<std::string_view, RenderableSceneObjectHandle>& outObjectHandles) override;
+		void InitFrameGraph(FrameGraphConfig&& frameGraphConfig, FrameGraphDescription&& frameGraphDescription)                                                                                                                                                                                           override;
 
-		void InitFrameGraph(FrameGraphConfig&& frameGraphConfig, FrameGraphDescription&& frameGraphDescription) override;
+		void Render() override;
 
 	private:
 		void CreateFactory();
@@ -43,6 +43,8 @@ namespace D3D12
 
 		void EnableDebugMode();
 		void CreateDevice(IDXGIAdapter4* adapter);
+
+		void RecreateSceneAndFrameGraphDescriptors();
 
 	private:
 		ThreadPool*         mThreadPoolRef;

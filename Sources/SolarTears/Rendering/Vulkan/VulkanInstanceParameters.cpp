@@ -16,7 +16,6 @@ namespace Vulkan
 	};
 
 	//Add/remove extensions here
-
 	static const std::vector<std::string> global_config_instance_extensions =
 	{
 	#if defined(DEBUG) || defined(_DEBUG)

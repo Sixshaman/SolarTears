@@ -1,59 +1,58 @@
 #pragma once
 
-#include "RenderableSceneBase.hpp"
-
-class FrameCounter;
+#include "BaseRenderableScene.hpp"
+#include <span>
 
 //Class for scene functions common to Vulkan and D3D12
-class ModernRenderableScene: public RenderableSceneBase
+class ModernRenderableScene: public BaseRenderableScene
 {
 	friend class ModernRenderableSceneBuilder;
 
-protected:
-	struct SceneSubobject
+	struct RigidObjectUpdateMetadata
 	{
-		uint32_t IndexCount;
-		uint32_t FirstIndex;
-		int32_t  VertexOffset;
-		uint32_t TextureDescriptorSetIndex;
-
-		//Material data will be set VIA ROOT CONSTANTS
-	};
-
-	struct MeshSubobjectRange
-	{
-		uint32_t FirstSubobjectIndex;
-		uint32_t AfterLastSubobjectIndex;
+		uint32_t MeshHandleIndex; //Unique for each instance of the mesh (NOT the index into mSceneMeshes)
+		uint32_t ObjectDataIndex; //Index into mCurrFrameDataToUpdate
 	};
 
 public:
-	ModernRenderableScene(const FrameCounter* frameCounter);
+	ModernRenderableScene(uint64_t constantDataAlignment);
 	~ModernRenderableScene();
 
-	void FinalizeSceneUpdating() override final;
+	void UpdateFrameData(const FrameDataUpdateInfo& frameUpdate, uint64_t frameNumber)                      override final;
+	void UpdateRigidSceneObjects(const std::span<ObjectDataUpdateInfo> objectUpdates, uint64_t frameNumber) override final;
 
 protected:
-	void Init();
+	uint64_t CalculateMaterialDataOffset(uint32_t materialIndex)                                           const;
+	uint64_t CalculateStaticObjectDataOffset(uint32_t staticObjectIndex)                                   const;
+	uint64_t CalculateRigidObjectDataOffset(uint32_t currentFrameResourceIndex, uint32_t rigidObjectIndex) const;
+	uint64_t CalculateFrameDataOffset(uint32_t currentFrameResourceIndex)                                  const;
 
-	uint64_t CalculatePerObjectDataOffset(uint32_t objectIndex, uint32_t currentFrameResourceIndex) const;
-	uint64_t CalculatePerFrameDataOffset(uint32_t currentFrameResourceIndex)                        const;
+	uint64_t GetBaseMaterialDataOffset()                                      const;
+	uint64_t GetBaseStaticObjectDataOffset()                                  const;
+	uint64_t GetBaseRigidObjectDataOffset(uint32_t currentFrameResourceIndex) const;
+	uint64_t GetBaseFrameDataOffset(uint32_t currentFrameResourceIndex)       const;
 
 protected:
-	//Created from inside
-	const FrameCounter* mFrameCounterRef;
+	//Leftover updates to updates all dirty data for frames in flight. Sorted by mesh indices, ping-pong with each other
+	std::vector<RigidObjectUpdateMetadata> mPrevFrameRigidMeshUpdates;
+	std::vector<RigidObjectUpdateMetadata> mNextFrameRigidMeshUpdates;
 
-protected:
-	//Created from outside
-	std::vector<MeshSubobjectRange> mSceneMeshes;
-	std::vector<SceneSubobject>     mSceneSubobjects;
+	//The rigid object data indices to update in the current frame, sorted. Used immediately each frame for rendering after updating
+	std::vector<uint32_t> mCurrFrameRigidMeshUpdateIndices;
 
-	void* mSceneConstantDataBufferPointer; //Constant buffer is persistently mapped
+	//The object data that is gonna be uploaded to GPU. The elements in mCurrFrameDataToUpdate correspond to elements in mCurrFrameRigidMeshUpdateIndices
+	std::vector<PerObjectData> mPrevFrameDataToUpdate;
+	std::vector<PerObjectData> mCurrFrameDataToUpdate;
 
-	uint32_t mGBufferObjectChunkDataSize;
-	uint32_t mGBufferFrameChunkDataSize;
+	//Persistently mapped pointer into host-visible constant buffer data
+	void* mSceneConstantDataBufferPointer;
 
-	uint64_t mSceneDataConstantObjectBufferOffset;
-	uint64_t mSceneDataConstantFrameBufferOffset;
+	//GPU-local constant buffer data offsets
+	uint64_t mMaterialDataSize;
+	uint64_t mStaticObjectDataSize;
 
-	uint64_t mCBufferAlignmentSize;
+	//Single-object constant buffer sizes, with respect to alignment
+	uint32_t mObjectChunkDataSize;
+	uint32_t mFrameChunkDataSize;
+	uint32_t mMaterialChunkDataSize;
 };

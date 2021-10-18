@@ -8,3 +8,12 @@ struct Span
 	Size Begin;
 	Size End;
 };
+
+//The span that holds additional type info
+template<typename Size, typename TypeInfo>
+struct TypedSpan
+{
+	Size     Begin;
+	Size     End;
+	TypeInfo Type;
+};

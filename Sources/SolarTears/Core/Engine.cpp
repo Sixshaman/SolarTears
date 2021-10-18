@@ -1,7 +1,7 @@
 #include "Engine.hpp"
 #include "FrameCounter.hpp"
 #include "FPSCounter.hpp"
-#include "Scene/SceneDescription.hpp"
+#include "Scene/SceneDescription/SceneDescription.hpp"
 #include "Scene/Scene.hpp"
 #include "../Input/Inputter.hpp"
 #include "../Rendering/Common/FrameGraph/FrameGraphConfig.hpp"
@@ -77,8 +77,8 @@ void Engine::Update()
 
 		mScene->ProcessControls(mInputSystem.get(), mTimer->GetDeltaTime());
 
-		mScene->UpdateScene();
-		mRenderingSystem->RenderScene();
+		mScene->UpdateScene(mFrameCounter->GetFrameCount());
+		mRenderingSystem->Render();
 
 		mFrameCounter->IncrementFrame();
 		mFPSCounter->LogFPS(mFrameCounter.get(), mTimer.get(), mLoggerQueue.get());
@@ -91,13 +91,12 @@ void Engine::CreateScene()
 	mScene = std::make_unique<Scene>();
 
 	SceneDescription sceneDesc;
+	sceneDesc.GetRenderableComponent().AddMaterial("TestMaterial", RenderableSceneMaterialData
+	{
+		.TextureFilename = L"../Assets/Textures/Test1.dds"
+	});
 
-	SceneDescriptionObject& sceneObject = sceneDesc.CreateEmptySceneObject();
-	sceneObject.SetPosition(DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f));
-	sceneObject.SetRotation(DirectX::XMVectorSet(0.0f, 0.0f, 0.0f, 1.0f));
-	sceneObject.SetScale(1.0f);
-
-	SceneDescriptionObject::MeshComponent meshComponent;
+	RenderableSceneGeometryData meshGeometry;
 
 	DirectX::XMFLOAT3 objectPositions[] =
 	{
@@ -125,26 +124,47 @@ void Engine::CreateScene()
 
 	for(size_t i = 0; i < 4; i++)
 	{
-		SceneDescriptionObject::SceneObjectVertex vertex;
+		RenderableSceneVertex vertex;
 		vertex.Position = objectPositions[i];
 		vertex.Normal   = objectNormals[i];
 		vertex.Texcoord = objectTexcoords[i];
 
-		meshComponent.Vertices.push_back(vertex);
+		meshGeometry.Vertices.push_back(vertex);
 	}
 
-	meshComponent.Indices =
+	meshGeometry.Indices =
 	{
 		0, 1, 2,
 		0, 2, 3
 	};
 
-	meshComponent.TextureFilename = L"../Assets/Textures/Test1.dds";
-	sceneObject.SetMeshComponent(meshComponent);
+	sceneDesc.GetRenderableComponent().AddGeometry("Square", std::move(meshGeometry));
+	sceneDesc.GetRenderableComponent().AddMesh("TestMesh");
+	sceneDesc.GetRenderableComponent().AddSubmesh("TestMesh", RenderableSceneSubmeshData
+	{
+		.GeometryName = "Square",
+		.MaterialName = "TestMaterial"
+	});
 
-	mRenderingSystem->InitScene(&sceneDesc);
+	SceneDescriptionObject& sceneObject = sceneDesc.CreateEmptySceneObject();
+	sceneObject.SetLocation(SceneObjectLocation
+	{
+		.Position           = DirectX::XMFLOAT3(0.0f, 0.0f, 0.0f),
+		.Scale              = 1.0f,
+		.RotationQuaternion = DirectX::XMFLOAT4(0.0f, 0.0f, 0.0f, 1.0f)
+	});
 
-	sceneDesc.BuildScene(mScene.get());
+	sceneObject.SetMeshComponentName("TestMesh");
+
+
+	//Build/bake the scene
+	std::unordered_map<std::string_view, SceneObjectLocation> renderableObjectLocations;
+	sceneDesc.GetRenderableObjectLocations(renderableObjectLocations);
+
+	std::unordered_map<std::string_view, RenderableSceneObjectHandle> meshHandles;
+	BaseRenderableScene* renderableScene = mRenderingSystem->InitScene(sceneDesc.GetRenderableComponent(), renderableObjectLocations, meshHandles);
+
+	sceneDesc.BuildScene(mScene.get(), renderableScene, meshHandles);
 }
 
 void Engine::CreateFrameGraph(Window* window)
@@ -158,9 +178,9 @@ void Engine::CreateFrameGraph(Window* window)
 	frameGraphDescription.AddRenderPass(GBufferPassBase::PassType,   "GBuffer");
 	frameGraphDescription.AddRenderPass(CopyImagePassBase::PassType, "CopyImage");
 
-	frameGraphDescription.AssignSubresourceName("GBuffer",   GBufferPassBase::ColorBufferImageId, "ColorBuffer");
-	frameGraphDescription.AssignSubresourceName("CopyImage", CopyImagePassBase::SrcImageId,       "ColorBuffer");
-	frameGraphDescription.AssignSubresourceName("CopyImage", CopyImagePassBase::DstImageId,       "Backbuffer");
+	frameGraphDescription.AssignSubresourceName("GBuffer",   GBufferPassBase::GetSubresourceStringId(GBufferPassBase::PassSubresourceId::ColorBufferImage), "ColorBuffer");
+	frameGraphDescription.AssignSubresourceName("CopyImage", CopyImagePassBase::GetSubresourceStringId(CopyImagePassBase::PassSubresourceId::SrcImage),     "ColorBuffer");
+	frameGraphDescription.AssignSubresourceName("CopyImage", CopyImagePassBase::GetSubresourceStringId(CopyImagePassBase::PassSubresourceId::DstImage),     "Backbuffer");
 
 	frameGraphDescription.AssignBackbufferName("Backbuffer");
 

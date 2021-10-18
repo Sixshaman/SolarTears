@@ -23,14 +23,12 @@ Vulkan::FrameGraph::~FrameGraph()
 		SafeDestroyObject(vkDestroyImageView, mDeviceRef, mImageViews[i]);
 	}
 
-	for(size_t i = 0; i < mBackbufferImageSpan.Begin; i++)
+	for(Span<uint32_t> ownedImageSpan: mOwnedImageSpans)
 	{
-		SafeDestroyObject(vkDestroyImage, mDeviceRef, mImages[i]);
-	}
-
-	for(size_t i = mBackbufferImageSpan.End; i < mImages.size(); i++)
-	{
-		SafeDestroyObject(vkDestroyImage, mDeviceRef, mImages[i]);
+		for(uint32_t imageIndex = ownedImageSpan.Begin; imageIndex < ownedImageSpan.End; imageIndex++)
+		{
+			SafeDestroyObject(vkDestroyImage, mDeviceRef, mImages[imageIndex]);
+		}
 	}
 
 	for(size_t i = 0; i < Utils::InFlightFrameCount; i++)
@@ -45,15 +43,13 @@ Vulkan::FrameGraph::~FrameGraph()
 
 void Vulkan::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommandBuffers* commandBuffers, RenderableScene* scene, DeviceQueues* deviceQueues, SwapChain* swapchain, VkFence traverseFence, uint32_t frameIndex, uint32_t swapchainImageIndex, VkSemaphore preTraverseSemaphore, VkSemaphore* outPostTraverseSemaphore)
 {
-	SwitchBarrierImages(swapchainImageIndex, frameIndex);
-
 	uint32_t currentFrameResourceIndex = frameIndex % Utils::InFlightFrameCount;
 	VkSemaphore lastTraverseSemaphore = preTraverseSemaphore;
 
-	BarrierSpan presentAcquirePassBarrierSpan = mRenderPassBarriers.back();
+	BarrierPassSpan presentAcquirePassBarrierSpan = mRenderPassBarriers[mRenderPassBarriers.size() - SwapChain::SwapchainImageCount + swapchainImageIndex];
 
 	const bool hasAcquirePass    = (presentAcquirePassBarrierSpan.AfterPassBegin != presentAcquirePassBarrierSpan.AfterPassEnd);
-	const bool hasGraphicsPasses = (mGraphicsPassSpans.size() > 0);
+	const bool hasGraphicsPasses = (mGraphicsPassSpansPerDependencyLevel.size() > 0);
 	const bool hasPresentPass    = (presentAcquirePassBarrierSpan.BeforePassBegin != presentAcquirePassBarrierSpan.BeforePassBegin);
 
 	const bool presentPassLast    = hasPresentPass;
@@ -62,10 +58,10 @@ void Vulkan::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommandBuffers* 
 
 	if(hasAcquirePass) //Swapchain acquire barrier exists
 	{
-		VkFence acquireFence = nullptr;
+		VkFence acquireFenceToSignal = nullptr;
 		if(acquirePassLast)
 		{
-			acquireFence = traverseFence;
+			acquireFenceToSignal = traverseFence;
 		}
 
 		VkCommandBuffer acquireCommandBuffer = commandBuffers->GetMainThreadAcquireCommandBuffer(currentFrameResourceIndex);
@@ -83,12 +79,12 @@ void Vulkan::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommandBuffers* 
 		EndCommandBuffer(acquireCommandBuffer);
 
 		VkSemaphore signalSemaphore = mAcquireSemaphores[currentFrameResourceIndex];
-		swapchain->PresentQueueSubmit(acquireCommandBuffer, lastTraverseSemaphore, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, signalSemaphore, acquireFence);
+		swapchain->PresentQueueSubmit(acquireCommandBuffer, lastTraverseSemaphore, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, signalSemaphore, acquireFenceToSignal);
 
 		lastTraverseSemaphore = signalSemaphore;
-	}
+	}	
 
-	if(mGraphicsPassSpans.size() > 0)
+	if(hasGraphicsPasses)
 	{
 		struct ExecuteParameters
 		{
@@ -111,8 +107,8 @@ void Vulkan::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommandBuffers* 
 			.SwapchainImageIndex = swapchainImageIndex
 		};
 
-		std::latch graphicsPassLatch((uint32_t)(mGraphicsPassSpans.size() - 1));
-		for(size_t dependencyLevelSpanIndex = 0; dependencyLevelSpanIndex < mGraphicsPassSpans.size() - 1; dependencyLevelSpanIndex++)
+		std::latch graphicsPassLatch((uint32_t)(mGraphicsPassSpansPerDependencyLevel.size() - 1));
+		for(size_t dependencyLevelSpanIndex = 0; dependencyLevelSpanIndex < mGraphicsPassSpansPerDependencyLevel.size() - 1; dependencyLevelSpanIndex++)
 		{
 			struct JobData
 			{
@@ -149,36 +145,32 @@ void Vulkan::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommandBuffers* 
 		VkCommandPool   mainGraphicsCommandPool   = commandBuffers->GetMainThreadGraphicsCommandPool(currentFrameResourceIndex);
 		
 		BeginCommandBuffer(mainGraphicsCommandBuffer, mainGraphicsCommandPool);
-		RecordGraphicsPasses(mainGraphicsCommandBuffer, scene, (uint32_t)(mGraphicsPassSpans.size() - 1), frameIndex, swapchainImageIndex);
+		RecordGraphicsPasses(mainGraphicsCommandBuffer, scene, (uint32_t)(mGraphicsPassSpansPerDependencyLevel.size() - 1), frameIndex, swapchainImageIndex);
 		EndCommandBuffer(mainGraphicsCommandBuffer);
 
 		graphicsPassLatch.wait();
 
-		for(size_t i = 0; i < mGraphicsPassSpans.size() - 1; i++)
+		for(size_t i = 0; i < mGraphicsPassSpansPerDependencyLevel.size() - 1; i++)
 		{
 			mFrameRecordedGraphicsCommandBuffers[i] = commandBuffers->GetThreadGraphicsCommandBuffer((uint32_t)i, currentFrameResourceIndex); //The command buffer that was used to record the command
 		}
 
-		VkFence graphicsFence = nullptr;
+		VkFence graphicsFenceToSignal = nullptr;
 		if(graphicsPassesLast)
 		{
-			graphicsFence = traverseFence;
+			graphicsFenceToSignal = traverseFence;
 		}
 
 		VkSemaphore graphicsSemaphore = mGraphicsSemaphores[currentFrameResourceIndex];
-		mFrameRecordedGraphicsCommandBuffers[mGraphicsPassSpans.size() - 1] = mainGraphicsCommandBuffer;
-		deviceQueues->GraphicsQueueSubmit(mFrameRecordedGraphicsCommandBuffers.data(), mGraphicsPassSpans.size(), VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, lastTraverseSemaphore, graphicsSemaphore, graphicsFence);
+		mFrameRecordedGraphicsCommandBuffers[mGraphicsPassSpansPerDependencyLevel.size() - 1] = mainGraphicsCommandBuffer;
+		deviceQueues->GraphicsQueueSubmit(mFrameRecordedGraphicsCommandBuffers.data(), mGraphicsPassSpansPerDependencyLevel.size(), VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, lastTraverseSemaphore, graphicsSemaphore, graphicsFenceToSignal);
 
 		lastTraverseSemaphore = graphicsSemaphore;
 	}
 
 	if(hasPresentPass) //Swapchain present barrier exists
 	{
-		VkFence presentFence = nullptr;
-		if(presentPassLast)
-		{
-			presentFence = traverseFence;
-		}
+		VkFence presentFenceToSignal = traverseFence;
 
 		VkCommandBuffer presentCommandBuffer = commandBuffers->GetMainThreadPresentCommandBuffer(currentFrameResourceIndex);
 		VkCommandPool   presentCommandPool   = commandBuffers->GetMainThreadPresentCommandPool(currentFrameResourceIndex);
@@ -195,7 +187,7 @@ void Vulkan::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommandBuffers* 
 		EndCommandBuffer(presentCommandBuffer);
 
 		VkSemaphore signalSemaphore = mPresentSemaphores[currentFrameResourceIndex];
-		swapchain->PresentQueueSubmit(presentCommandBuffer, lastTraverseSemaphore, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, signalSemaphore, presentFence);
+		swapchain->PresentQueueSubmit(presentCommandBuffer, lastTraverseSemaphore, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, signalSemaphore, presentFenceToSignal);
 
 		lastTraverseSemaphore = signalSemaphore;
 	}
@@ -221,17 +213,6 @@ void Vulkan::FrameGraph::CreateSemaphores()
 	}
 }
 
-void Vulkan::FrameGraph::SwitchBarrierImages(uint32_t swapchainImageIndex, uint32_t frameIndex)
-{
-	//Update barriers
-	for(MultiframeBarrierInfo barrierInfo: mMultiframeBarrierInfos)
-	{
-		bool isSwapchainTex = barrierInfo.BaseTexIndex == mBackbufferImageSpan.Begin;
-		uint32_t frame = (uint32_t)(isSwapchainTex) * swapchainImageIndex + (uint32_t)(!isSwapchainTex) * (frameIndex % barrierInfo.TexturePeriod);
-		mImageBarriers[barrierInfo.BarrierIndex].image = mImages[barrierInfo.BaseTexIndex + frame];
-	}
-}
-
 void Vulkan::FrameGraph::BeginCommandBuffer(VkCommandBuffer cmdBuffer, VkCommandPool cmdPool) const
 {
 	ThrowIfFailed(vkResetCommandPool(mDeviceRef, cmdPool, 0));
@@ -252,14 +233,16 @@ void Vulkan::FrameGraph::EndCommandBuffer(VkCommandBuffer cmdBuffer) const
 
 void Vulkan::FrameGraph::RecordGraphicsPasses(VkCommandBuffer graphicsCommandBuffer, const RenderableScene* scene, uint32_t dependencyLevelSpanIndex, uint32_t frameIndex, uint32_t swapchainImageIndex) const
 {
-	Span<uint32_t> levelSpan = mGraphicsPassSpans[dependencyLevelSpanIndex];
+	Span<uint32_t> levelSpan = mGraphicsPassSpansPerDependencyLevel[dependencyLevelSpanIndex];
 	for(uint32_t passSpanIndex = levelSpan.Begin; passSpanIndex < levelSpan.End; passSpanIndex++)
 	{
-		BarrierSpan barrierSpan            = mRenderPassBarriers[passSpanIndex];
-		uint32_t    beforePassBarrierCount = barrierSpan.BeforePassEnd - barrierSpan.BeforePassBegin;
-		uint32_t    afterPassBarrierCount  = barrierSpan.AfterPassEnd  - barrierSpan.AfterPassBegin;
+		uint32_t passIndex = CalcPassIndex(mFrameSpansPerRenderPass[passSpanIndex], frameIndex, swapchainImageIndex);
 
-		if (beforePassBarrierCount != 0)
+		const BarrierPassSpan& barrierSpan            = mRenderPassBarriers[passIndex];
+		uint32_t               beforePassBarrierCount = barrierSpan.BeforePassEnd - barrierSpan.BeforePassBegin;
+		uint32_t               afterPassBarrierCount  = barrierSpan.AfterPassEnd  - barrierSpan.AfterPassBegin;
+
+		if(beforePassBarrierCount != 0)
 		{
 			const VkImageMemoryBarrier*  imageBarrierPointer  = mImageBarriers.data() + barrierSpan.BeforePassBegin;
 			const VkBufferMemoryBarrier* bufferBarrierPointer = nullptr;
@@ -268,12 +251,7 @@ void Vulkan::FrameGraph::RecordGraphicsPasses(VkCommandBuffer graphicsCommandBuf
 			vkCmdPipelineBarrier(graphicsCommandBuffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, memoryBarrierPointer, 0, bufferBarrierPointer, beforePassBarrierCount, imageBarrierPointer);
 		}
 
-		const RenderPassSpanInfo passSpanInfo = mPassFrameSpans[passSpanIndex];
-
-		uint32_t totalPassFrames = mPassFrameSpans[passSpanIndex + 1].PassSpanBegin - passSpanInfo.PassSpanBegin; //The number passSpanIndex + 1 is always a valid index because the present pass, which is always last, is never accessed there
-		uint32_t renderPassFrame = passSpanInfo.OwnFrames * swapchainImageIndex * (passSpanInfo.OwnFrames != totalPassFrames) + frameIndex % passSpanInfo.OwnFrames;
-		uint32_t renderPassIndex = passSpanInfo.PassSpanBegin + renderPassFrame;
-		mRenderPasses[renderPassIndex]->RecordExecution(graphicsCommandBuffer, scene, mFrameGraphConfig);
+		mRenderPasses[passIndex]->RecordExecution(graphicsCommandBuffer, scene, mFrameGraphConfig, frameIndex % Utils::InFlightFrameCount);
 
 		if(afterPassBarrierCount != 0)
 		{
