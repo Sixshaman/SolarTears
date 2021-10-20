@@ -37,7 +37,7 @@ void ModernRenderableScene::UpdateRigidSceneObjects(const std::span<ObjectDataUp
 
 	uint32_t objectUpdateIndex = 0;
 
-	//Merge mPrevFrameMeshUpdates and objectUpdates into updates for the next frame and leftovers, keeping the result sorted
+	//Merge mPrevFrameMeshUpdates and rigidObjectUpdates into updates for the next frame and leftovers, keeping the result sorted
 	while(mPrevFrameRigidMeshUpdates[prevFrameUpdateIndex].MeshHandleIndex != (uint32_t)(-1) || objectUpdateIndex < rigidObjectUpdates.size())
 	{
 		assert(rigidObjectUpdates[objectUpdateIndex].ObjectId.ObjectType() == SceneObjectType::Rigid);
@@ -109,8 +109,10 @@ void ModernRenderableScene::UpdateRigidSceneObjects(const std::span<ObjectDataUp
 	mNextFrameRigidMeshUpdates[nextFrameUpdateIndex] = {.MeshHandleIndex = (uint32_t)(-1), .ObjectDataIndex = (uint32_t)(-1)};
 	std::swap(mPrevFrameRigidMeshUpdates, mNextFrameRigidMeshUpdates);
 
+	const uint32_t currFrameUpdateCount = currFrameUpdateIndex;
+
 	uint32_t frameResourceIndex = frameNumber % Utils::InFlightFrameCount;
-	for(uint32_t updateIndex = 0; updateIndex < currFrameUpdateIndex; updateIndex++)
+	for(uint32_t updateIndex = 0; updateIndex < currFrameUpdateCount; updateIndex++)
 	{
 		uint32_t meshIndex = mCurrFrameRigidMeshUpdateIndices[updateIndex];
 
@@ -150,7 +152,7 @@ uint64_t ModernRenderableScene::GetBaseMaterialDataOffset() const
 uint64_t ModernRenderableScene::GetBaseStaticObjectDataOffset() const
 {
 	//Static objects are right after materials in the static buffer
-	return mMaterialDataSize;
+	return GetBaseMaterialDataOffset() + mMaterialDataSize;
 }
 
 uint64_t ModernRenderableScene::GetBaseRigidObjectDataOffset(uint32_t currentFrameResourceIndex) const

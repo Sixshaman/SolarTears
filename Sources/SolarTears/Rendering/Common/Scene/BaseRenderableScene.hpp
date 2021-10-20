@@ -22,20 +22,22 @@ protected:
 		DirectX::XMFLOAT4X4 ViewProjMatrix;
 	};
 
+	//Describes the info for a single drawcall
 	struct SceneSubmesh
 	{
-		uint32_t IndexCount;
-		uint32_t FirstIndex;
-		int32_t  VertexOffset;
-		uint32_t MaterialIndex;
+		uint32_t IndexCount;    //Index count to draw
+		uint32_t FirstIndex;    //First index in the index buffer to draw
+		int32_t  VertexOffset;  //First vertex in the vertex buffer to draw
+		uint32_t MaterialIndex; //The per-scene material index to apply to the mesh
 	};
 
+	//Describes a single composite object
 	struct SceneMesh
 	{
-		uint32_t PerObjectDataIndex;
-		uint32_t InstanceCount;
-		uint32_t FirstSubmeshIndex;
-		uint32_t AfterLastSubmeshIndex;
+		uint32_t PerObjectDataIndex;    //The index of the object data for the drawcall
+		uint32_t InstanceCount;         //The instance count of the mesh
+		uint32_t FirstSubmeshIndex;     //The start of the submesh span in mSceneSubmeshes
+		uint32_t AfterLastSubmeshIndex; //The end of the submesh span in mSceneSubmeshes
 	};
 
 	enum class SceneDataType: uint32_t
@@ -60,8 +62,8 @@ protected:
 	PerFrameData  PackFrameData(const SceneObjectLocation& cameraLocation, DirectX::FXMMATRIX ProjMatrix) const;
 
 protected:
-	std::vector<SceneMesh>    mSceneMeshes;
-	std::vector<SceneSubmesh> mSceneSubmeshes;
+	std::vector<SceneMesh>    mSceneMeshes;    //All meshes registered in scene
+	std::vector<SceneSubmesh> mSceneSubmeshes; //All submeshes registered in scene
 
 	Span<uint32_t> mStaticMeshSpan;          //Meshes that never move and have the positional data baked into vertices
 	Span<uint32_t> mStaticInstancedMeshSpan; //Meshes that never move and have the positional data potentially stored in fast immutable memory

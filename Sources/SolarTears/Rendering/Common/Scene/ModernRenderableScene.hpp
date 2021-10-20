@@ -18,8 +18,8 @@ public:
 	ModernRenderableScene(uint64_t constantDataAlignment);
 	~ModernRenderableScene();
 
-	void UpdateFrameData(const FrameDataUpdateInfo& frameUpdate, uint64_t frameNumber)                      override final;
-	void UpdateRigidSceneObjects(const std::span<ObjectDataUpdateInfo> objectUpdates, uint64_t frameNumber) override final;
+	void UpdateFrameData(const FrameDataUpdateInfo& frameUpdate, uint64_t frameNumber)                           override final;
+	void UpdateRigidSceneObjects(const std::span<ObjectDataUpdateInfo> rigidObjectUpdates, uint64_t frameNumber) override final;
 
 protected:
 	uint64_t CalculateMaterialDataOffset(uint32_t materialIndex)                                           const;
@@ -33,7 +33,7 @@ protected:
 	uint64_t GetBaseFrameDataOffset(uint32_t currentFrameResourceIndex)       const;
 
 protected:
-	//Leftover updates to updates all dirty data for frames in flight. Sorted by mesh indices, ping-pong with each other
+	//Leftover updates to update all dirty data for frames in flight. Sorted by mesh indices, ping-pong with each other
 	std::vector<RigidObjectUpdateMetadata> mPrevFrameRigidMeshUpdates;
 	std::vector<RigidObjectUpdateMetadata> mNextFrameRigidMeshUpdates;
 
@@ -41,13 +41,15 @@ protected:
 	std::vector<uint32_t> mCurrFrameRigidMeshUpdateIndices;
 
 	//The object data that is gonna be uploaded to GPU. The elements in mCurrFrameDataToUpdate correspond to elements in mCurrFrameRigidMeshUpdateIndices
-	std::vector<PerObjectData> mPrevFrameDataToUpdate;
 	std::vector<PerObjectData> mCurrFrameDataToUpdate;
+
+	//Leftover updates from the previous frame
+	std::vector<PerObjectData> mPrevFrameDataToUpdate;
 
 	//Persistently mapped pointer into host-visible constant buffer data
 	void* mSceneConstantDataBufferPointer;
 
-	//GPU-local constant buffer data offsets
+	//GPU-local constant buffer data sizes
 	uint64_t mMaterialDataSize;
 	uint64_t mStaticObjectDataSize;
 

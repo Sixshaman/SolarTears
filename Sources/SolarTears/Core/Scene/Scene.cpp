@@ -80,9 +80,7 @@ void Scene::UpdateScene(uint64_t frameNumber)
 
 void Scene::UpdateRenderableComponent(uint64_t frameNumber)
 {
-	//No objects move currently
-	std::span currentFrameMovedObjects = {mCurrFrameRenderableUpdates.begin(), mCurrFrameRenderableUpdates.begin()};
-
+	//Update frame data
 	FrameDataUpdateInfo frameUpdateInfo =
 	{
 		.CameraLocation = mSceneObjects[(uint32_t)SpecialSceneObjects::Camera].Location,
@@ -90,5 +88,10 @@ void Scene::UpdateRenderableComponent(uint64_t frameNumber)
 	};
 
 	mRenderableComponentRef->UpdateFrameData(frameUpdateInfo, frameNumber);
-	mRenderableComponentRef->UpdateRigidSceneObjects(currentFrameMovedObjects, frameNumber);
+
+
+	//No objects move currently
+	std::span currentFrameMovedObjects = { mCurrFrameRenderableUpdates.begin(), mCurrFrameRenderableUpdates.begin() };
+
+	mRenderableComponentRef->UpdateRigidSceneObjects(currentFrameMovedObjects, frameNumber); //Always needs to be called
 }
