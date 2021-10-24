@@ -21,10 +21,10 @@ namespace Vulkan
 		friend class FrameGraphBuilder;
 
 	public:
-		FrameGraph(VkDevice device, FrameGraphConfig&& frameGraphConfig);
+		FrameGraph(VkDevice device, FrameGraphConfig&& frameGraphConfig, const WorkerCommandBuffers* workerCommandBuffers, DeviceQueues* deviceQueues);
 		~FrameGraph();
 
-		void Traverse(ThreadPool* threadPool, WorkerCommandBuffers* commandBuffers, RenderableScene* scene, DeviceQueues* deviceQueues, SwapChain* swapchain, VkFence traverseFence, uint32_t frameIndex, uint32_t swapchainImageIndex, VkSemaphore preTraverseSemaphore, VkSemaphore* outPostTraverseSemaphore);
+		void Traverse(ThreadPool* threadPool, RenderableScene* scene, SwapChain* swapchain, VkFence traverseFence, uint32_t frameIndex, uint32_t swapchainImageIndex, VkSemaphore preTraverseSemaphore, VkSemaphore* outPostTraverseSemaphore);
 
 	private:
 		void CreateSemaphores();
@@ -37,16 +37,19 @@ namespace Vulkan
 	private:
 		const VkDevice mDeviceRef;
 
+		const WorkerCommandBuffers* mCommandBuffersRef;
+		const DeviceQueues*         mDeviceQueuesRef;
+
 		std::vector<std::unique_ptr<RenderPass>> mRenderPasses; //All render passes
 
 		std::vector<VkImage>     mImages;
 		std::vector<VkImageView> mImageViews;
 
+		VkDeviceMemory mImageMemory;
+
 		std::vector<VkImageMemoryBarrier> mImageBarriers;
 
 		std::vector<VkDescriptorSet> mDescriptorSets;
-
-		VkDeviceMemory mImageMemory;
 
 		VkSemaphore mAcquireSemaphores[Utils::InFlightFrameCount];
 		VkSemaphore mGraphicsSemaphores[Utils::InFlightFrameCount];

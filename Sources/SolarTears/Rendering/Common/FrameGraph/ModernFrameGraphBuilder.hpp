@@ -124,6 +124,9 @@ private:
 	//Validates PrevPassMetadata and NextPassMetadata links in each subresource info
 	void ValidateSubresourceLinks();
 
+	//Initializes HeadNodeIndex of resources
+	void InitializeHeadNodes();
+
 	//Propagates API-specific subresource data
 	void PropagateSubresourcePayloadData();
 

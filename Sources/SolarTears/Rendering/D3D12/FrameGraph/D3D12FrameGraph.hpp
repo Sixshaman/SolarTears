@@ -38,10 +38,11 @@ namespace D3D12
 		const SrvDescriptorManager* mDescriptorManagerRef;
 		const DeviceQueues*         mDeviceQueuesRef;
 
-		std::vector<wil::com_ptr_nothrow<ID3D12Resource2>> mTextures;
-		wil::com_ptr_nothrow<ID3D12Heap>                   mTextureHeap;
-
 		std::vector<std::unique_ptr<RenderPass>> mRenderPasses; //All render passes (sorted by dependency level)
+
+		std::vector<wil::com_ptr_nothrow<ID3D12Resource2>> mTextures;
+
+		wil::com_ptr_nothrow<ID3D12Heap> mTextureHeap;
 
 		std::vector<D3D12_RESOURCE_BARRIER> mResourceBarriers;
 

@@ -31,6 +31,6 @@ private:
 	//Special object description
 	SceneCameraComponent mSceneCameraComponent;
 
-	//Scene description systems
+	//Scene subsystem descriptions
 	RenderableSceneDescription mRenderableComponentDescription;
 };

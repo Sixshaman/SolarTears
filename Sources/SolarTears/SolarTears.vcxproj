@@ -220,7 +220,6 @@
     <None Include="Rendering\Vulkan\FrameGraph\Passes\VulkanCopyImagePass.inl" />
     <None Include="Rendering\Vulkan\FrameGraph\Passes\VulkanGBufferPass.inl" />
     <None Include="Rendering\Vulkan\Scene\VulkanScene.inl" />
-    <None Include="Rendering\Vulkan\Scene\VulkanSceneBuilder.inl" />
     <None Include="Shaders\D3D12\CommonHeader.hlsli" />
     <None Include="Shaders\D3D12\GBuffer\GBufferInclude.hlsli" />
     <CustomBuild Include="Shaders\Vulkan\GBuffer\GBufferDrawRigid.vert">

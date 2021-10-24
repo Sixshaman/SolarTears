@@ -9,7 +9,7 @@
 #include <array>
 #include <latch>
 
-Vulkan::FrameGraph::FrameGraph(VkDevice device, FrameGraphConfig&& frameGraphConfig): ModernFrameGraph(std::move(frameGraphConfig)), mDeviceRef(device)
+Vulkan::FrameGraph::FrameGraph(VkDevice device, FrameGraphConfig&& frameGraphConfig, const WorkerCommandBuffers* workerCommandBuffers, DeviceQueues* deviceQueues): ModernFrameGraph(std::move(frameGraphConfig)), mDeviceRef(device), mCommandBuffersRef(workerCommandBuffers), mDeviceQueuesRef(deviceQueues)
 {
 	mImageMemory = VK_NULL_HANDLE;
 
@@ -41,7 +41,7 @@ Vulkan::FrameGraph::~FrameGraph()
 	SafeDestroyObject(vkFreeMemory, mDeviceRef, mImageMemory);
 }
 
-void Vulkan::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommandBuffers* commandBuffers, RenderableScene* scene, DeviceQueues* deviceQueues, SwapChain* swapchain, VkFence traverseFence, uint32_t frameIndex, uint32_t swapchainImageIndex, VkSemaphore preTraverseSemaphore, VkSemaphore* outPostTraverseSemaphore)
+void Vulkan::FrameGraph::Traverse(ThreadPool* threadPool, RenderableScene* scene, SwapChain* swapchain, VkFence traverseFence, uint32_t frameIndex, uint32_t swapchainImageIndex, VkSemaphore preTraverseSemaphore, VkSemaphore* outPostTraverseSemaphore)
 {
 	uint32_t currentFrameResourceIndex = frameIndex % Utils::InFlightFrameCount;
 	VkSemaphore lastTraverseSemaphore = preTraverseSemaphore;
@@ -64,8 +64,8 @@ void Vulkan::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommandBuffers* 
 			acquireFenceToSignal = traverseFence;
 		}
 
-		VkCommandBuffer acquireCommandBuffer = commandBuffers->GetMainThreadAcquireCommandBuffer(currentFrameResourceIndex);
-		VkCommandPool   acquireCommandPool   = commandBuffers->GetMainThreadAcquireCommandPool(currentFrameResourceIndex);
+		VkCommandBuffer acquireCommandBuffer = mCommandBuffersRef->GetMainThreadAcquireCommandBuffer(currentFrameResourceIndex);
+		VkCommandPool   acquireCommandPool   = mCommandBuffersRef->GetMainThreadAcquireCommandPool(currentFrameResourceIndex);
 
 		BeginCommandBuffer(acquireCommandBuffer, acquireCommandPool);
 
@@ -98,7 +98,7 @@ void Vulkan::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommandBuffers* 
 		} 
 		executeParameters = 
 		{
-			.CommandBuffers = commandBuffers,
+			.CommandBuffers = mCommandBuffersRef,
 			.FrameGraph     = this,
 			.Scene          = scene,
 
@@ -141,8 +141,8 @@ void Vulkan::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommandBuffers* 
 			threadPool->EnqueueWork(executePassJob, &jobData, sizeof(JobData));
 		}
 
-		VkCommandBuffer mainGraphicsCommandBuffer = commandBuffers->GetMainThreadGraphicsCommandBuffer(currentFrameResourceIndex);
-		VkCommandPool   mainGraphicsCommandPool   = commandBuffers->GetMainThreadGraphicsCommandPool(currentFrameResourceIndex);
+		VkCommandBuffer mainGraphicsCommandBuffer = mCommandBuffersRef->GetMainThreadGraphicsCommandBuffer(currentFrameResourceIndex);
+		VkCommandPool   mainGraphicsCommandPool   = mCommandBuffersRef->GetMainThreadGraphicsCommandPool(currentFrameResourceIndex);
 		
 		BeginCommandBuffer(mainGraphicsCommandBuffer, mainGraphicsCommandPool);
 		RecordGraphicsPasses(mainGraphicsCommandBuffer, scene, (uint32_t)(mGraphicsPassSpansPerDependencyLevel.size() - 1), frameIndex, swapchainImageIndex);
@@ -152,7 +152,7 @@ void Vulkan::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommandBuffers* 
 
 		for(size_t i = 0; i < mGraphicsPassSpansPerDependencyLevel.size() - 1; i++)
 		{
-			mFrameRecordedGraphicsCommandBuffers[i] = commandBuffers->GetThreadGraphicsCommandBuffer((uint32_t)i, currentFrameResourceIndex); //The command buffer that was used to record the command
+			mFrameRecordedGraphicsCommandBuffers[i] = mCommandBuffersRef->GetThreadGraphicsCommandBuffer((uint32_t)i, currentFrameResourceIndex); //The command buffer that was used to record the command
 		}
 
 		VkFence graphicsFenceToSignal = nullptr;
@@ -163,7 +163,7 @@ void Vulkan::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommandBuffers* 
 
 		VkSemaphore graphicsSemaphore = mGraphicsSemaphores[currentFrameResourceIndex];
 		mFrameRecordedGraphicsCommandBuffers[mGraphicsPassSpansPerDependencyLevel.size() - 1] = mainGraphicsCommandBuffer;
-		deviceQueues->GraphicsQueueSubmit(mFrameRecordedGraphicsCommandBuffers.data(), mGraphicsPassSpansPerDependencyLevel.size(), VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, lastTraverseSemaphore, graphicsSemaphore, graphicsFenceToSignal);
+		mDeviceQueuesRef->GraphicsQueueSubmit(mFrameRecordedGraphicsCommandBuffers.data(), mGraphicsPassSpansPerDependencyLevel.size(), VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, lastTraverseSemaphore, graphicsSemaphore, graphicsFenceToSignal);
 
 		lastTraverseSemaphore = graphicsSemaphore;
 	}
@@ -172,8 +172,8 @@ void Vulkan::FrameGraph::Traverse(ThreadPool* threadPool, WorkerCommandBuffers* 
 	{
 		VkFence presentFenceToSignal = traverseFence;
 
-		VkCommandBuffer presentCommandBuffer = commandBuffers->GetMainThreadPresentCommandBuffer(currentFrameResourceIndex);
-		VkCommandPool   presentCommandPool   = commandBuffers->GetMainThreadPresentCommandPool(currentFrameResourceIndex);
+		VkCommandBuffer presentCommandBuffer = mCommandBuffersRef->GetMainThreadPresentCommandBuffer(currentFrameResourceIndex);
+		VkCommandPool   presentCommandPool   = mCommandBuffersRef->GetMainThreadPresentCommandPool(currentFrameResourceIndex);
 
 		BeginCommandBuffer(presentCommandBuffer, presentCommandPool);
 

@@ -425,6 +425,8 @@ void ModernFrameGraphBuilder::InitAugmentedData()
 	ValidateSubresourceLinks();
 
 	AmplifyResourcesAndPasses();
+	InitializeHeadNodes();
+
 	InitMetadataPayloads();
 
 	PropagateSubresourcePayloadData();
@@ -705,17 +707,6 @@ void ModernFrameGraphBuilder::AmplifyResourcesAndPasses()
 			}
 		}
 	}
-
-
-	//Fix resource metadatas' head node index
-	for(uint32_t metadataIndex = 0; metadataIndex < mSubresourceMetadataNodesFlat.size(); metadataIndex++)
-	{
-		SubresourceMetadataNode& subresourceMetadataNode = mSubresourceMetadataNodesFlat[metadataIndex];
-		if(mResourceMetadatas[subresourceMetadataNode.ResourceMetadataIndex].HeadNodeIndex == (uint32_t)(-1))
-		{
-			mResourceMetadatas[subresourceMetadataNode.ResourceMetadataIndex].HeadNodeIndex = metadataIndex;
-		}
-	}
 }
 
 void ModernFrameGraphBuilder::FindFrameCountAndSwapType(const std::vector<TextureRemapInfo>& resourceRemapInfos, std::span<const SubresourceMetadataNode> oldPassSubresourceMetadataSpan, uint32_t* outFrameCount, RenderPassFrameSwapType* outSwapType)
@@ -993,6 +984,19 @@ void ModernFrameGraphBuilder::ValidateSubresourceLinks()
 
 			subresourceNode.PrevPassNodeIndex     = prevNodeIndex;
 			prevSubresourceNode.NextPassNodeIndex = metadataIndex;
+		}
+	}
+}
+
+void ModernFrameGraphBuilder::InitializeHeadNodes()
+{
+	//Initialize resource metadatas' head node index
+	for(uint32_t metadataIndex = 0; metadataIndex < mSubresourceMetadataNodesFlat.size(); metadataIndex++)
+	{
+		SubresourceMetadataNode& subresourceMetadataNode = mSubresourceMetadataNodesFlat[metadataIndex];
+		if(mResourceMetadatas[subresourceMetadataNode.ResourceMetadataIndex].HeadNodeIndex == (uint32_t)(-1))
+		{
+			mResourceMetadatas[subresourceMetadataNode.ResourceMetadataIndex].HeadNodeIndex = metadataIndex;
 		}
 	}
 }

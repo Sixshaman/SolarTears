@@ -141,7 +141,7 @@ BaseRenderableScene* Vulkan::Renderer::InitScene(const RenderableSceneDescriptio
 
 void Vulkan::Renderer::InitFrameGraph(FrameGraphConfig&& frameGraphConfig, FrameGraphDescription&& frameGraphDescription)
 {
-	mFrameGraph = std::make_unique<FrameGraph>(mDevice, std::move(frameGraphConfig));
+	mFrameGraph = std::make_unique<FrameGraph>(mDevice, std::move(frameGraphConfig), mCommandBuffers.get(), mDeviceQueues.get());
 
 	FrameGraphBuildInfo frameGraphBuildInfo = 
 	{
@@ -178,7 +178,7 @@ void Vulkan::Renderer::Render()
 	mSwapChain->AcquireImage(mDevice, currentFrameResourceIndex);
 
 	VkSemaphore postTraverseSemaphore = VK_NULL_HANDLE;
-	mFrameGraph->Traverse(mThreadPoolRef, mCommandBuffers.get(), mScene.get(), mDeviceQueues.get(), mSwapChain.get(), frameFence, currentFrameResourceIndex, currentSwapchainIndex, preTraverseSemaphore, &postTraverseSemaphore);
+	mFrameGraph->Traverse(mThreadPoolRef, mScene.get(), mSwapChain.get(), frameFence, currentFrameResourceIndex, currentSwapchainIndex, preTraverseSemaphore, &postTraverseSemaphore);
 
 	mSwapChain->Present(postTraverseSemaphore);
 }

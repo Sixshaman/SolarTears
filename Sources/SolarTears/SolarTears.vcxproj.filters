@@ -679,9 +679,6 @@
     <None Include="Rendering\D3D12\D3D12Utils.inl">
       <Filter>Rendering\D3D12</Filter>
     </None>
-    <None Include="Rendering\Vulkan\Scene\VulkanSceneBuilder.inl">
-      <Filter>Rendering\Vulkan\Scene</Filter>
-    </None>
     <None Include="Rendering\D3D12\Scene\D3D12Scene.inl">
       <Filter>Rendering\D3D12\Scene</Filter>
     </None>
