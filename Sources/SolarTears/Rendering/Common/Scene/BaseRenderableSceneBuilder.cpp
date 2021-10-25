@@ -458,37 +458,35 @@ void BaseRenderableSceneBuilder::AssignSubmeshMaterials(const std::unordered_map
 void BaseRenderableSceneBuilder::FillInitialObjectData(const std::vector<std::span<const NamedSceneMeshData>>& meshInstanceSpans, const std::unordered_map<std::string_view, SceneObjectLocation>& sceneMeshInitialLocations)
 {
 	//The object data views/descriptors will go for static meshes first and for rigid meshes next
-	uint32_t objectDataOffset = 0;
-	
 	for(uint32_t meshIndex = mSceneToBuild->mStaticInstancedMeshSpan.Begin; meshIndex < mSceneToBuild->mStaticInstancedMeshSpan.End; meshIndex++)
 	{
 		const BaseRenderableScene::SceneMesh& sceneMesh = mSceneToBuild->mSceneMeshes[meshIndex];
 		const std::span<const NamedSceneMeshData> instanceSpan = meshInstanceSpans[meshIndex];
 	
-		size_t perObjectIndexBegin = (size_t)sceneMesh.PerObjectDataIndex - objectDataOffset;
+		size_t perObjectIndexBegin = (size_t)sceneMesh.PerObjectDataIndex;
 		for(uint32_t instanceIndex = 0; instanceIndex < sceneMesh.InstanceCount; instanceIndex++)
 		{
 			const NamedSceneMeshData& meshData = instanceSpan[instanceIndex];
+			assert(sceneMesh.PerObjectDataIndex + instanceIndex == mInitialStaticInstancedObjectData.size());
 
 			const SceneObjectLocation& meshInitialLocation = sceneMeshInitialLocations.at(meshData.MeshName);
-			mInitialStaticInstancedObjectData[perObjectIndexBegin + instanceIndex] = meshInitialLocation;
+			mInitialStaticInstancedObjectData.push_back(meshInitialLocation);
 		}
 	}
-
-	objectDataOffset += (uint32_t)mInitialStaticInstancedObjectData.size();
 
 	for(uint32_t meshIndex = mSceneToBuild->mRigidMeshSpan.Begin; meshIndex < mSceneToBuild->mRigidMeshSpan.End; meshIndex++)
 	{
 		const BaseRenderableScene::SceneMesh& sceneMesh = mSceneToBuild->mSceneMeshes[meshIndex];
 		const std::span<const NamedSceneMeshData> instanceSpan = meshInstanceSpans[meshIndex];
 
-		size_t perObjectIndexBegin = (size_t)sceneMesh.PerObjectDataIndex - objectDataOffset;
+		size_t perObjectIndexBegin = (size_t)sceneMesh.PerObjectDataIndex;
 		for(uint32_t instanceIndex = 0; instanceIndex < sceneMesh.InstanceCount; instanceIndex++)
 		{
 			const NamedSceneMeshData& meshData = instanceSpan[instanceIndex];
+			assert(sceneMesh.PerObjectDataIndex + instanceIndex == mInitialRigidObjectData.size());
 
 			const SceneObjectLocation& meshInitialLocation = sceneMeshInitialLocations.at(meshData.MeshName);
-			mInitialStaticInstancedObjectData[perObjectIndexBegin + instanceIndex] = meshInitialLocation;
+			mInitialRigidObjectData.push_back(meshInitialLocation);
 		}
 	}
 }
