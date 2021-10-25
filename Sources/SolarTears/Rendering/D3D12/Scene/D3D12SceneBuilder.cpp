@@ -51,22 +51,22 @@ D3D12::RenderableSceneBuilder::~RenderableSceneBuilder()
 {
 }
 
-void D3D12::RenderableSceneBuilder::PreCreateVertexBuffer(size_t vertexDataSize)
+void D3D12::RenderableSceneBuilder::CreateVertexBufferInfo(size_t vertexDataSize)
 {
 	mVertexBufferDesc.Width = vertexDataSize;
 }
 
-void D3D12::RenderableSceneBuilder::PreCreateIndexBuffer(size_t indexDataSize)
+void D3D12::RenderableSceneBuilder::CreateIndexBufferInfo(size_t indexDataSize)
 {
 	mIndexBufferDesc.Width = indexDataSize;
 }
 
-void D3D12::RenderableSceneBuilder::PreCreateStaticConstantBuffer(size_t constantDataSize)
+void D3D12::RenderableSceneBuilder::CreateStaticConstantBufferInfo(size_t constantDataSize)
 {
 	mStaticConstantBufferDesc.Width = constantDataSize;
 }
 
-void D3D12::RenderableSceneBuilder::PreCreateDynamicConstantBuffer(size_t constantDataSize)
+void D3D12::RenderableSceneBuilder::CreateDynamicConstantBufferInfo(size_t constantDataSize)
 {
 	mDynamicConstantBufferDesc.Width = constantDataSize;
 }
@@ -170,12 +170,12 @@ std::byte* D3D12::RenderableSceneBuilder::MapDynamicConstantBuffer()
 	return bufferPointer;
 }
 
-void D3D12::RenderableSceneBuilder::CreateIntermediateBuffer(uint64_t intermediateBufferSize)
+void D3D12::RenderableSceneBuilder::CreateIntermediateBuffer()
 {
 	D3D12_RESOURCE_DESC1 intermediateBufferDesc;
 	intermediateBufferDesc.Dimension                       = D3D12_RESOURCE_DIMENSION_BUFFER;
 	intermediateBufferDesc.Alignment                       = D3D12_DEFAULT_RESOURCE_PLACEMENT_ALIGNMENT;
-	intermediateBufferDesc.Width                           = intermediateBufferSize;
+	intermediateBufferDesc.Width                           = mIntermediateBufferSize;
 	intermediateBufferDesc.Height                          = 1;
 	intermediateBufferDesc.DepthOrArraySize                = 1;
 	intermediateBufferDesc.MipLevels                       = 1;

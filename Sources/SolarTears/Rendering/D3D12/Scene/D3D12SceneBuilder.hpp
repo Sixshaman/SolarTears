@@ -27,10 +27,10 @@ namespace D3D12
 		~RenderableSceneBuilder();
 
 	protected:
-		void PreCreateVertexBuffer(size_t vertexDataSize)            override final;
-		void PreCreateIndexBuffer(size_t indexDataSize)              override final;
-		void PreCreateStaticConstantBuffer(size_t constantDataSize)  override final;
-		void PreCreateDynamicConstantBuffer(size_t constantDataSize) override final;
+		void CreateVertexBufferInfo(size_t vertexDataSize)            override final;
+		void CreateIndexBufferInfo(size_t indexDataSize)              override final;
+		void CreateStaticConstantBufferInfo(size_t constantDataSize)  override final;
+		void CreateDynamicConstantBufferInfo(size_t constantDataSize) override final;
 
 		void AllocateTextureMetadataArrays(size_t textureCount)                                                                                                              override final;
 		void LoadTextureFromFile(const std::wstring& textureFilename, uint64_t currentIntermediateBufferOffset, size_t textureIndex, std::vector<std::byte>& outTextureData) override final;
@@ -40,9 +40,9 @@ namespace D3D12
 
 		virtual std::byte* MapDynamicConstantBuffer() override final;
 
-		virtual void       CreateIntermediateBuffer(uint64_t intermediateBufferSize) override final;
-		virtual std::byte* MapIntermediateBuffer()                                   const override final;
-		virtual void       UnmapIntermediateBuffer()                                 const override final;
+		virtual void       CreateIntermediateBuffer()      override final;
+		virtual std::byte* MapIntermediateBuffer()   const override final;
+		virtual void       UnmapIntermediateBuffer() const override final;
 
 		virtual void WriteInitializationCommands()   const override final;
 		virtual void SubmitInitializationCommands()  const override final;

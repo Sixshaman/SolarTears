@@ -28,7 +28,7 @@ Vulkan::RenderableSceneBuilder::~RenderableSceneBuilder()
 	SafeDestroyObject(vkFreeMemory,    mVulkanSceneToBuild->mDeviceRef, mIntermediateBufferMemory);
 }
 
-void Vulkan::RenderableSceneBuilder::PreCreateVertexBuffer(size_t vertexDataSize)
+void Vulkan::RenderableSceneBuilder::CreateVertexBufferInfo(size_t vertexDataSize)
 {
 	SafeDestroyObject(vkDestroyBuffer, mVulkanSceneToBuild->mDeviceRef, mVulkanSceneToBuild->mSceneVertexBuffer);
 
@@ -49,7 +49,7 @@ void Vulkan::RenderableSceneBuilder::PreCreateVertexBuffer(size_t vertexDataSize
 	ThrowIfFailed(vkCreateBuffer(mVulkanSceneToBuild->mDeviceRef, &vertexBufferCreateInfo, nullptr, &mVulkanSceneToBuild->mSceneVertexBuffer));
 }
 
-void Vulkan::RenderableSceneBuilder::PreCreateIndexBuffer(size_t indexDataSize)
+void Vulkan::RenderableSceneBuilder::CreateIndexBufferInfo(size_t indexDataSize)
 {
 	SafeDestroyObject(vkDestroyBuffer, mVulkanSceneToBuild->mDeviceRef, mVulkanSceneToBuild->mSceneIndexBuffer);
 
@@ -70,7 +70,7 @@ void Vulkan::RenderableSceneBuilder::PreCreateIndexBuffer(size_t indexDataSize)
 	ThrowIfFailed(vkCreateBuffer(mVulkanSceneToBuild->mDeviceRef, &indexBufferCreateInfo, nullptr, &mVulkanSceneToBuild->mSceneIndexBuffer));
 }
 
-void Vulkan::RenderableSceneBuilder::PreCreateStaticConstantBuffer(size_t constantDataSize)
+void Vulkan::RenderableSceneBuilder::CreateStaticConstantBufferInfo(size_t constantDataSize)
 {
 	SafeDestroyObject(vkDestroyBuffer, mVulkanSceneToBuild->mDeviceRef, mVulkanSceneToBuild->mSceneStaticUniformBuffer);
 
@@ -91,7 +91,7 @@ void Vulkan::RenderableSceneBuilder::PreCreateStaticConstantBuffer(size_t consta
 	ThrowIfFailed(vkCreateBuffer(mVulkanSceneToBuild->mDeviceRef, &uniformBufferCreateInfo, nullptr, &mVulkanSceneToBuild->mSceneStaticUniformBuffer));
 }
 
-void Vulkan::RenderableSceneBuilder::PreCreateDynamicConstantBuffer(size_t constantDataSize)
+void Vulkan::RenderableSceneBuilder::CreateDynamicConstantBufferInfo(size_t constantDataSize)
 {
 	SafeDestroyObject(vkDestroyBuffer, mVulkanSceneToBuild->mDeviceRef, mVulkanSceneToBuild->mSceneDynamicUniformBuffer);
 
@@ -181,7 +181,7 @@ std::byte* Vulkan::RenderableSceneBuilder::MapDynamicConstantBuffer()
 	return reinterpret_cast<std::byte*>(bufferPointer);
 }
 
-void Vulkan::RenderableSceneBuilder::CreateIntermediateBuffer(uint64_t intermediateBufferSize) 
+void Vulkan::RenderableSceneBuilder::CreateIntermediateBuffer() 
 {
 	std::array intermediateBufferQueues = {mDeviceQueues->GetGraphicsQueueFamilyIndex()};
 
@@ -189,7 +189,7 @@ void Vulkan::RenderableSceneBuilder::CreateIntermediateBuffer(uint64_t intermedi
 	intermediateBufferCreateInfo.sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	intermediateBufferCreateInfo.pNext                 = nullptr;
 	intermediateBufferCreateInfo.flags                 = 0;
-	intermediateBufferCreateInfo.size                  = intermediateBufferSize;
+	intermediateBufferCreateInfo.size                  = mIntermediateBufferSize;
 	intermediateBufferCreateInfo.usage                 = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 	intermediateBufferCreateInfo.sharingMode           = VK_SHARING_MODE_EXCLUSIVE;
 	intermediateBufferCreateInfo.queueFamilyIndexCount = (uint32_t)intermediateBufferQueues.size();

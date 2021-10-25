@@ -15,10 +15,10 @@ protected:
 	void Bake() override;
 
 protected:
-	virtual void PreCreateVertexBuffer(size_t vertexDataSize)            = 0; //Prepare the necessary data for vertex buffer creation
-	virtual void PreCreateIndexBuffer(size_t indexDataSize)              = 0; //Prepare the necessary data for index buffer creation
-	virtual void PreCreateStaticConstantBuffer(size_t constantDataSize)  = 0; //Prepare the necessary data for static constant buffer creation (static meshes, materials)
-	virtual void PreCreateDynamicConstantBuffer(size_t constantDataSize) = 0; //Prepare the necessary data for dynamic constant buffer creation creation (rigid moving meshes)
+	virtual void CreateVertexBufferInfo(size_t vertexDataSize)            = 0; //Prepare the necessary data for vertex buffer creation
+	virtual void CreateIndexBufferInfo(size_t indexDataSize)              = 0; //Prepare the necessary data for index buffer creation
+	virtual void CreateStaticConstantBufferInfo(size_t constantDataSize)  = 0; //Prepare the necessary data for static constant buffer creation (static meshes, materials)
+	virtual void CreateDynamicConstantBufferInfo(size_t constantDataSize) = 0; //Prepare the necessary data for dynamic constant buffer creation creation (rigid moving meshes)
 
 	virtual void AllocateTextureMetadataArrays(size_t textureCount)                                                                                                              = 0;
 	virtual void LoadTextureFromFile(const std::wstring& textureFilename, uint64_t currentIntermediateBufferOffset, size_t textureIndex, std::vector<std::byte>& outTextureData) = 0;
@@ -28,21 +28,32 @@ protected:
 
 	virtual std::byte* MapDynamicConstantBuffer() = 0;
 
-	virtual void       CreateIntermediateBuffer(uint64_t intermediateBufferSize)       = 0;
-	virtual std::byte* MapIntermediateBuffer()                                   const = 0;
-	virtual void       UnmapIntermediateBuffer()                                 const = 0;
+	virtual void       CreateIntermediateBuffer()      = 0;
+	virtual std::byte* MapIntermediateBuffer()   const = 0;
+	virtual void       UnmapIntermediateBuffer() const = 0;
 
 	virtual void WriteInitializationCommands()   const = 0;
 	virtual void SubmitInitializationCommands()  const = 0;
 	virtual void WaitForInitializationCommands() const = 0;
 
 private:
-	void PreCreateGeometryBuffers(size_t* inoutIntermediateBufferSize);
-	void PreCreateConstantDataBuffers(size_t* inoutIntermediateBufferSize);
-	void PreCreateTextures(size_t* inoutIntermediateBufferSize);
-
-	void FillIntermediateBufferData();
+	//Initialize the buffer data and API-specific info to create buffers
+	void InitializeBufferCreationData();
+	
+	//Initialize the texture data and API-specific info to create textures
+	void InitializeTextureCreationData();
+	
+	//Create and allocate buffers and textures
+	void FinalizeBuffersAndTexturesCreation();
+	
+	//Upload the static data to the intermediate buffer
+	void UploadIntermediateData();
+	
+	//Upload the dynamic data to CPU-visible buffer
 	void InitializeDynamicConstantData();
+
+	//Send the upload commands to GPU and wait
+	void HandleUploadCommands();
 
 protected:
 	ModernRenderableScene* mModernSceneToBuild;
@@ -61,4 +72,6 @@ protected:
 	uint64_t mIntermediateBufferIndexDataOffset;
 	uint64_t mIntermediateBufferStaticConstantDataOffset;
 	uint64_t mIntermediateBufferTextureDataOffset;
+
+	size_t mIntermediateBufferSize;
 };
