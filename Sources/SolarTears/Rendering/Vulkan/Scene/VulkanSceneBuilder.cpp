@@ -116,8 +116,8 @@ void Vulkan::RenderableSceneBuilder::AllocateTextureMetadataArrays(size_t textur
 {
 	mVulkanSceneToBuild->mSceneTextures.resize(textureCount);
 
-	mSceneImageCreateInfos.resize(textureCount);
-	mSceneTextureSubresourceSlices.resize(textureCount);
+	mSceneImageFormats.resize(textureCount);
+	mSceneTextureSubresourceSpans.resize(textureCount);
 
 	mSceneImageCopyInfos.clear();
 }
@@ -130,13 +130,15 @@ void Vulkan::RenderableSceneBuilder::LoadTextureFromFile(const std::wstring& tex
 	std::vector<DDSTextureLoaderVk::LoadedSubresourceData> subresources;
 
 	VkImage texture = VK_NULL_HANDLE;
-	DDSTextureLoaderVk::LoadDDSTextureFromFile(mVulkanSceneToBuild->mDeviceRef, textureFilename.c_str(), &texture, texData, subresources, mDeviceParametersRef->GetDeviceProperties().limits.maxImageDimension2D, &mSceneImageCreateInfos[textureIndex]);
+	VkImageCreateInfo createInfo;
+	DDSTextureLoaderVk::LoadDDSTextureFromFile(mVulkanSceneToBuild->mDeviceRef, textureFilename.c_str(), &texture, texData, subresources, mDeviceParametersRef->GetDeviceProperties().limits.maxImageDimension2D, &createInfo);
 
 	mVulkanSceneToBuild->mSceneTextures[textureIndex] = texture;
+	mSceneImageFormats[textureIndex] = createInfo.format;
 
 	uint32_t subresourceSliceBegin = (uint32_t)(mSceneImageCopyInfos.size());
 	uint32_t subresourceSliceEnd = (uint32_t)(mSceneImageCopyInfos.size() + subresources.size());
-	mSceneTextureSubresourceSlices[textureIndex] = {.Begin = subresourceSliceBegin, .End = subresourceSliceEnd};
+	mSceneTextureSubresourceSpans[textureIndex] = {.Begin = subresourceSliceBegin, .End = subresourceSliceEnd};
 	mSceneImageCopyInfos.resize(mSceneImageCopyInfos.size() + subresources.size());
 
 	VkDeviceSize currentOffset = (VkDeviceSize)currentIntermediateBufferOffset;
@@ -299,8 +301,8 @@ void Vulkan::RenderableSceneBuilder::WriteInitializationCommands() const
 
 	for(size_t i = 0; i < mVulkanSceneToBuild->mSceneTextures.size(); i++)
 	{
-		SubresourceArraySlice subresourceSlice = mSceneTextureSubresourceSlices[i];
-		vkCmdCopyBufferToImage(graphicsCommandBuffer, mIntermediateBuffer, mVulkanSceneToBuild->mSceneTextures[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, subresourceSlice.End - subresourceSlice.Begin, mSceneImageCopyInfos.data() + subresourceSlice.Begin);
+		Span<uint32_t> subresourceSpan = mSceneTextureSubresourceSpans[i];
+		vkCmdCopyBufferToImage(graphicsCommandBuffer, mIntermediateBuffer, mVulkanSceneToBuild->mSceneTextures[i], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, subresourceSpan.End - subresourceSpan.Begin, mSceneImageCopyInfos.data() + subresourceSpan.Begin);
 	}
 
 	std::array sceneBufferDataOffsets = {mIntermediateBufferVertexDataOffset,                      mIntermediateBufferIndexDataOffset,                     mIntermediateBufferStaticConstantDataOffset};
@@ -439,7 +441,7 @@ void Vulkan::RenderableSceneBuilder::CreateImageViews()
 		imageViewCreateInfo.flags                           = 0;
 		imageViewCreateInfo.image                           = mVulkanSceneToBuild->mSceneTextures[i];
 		imageViewCreateInfo.viewType                        = VK_IMAGE_VIEW_TYPE_2D; //Only 2D-textures are stored in mSceneTextures
-		imageViewCreateInfo.format                          = mSceneImageCreateInfos[i].format;
+		imageViewCreateInfo.format                          = mSceneImageFormats[i];
 		imageViewCreateInfo.components.r                    = VK_COMPONENT_SWIZZLE_IDENTITY;
 		imageViewCreateInfo.components.g                    = VK_COMPONENT_SWIZZLE_IDENTITY;
 		imageViewCreateInfo.components.b                    = VK_COMPONENT_SWIZZLE_IDENTITY;

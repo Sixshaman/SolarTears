@@ -74,8 +74,7 @@ void D3D12::RenderableSceneBuilder::CreateDynamicConstantBufferInfo(size_t const
 void D3D12::RenderableSceneBuilder::AllocateTextureMetadataArrays(size_t textureCount)
 {
 	mSceneTextureDescs.resize(textureCount);
-	mSceneTextureHeapOffsets.resize(textureCount);
-	mSceneTextureSubresourceSlices.resize(textureCount);
+	mSceneTextureSubresourceSpans.resize(textureCount);
 
 	mSceneTextureSubresourceFootprints.clear();
 }
@@ -110,7 +109,7 @@ void D3D12::RenderableSceneBuilder::LoadTextureFromFile(const std::wstring& text
 
 	uint32_t subresourceSliceBegin = (uint32_t)(mSceneTextureSubresourceFootprints.size());
 	uint32_t subresourceSliceEnd   = (uint32_t)(mSceneTextureSubresourceFootprints.size() + subresources.size());
-	mSceneTextureSubresourceSlices[textureIndex] = {.Begin = subresourceSliceBegin, .End = subresourceSliceEnd};
+	mSceneTextureSubresourceSpans[textureIndex] = {.Begin = subresourceSliceBegin, .End = subresourceSliceEnd};
 	mSceneTextureSubresourceFootprints.resize(mSceneTextureSubresourceFootprints.size() + subresources.size());
 
 	UINT64 textureByteSize = 0;
@@ -154,8 +153,18 @@ void D3D12::RenderableSceneBuilder::FinishBufferCreation()
 
 void D3D12::RenderableSceneBuilder::FinishTextureCreation()
 {
-	AllocateTexturesHeap();
-	CreateTextureObjects();
+	mD3d12SceneToBuild->mHeapForTextures.reset();
+
+	std::vector<UINT64> textureHeapOffsets;
+	mMemoryAllocator->AllocateTextureMemory(mDeviceRef, mSceneTextureDescs, textureHeapOffsets, D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES, mD3d12SceneToBuild->mHeapForTextures.put());
+
+
+	mD3d12SceneToBuild->mSceneTextures.reserve(mSceneTextureDescs.size());
+	for(size_t i = 0; i < mSceneTextureDescs.size(); i++)
+	{
+		mD3d12SceneToBuild->mSceneTextures.emplace_back();
+		THROW_IF_FAILED(mDeviceRef->CreatePlacedResource1(mD3d12SceneToBuild->mHeapForTextures.get(), textureHeapOffsets[i], &mSceneTextureDescs[i], D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(mD3d12SceneToBuild->mSceneTextures.back().put())));
+	}
 }
 
 std::byte* D3D12::RenderableSceneBuilder::MapDynamicConstantBuffer()
@@ -224,15 +233,15 @@ void D3D12::RenderableSceneBuilder::WriteInitializationCommands() const
 	THROW_IF_FAILED(commandAllocator->Reset());
 	THROW_IF_FAILED(commandList->Reset(commandAllocator, nullptr));
 
-	for(size_t i = 0; i < mSceneTextureSubresourceSlices.size(); i++)
+	for(size_t i = 0; i < mSceneTextureSubresourceSpans.size(); i++)
 	{
-		SubresourceArraySlice subresourceSlice = mSceneTextureSubresourceSlices[i];
-		for(uint32_t j = subresourceSlice.Begin; j < subresourceSlice.End; j++)
+		Span<uint32_t> subresourceSpan = mSceneTextureSubresourceSpans[i];
+		for(uint32_t j = subresourceSpan.Begin; j < subresourceSpan.End; j++)
 		{
 			D3D12_TEXTURE_COPY_LOCATION dstLocation;
 			dstLocation.pResource        = mD3d12SceneToBuild->mSceneTextures[i].get();
 			dstLocation.Type             = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
-			dstLocation.SubresourceIndex = (UINT)(j - subresourceSlice.Begin);
+			dstLocation.SubresourceIndex = (UINT)(j - subresourceSpan.Begin);
 
 			D3D12_TEXTURE_COPY_LOCATION srcLocation;
 			srcLocation.pResource       = mIntermediateBuffer.get();
@@ -335,10 +344,7 @@ void D3D12::RenderableSceneBuilder::AllocateBuffersHeap()
 
 void D3D12::RenderableSceneBuilder::AllocateTexturesHeap()
 {
-	mSceneTextureHeapOffsets.clear();
-	mD3d12SceneToBuild->mHeapForTextures.reset();
 
-	mMemoryAllocator->AllocateTextureMemory(mDeviceRef, mSceneTextureDescs, mSceneTextureHeapOffsets, D3D12_HEAP_FLAG_ALLOW_ONLY_NON_RT_DS_TEXTURES, mD3d12SceneToBuild->mHeapForTextures.put());
 }
 
 void D3D12::RenderableSceneBuilder::CreateBufferObjects()
@@ -360,18 +366,6 @@ void D3D12::RenderableSceneBuilder::CreateBufferObjects()
 	for (size_t i = 0; i < cpuVisibleBufferPointers.size(); i++)
 	{
 		THROW_IF_FAILED(mDeviceRef->CreatePlacedResource1(mD3d12SceneToBuild->mHeapForCpuVisibleBuffers.get(), cpuVisibleBufferHeapOffsets[i], &cpuVisibleBufferDescs[i], cpuVisibleBufferStates[i], nullptr, IID_PPV_ARGS(cpuVisibleBufferPointers[i])));
-	}
-}
-
-void D3D12::RenderableSceneBuilder::CreateTextureObjects()
-{
-	assert(mSceneTextureDescs.size() == mSceneTextureHeapOffsets.size());
-
-	mD3d12SceneToBuild->mSceneTextures.reserve(mSceneTextureDescs.size());
-	for(size_t i = 0; i < mSceneTextureDescs.size(); i++)
-	{
-		mD3d12SceneToBuild->mSceneTextures.emplace_back();
-		THROW_IF_FAILED(mDeviceRef->CreatePlacedResource1(mD3d12SceneToBuild->mHeapForTextures.get(), mSceneTextureHeapOffsets[i], &mSceneTextureDescs[i], D3D12_RESOURCE_STATE_COPY_DEST, nullptr, IID_PPV_ARGS(mD3d12SceneToBuild->mSceneTextures.back().put())));
 	}
 }
 

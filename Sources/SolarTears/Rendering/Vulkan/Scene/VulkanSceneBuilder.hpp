@@ -8,6 +8,7 @@
 #include "../VulkanDeviceParameters.hpp"
 #include "../VulkanUtils.hpp"
 #include "../../Common/Scene/ModernRenderableSceneBuilder.hpp"
+#include "../../../Core/DataStructures/Span.hpp"
 
 namespace Vulkan
 {
@@ -19,12 +20,6 @@ namespace Vulkan
 
 	class RenderableSceneBuilder: public ModernRenderableSceneBuilder
 	{
-		struct SubresourceArraySlice
-		{
-			uint32_t Begin;
-			uint32_t End;
-		};
-
 	public:
 		RenderableSceneBuilder(RenderableScene* sceneToBuild, MemoryManager* memoryAllocator, DeviceQueues* deviceQueues, WorkerCommandBuffers* workerCommandBuffers, const DeviceParameters* deviceParameters);
 		~RenderableSceneBuilder();
@@ -66,9 +61,9 @@ namespace Vulkan
 
 		const DeviceParameters* mDeviceParametersRef;
 
-		std::vector<VkImageCreateInfo>     mSceneImageCreateInfos;
-		std::vector<VkBufferImageCopy>     mSceneImageCopyInfos;
-		std::vector<SubresourceArraySlice> mSceneTextureSubresourceSlices;
+		std::vector<VkFormat>          mSceneImageFormats;
+		std::vector<VkBufferImageCopy> mSceneImageCopyInfos;
+		std::vector<Span<uint32_t>>    mSceneTextureSubresourceSpans;
 
 		VkBuffer       mIntermediateBuffer;
 		VkDeviceMemory mIntermediateBufferMemory;

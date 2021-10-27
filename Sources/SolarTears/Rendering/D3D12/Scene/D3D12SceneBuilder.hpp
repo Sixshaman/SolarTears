@@ -7,6 +7,7 @@
 #include "D3D12Scene.hpp"
 #include "../D3D12Utils.hpp"
 #include "../../Common/Scene/ModernRenderableSceneBuilder.hpp"
+#include "../../../Core/DataStructures/Span.hpp"
 
 namespace D3D12
 {
@@ -16,12 +17,6 @@ namespace D3D12
 
 	class RenderableSceneBuilder: public ModernRenderableSceneBuilder
 	{
-		struct SubresourceArraySlice
-		{
-			uint32_t Begin;
-			uint32_t End;
-		};
-
 	public:
 		RenderableSceneBuilder(ID3D12Device8* device, RenderableScene* sceneToBuild, MemoryManager* memoryAllocator, DeviceQueues* deviceQueues, const WorkerCommandLists* commandLists);
 		~RenderableSceneBuilder();
@@ -52,9 +47,7 @@ namespace D3D12
 		void AllocateBuffersHeap();
 		void AllocateTexturesHeap();
 
-		void CreateTextureObjects();
 		void CreateBufferObjects();
-
 		void CreateBufferViews();
 
 	private:
@@ -72,9 +65,8 @@ namespace D3D12
 		D3D12_RESOURCE_DESC1 mDynamicConstantBufferDesc;
 
 		std::vector<D3D12_RESOURCE_DESC1>               mSceneTextureDescs;
-		std::vector<UINT64>                             mSceneTextureHeapOffsets;
 		std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> mSceneTextureSubresourceFootprints;
-		std::vector<SubresourceArraySlice>              mSceneTextureSubresourceSlices;
+		std::vector<Span<uint32_t>>                     mSceneTextureSubresourceSpans;
 
 		wil::com_ptr_nothrow<ID3D12Resource> mIntermediateBuffer;
 	};
