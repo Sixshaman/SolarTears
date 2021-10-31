@@ -10,7 +10,7 @@ class ModernFrameGraph
 	friend class ModernFrameGraphBuilder;
 
 protected:
-	struct PassFrameSpan //Describes a set of passes substituting for different frames
+	struct PassFrameSpan //Describes a set of passes switching within different frames
 	{
 		uint32_t                Begin;
 		uint32_t                End;
@@ -35,7 +35,8 @@ protected:
 protected:
 	FrameGraphConfig mFrameGraphConfig;
 
-	std::vector<BarrierPassSpan> mRenderPassBarriers; //The ith element refers to barrier spans for ith render pass. The last element refers to barrier spans for swapchain acquire-present "pass"
+	//Resource barrier spans. The ith element refers to barrier spans for ith render pass. The last element refers to barrier spans for swapchain acquire-present "pass"
+	std::vector<BarrierPassSpan> mRenderPassBarriers;
 
 	std::vector<PassFrameSpan>  mFrameSpansPerRenderPass;
 	std::vector<Span<uint32_t>> mGraphicsPassSpansPerDependencyLevel;

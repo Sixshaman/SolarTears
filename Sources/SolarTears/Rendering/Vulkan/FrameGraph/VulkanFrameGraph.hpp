@@ -44,8 +44,7 @@ namespace Vulkan
 
 		std::vector<VkImage>     mImages;
 		std::vector<VkImageView> mImageViews;
-
-		VkDeviceMemory mImageMemory;
+		VkDeviceMemory           mImageMemory;
 
 		std::vector<VkImageMemoryBarrier> mImageBarriers;
 
@@ -55,7 +54,7 @@ namespace Vulkan
 		VkSemaphore mGraphicsSemaphores[Utils::InFlightFrameCount];
 		VkSemaphore mPresentSemaphores[Utils::InFlightFrameCount];
 
-		//Used to track the command buffers that were used to record render passes
+		//Used to track the command buffers used to record the render passes
 		std::vector<VkCommandBuffer> mFrameRecordedGraphicsCommandBuffers;
 
 		std::vector<Span<uint32_t>> mOwnedImageSpans;

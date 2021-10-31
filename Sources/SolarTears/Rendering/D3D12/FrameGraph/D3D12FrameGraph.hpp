@@ -38,11 +38,10 @@ namespace D3D12
 		const SrvDescriptorManager* mDescriptorManagerRef;
 		const DeviceQueues*         mDeviceQueuesRef;
 
-		std::vector<std::unique_ptr<RenderPass>> mRenderPasses; //All render passes (sorted by dependency level)
+		std::vector<std::unique_ptr<RenderPass>> mRenderPasses; //All render passes, sorted by dependency level
 
 		std::vector<wil::com_ptr_nothrow<ID3D12Resource2>> mTextures;
-
-		wil::com_ptr_nothrow<ID3D12Heap> mTextureHeap;
+		wil::com_ptr_nothrow<ID3D12Heap>                   mTextureHeap;
 
 		std::vector<D3D12_RESOURCE_BARRIER> mResourceBarriers;
 
@@ -52,7 +51,7 @@ namespace D3D12
 		wil::com_ptr_nothrow<ID3D12DescriptorHeap> mRtvDescriptorHeap;
 		wil::com_ptr_nothrow<ID3D12DescriptorHeap> mDsvDescriptorHeap;
 
-		//Used to track the command buffers that were used to record render passes
+		//Used to track the command lists used to record the render passes
 		std::vector<ID3D12CommandList*> mFrameRecordedGraphicsCommandLists;
 	};
 }
