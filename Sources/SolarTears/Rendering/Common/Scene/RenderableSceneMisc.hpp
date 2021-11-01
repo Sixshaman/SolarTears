@@ -4,10 +4,9 @@
 #include <string>
 #include <vector>
 #include <DirectXMath.h>
-#include "RenderableSceneObjectHandle.hpp"
 #include "../../../Core/Scene/SceneObjectLocation.hpp"
 
-using RenderableSceneObjectHandle = RenderableSceneObjectHandleGeneral<uint32_t>;
+using RenderableSceneObjectHandle = uint32_t;
 
 
 struct RenderableSceneVertex

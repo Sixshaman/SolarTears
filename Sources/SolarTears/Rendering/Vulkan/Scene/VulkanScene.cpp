@@ -10,10 +10,10 @@
 
 Vulkan::RenderableScene::RenderableScene(const VkDevice device, const DeviceParameters& deviceParameters): ModernRenderableScene(VulkanUtils::CalcUniformAlignment(deviceParameters)), mDeviceRef(device)
 {
-	mSceneVertexBuffer         = VK_NULL_HANDLE;
-	mSceneIndexBuffer          = VK_NULL_HANDLE;
-	mSceneStaticUniformBuffer  = VK_NULL_HANDLE;
-	mSceneDynamicUniformBuffer = VK_NULL_HANDLE;
+	mSceneVertexBuffer        = VK_NULL_HANDLE;
+	mSceneIndexBuffer         = VK_NULL_HANDLE;
+	mSceneStaticUniformBuffer = VK_NULL_HANDLE;
+	mSceneDynamicDataBuffer   = VK_NULL_HANDLE;
 
 	mBufferMemory            = VK_NULL_HANDLE;
 	mTextureMemory           = VK_NULL_HANDLE;
@@ -30,7 +30,7 @@ Vulkan::RenderableScene::~RenderableScene()
 	SafeDestroyObject(vkDestroyBuffer, mDeviceRef, mSceneVertexBuffer);
 	SafeDestroyObject(vkDestroyBuffer, mDeviceRef, mSceneIndexBuffer);
 	SafeDestroyObject(vkDestroyBuffer, mDeviceRef, mSceneStaticUniformBuffer);
-	SafeDestroyObject(vkDestroyBuffer, mDeviceRef, mSceneDynamicUniformBuffer);
+	SafeDestroyObject(vkDestroyBuffer, mDeviceRef, mSceneDynamicDataBuffer);
 
 	for(size_t i = 0; i < mSceneTextureViews.size(); i++)
 	{

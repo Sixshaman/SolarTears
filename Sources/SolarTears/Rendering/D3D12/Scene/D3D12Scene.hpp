@@ -28,13 +28,10 @@ namespace D3D12
 		inline void DrawStaticObjects(ID3D12GraphicsCommandList* cmdList, SubmeshCallback submeshCallback) const;
 
 		template<typename MeshCallback, typename SubmeshCallback>
-		inline void DrawStaticInstancedObjects(ID3D12GraphicsCommandList* cmdList, MeshCallback meshCallback, SubmeshCallback submeshCallback) const;
+		inline void DrawNonStaticObjects(ID3D12GraphicsCommandList* cmdList, MeshCallback meshCallback, SubmeshCallback submeshCallback) const;
 
-		template<typename MeshCallback, typename SubmeshCallback>
-		inline void DrawRigidObjects(ID3D12GraphicsCommandList* cmdList, MeshCallback meshCallback, SubmeshCallback submeshCallback) const;
-
-		D3D12_GPU_VIRTUAL_ADDRESS GetFrameData(uint32_t frameResourceIndex)  const;
-		D3D12_GPU_VIRTUAL_ADDRESS GetObjectData(uint32_t frameResourceIndex) const;
+		D3D12_GPU_VIRTUAL_ADDRESS GetFrameData()  const;
+		D3D12_GPU_VIRTUAL_ADDRESS GetObjectData() const;
 
 	private:
 		wil::com_ptr_nothrow<ID3D12Resource> mSceneVertexBuffer;
@@ -43,8 +40,8 @@ namespace D3D12
 		D3D12_VERTEX_BUFFER_VIEW mSceneVertexBufferView;
 		D3D12_INDEX_BUFFER_VIEW  mSceneIndexBufferView;
 
-		wil::com_ptr_nothrow<ID3D12Resource> mSceneStaticConstantBuffer;  //Common buffer for all static constant buffer data (GPU-local)
-		wil::com_ptr_nothrow<ID3D12Resource> mSceneDynamicConstantBuffer; //Common buffer for all dynamic constant buffer data (CPU-visible)
+		wil::com_ptr_nothrow<ID3D12Resource> mSceneStaticConstantBuffer;  //Common buffer for all constant buffer data (GPU-local)
+		wil::com_ptr_nothrow<ID3D12Resource> mSceneDynamicDataBuffer;     //Common buffer for all dynamic data (CPU-visible)
 
 		std::vector<wil::com_ptr_nothrow<ID3D12Resource2>> mSceneTextures;
 

@@ -11,9 +11,9 @@ D3D12::RenderableScene::RenderableScene(): ModernRenderableScene(D3D12_CONSTANT_
 
 D3D12::RenderableScene::~RenderableScene()
 {
-	if(mSceneDynamicConstantBuffer)
+	if(mSceneDynamicDataBuffer)
 	{
-		mSceneDynamicConstantBuffer->Unmap(0, nullptr);
+		mSceneDynamicDataBuffer->Unmap(0, nullptr);
 	}
 }
 
@@ -27,12 +27,12 @@ void D3D12::RenderableScene::PrepareDrawBuffers(ID3D12GraphicsCommandList* cmdLi
 	cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
 
-D3D12_GPU_VIRTUAL_ADDRESS D3D12::RenderableScene::GetFrameData(uint32_t frameResourceIndex) const
+D3D12_GPU_VIRTUAL_ADDRESS D3D12::RenderableScene::GetFrameData() const
 {
-	return mSceneDynamicConstantBuffer->GetGPUVirtualAddress() + GetBaseFrameDataOffset(frameResourceIndex);
+	return mSceneStaticConstantBuffer->GetGPUVirtualAddress() + GetBaseFrameDataOffset();
 }
 
-D3D12_GPU_VIRTUAL_ADDRESS D3D12::RenderableScene::GetObjectData(uint32_t frameResourceIndex) const
+D3D12_GPU_VIRTUAL_ADDRESS D3D12::RenderableScene::GetObjectData() const
 {
-	return mSceneDynamicConstantBuffer->GetGPUVirtualAddress() + GetBaseRigidObjectDataOffset(frameResourceIndex);
+	return mSceneStaticConstantBuffer->GetGPUVirtualAddress() + GetBaseObjectDataOffset();
 }

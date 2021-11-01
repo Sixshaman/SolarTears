@@ -22,15 +22,18 @@ public:
 	void UpdateRigidSceneObjects(const std::span<ObjectDataUpdateInfo> rigidObjectUpdates, uint64_t frameNumber) override final;
 
 protected:
-	uint64_t CalculateMaterialDataOffset(uint32_t materialIndex)                                           const;
-	uint64_t CalculateStaticObjectDataOffset(uint32_t staticObjectIndex)                                   const;
-	uint64_t CalculateRigidObjectDataOffset(uint32_t currentFrameResourceIndex, uint32_t rigidObjectIndex) const;
-	uint64_t CalculateFrameDataOffset(uint32_t currentFrameResourceIndex)                                  const;
+	uint64_t GetMaterialDataOffset(uint32_t materialIndex) const;
+	uint64_t GetObjectDataOffset(uint32_t objectIndex)     const;
 
-	uint64_t GetBaseMaterialDataOffset()                                      const;
-	uint64_t GetBaseStaticObjectDataOffset()                                  const;
-	uint64_t GetBaseRigidObjectDataOffset(uint32_t currentFrameResourceIndex) const;
-	uint64_t GetBaseFrameDataOffset(uint32_t currentFrameResourceIndex)       const;
+	uint64_t GetBaseMaterialDataOffset() const;
+	uint64_t GetBaseFrameDataOffset()    const;
+	uint64_t GetBaseObjectDataOffset()   const;
+
+	uint64_t GetDynamicFrameDataOffset(uint32_t frameResourceIndex) const;
+	uint64_t GetDynamicRigidObjectDataOffset(uint32_t frameResourceIndex, uint32_t rigidObjectDataIndex) const;
+
+	uint32_t GetStaticObjectCount() const;
+	uint32_t GetRigidObjectCount()  const;
 
 protected:
 	//Leftover updates to update all dirty data for frames in flight. Sorted by mesh indices, ping-pong with each other
@@ -51,7 +54,9 @@ protected:
 
 	//GPU-local constant buffer data sizes
 	uint64_t mMaterialDataSize;
+	uint64_t mFrameDataSize;
 	uint64_t mStaticObjectDataSize;
+	uint64_t mRigidObjectDataSize;
 
 	//Single-object constant buffer sizes, with respect to alignment
 	uint32_t mObjectChunkDataSize;

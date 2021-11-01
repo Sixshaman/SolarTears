@@ -381,9 +381,6 @@
     <ClInclude Include="Rendering\Common\Scene\RenderableSceneDescriptionMisc.hpp">
       <Filter>Rendering\Common\Scene</Filter>
     </ClInclude>
-    <ClInclude Include="Rendering\Common\Scene\RenderableSceneObjectHandle.hpp">
-      <Filter>Rendering\Common\Scene</Filter>
-    </ClInclude>
     <ClInclude Include="Rendering\Common\Scene\BaseRenderableSceneBuilder.hpp">
       <Filter>Rendering\Common\Scene</Filter>
     </ClInclude>

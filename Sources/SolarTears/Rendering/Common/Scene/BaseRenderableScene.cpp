@@ -2,14 +2,11 @@
 
 BaseRenderableScene::BaseRenderableScene()
 {
-	mStaticMeshSpan.Begin = 0;
-	mStaticMeshSpan.End   = 0;
+	mStaticUniqueMeshSpan.Begin = 0;
+	mStaticUniqueMeshSpan.End   = 0;
 
-	mStaticInstancedMeshSpan.Begin = 0;
-	mStaticInstancedMeshSpan.End   = 0;
-
-	mRigidMeshSpan.Begin = 0;
-	mRigidMeshSpan.End   = 0;
+	mNonStaticMeshSpan.Begin = 0;
+	mNonStaticMeshSpan.End   = 0;
 }
 
 BaseRenderableScene::~BaseRenderableScene()

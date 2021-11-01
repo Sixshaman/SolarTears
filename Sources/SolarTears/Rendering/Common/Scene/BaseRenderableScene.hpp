@@ -64,8 +64,7 @@ protected:
 protected:
 	std::vector<SceneMesh>    mSceneMeshes;    //All meshes registered in scene
 	std::vector<SceneSubmesh> mSceneSubmeshes; //All submeshes registered in scene
-
-	Span<uint32_t> mStaticMeshSpan;          //Meshes that never move and have the positional data baked into vertices
-	Span<uint32_t> mStaticInstancedMeshSpan; //Meshes that never move and have the positional data potentially stored in fast immutable memory
-	Span<uint32_t> mRigidMeshSpan;           //Meshes that move and have the positional data stored in CPU-visible memory
+	
+	Span<uint32_t> mStaticUniqueMeshSpan; //Meshes that have the positional data baked into vertices
+	Span<uint32_t> mNonStaticMeshSpan;    //Meshes with positional data stored in a constant buffer
 };

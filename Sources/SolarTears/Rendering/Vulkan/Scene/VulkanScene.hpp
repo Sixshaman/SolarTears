@@ -27,10 +27,7 @@ namespace Vulkan
 		inline void DrawStaticObjects(VkCommandBuffer commandBuffer, SubmeshCallback submeshCallback) const;
 
 		template<typename MeshCallback, typename SubmeshCallback>
-		inline void DrawStaticInstancedObjects(VkCommandBuffer commandBuffer, MeshCallback meshCallback, SubmeshCallback submeshCallback) const;
-
-		template<typename MeshCallback, typename SubmeshCallback>
-		inline void DrawRigidObjects(VkCommandBuffer commandBuffer, MeshCallback meshCallback, SubmeshCallback submeshCallback) const;
+		inline void DrawNonStaticObjects(VkCommandBuffer commandBuffer, MeshCallback meshCallback, SubmeshCallback submeshCallback) const;
 
 	private:
 		const VkDevice mDeviceRef;
@@ -38,8 +35,8 @@ namespace Vulkan
 		VkBuffer mSceneVertexBuffer;
 		VkBuffer mSceneIndexBuffer;
 
-		VkBuffer mSceneStaticUniformBuffer;  //Common buffer for all static uniform buffer data
-		VkBuffer mSceneDynamicUniformBuffer; //Common buffer for all dynamic uniform buffer data
+		VkBuffer mSceneStaticUniformBuffer; //Common buffer for all uniform buffer data
+		VkBuffer mSceneDynamicDataBuffer;   //Common buffer for all dynamic data
 
 		std::vector<VkImage>     mSceneTextures;
 		std::vector<VkImageView> mSceneTextureViews;
