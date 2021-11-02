@@ -41,10 +41,10 @@ D3D12::RenderableSceneBuilder::RenderableSceneBuilder(ID3D12Device8* device, Ren
 		}
 	};
 
-	mVertexBufferDesc          = defaultBufferDesc;
-	mIndexBufferDesc           = defaultBufferDesc;
-	mStaticConstantBufferDesc  = defaultBufferDesc;
-	mDynamicConstantBufferDesc = defaultBufferDesc;
+	mVertexBufferDesc   = defaultBufferDesc;
+	mIndexBufferDesc    = defaultBufferDesc;
+	mConstantBufferDesc = defaultBufferDesc;
+	mUploadBufferDesc   = defaultBufferDesc;
 }
 
 D3D12::RenderableSceneBuilder::~RenderableSceneBuilder()
@@ -61,14 +61,14 @@ void D3D12::RenderableSceneBuilder::CreateIndexBufferInfo(size_t indexDataSize)
 	mIndexBufferDesc.Width = indexDataSize;
 }
 
-void D3D12::RenderableSceneBuilder::CreateStaticConstantBufferInfo(size_t constantDataSize)
+void D3D12::RenderableSceneBuilder::CreateConstantBufferInfo(size_t constantDataSize)
 {
-	mStaticConstantBufferDesc.Width = constantDataSize;
+	mConstantBufferDesc.Width = constantDataSize;
 }
 
-void D3D12::RenderableSceneBuilder::CreateDynamicConstantBufferInfo(size_t constantDataSize)
+void D3D12::RenderableSceneBuilder::CreateUploadBufferInfo(size_t uploadDataSize)
 {
-	mDynamicConstantBufferDesc.Width = constantDataSize;
+	mUploadBufferDesc.Width = uploadDataSize;
 }
 
 void D3D12::RenderableSceneBuilder::AllocateTextureMetadataArrays(size_t textureCount)
@@ -167,14 +167,14 @@ void D3D12::RenderableSceneBuilder::FinishTextureCreation()
 	}
 }
 
-std::byte* D3D12::RenderableSceneBuilder::MapDynamicConstantBuffer()
+std::byte* D3D12::RenderableSceneBuilder::MapUploadBuffer()
 {
 	D3D12_RANGE readRange;
 	readRange.Begin = 0;
 	readRange.End   = 0;
 
 	std::byte* bufferPointer = nullptr;
-	THROW_IF_FAILED(mD3d12SceneToBuild->mSceneDynamicConstantBuffer->Map(0, &readRange, reinterpret_cast<void**>(&bufferPointer)));
+	THROW_IF_FAILED(mD3d12SceneToBuild->mSceneUploadBuffer->Map(0, &readRange, reinterpret_cast<void**>(&bufferPointer)));
 
 	return bufferPointer;
 }
@@ -253,7 +253,7 @@ void D3D12::RenderableSceneBuilder::WriteInitializationCommands() const
 	}
 
 
-	std::array sceneBuffers           = {mD3d12SceneToBuild->mSceneVertexBuffer.get(),             mD3d12SceneToBuild->mSceneIndexBuffer.get(),            mD3d12SceneToBuild->mSceneStaticConstantBuffer.get()};
+	std::array sceneBuffers           = {mD3d12SceneToBuild->mSceneVertexBuffer.get(),             mD3d12SceneToBuild->mSceneIndexBuffer.get(),            mD3d12SceneToBuild->mSceneConstantBuffer.get()};
 	std::array sceneBufferDataOffsets = {mIntermediateBufferVertexDataOffset,                      mIntermediateBufferIndexDataOffset,                     mIntermediateBufferStaticConstantDataOffset};
 	std::array sceneBufferDataSizes   = {mVertexBufferData.size() * sizeof(RenderableSceneVertex), mIndexBufferData.size() * sizeof(RenderableSceneIndex), mStaticConstantData.size() * sizeof(std::byte)};
 	std::array sceneBufferStates      = {D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER,          D3D12_RESOURCE_STATE_INDEX_BUFFER,                      D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER};
@@ -316,8 +316,8 @@ void D3D12::RenderableSceneBuilder::AllocateBuffersHeap()
 	mD3d12SceneToBuild->mHeapForGpuBuffers.reset();
 	mD3d12SceneToBuild->mHeapForCpuVisibleBuffers.reset();
 
-	std::vector gpuBufferDescs          = {mVertexBufferDesc,             mIndexBufferDesc,             mStaticConstantBufferDesc};
-	std::vector gpuBufferOffsetPointers = {&mVertexBufferGpuMemoryOffset, &mIndexBufferGpuMemoryOffset, &mStaticConstantBufferGpuMemoryOffset};
+	std::vector gpuBufferDescs          = {mVertexBufferDesc,             mIndexBufferDesc,             mConstantBufferDesc};
+	std::vector gpuBufferOffsetPointers = {&mVertexBufferGpuMemoryOffset, &mIndexBufferGpuMemoryOffset, &mConstantBufferGpuMemoryOffset};
 	
 	assert(gpuBufferDescs.size() == gpuBufferOffsetPointers.size()); //Just in case I add a new one and forget to add the other one
 
@@ -330,8 +330,8 @@ void D3D12::RenderableSceneBuilder::AllocateBuffersHeap()
 	}
 
 
-	std::vector cpuVisibleBufferDescs          = {mDynamicConstantBufferDesc};
-	std::vector cpuVisibleBufferOffsetPointers = {&mDynamicConstantBufferGpuMemoryOffset};
+	std::vector cpuVisibleBufferDescs          = {mUploadBufferDesc};
+	std::vector cpuVisibleBufferOffsetPointers = {&mUploadBufferMemoryOffset};
 
 	std::vector<UINT64> cpuVisibleBufferOffsets;
 	mMemoryAllocator->AllocateBuffersMemory(mDeviceRef, cpuVisibleBufferDescs, MemoryManager::BufferAllocationType::CPU_VISIBLE, cpuVisibleBufferOffsets, mD3d12SceneToBuild->mHeapForCpuVisibleBuffers.put());
@@ -342,16 +342,11 @@ void D3D12::RenderableSceneBuilder::AllocateBuffersHeap()
 	}
 }
 
-void D3D12::RenderableSceneBuilder::AllocateTexturesHeap()
-{
-
-}
-
 void D3D12::RenderableSceneBuilder::CreateBufferObjects()
 {
-	std::array gpuBufferPointers    = {mD3d12SceneToBuild->mSceneVertexBuffer.put(), mD3d12SceneToBuild->mSceneIndexBuffer.put(), mD3d12SceneToBuild->mSceneStaticConstantBuffer.put()};
-	std::array gpuBufferDescs       = {mVertexBufferDesc,                            mIndexBufferDesc,                            mStaticConstantBufferDesc};
-	std::array gpuBufferHeapOffsets = {mVertexBufferGpuMemoryOffset,                 mIndexBufferGpuMemoryOffset,                 mStaticConstantBufferGpuMemoryOffset};
+	std::array gpuBufferPointers    = {mD3d12SceneToBuild->mSceneVertexBuffer.put(), mD3d12SceneToBuild->mSceneIndexBuffer.put(), mD3d12SceneToBuild->mSceneConstantBuffer.put()};
+	std::array gpuBufferDescs       = {mVertexBufferDesc,                            mIndexBufferDesc,                            mConstantBufferDesc};
+	std::array gpuBufferHeapOffsets = {mVertexBufferGpuMemoryOffset,                 mIndexBufferGpuMemoryOffset,                 mConstantBufferGpuMemoryOffset};
 	std::array gpuBufferStates      = {D3D12_RESOURCE_STATE_COPY_DEST,               D3D12_RESOURCE_STATE_COPY_DEST,              D3D12_RESOURCE_STATE_COPY_DEST};
 	for (size_t i = 0; i < gpuBufferPointers.size(); i++)
 	{
@@ -359,9 +354,9 @@ void D3D12::RenderableSceneBuilder::CreateBufferObjects()
 	}
 
 
-	std::array cpuVisibleBufferPointers    = {mD3d12SceneToBuild->mSceneDynamicConstantBuffer.put()};
-	std::array cpuVisibleBufferDescs       = {mDynamicConstantBufferDesc};
-	std::array cpuVisibleBufferHeapOffsets = {mDynamicConstantBufferGpuMemoryOffset};
+	std::array cpuVisibleBufferPointers    = {mD3d12SceneToBuild->mSceneUploadBuffer.put()};
+	std::array cpuVisibleBufferDescs       = {mUploadBufferDesc};
+	std::array cpuVisibleBufferHeapOffsets = {mUploadBufferMemoryOffset};
 	std::array cpuVisibleBufferStates      = {D3D12_RESOURCE_STATE_GENERIC_READ};
 	for (size_t i = 0; i < cpuVisibleBufferPointers.size(); i++)
 	{

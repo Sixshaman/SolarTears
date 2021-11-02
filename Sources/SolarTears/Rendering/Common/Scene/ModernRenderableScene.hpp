@@ -25,12 +25,13 @@ protected:
 	uint64_t GetMaterialDataOffset(uint32_t materialIndex) const;
 	uint64_t GetObjectDataOffset(uint32_t objectIndex)     const;
 
-	uint64_t GetBaseMaterialDataOffset() const;
-	uint64_t GetBaseFrameDataOffset()    const;
-	uint64_t GetBaseObjectDataOffset()   const;
+	uint64_t GetBaseMaterialDataOffset()     const;
+	uint64_t GetBaseFrameDataOffset()        const;
+	uint64_t GetBaseStaticObjectDataOffset() const;
+	uint64_t GetBaseRigidObjectDataOffset()  const;
 
-	uint64_t GetDynamicFrameDataOffset(uint32_t frameResourceIndex) const;
-	uint64_t GetDynamicRigidObjectDataOffset(uint32_t frameResourceIndex, uint32_t rigidObjectDataIndex) const;
+	uint64_t GetUploadFrameDataOffset(uint32_t frameResourceIndex) const;
+	uint64_t GetUploadRigidObjectDataOffset(uint32_t frameResourceIndex, uint32_t rigidObjectDataIndex) const;
 
 	uint32_t GetStaticObjectCount() const;
 	uint32_t GetRigidObjectCount()  const;
@@ -49,8 +50,8 @@ protected:
 	//Leftover updates from the previous frame
 	std::vector<PerObjectData> mPrevFrameDataToUpdate;
 
-	//Persistently mapped pointer into host-visible constant buffer data
-	void* mSceneConstantDataBufferPointer;
+	//Persistently mapped pointer into host-visible upload data
+	void* mSceneUploadDataBufferPointer;
 
 	//GPU-local constant buffer data sizes
 	uint64_t mMaterialDataSize;

@@ -35,8 +35,8 @@ namespace Vulkan
 		VkBuffer mSceneVertexBuffer;
 		VkBuffer mSceneIndexBuffer;
 
-		VkBuffer mSceneStaticUniformBuffer; //Common buffer for all uniform buffer data
-		VkBuffer mSceneDynamicDataBuffer;   //Common buffer for all dynamic data
+		VkBuffer mSceneUniformBuffer; //Common buffer for all uniform buffer data
+		VkBuffer mSceneUploadBuffer;  //Common buffer for all data to upload
 
 		std::vector<VkImage>     mSceneTextures;
 		std::vector<VkImageView> mSceneTextureViews;

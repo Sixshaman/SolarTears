@@ -11,9 +11,9 @@ D3D12::RenderableScene::RenderableScene(): ModernRenderableScene(D3D12_CONSTANT_
 
 D3D12::RenderableScene::~RenderableScene()
 {
-	if(mSceneDynamicDataBuffer)
+	if(mSceneUploadBuffer)
 	{
-		mSceneDynamicDataBuffer->Unmap(0, nullptr);
+		mSceneUploadBuffer->Unmap(0, nullptr);
 	}
 }
 
@@ -29,10 +29,10 @@ void D3D12::RenderableScene::PrepareDrawBuffers(ID3D12GraphicsCommandList* cmdLi
 
 D3D12_GPU_VIRTUAL_ADDRESS D3D12::RenderableScene::GetFrameData() const
 {
-	return mSceneStaticConstantBuffer->GetGPUVirtualAddress() + GetBaseFrameDataOffset();
+	return mSceneConstantBuffer->GetGPUVirtualAddress() + GetBaseFrameDataOffset();
 }
 
 D3D12_GPU_VIRTUAL_ADDRESS D3D12::RenderableScene::GetObjectData() const
 {
-	return mSceneStaticConstantBuffer->GetGPUVirtualAddress() + GetBaseObjectDataOffset();
+	return mSceneConstantBuffer->GetGPUVirtualAddress() + GetBaseObjectDataOffset();
 }

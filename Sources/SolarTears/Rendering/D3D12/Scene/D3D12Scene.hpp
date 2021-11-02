@@ -40,8 +40,8 @@ namespace D3D12
 		D3D12_VERTEX_BUFFER_VIEW mSceneVertexBufferView;
 		D3D12_INDEX_BUFFER_VIEW  mSceneIndexBufferView;
 
-		wil::com_ptr_nothrow<ID3D12Resource> mSceneStaticConstantBuffer;  //Common buffer for all constant buffer data (GPU-local)
-		wil::com_ptr_nothrow<ID3D12Resource> mSceneDynamicDataBuffer;     //Common buffer for all dynamic data (CPU-visible)
+		wil::com_ptr_nothrow<ID3D12Resource> mSceneConstantBuffer; //Common buffer for all constant buffer data (GPU-local)
+		wil::com_ptr_nothrow<ID3D12Resource> mSceneUploadBuffer;   //Common buffer for all dynamic upload data (CPU-visible)
 
 		std::vector<wil::com_ptr_nothrow<ID3D12Resource2>> mSceneTextures;
 

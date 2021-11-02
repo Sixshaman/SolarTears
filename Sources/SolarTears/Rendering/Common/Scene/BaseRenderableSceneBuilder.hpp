@@ -43,19 +43,23 @@ private:
 	void FillMeshLists(const std::vector<std::span<const NamedSceneMeshData>>& sortedInstanceSpans);
 
 	//Step 5 of filling in scene data structures
+	//Calculates the number of static and dynamic objects in the scene
+	void SeparateNonStaticObjects(const std::vector<std::span<const NamedSceneMeshData>>& sortedInstanceSpans);
+
+	//Step 6 of filling in scene data structures
 	//Loads vertex and index buffer data from geometries and initializes initial positional data
 	//Pre-sorting all meshes by geometry in previous steps achieves coherence
 	void AssignSubmeshGeometries(const std::unordered_map<std::string, RenderableSceneGeometryData>& descriptionGeometries, const std::vector<std::span<const NamedSceneMeshData>>& sceneMeshInstanceSpans, const std::unordered_map<std::string_view, SceneObjectLocation>& sceneMeshInitialLocations);
 
-	//Step 6 of filling in scene data structures
+	//Step 7 of filling in scene data structures
 	//Initializes materials for scene submeshes
 	void AssignSubmeshMaterials(const std::unordered_map<std::string, RenderableSceneMaterialData>& descriptionMaterials, const std::vector<std::span<const NamedSceneMeshData>>& meshInstanceSpans);
 
-	//Step 7 of filling in scene data structures
+	//Step 8 of filling in scene data structures
 	//Initializes initial object data
 	void FillInitialObjectData(const std::vector<std::span<const NamedSceneMeshData>>& meshInstanceSpans, const std::unordered_map<std::string_view, SceneObjectLocation>& sceneMeshInitialLocations);
 
-	//Step 8 of filling in scene data structures
+	//Step 9 of filling in scene data structures
 	//Builds a map of mesh name -> object handle
 	void AssignMeshHandles(const std::vector<std::span<const NamedSceneMeshData>>& meshInstanceSpans, std::unordered_map<std::string_view, RenderableSceneObjectHandle>& outObjectHandles);
 
@@ -72,6 +76,8 @@ protected:
 	std::vector<RenderableSceneMaterial> mMaterialData;
 	std::vector<std::wstring>            mTexturesToLoad;
 
-	std::vector<SceneObjectLocation> mInitialStaticInstancedObjectData;
-	std::vector<SceneObjectLocation> mInitialRigidObjectData;
+	std::vector<SceneObjectLocation> mInitialObjectData;
+
+	uint32_t mStaticInstancedObjectCount;
+	uint32_t mRigidObjectCount;
 };
