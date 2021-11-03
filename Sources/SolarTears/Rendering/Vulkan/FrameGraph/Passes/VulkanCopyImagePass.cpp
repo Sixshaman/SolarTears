@@ -17,7 +17,7 @@ Vulkan::CopyImagePass::~CopyImagePass()
 {
 }
 
-void Vulkan::CopyImagePass::RecordExecution(VkCommandBuffer commandBuffer, [[maybe_unused]] const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig, [[maybe_unused]] uint32_t frameResourceIndex) const
+void Vulkan::CopyImagePass::RecordExecution(VkCommandBuffer commandBuffer, [[maybe_unused]] const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig) const
 {
 	VkImageCopy imageCopyInfo;
 	imageCopyInfo.srcOffset.x                   = 0;

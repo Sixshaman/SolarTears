@@ -20,7 +20,7 @@ layout(set = 3, binding = 0) uniform FrameConstants
 layout(set = 3, binding = 1) uniform ObjectConstants
 {
 	mat4 ModelMatrix;
-} SceneDynamicObjectDatas[];
+} SceneObjectDatas[];
 
 layout(push_constant) uniform ObjectPushConstants
 {

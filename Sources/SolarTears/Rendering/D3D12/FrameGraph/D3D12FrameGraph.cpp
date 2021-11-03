@@ -138,7 +138,7 @@ void D3D12::FrameGraph::RecordGraphicsPasses(ID3D12GraphicsCommandList6* command
 			commandList->ResourceBarrier(beforePassBarrierCount, barrierPointer);
 		}
 
-		mRenderPasses[passIndex]->RecordExecution(commandList, scene, mFrameGraphConfig, frameIndex % Utils::InFlightFrameCount);
+		mRenderPasses[passIndex]->RecordExecution(commandList, scene, mFrameGraphConfig);
 
 		if(afterPassBarrierCount != 0)
 		{

@@ -15,18 +15,15 @@ inline void Vulkan::GBufferPass::RegisterShaders(ShaderDatabase* shaderDatabase)
 	//Load shaders in advance to process all bindings common for all passes (scene, samplers)
 	const std::wstring shaderFolder = Utils::GetMainDirectory() + L"Shaders/Vulkan/GBuffer/";
 	
-	std::wstring staticShaderFilename          = shaderFolder + L"GBufferDrawStatic.vert.spv";
-	std::wstring staticInstancedShaderFilename = shaderFolder + L"GBufferDrawStaticInstanced.vert.spv";
-	std::wstring rigidShaderFilename           = shaderFolder + L"GBufferDrawRigid.vert.spv";
-	std::wstring fragmentShaderFilename        = shaderFolder + L"GBufferDraw.frag.spv";
+	std::wstring staticShaderFilename   = shaderFolder + L"GBufferDrawStatic.vert.spv";
+	std::wstring rigidShaderFilename    = shaderFolder + L"GBufferDrawRigid.vert.spv";
+	std::wstring fragmentShaderFilename = shaderFolder + L"GBufferDraw.frag.spv";
 
-	std::array staticShaders          = {staticShaderFilename,          fragmentShaderFilename};
-	std::array staticInstancedShaders = {staticInstancedShaderFilename, fragmentShaderFilename};
-	std::array rigidShaders           = {rigidShaderFilename,           fragmentShaderFilename};
+	std::array staticShaders = {staticShaderFilename, fragmentShaderFilename};
+	std::array rigidShaders  = {rigidShaderFilename,  fragmentShaderFilename};
 
-	shaderDatabase->RegisterShaderGroup(StaticShaderGroup,          staticShaders);
-	shaderDatabase->RegisterShaderGroup(StaticInstancedShaderGroup, staticInstancedShaders);
-	shaderDatabase->RegisterShaderGroup(RigidShaderGroup,           rigidShaders);
+	shaderDatabase->RegisterShaderGroup(StaticShaderGroup, staticShaders);
+	shaderDatabase->RegisterShaderGroup(RigidShaderGroup,  rigidShaders);
 }
 
 inline bool Vulkan::GBufferPass::PropagateSubresourceInfos([[maybe_unused]] std::span<SubresourceMetadataPayload> inoutMetadataPayloads)

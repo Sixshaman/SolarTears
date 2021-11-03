@@ -31,7 +31,7 @@ namespace Vulkan
 		RenderPass& operator=(RenderPass&& right) = default;
 
 	public:
-		virtual void RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig, uint32_t frameResourceIndex) const = 0;
+		virtual void RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig) const = 0;
 
 		virtual void ValidateDescriptorSetSpans(DescriptorDatabase* descriptorDatabase, const VkDescriptorSet* originalSpanStartPoint) = 0;
 

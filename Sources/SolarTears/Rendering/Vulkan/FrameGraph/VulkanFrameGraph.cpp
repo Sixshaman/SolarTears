@@ -251,7 +251,7 @@ void Vulkan::FrameGraph::RecordGraphicsPasses(VkCommandBuffer graphicsCommandBuf
 			vkCmdPipelineBarrier(graphicsCommandBuffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, memoryBarrierPointer, 0, bufferBarrierPointer, beforePassBarrierCount, imageBarrierPointer);
 		}
 
-		mRenderPasses[passIndex]->RecordExecution(graphicsCommandBuffer, scene, mFrameGraphConfig, frameIndex % Utils::InFlightFrameCount);
+		mRenderPasses[passIndex]->RecordExecution(graphicsCommandBuffer, scene, mFrameGraphConfig);
 
 		if(afterPassBarrierCount != 0)
 		{

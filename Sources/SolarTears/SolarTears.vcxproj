@@ -239,15 +239,6 @@
       <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compiling %(Identity): %(Command)</Message>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv</Outputs>
     </CustomBuild>
-    <CustomBuild Include="Shaders\Vulkan\GBuffer\GBufferDrawStaticInstanced.vert">
-      <FileType>Document</FileType>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling %(Identity): %(Command)</Message>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv</Outputs>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compiling %(Identity): %(Command)</Message>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv</Outputs>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">"$(VULKAN_SDK)\Bin\glslangValidator.exe" -V -g0 -o "$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv" "%(Identity)"</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">"$(VULKAN_SDK)\Bin\glslangValidator.exe" -V -Od -g -o "$(OutDir)Shaders\Vulkan\GBuffer\%(Filename)%(Extension).spv" "%(Identity)"</Command>
-    </CustomBuild>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="Shaders\D3D12\GBuffer\GBufferDrawPS.hlsl">
