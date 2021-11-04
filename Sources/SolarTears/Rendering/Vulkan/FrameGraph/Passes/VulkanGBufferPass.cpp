@@ -121,7 +121,7 @@ void Vulkan::GBufferPass::ObtainDescriptorData(ShaderDatabase* shaderDatabase, u
 	shaderGroupPipelineOrder[rigidGroupIndex]  = RigidShaderGroup;
 	
 	std::array<DescriptorSetBindRange, shaderGroupPipelineOrder.size()> setBindRangesPerShaderGroup;
-	mDescriptorSets = shaderDatabase->AssignPassSets(passIndex, frameResourceIndex, shaderGroupPipelineOrder, setBindRangesPerShaderGroup);
+	mDescriptorSets = shaderDatabase->AssignPassSets(passIndex, shaderGroupPipelineOrder, setBindRangesPerShaderGroup);
 
 	mStaticDrawChangedSetSpan = Span<uint32_t>{.Begin = setBindRangesPerShaderGroup[staticGroupIndex].Begin, .End = setBindRangesPerShaderGroup[staticGroupIndex].End};
 	mRigidDrawChangedSetSpan  = Span<uint32_t>{.Begin = setBindRangesPerShaderGroup[rigidGroupIndex].Begin,  .End = setBindRangesPerShaderGroup[rigidGroupIndex].End};

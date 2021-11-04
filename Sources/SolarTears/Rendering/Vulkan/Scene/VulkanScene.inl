@@ -1,7 +1,7 @@
 template<typename SubmeshCallback>
 void RenderableScene::DrawStaticObjects(VkCommandBuffer commandBuffer, SubmeshCallback submeshCallback) const
 {
-	for(uint32_t meshIndex = mStaticMeshSpan.Begin; meshIndex < mStaticMeshSpan.End; meshIndex++)
+	for(uint32_t meshIndex = mStaticUniqueMeshSpan.Begin; meshIndex < mStaticUniqueMeshSpan.End; meshIndex++)
 	{
 		for(uint32_t submeshIndex = mSceneMeshes[meshIndex].FirstSubmeshIndex; submeshIndex < mSceneMeshes[meshIndex].AfterLastSubmeshIndex; submeshIndex++)
 		{

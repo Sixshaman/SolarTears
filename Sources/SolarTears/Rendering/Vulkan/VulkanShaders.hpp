@@ -80,9 +80,8 @@ namespace Vulkan
 		//The data structure to create descriptor set span
 		struct DescriptorSetSpanMetadata
 		{
-			uint32_t       PassId;             //Frame graph-specific pass id for pass sets
-			uint32_t       FrameResourceIndex; //Frame resource index for scene sets
-			Span<uint32_t> SetLayoutNodeSpan;  //The span in mSetLayoutIndicesPerGroupSequences for this descriptor set span
+			uint32_t       PassId;            //Frame graph-specific pass id for pass sets or -1 for shared sets
+			Span<uint32_t> SetLayoutNodeSpan; //The span in mSetLayoutIndicesPerGroupSequences for this descriptor set span
 		};
 
 	public:
@@ -114,7 +113,7 @@ namespace Vulkan
 		//The span is built in such a way that binding pipelines according to order in shaderGroupSequence would produce the least amount of descriptors needed to be rebound
 		//Returns the descriptor sub-span for each entry in shaderGroupSequence in outBindSubspansPerGroup
 		//Returns the firstSet parameter for vkBindDescriptorSets for each entry in shaderGroupSequence in outBindPointsPerGroup
-		std::span<VkDescriptorSet> AssignPassSets(uint32_t passIndex, uint32_t frame, std::span<const std::string_view> shaderGroupSequence, std::span<DescriptorSetBindRange> outBindRangesPerGroup);
+		std::span<VkDescriptorSet> AssignPassSets(uint32_t passIndex, std::span<const std::string_view> shaderGroupSequence, std::span<DescriptorSetBindRange> outBindRangesPerGroup);
 
 		//Registers the set create infos in databases and transfers the ownership of all set layouts from shared domain to shared descriptor database 
 		void FlushDescriptorSetData(SharedDescriptorDatabaseBuilder* sharedDatabaseBuilder, PassDescriptorDatabaseBuilder* passDatabaseBuilder);

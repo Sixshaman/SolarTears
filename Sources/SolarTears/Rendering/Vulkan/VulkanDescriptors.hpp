@@ -22,7 +22,6 @@ namespace Vulkan
 		struct SharedSetCreateMetadata
 		{
 			VkDescriptorSetLayout SetLayout;
-			uint32_t              SetFrameIndex;
 			Span<uint32_t>        BindingSpan;
 		};
 
