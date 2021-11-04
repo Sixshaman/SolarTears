@@ -81,7 +81,7 @@ void D3D12::GBufferPass::RecordExecution(ID3D12GraphicsCommandList6* commandList
 		commandList->SetGraphicsRoot32BitConstant((UINT)GBufferRootBindings::ObjectIndex, objectDataIndex, 0);
 	};
 
-	commandList->SetGraphicsRootConstantBufferView((UINT)GBufferRootBindings::PerFrameBuffer, scene->GetFrameData());
+	commandList->SetGraphicsRootConstantBufferView((UINT)GBufferRootBindings::PerFrameBuffer, scene->GetFrameDataStart());
 
 	commandList->SetGraphicsRootDescriptorTable((UINT)GBufferRootBindings::Materials, mSceneMaterialsTable);
 	commandList->SetGraphicsRootDescriptorTable((UINT)GBufferRootBindings::Textures,  mSceneTexturesTable);
@@ -117,8 +117,7 @@ void D3D12::GBufferPass::RequestSceneDescriptors(DescriptorCreator* descriptorCr
 {
 	descriptorCreator->RequestTexturesDescriptorTable();
 	descriptorCreator->RequestMaterialDataDescriptorTable();
-	descriptorCreator->RequestStaticObjectDataDescriptorTable();
-	descriptorCreator->RequestDynamicObjectDataDescriptorTable();
+	descriptorCreator->RequestObjectDataDescriptorTable();
 }
 
 void D3D12::GBufferPass::ValidateSceneDescriptors(const DescriptorCreator* descriptorCreator)

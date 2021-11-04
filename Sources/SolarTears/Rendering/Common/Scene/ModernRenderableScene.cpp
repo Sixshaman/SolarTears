@@ -171,6 +171,11 @@ uint64_t ModernRenderableScene::GetUploadRigidObjectDataOffset(uint32_t frameRes
 	return GetUploadFrameDataOffset(frameResourceIndex) + mFrameChunkDataSize + (uint64_t)rigidObjectDataIndex * mObjectChunkDataSize;
 }
 
+uint32_t ModernRenderableScene::GetMaterialCount() const
+{
+	return mMaterialDataSize / mMaterialChunkDataSize;
+}
+
 uint32_t ModernRenderableScene::GetStaticObjectCount() const
 {
 	return mStaticObjectDataSize / mObjectChunkDataSize;

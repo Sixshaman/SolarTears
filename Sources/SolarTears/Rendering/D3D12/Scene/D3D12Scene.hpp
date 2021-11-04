@@ -30,8 +30,12 @@ namespace D3D12
 		template<typename MeshCallback, typename SubmeshCallback>
 		inline void DrawNonStaticObjects(ID3D12GraphicsCommandList* cmdList, MeshCallback meshCallback, SubmeshCallback submeshCallback) const;
 
-		D3D12_GPU_VIRTUAL_ADDRESS GetFrameData()  const;
-		D3D12_GPU_VIRTUAL_ADDRESS GetObjectData() const;
+		D3D12_GPU_VIRTUAL_ADDRESS GetMaterialDataStart() const;
+		D3D12_GPU_VIRTUAL_ADDRESS GetFrameDataStart()    const;
+		D3D12_GPU_VIRTUAL_ADDRESS GetObjectDataStart()   const;
+
+		D3D12_GPU_VIRTUAL_ADDRESS GetMaterialDataStart(uint32_t materialIndex) const;
+		D3D12_GPU_VIRTUAL_ADDRESS GetObjectDataStart(uint32_t objectIndex)     const;
 
 	private:
 		wil::com_ptr_nothrow<ID3D12Resource> mSceneVertexBuffer;

@@ -33,6 +33,7 @@ protected:
 	uint64_t GetUploadFrameDataOffset(uint32_t frameResourceIndex) const;
 	uint64_t GetUploadRigidObjectDataOffset(uint32_t frameResourceIndex, uint32_t rigidObjectDataIndex) const;
 
+	uint32_t GetMaterialCount()     const;
 	uint32_t GetStaticObjectCount() const;
 	uint32_t GetRigidObjectCount()  const;
 

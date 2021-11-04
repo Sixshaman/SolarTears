@@ -27,12 +27,27 @@ void D3D12::RenderableScene::PrepareDrawBuffers(ID3D12GraphicsCommandList* cmdLi
 	cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
 
-D3D12_GPU_VIRTUAL_ADDRESS D3D12::RenderableScene::GetFrameData() const
+D3D12_GPU_VIRTUAL_ADDRESS D3D12::RenderableScene::GetMaterialDataStart() const
+{
+	return mSceneConstantBuffer->GetGPUVirtualAddress() + GetBaseMaterialDataOffset();
+}
+
+D3D12_GPU_VIRTUAL_ADDRESS D3D12::RenderableScene::GetFrameDataStart() const
 {
 	return mSceneConstantBuffer->GetGPUVirtualAddress() + GetBaseFrameDataOffset();
 }
 
-D3D12_GPU_VIRTUAL_ADDRESS D3D12::RenderableScene::GetObjectData() const
+D3D12_GPU_VIRTUAL_ADDRESS D3D12::RenderableScene::GetObjectDataStart() const
 {
-	return mSceneConstantBuffer->GetGPUVirtualAddress() + GetBaseObjectDataOffset();
+	return mSceneConstantBuffer->GetGPUVirtualAddress() + GetBaseStaticObjectDataOffset();
+}
+
+D3D12_GPU_VIRTUAL_ADDRESS D3D12::RenderableScene::GetMaterialDataStart(uint32_t materialIndex) const
+{
+	return mSceneConstantBuffer->GetGPUVirtualAddress() + GetMaterialDataOffset(materialIndex);
+}
+
+D3D12_GPU_VIRTUAL_ADDRESS D3D12::RenderableScene::GetObjectDataStart(uint32_t objectIndex) const
+{
+	return mSceneConstantBuffer->GetGPUVirtualAddress() + GetObjectDataOffset(objectIndex);
 }
