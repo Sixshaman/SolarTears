@@ -146,6 +146,7 @@ void ModernRenderableSceneBuilder::InitializeDynamicConstantData()
 	mModernSceneToBuild->mNextFrameRigidMeshUpdates.resize((size_t)mRigidObjectCount * Utils::InFlightFrameCount + 1); //1 for each potential update and terminating (-1)
 
 	mModernSceneToBuild->mCurrFrameRigidMeshUpdateIndices.resize(mRigidObjectCount); //1 for each potential update
+	mModernSceneToBuild->mCurrFrameUpdatedObjectCount = 0;
 
 	mModernSceneToBuild->mPrevFrameDataToUpdate.resize(mRigidObjectCount); //1 for each potential update
 	mModernSceneToBuild->mCurrFrameDataToUpdate.resize(mRigidObjectCount); //1 for each potential update

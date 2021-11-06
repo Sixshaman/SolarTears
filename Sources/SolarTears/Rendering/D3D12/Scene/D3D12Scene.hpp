@@ -11,6 +11,8 @@
 namespace D3D12
 {
 	class ShaderManager;
+	class WorkerCommandLists;
+	class DeviceQueues;
 
 	class RenderableScene: public ModernRenderableScene
 	{
@@ -22,6 +24,9 @@ namespace D3D12
 		~RenderableScene();
 
 	public:
+		void   CopyUploadedSceneObjects(WorkerCommandLists* commandLists, DeviceQueues* deviceQueues, uint32_t frameResourceIndex);
+		UINT64 GetUploadFenceValue(uint32_t frameResourceIndex) const;
+
 		void PrepareDrawBuffers(ID3D12GraphicsCommandList* cmdList) const;
 
 		template<typename SubmeshCallback>
@@ -52,6 +57,8 @@ namespace D3D12
 		wil::com_ptr_nothrow<ID3D12Heap> mHeapForGpuBuffers;
 		wil::com_ptr_nothrow<ID3D12Heap> mHeapForCpuVisibleBuffers;
 		wil::com_ptr_nothrow<ID3D12Heap> mHeapForTextures;
+
+		UINT64 mUploadCopyFenceValues[Utils::InFlightFrameCount];
 	};
 
 	#include "D3D12Scene.inl"

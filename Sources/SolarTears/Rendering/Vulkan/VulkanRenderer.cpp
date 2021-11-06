@@ -174,6 +174,8 @@ void Vulkan::Renderer::Render()
 
 	ThrowIfFailed(vkResetFences(mDevice, (uint32_t)(frameFences.size()), frameFences.data()));
 
+	mScene->CopyUploadedSceneObjects(mCommandBuffers.get(), mDeviceQueues.get(), currentFrameResourceIndex);
+
 	VkSemaphore preTraverseSemaphore = mSwapChain->GetImageAcquiredSemaphore(currentFrameResourceIndex);
 	mSwapChain->AcquireImage(mDevice, currentFrameResourceIndex);
 

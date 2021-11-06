@@ -11,6 +11,9 @@
 
 namespace Vulkan
 {
+	class WorkerCommandBuffers;
+	class DeviceQueues;
+
 	class RenderableScene: public ModernRenderableScene
 	{
 		friend class RenderableSceneBuilder;
@@ -21,6 +24,9 @@ namespace Vulkan
 		~RenderableScene();
 
 	public:
+		void        CopyUploadedSceneObjects(WorkerCommandBuffers* commandBuffers, DeviceQueues* deviceQueues, uint32_t frameResourceIndex);
+		VkSemaphore GetUploadSemaphore(uint32_t frameResourceIndex) const;
+
 		void PrepareDrawBuffers(VkCommandBuffer commandBuffer) const;
 
 		template<typename SubmeshCallback>
@@ -44,6 +50,9 @@ namespace Vulkan
 		VkDeviceMemory mBufferMemory;
 		VkDeviceMemory mBufferHostVisibleMemory;
 		VkDeviceMemory mTextureMemory;
+
+		VkSemaphore               mUploadCopySemaphores[Utils::InFlightFrameCount];
+		std::vector<VkBufferCopy> mCurrFrameUploadCopyRegions;
 	};
 
 	#include "VulkanScene.inl"

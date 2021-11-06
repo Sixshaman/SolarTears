@@ -104,6 +104,9 @@ void D3D12::FrameGraph::Traverse(ThreadPool* threadPool, const RenderableScene* 
 
 		mFrameRecordedGraphicsCommandLists[mGraphicsPassSpansPerDependencyLevel.size() - 1] = mainGraphicsCommandList;
 
+
+		mDeviceQueuesRef->GraphicsQueueWaitForCopyQueue(scene->GetUploadFenceValue(currentFrameResourceIndex));
+
 		ID3D12CommandQueue* graphicsQueue = mDeviceQueuesRef->GraphicsQueueHandle();
 		graphicsQueue->ExecuteCommandLists((UINT)mGraphicsPassSpansPerDependencyLevel.size(), mFrameRecordedGraphicsCommandLists.data());
 	}

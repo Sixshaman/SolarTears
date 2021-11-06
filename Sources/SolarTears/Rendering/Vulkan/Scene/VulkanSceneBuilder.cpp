@@ -167,6 +167,8 @@ void Vulkan::RenderableSceneBuilder::LoadTextureFromFile(const std::wstring& tex
 void Vulkan::RenderableSceneBuilder::FinishBufferCreation()
 {
 	AllocateBuffersMemory();
+
+	mVulkanSceneToBuild->mCurrFrameUploadCopyRegions.resize(mRigidObjectCount + 1); //One for frame data update and one for each potential object data update
 }
 
 void Vulkan::RenderableSceneBuilder::FinishTextureCreation()

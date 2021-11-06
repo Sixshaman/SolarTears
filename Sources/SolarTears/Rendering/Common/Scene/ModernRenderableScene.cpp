@@ -109,14 +109,14 @@ void ModernRenderableScene::UpdateRigidSceneObjects(const std::span<ObjectDataUp
 	mNextFrameRigidMeshUpdates[nextFrameUpdateIndex] = {.MeshHandleIndex = (uint32_t)(-1), .ObjectDataIndex = (uint32_t)(-1)};
 	std::swap(mPrevFrameRigidMeshUpdates, mNextFrameRigidMeshUpdates);
 
-	const uint32_t currFrameUpdateCount = currFrameUpdateIndex;
+	mCurrFrameUpdatedObjectCount = currFrameUpdateIndex;
 
 	uint32_t frameResourceIndex = frameNumber % Utils::InFlightFrameCount;
-	for(uint32_t updateIndex = 0; updateIndex < currFrameUpdateCount; updateIndex++)
+	for(uint32_t updateIndex = 0; updateIndex < mCurrFrameUpdatedObjectCount; updateIndex++)
 	{
 		uint32_t meshIndex = mCurrFrameRigidMeshUpdateIndices[updateIndex];
 
-		uint64_t objectDataOffset = GetUploadRigidObjectDataOffset(frameResourceIndex, meshIndex);
+		uint64_t objectDataOffset = GetUploadRigidObjectDataOffset(frameResourceIndex, meshIndex) - GetStaticObjectCount();
 		memcpy((std::byte*)mSceneUploadDataBufferPointer + objectDataOffset, &mCurrFrameDataToUpdate[updateIndex], sizeof(PerObjectData));
 	}
 

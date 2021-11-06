@@ -47,6 +47,7 @@ protected:
 
 	//The object data that is gonna be uploaded to GPU. The elements in mCurrFrameDataToUpdate correspond to elements in mCurrFrameRigidMeshUpdateIndices
 	std::vector<PerObjectData> mCurrFrameDataToUpdate;
+	uint32_t                   mCurrFrameUpdatedObjectCount;
 
 	//Leftover updates from the previous frame
 	std::vector<PerObjectData> mPrevFrameDataToUpdate;
