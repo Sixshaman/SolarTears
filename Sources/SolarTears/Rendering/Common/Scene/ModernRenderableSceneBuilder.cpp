@@ -67,17 +67,17 @@ void ModernRenderableSceneBuilder::InitializeBufferCreationData()
 	mIntermediateBufferStaticConstantDataOffset = mIntermediateBufferSize;
 	mIntermediateBufferSize                    += constantDataSize;
 
-	mStaticConstantData.resize(mModernSceneToBuild->mStaticObjectDataSize);
+	mStaticConstantData.resize(mModernSceneToBuild->mMaterialDataSize + mModernSceneToBuild->mStaticObjectDataSize);
 
-	std::byte* materialDataStart = mStaticConstantData.data() + mModernSceneToBuild->GetBaseMaterialDataOffset();
+	std::byte* staticMaterialDataStart = mStaticConstantData.data();
 	for(uint32_t materialIndex = 0; materialIndex < (uint32_t)mMaterialData.size(); materialIndex++)
 	{
-		std::byte* materialDataPointer = materialDataStart + materialIndex * mModernSceneToBuild->mMaterialChunkDataSize;
+		std::byte* materialDataPointer = staticMaterialDataStart + materialIndex * mModernSceneToBuild->mMaterialChunkDataSize;
 		memcpy(materialDataPointer, &mMaterialData[materialIndex], sizeof(RenderableSceneMaterial));
 	}
 
 	const uint32_t initialDataStaticObjectsOffset = 0;
-	std::byte* staticObjectDataStart = mStaticConstantData.data() + mModernSceneToBuild->GetBaseStaticObjectDataOffset();
+	std::byte* staticObjectDataStart = mStaticConstantData.data() + mModernSceneToBuild->mMaterialDataSize;
 	for(uint32_t staticObjectIndex = 0; staticObjectIndex < mStaticInstancedObjectCount; staticObjectIndex++)
 	{
 		const BaseRenderableScene::PerObjectData perObjectData = mModernSceneToBuild->PackObjectData(mInitialObjectData[initialDataStaticObjectsOffset + staticObjectIndex]);

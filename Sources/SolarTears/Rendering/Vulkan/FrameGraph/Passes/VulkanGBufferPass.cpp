@@ -104,10 +104,7 @@ void Vulkan::GBufferPass::RecordExecution(VkCommandBuffer commandBuffer, const R
 
 void Vulkan::GBufferPass::ValidateDescriptorSetSpans(DescriptorDatabase* descriptorDatabase, const VkDescriptorSet* originalSpanStartPoint)
 {
-	for(uint32_t frameResourceIndex = 0; frameResourceIndex < Utils::InFlightFrameCount; frameResourceIndex++)
-	{
-		mDescriptorSets = descriptorDatabase->ValidateSetSpan(mDescriptorSets, originalSpanStartPoint);
-	}
+	mDescriptorSets = descriptorDatabase->ValidateSetSpan(mDescriptorSets, originalSpanStartPoint);
 }
 
 void Vulkan::GBufferPass::ObtainDescriptorData(ShaderDatabase* shaderDatabase, uint32_t passIndex)

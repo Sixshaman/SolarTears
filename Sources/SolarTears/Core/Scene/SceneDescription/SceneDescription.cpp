@@ -42,7 +42,7 @@ void SceneDescription::BuildScene(Scene* scene, BaseRenderableScene* renderableC
 	scene->mSceneObjects.reserve(mSceneObjects.size());
 	for(size_t i = 0; i < mSceneObjects.size(); i++)
 	{
-		RenderableSceneObjectHandle renderableHandle;
+		RenderableSceneObjectHandle renderableHandle = (uint32_t)(-1);
 
 		auto renderableIt = meshHandles.find(mSceneObjects[i].GetMeshComponentName());
 		if(renderableIt != meshHandles.end())

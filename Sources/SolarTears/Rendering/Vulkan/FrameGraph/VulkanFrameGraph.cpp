@@ -161,7 +161,7 @@ void Vulkan::FrameGraph::Traverse(ThreadPool* threadPool, RenderableScene* scene
 			graphicsFenceToSignal = traverseFence;
 		}
 
-		std::array graphicsWaitStages     = {(VkPipelineStageFlags)VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT};
+		std::array graphicsWaitStages     = {(VkPipelineStageFlags)VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, (VkPipelineStageFlags)VK_PIPELINE_STAGE_TRANSFER_BIT};
 		std::array graphicsWaitSemaphores = {lastTraverseSemaphore, scene->GetUploadSemaphore(currentFrameResourceIndex)};
 
 		VkSemaphore graphicsSemaphore = mGraphicsSemaphores[currentFrameResourceIndex];

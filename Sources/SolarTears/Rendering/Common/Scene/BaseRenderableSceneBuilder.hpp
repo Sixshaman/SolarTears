@@ -1,6 +1,7 @@
 #pragma once
 
 #include "RenderableSceneDescription.hpp"
+#include "../../../Core/DataStructures/Span.hpp"
 #include <span>
 #include <string_view>
 
@@ -13,6 +14,14 @@ class BaseRenderableSceneBuilder
 	{
 		std::string_view        MeshName;
 		RenderableSceneMeshData MeshData;
+	};
+
+	struct InstanceSpanSpans
+	{
+		Span<uint32_t> StaticUniqueSpan;
+		Span<uint32_t> StaticInstancedSpan;
+		Span<uint32_t> RigidUniqueSpan;
+		Span<uint32_t> RigidInstancedSpan;
 	};
 
 public:
@@ -36,30 +45,26 @@ private:
 
 	//Step 3 of filling in scene data structures
 	//Sorts the instance spans as (static meshes, static instanced meshes, rigid meshes)
-	void SortInstanceSpans(std::vector<std::span<const NamedSceneMeshData>>& inoutInstanceSpans);
+	void SortInstanceSpans(std::vector<std::span<const NamedSceneMeshData>>& inoutInstanceSpans, InstanceSpanSpans* outSpanSpans);
 
 	//Step 4 of filling in scene data structures
 	//Allocates the memory for scene mesh and submesh data in the same order as sortedInstanceSpans
-	void FillMeshLists(const std::vector<std::span<const NamedSceneMeshData>>& sortedInstanceSpans);
+	void FillMeshLists(const std::vector<std::span<const NamedSceneMeshData>>& sortedInstanceSpans, const InstanceSpanSpans& spanSpans);
 
 	//Step 5 of filling in scene data structures
-	//Calculates the number of static and dynamic objects in the scene
-	void SeparateNonStaticObjects(const std::vector<std::span<const NamedSceneMeshData>>& sortedInstanceSpans);
-
-	//Step 6 of filling in scene data structures
 	//Loads vertex and index buffer data from geometries and initializes initial positional data
 	//Pre-sorting all meshes by geometry in previous steps achieves coherence
 	void AssignSubmeshGeometries(const std::unordered_map<std::string, RenderableSceneGeometryData>& descriptionGeometries, const std::vector<std::span<const NamedSceneMeshData>>& sceneMeshInstanceSpans, const std::unordered_map<std::string_view, SceneObjectLocation>& sceneMeshInitialLocations);
 
-	//Step 7 of filling in scene data structures
+	//Step 6 of filling in scene data structures
 	//Initializes materials for scene submeshes
 	void AssignSubmeshMaterials(const std::unordered_map<std::string, RenderableSceneMaterialData>& descriptionMaterials, const std::vector<std::span<const NamedSceneMeshData>>& meshInstanceSpans);
 
-	//Step 8 of filling in scene data structures
+	//Step 7 of filling in scene data structures
 	//Initializes initial object data
 	void FillInitialObjectData(const std::vector<std::span<const NamedSceneMeshData>>& meshInstanceSpans, const std::unordered_map<std::string_view, SceneObjectLocation>& sceneMeshInitialLocations);
 
-	//Step 9 of filling in scene data structures
+	//Step 8 of filling in scene data structures
 	//Builds a map of mesh name -> object handle
 	void AssignMeshHandles(const std::vector<std::span<const NamedSceneMeshData>>& meshInstanceSpans, std::unordered_map<std::string_view, RenderableSceneObjectHandle>& outObjectHandles);
 

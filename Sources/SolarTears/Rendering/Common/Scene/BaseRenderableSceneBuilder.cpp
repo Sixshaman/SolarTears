@@ -25,14 +25,12 @@ void BaseRenderableSceneBuilder::Build(const RenderableSceneDescription& sceneDe
 	DetectInstanceSpans(namedSceneMeshes, instanceSpans);
 
 	//After this step we'll have instance groups sorted by mesh type
-	SortInstanceSpans(instanceSpans);
+	InstanceSpanSpans instanceSpanSpans;
+	SortInstanceSpans(instanceSpans, &instanceSpanSpans);
 
 	//After this step we'll have scene mesh buffers created
-	FillMeshLists(instanceSpans);
+	FillMeshLists(instanceSpans, instanceSpanSpans);
 
-	//After this step we'll know the number of static and non-static meshes
-	SeparateNonStaticObjects(instanceSpans);
-	
 	//After this step we'll have vertex and index buffers ready to be uploaded to GPU
 	AssignSubmeshGeometries(sceneDescription.mSceneGeometries, instanceSpans, sceneMeshInitialLocations);
 
@@ -117,9 +115,11 @@ void BaseRenderableSceneBuilder::DetectInstanceSpans(const std::vector<NamedScen
 	}
 }
 
-void BaseRenderableSceneBuilder::SortInstanceSpans(std::vector<std::span<const NamedSceneMeshData>>& inoutInstanceSpans)
+void BaseRenderableSceneBuilder::SortInstanceSpans(std::vector<std::span<const NamedSceneMeshData>>& inoutInstanceSpans, InstanceSpanSpans* outSpanSpans)
 {
-	//Do a small counting sort
+	assert(outSpanSpans != nullptr);
+
+	//A small counting sort
 	uint32_t staticMeshCount          = 0;
 	uint32_t staticInstancedMeshCount = 0;
 	uint32_t rigidMeshCount           = 0;
@@ -158,11 +158,23 @@ void BaseRenderableSceneBuilder::SortInstanceSpans(std::vector<std::span<const N
 
 	uint32_t totalMeshCount = staticMeshCount + staticInstancedMeshCount + rigidMeshCount + rigidInstancedMeshCount;
 	std::vector<std::span<const NamedSceneMeshData>> sortedInstanceSpans(totalMeshCount);
+	
+	outSpanSpans->StaticUniqueSpan.Begin = 0;
+	outSpanSpans->StaticUniqueSpan.End   = outSpanSpans->StaticUniqueSpan.Begin + staticMeshCount;
+
+	outSpanSpans->StaticInstancedSpan.Begin = outSpanSpans->StaticUniqueSpan.End;
+	outSpanSpans->StaticInstancedSpan.End   = outSpanSpans->StaticInstancedSpan.Begin + staticInstancedMeshCount;
+
+	outSpanSpans->RigidUniqueSpan.Begin = outSpanSpans->StaticInstancedSpan.End;
+	outSpanSpans->RigidUniqueSpan.End   = outSpanSpans->RigidUniqueSpan.Begin + rigidMeshCount;
+
+	outSpanSpans->RigidInstancedSpan.Begin = staticMeshCount + outSpanSpans->RigidUniqueSpan.End;
+	outSpanSpans->RigidInstancedSpan.End   = outSpanSpans->RigidInstancedSpan.Begin + rigidInstancedMeshCount;
 
 	uint32_t staticMeshIndex          = 0;
-	uint32_t staticInstancedMeshIndex = staticMeshCount;
-	uint32_t rigidMeshIndex           = staticMeshCount + staticInstancedMeshCount;
-	uint32_t rigidInstancedMeshIndex  = staticMeshCount + staticInstancedMeshCount + rigidMeshCount;
+	uint32_t staticInstancedMeshIndex = 0;
+	uint32_t rigidMeshIndex           = 0;
+	uint32_t rigidInstancedMeshIndex  = 0;
 	for(uint32_t instanceSpanIndex = 0; instanceSpanIndex < inoutInstanceSpans.size(); instanceSpanIndex++)
 	{
 		const std::span<const NamedSceneMeshData> instanceSpan = inoutInstanceSpans[instanceSpanIndex];
@@ -175,22 +187,22 @@ void BaseRenderableSceneBuilder::SortInstanceSpans(std::vector<std::span<const N
 		{
 			if(isSpanNonStatic)
 			{
-				sortedInstanceSpans[rigidMeshIndex++] = inoutInstanceSpans[instanceSpanIndex];
+				sortedInstanceSpans[outSpanSpans->RigidUniqueSpan.Begin + rigidMeshIndex++] = inoutInstanceSpans[instanceSpanIndex];
 			}
 			else
 			{
-				sortedInstanceSpans[staticMeshIndex++] = inoutInstanceSpans[instanceSpanIndex];
+				sortedInstanceSpans[outSpanSpans->StaticUniqueSpan.Begin + staticMeshIndex++] = inoutInstanceSpans[instanceSpanIndex];
 			}
 		}
 		else
 		{
 			if(isSpanNonStatic)
 			{
-				sortedInstanceSpans[rigidInstancedMeshIndex++] = inoutInstanceSpans[instanceSpanIndex];
+				sortedInstanceSpans[outSpanSpans->RigidInstancedSpan.Begin + rigidInstancedMeshIndex++] = inoutInstanceSpans[instanceSpanIndex];
 			}
 			else
 			{
-				sortedInstanceSpans[staticInstancedMeshIndex++] = inoutInstanceSpans[instanceSpanIndex];
+				sortedInstanceSpans[outSpanSpans->StaticInstancedSpan.Begin + staticInstancedMeshIndex++] = inoutInstanceSpans[instanceSpanIndex];
 			}
 		}
 	}
@@ -198,108 +210,95 @@ void BaseRenderableSceneBuilder::SortInstanceSpans(std::vector<std::span<const N
 	std::swap(inoutInstanceSpans, sortedInstanceSpans);
 }
 
-void BaseRenderableSceneBuilder::FillMeshLists(const std::vector<std::span<const NamedSceneMeshData>>& sortedInstanceSpans)
+void BaseRenderableSceneBuilder::FillMeshLists(const std::vector<std::span<const NamedSceneMeshData>>& sortedInstanceSpans, const InstanceSpanSpans& spanSpans)
 {
 	mSceneToBuild->mSceneMeshes.resize(sortedInstanceSpans.size());
 	mSceneToBuild->mSceneSubmeshes.clear();
 
-	mSceneToBuild->mStaticUniqueMeshSpan = {.Begin = 0,                                            .End = (uint32_t)mSceneToBuild->mSceneMeshes.size()};
-	mSceneToBuild->mNonStaticMeshSpan    = {.Begin = (uint32_t)mSceneToBuild->mSceneMeshes.size(), .End = (uint32_t)mSceneToBuild->mSceneMeshes.size()};
+	mSceneToBuild->mStaticUniqueMeshSpan.Begin  = 0;
+	mSceneToBuild->mStaticUniqueMeshSpan.End    = mSceneToBuild->mStaticUniqueMeshSpan.Begin;
+	mSceneToBuild->mStaticUniqueMeshSpan.End   += spanSpans.StaticUniqueSpan.End - spanSpans.StaticUniqueSpan.Begin;
 
-	uint32_t objectDataIndex = (uint32_t)(-1);
-	uint32_t meshIndex       = 0;
-	uint32_t submeshCount    = 0;
-	
-	Span<uint32_t>* currentSpan = &mSceneToBuild->mStaticUniqueMeshSpan;
+	mSceneToBuild->mNonStaticMeshSpan.Begin  = mSceneToBuild->mStaticUniqueMeshSpan.End;
+	mSceneToBuild->mNonStaticMeshSpan.End    = mSceneToBuild->mNonStaticMeshSpan.Begin;
+	mSceneToBuild->mNonStaticMeshSpan.End   += spanSpans.StaticInstancedSpan.End - spanSpans.StaticInstancedSpan.Begin;
+	mSceneToBuild->mNonStaticMeshSpan.End   += spanSpans.RigidUniqueSpan.End     - spanSpans.RigidUniqueSpan.Begin;
+	mSceneToBuild->mNonStaticMeshSpan.End   += spanSpans.RigidInstancedSpan.End  - spanSpans.RigidInstancedSpan.Begin;
 
-	uint32_t prevInstanceCount = 1;
-	bool     prevSpanNonStatic = false;
-	while(meshIndex < (uint32_t)sortedInstanceSpans.size())
+
+	uint32_t totalObjectDataCount = 0;
+	uint32_t totalSubmeshCount    = 0;
+
+	std::array spansForStaticUniqueMeshes = {spanSpans.StaticUniqueSpan};
+	for(uint32_t staticUniqueSpanIndex = 0; staticUniqueSpanIndex < spansForStaticUniqueMeshes.size(); staticUniqueSpanIndex++)
 	{
-		std::span<const NamedSceneMeshData> instanceSpan = sortedInstanceSpans[meshIndex];
-		const RenderableSceneMeshData& representativeMeshData = instanceSpan.front().MeshData;
+		uint32_t       spanObjectCount           = 0;
+		Span<uint32_t> spanForStaticUniqueMeshes = spansForStaticUniqueMeshes[staticUniqueSpanIndex];
 
-		uint32_t instanceCount   = (uint32_t)instanceSpan.size();
-		bool     isSpanNonStatic = (representativeMeshData.MeshFlags & (uint32_t)RenderableSceneMeshFlags::NonStatic);
-		
-		if(instanceCount != prevInstanceCount || isSpanNonStatic != prevSpanNonStatic)
+		for(uint32_t meshIndex = spanForStaticUniqueMeshes.Begin; meshIndex < spanForStaticUniqueMeshes.End; meshIndex++)
 		{
-			currentSpan->End = meshIndex;
+			std::span<const NamedSceneMeshData> instanceSpan = sortedInstanceSpans[meshIndex];
+			const RenderableSceneMeshData& representativeMeshData = instanceSpan.front().MeshData;
 
-			if(!isSpanNonStatic && instanceCount == 1)
+			mSceneToBuild->mSceneMeshes[meshIndex] = BaseRenderableScene::SceneMesh
 			{
-				//Static unique meshes
-				currentSpan     = &mSceneToBuild->mStaticUniqueMeshSpan;
-				objectDataIndex = (uint32_t)(-1);
-			}
-			else
+				.PerObjectDataIndex    = (uint32_t)(-1), //Static unique meshes don't have object data
+				.InstanceCount         = 1,
+				.FirstSubmeshIndex     = totalSubmeshCount,
+				.AfterLastSubmeshIndex = totalSubmeshCount + (uint32_t)representativeMeshData.Submeshes.size()
+			};
+
+			totalSubmeshCount += (uint32_t)representativeMeshData.Submeshes.size();
+			spanObjectCount   += 1;
+		}
+	}
+
+
+	constexpr uint32_t staticInstancedSpanIndex = 0;
+	constexpr uint32_t rigidUniqueSpanIndex     = 1;
+	constexpr uint32_t rigidInstancedSpanIndex  = 2;
+
+	std::array<Span<uint32_t>, 3> spansForNonStaticMeshes;
+	spansForNonStaticMeshes[staticInstancedSpanIndex] = spanSpans.StaticInstancedSpan;
+	spansForNonStaticMeshes[rigidUniqueSpanIndex]     = spanSpans.RigidUniqueSpan;
+	spansForNonStaticMeshes[rigidInstancedSpanIndex]  = spanSpans.RigidInstancedSpan;
+
+	std::array<uint32_t, spansForNonStaticMeshes.size()> objectDataCountsForNonStaticMeshes;
+	objectDataCountsForNonStaticMeshes.fill(0);
+	for(uint32_t nonStaticSpanIndex = 0; nonStaticSpanIndex < spansForNonStaticMeshes.size(); nonStaticSpanIndex++)
+	{
+		uint32_t       spanObjectCount           = 0;
+		Span<uint32_t> spanForStaticUniqueMeshes = spansForNonStaticMeshes[nonStaticSpanIndex];
+
+		for(uint32_t meshIndex = spanForStaticUniqueMeshes.Begin; meshIndex < spanForStaticUniqueMeshes.End; meshIndex++)
+		{
+			std::span<const NamedSceneMeshData> instanceSpan = sortedInstanceSpans[meshIndex];
+			const RenderableSceneMeshData& representativeMeshData = instanceSpan.front().MeshData;
+
+			uint32_t instanceCount = (uint32_t)instanceSpan.size();
+			uint32_t submeshCount  = (uint32_t)representativeMeshData.Submeshes.size();
+
+			mSceneToBuild->mSceneMeshes[meshIndex] = BaseRenderableScene::SceneMesh
 			{
-				//Non-static or non-unique meshes
-				currentSpan     = &mSceneToBuild->mNonStaticMeshSpan;
-				objectDataIndex = 0;
-			}
+				.PerObjectDataIndex    = totalObjectDataCount,
+				.InstanceCount         = instanceCount,
+				.FirstSubmeshIndex     = totalSubmeshCount,
+				.AfterLastSubmeshIndex = totalSubmeshCount + submeshCount
+			};
 
-			currentSpan->Begin = meshIndex;
-
-			prevSpanNonStatic = isSpanNonStatic;
-			prevInstanceCount = instanceCount;
+			totalObjectDataCount += instanceCount;
+			spanObjectCount      += instanceCount;
+			totalSubmeshCount    += submeshCount;
 		}
 
-		mSceneToBuild->mSceneMeshes[meshIndex] = BaseRenderableScene::SceneMesh
-		{
-			.PerObjectDataIndex    = objectDataIndex,
-			.InstanceCount         = instanceCount,
-			.FirstSubmeshIndex     = submeshCount,
-			.AfterLastSubmeshIndex = submeshCount + (uint32_t)representativeMeshData.Submeshes.size()
-		};
-
-		if(instanceCount > 1 || isSpanNonStatic)
-		{
-			objectDataIndex += 1; //Static non-instanced objects don't have object data
-		}
-
-		meshIndex    += 1;
-		submeshCount += (uint32_t)representativeMeshData.Submeshes.size();
+		objectDataCountsForNonStaticMeshes[nonStaticSpanIndex] += spanObjectCount;
 	}
 
-	currentSpan->End = meshIndex;
 
-	mSceneToBuild->mSceneSubmeshes.resize(submeshCount);
-}
+	mStaticInstancedObjectCount = objectDataCountsForNonStaticMeshes[staticInstancedSpanIndex];
+	mRigidObjectCount           = objectDataCountsForNonStaticMeshes[rigidUniqueSpanIndex] + objectDataCountsForNonStaticMeshes[rigidInstancedSpanIndex];
 
-void BaseRenderableSceneBuilder::SeparateNonStaticObjects(const std::vector<std::span<const NamedSceneMeshData>>& sortedInstanceSpans)
-{
-	uint32_t meshIndex = mSceneToBuild->mNonStaticMeshSpan.Begin;
-
-	uint32_t spanStart = meshIndex;
-	while(meshIndex < mSceneToBuild->mNonStaticMeshSpan.End)
-	{
-		std::span<const NamedSceneMeshData> instanceSpan = sortedInstanceSpans[meshIndex];
-		const RenderableSceneMeshData& representativeMeshData = instanceSpan.front().MeshData;
-
-		if(representativeMeshData.MeshFlags & (uint32_t)RenderableSceneMeshFlags::NonStatic)
-		{
-			break;
-		}
-
-		meshIndex++;
-	}
-
-	mStaticInstancedObjectCount = meshIndex - spanStart;
-
-	spanStart = meshIndex;
-	while(meshIndex < mSceneToBuild->mNonStaticMeshSpan.End)
-	{
-		std::span<const NamedSceneMeshData> instanceSpan = sortedInstanceSpans[meshIndex];
-		const RenderableSceneMeshData& representativeMeshData = instanceSpan.front().MeshData;
-
-		//Ensure that the static instanced span and non-static span do not intersect
-		assert(representativeMeshData.MeshFlags & (uint32_t)RenderableSceneMeshFlags::NonStatic);
-
-		meshIndex++;
-	}
-
-	mRigidObjectCount = meshIndex - spanStart;
+	mSceneToBuild->mSceneSubmeshes.resize(totalSubmeshCount);
 }
 
 void BaseRenderableSceneBuilder::AssignSubmeshGeometries(const std::unordered_map<std::string, RenderableSceneGeometryData>& descriptionGeometries, const std::vector<std::span<const NamedSceneMeshData>>& sceneMeshInstanceSpans, const std::unordered_map<std::string_view, SceneObjectLocation>& sceneMeshInitialLocations)
@@ -492,7 +491,6 @@ void BaseRenderableSceneBuilder::FillInitialObjectData(const std::vector<std::sp
 		const BaseRenderableScene::SceneMesh& sceneMesh = mSceneToBuild->mSceneMeshes[meshIndex];
 		const std::span<const NamedSceneMeshData> instanceSpan = meshInstanceSpans[meshIndex];
 	
-		size_t perObjectIndexBegin = (size_t)sceneMesh.PerObjectDataIndex;
 		for(uint32_t instanceIndex = 0; instanceIndex < sceneMesh.InstanceCount; instanceIndex++)
 		{
 			const NamedSceneMeshData& meshData = instanceSpan[instanceIndex];
