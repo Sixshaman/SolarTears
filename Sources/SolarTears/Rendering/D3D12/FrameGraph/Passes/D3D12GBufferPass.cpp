@@ -44,7 +44,7 @@ D3D12::GBufferPass::~GBufferPass()
 {
 }
 
-void D3D12::GBufferPass::RecordExecution(ID3D12GraphicsCommandList6* commandList, [[maybe_unused]] const RenderableScene* scene, [[maybe_unused]] const FrameGraphConfig& frameGraphConfig, uint32_t frameResourceIndex) const
+void D3D12::GBufferPass::RecordExecution(ID3D12GraphicsCommandList6* commandList, [[maybe_unused]] const RenderableScene* scene, [[maybe_unused]] const FrameGraphConfig& frameGraphConfig) const
 {
 	D3D12_RENDER_PASS_RENDER_TARGET_DESC colorsRtvDesc;
 	colorsRtvDesc.cpuDescriptor                             = mColorsRenderTarget;
@@ -81,7 +81,7 @@ void D3D12::GBufferPass::RecordExecution(ID3D12GraphicsCommandList6* commandList
 		commandList->SetGraphicsRoot32BitConstant((UINT)GBufferRootBindings::ObjectIndex, objectDataIndex, 0);
 	};
 
-	commandList->SetGraphicsRootConstantBufferView((UINT)GBufferRootBindings::PerFrameBuffer, scene->GetFrameData(frameResourceIndex));
+	commandList->SetGraphicsRootConstantBufferView((UINT)GBufferRootBindings::PerFrameBuffer, scene->GetFrameDataStart());
 
 	commandList->SetGraphicsRootDescriptorTable((UINT)GBufferRootBindings::Materials, mSceneMaterialsTable);
 	commandList->SetGraphicsRootDescriptorTable((UINT)GBufferRootBindings::Textures,  mSceneTexturesTable);
@@ -91,11 +91,8 @@ void D3D12::GBufferPass::RecordExecution(ID3D12GraphicsCommandList6* commandList
 
 	commandList->SetPipelineState(mRigidPipelineState.get());
 
-	commandList->SetGraphicsRootDescriptorTable((UINT)GBufferRootBindings::PerObjectBuffers, mSceneStaticObjectsTable);
-	scene->DrawStaticInstancedObjects(commandList, perMeshFunction, perSubmeshFunction);
-
-	commandList->SetGraphicsRootDescriptorTable((UINT)GBufferRootBindings::PerObjectBuffers, mSceneRigidObjectsTable[frameResourceIndex]);
-	scene->DrawRigidObjects(commandList, perMeshFunction, perSubmeshFunction);
+	commandList->SetGraphicsRootDescriptorTable((UINT)GBufferRootBindings::PerObjectBuffers, mSceneObjectsTable);
+	scene->DrawNonStaticObjects(commandList, perMeshFunction, perSubmeshFunction);
 
 	commandList->EndRenderPass();
 }
@@ -120,20 +117,14 @@ void D3D12::GBufferPass::RequestSceneDescriptors(DescriptorCreator* descriptorCr
 {
 	descriptorCreator->RequestTexturesDescriptorTable();
 	descriptorCreator->RequestMaterialDataDescriptorTable();
-	descriptorCreator->RequestStaticObjectDataDescriptorTable();
-	descriptorCreator->RequestDynamicObjectDataDescriptorTable();
+	descriptorCreator->RequestObjectDataDescriptorTable();
 }
 
 void D3D12::GBufferPass::ValidateSceneDescriptors(const DescriptorCreator* descriptorCreator)
 {
-	mSceneTexturesTable      = descriptorCreator->GetTextureDescriptorTableStart();
-	mSceneMaterialsTable     = descriptorCreator->GetMaterialDataDescriptorTableStart();
-	mSceneStaticObjectsTable = descriptorCreator->GetStaticObjectDataDescriptorTableStart();
-
-	for(uint32_t frameIndex = 0; frameIndex < Utils::InFlightFrameCount; frameIndex++)
-	{
-		mSceneRigidObjectsTable[frameIndex] = descriptorCreator->GetDynamicObjectDataDescriptorTableStart(frameIndex);
-	}
+	mSceneTexturesTable  = descriptorCreator->GetTextureDescriptorTableStart();
+	mSceneMaterialsTable = descriptorCreator->GetMaterialDataDescriptorTableStart();
+	mSceneObjectsTable   = descriptorCreator->GetObjectDataDescriptorTableStart();
 }
 
 void D3D12::GBufferPass::LoadShaders(const ShaderManager* shaderManager, IDxcBlobEncoding** outStaticVertexShader, IDxcBlobEncoding** outRigidVertexShader, IDxcBlobEncoding** outPixelShader)

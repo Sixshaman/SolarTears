@@ -92,6 +92,8 @@ void D3D12::Renderer::Render()
 
 	mDeviceQueues->GraphicsQueueCpuWait(mFrameGraphicsFenceValues[currentFrameResourceIndex]);
 
+	mScene->CopyUploadedSceneObjects(mWorkerCommandLists.get(), mDeviceQueues.get(), currentFrameResourceIndex);
+
 	mFrameGraph->Traverse(mThreadPoolRef, mScene.get(), currentFrameResourceIndex, mSwapChain->GetCurrentImageIndex());
 
 	mFrameGraphicsFenceValues[currentFrameResourceIndex] = mDeviceQueues->GraphicsFenceSignal();

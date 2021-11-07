@@ -11,6 +11,9 @@
 
 namespace Vulkan
 {
+	class WorkerCommandBuffers;
+	class DeviceQueues;
+
 	class RenderableScene: public ModernRenderableScene
 	{
 		friend class RenderableSceneBuilder;
@@ -21,16 +24,16 @@ namespace Vulkan
 		~RenderableScene();
 
 	public:
+		void        CopyUploadedSceneObjects(WorkerCommandBuffers* commandBuffers, DeviceQueues* deviceQueues, uint32_t frameResourceIndex);
+		VkSemaphore GetUploadSemaphore(uint32_t frameResourceIndex) const;
+
 		void PrepareDrawBuffers(VkCommandBuffer commandBuffer) const;
 
 		template<typename SubmeshCallback>
 		inline void DrawStaticObjects(VkCommandBuffer commandBuffer, SubmeshCallback submeshCallback) const;
 
 		template<typename MeshCallback, typename SubmeshCallback>
-		inline void DrawStaticInstancedObjects(VkCommandBuffer commandBuffer, MeshCallback meshCallback, SubmeshCallback submeshCallback) const;
-
-		template<typename MeshCallback, typename SubmeshCallback>
-		inline void DrawRigidObjects(VkCommandBuffer commandBuffer, MeshCallback meshCallback, SubmeshCallback submeshCallback) const;
+		inline void DrawNonStaticObjects(VkCommandBuffer commandBuffer, MeshCallback meshCallback, SubmeshCallback submeshCallback) const;
 
 	private:
 		const VkDevice mDeviceRef;
@@ -38,8 +41,8 @@ namespace Vulkan
 		VkBuffer mSceneVertexBuffer;
 		VkBuffer mSceneIndexBuffer;
 
-		VkBuffer mSceneStaticUniformBuffer;  //Common buffer for all static uniform buffer data
-		VkBuffer mSceneDynamicUniformBuffer; //Common buffer for all dynamic uniform buffer data
+		VkBuffer mSceneUniformBuffer; //Common buffer for all uniform buffer data
+		VkBuffer mSceneUploadBuffer;  //Common buffer for all data to upload
 
 		std::vector<VkImage>     mSceneTextures;
 		std::vector<VkImageView> mSceneTextureViews;
@@ -47,6 +50,9 @@ namespace Vulkan
 		VkDeviceMemory mBufferMemory;
 		VkDeviceMemory mBufferHostVisibleMemory;
 		VkDeviceMemory mTextureMemory;
+
+		VkSemaphore               mUploadCopySemaphores[Utils::InFlightFrameCount];
+		std::vector<VkBufferCopy> mCurrFrameUploadCopyRegions;
 	};
 
 	#include "VulkanScene.inl"

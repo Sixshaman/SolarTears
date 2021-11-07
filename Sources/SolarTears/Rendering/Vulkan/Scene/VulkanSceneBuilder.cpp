@@ -70,9 +70,9 @@ void Vulkan::RenderableSceneBuilder::CreateIndexBufferInfo(size_t indexDataSize)
 	ThrowIfFailed(vkCreateBuffer(mVulkanSceneToBuild->mDeviceRef, &indexBufferCreateInfo, nullptr, &mVulkanSceneToBuild->mSceneIndexBuffer));
 }
 
-void Vulkan::RenderableSceneBuilder::CreateStaticConstantBufferInfo(size_t constantDataSize)
+void Vulkan::RenderableSceneBuilder::CreateConstantBufferInfo(size_t constantDataSize)
 {
-	SafeDestroyObject(vkDestroyBuffer, mVulkanSceneToBuild->mDeviceRef, mVulkanSceneToBuild->mSceneStaticUniformBuffer);
+	SafeDestroyObject(vkDestroyBuffer, mVulkanSceneToBuild->mDeviceRef, mVulkanSceneToBuild->mSceneUniformBuffer);
 
 	std::array bufferQueueFamilies = {mDeviceQueues->GetGraphicsQueueFamilyIndex()};
 
@@ -88,12 +88,12 @@ void Vulkan::RenderableSceneBuilder::CreateStaticConstantBufferInfo(size_t const
 	uniformBufferCreateInfo.queueFamilyIndexCount = (uint32_t)bufferQueueFamilies.size();
 	uniformBufferCreateInfo.pQueueFamilyIndices   = bufferQueueFamilies.data();
 
-	ThrowIfFailed(vkCreateBuffer(mVulkanSceneToBuild->mDeviceRef, &uniformBufferCreateInfo, nullptr, &mVulkanSceneToBuild->mSceneStaticUniformBuffer));
+	ThrowIfFailed(vkCreateBuffer(mVulkanSceneToBuild->mDeviceRef, &uniformBufferCreateInfo, nullptr, &mVulkanSceneToBuild->mSceneUniformBuffer));
 }
 
-void Vulkan::RenderableSceneBuilder::CreateDynamicConstantBufferInfo(size_t constantDataSize)
+void Vulkan::RenderableSceneBuilder::CreateUploadBufferInfo(size_t uploadDataSize)
 {
-	SafeDestroyObject(vkDestroyBuffer, mVulkanSceneToBuild->mDeviceRef, mVulkanSceneToBuild->mSceneDynamicUniformBuffer);
+	SafeDestroyObject(vkDestroyBuffer, mVulkanSceneToBuild->mDeviceRef, mVulkanSceneToBuild->mSceneUploadBuffer);
 
 	std::array bufferQueueFamilies = {mDeviceQueues->GetGraphicsQueueFamilyIndex()};
 
@@ -103,13 +103,13 @@ void Vulkan::RenderableSceneBuilder::CreateDynamicConstantBufferInfo(size_t cons
 	uniformBufferCreateInfo.sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	uniformBufferCreateInfo.pNext                 = nullptr;
 	uniformBufferCreateInfo.flags                 = 0;
-	uniformBufferCreateInfo.size                  = constantDataSize;
-	uniformBufferCreateInfo.usage                 = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+	uniformBufferCreateInfo.size                  = uploadDataSize;
+	uniformBufferCreateInfo.usage                 = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 	uniformBufferCreateInfo.sharingMode           = VK_SHARING_MODE_EXCLUSIVE;
 	uniformBufferCreateInfo.queueFamilyIndexCount = (uint32_t)bufferQueueFamilies.size();
 	uniformBufferCreateInfo.pQueueFamilyIndices   = bufferQueueFamilies.data();
 
-	ThrowIfFailed(vkCreateBuffer(mVulkanSceneToBuild->mDeviceRef, &uniformBufferCreateInfo, nullptr, &mVulkanSceneToBuild->mSceneDynamicUniformBuffer));
+	ThrowIfFailed(vkCreateBuffer(mVulkanSceneToBuild->mDeviceRef, &uniformBufferCreateInfo, nullptr, &mVulkanSceneToBuild->mSceneUploadBuffer));
 }
 
 void Vulkan::RenderableSceneBuilder::AllocateTextureMetadataArrays(size_t textureCount)
@@ -167,6 +167,8 @@ void Vulkan::RenderableSceneBuilder::LoadTextureFromFile(const std::wstring& tex
 void Vulkan::RenderableSceneBuilder::FinishBufferCreation()
 {
 	AllocateBuffersMemory();
+
+	mVulkanSceneToBuild->mCurrFrameUploadCopyRegions.resize(mRigidObjectCount + 1); //One for frame data update and one for each potential object data update
 }
 
 void Vulkan::RenderableSceneBuilder::FinishTextureCreation()
@@ -175,7 +177,7 @@ void Vulkan::RenderableSceneBuilder::FinishTextureCreation()
 	CreateImageViews();
 }
 
-std::byte* Vulkan::RenderableSceneBuilder::MapDynamicConstantBuffer()
+std::byte* Vulkan::RenderableSceneBuilder::MapUploadBuffer()
 {
 	void* bufferPointer = nullptr;
 	ThrowIfFailed(vkMapMemory(mVulkanSceneToBuild->mDeviceRef, mVulkanSceneToBuild->mBufferHostVisibleMemory, 0, VK_WHOLE_SIZE, 0, &bufferPointer));
@@ -255,7 +257,7 @@ void Vulkan::RenderableSceneBuilder::WriteInitializationCommands() const
 
 	ThrowIfFailed(vkBeginCommandBuffer(graphicsCommandBuffer, &graphicsCmdBufferBeginInfo));
 
-	std::array sceneBuffers           = {mVulkanSceneToBuild->mSceneVertexBuffer, mVulkanSceneToBuild->mSceneIndexBuffer, mVulkanSceneToBuild->mSceneStaticUniformBuffer};
+	std::array sceneBuffers           = {mVulkanSceneToBuild->mSceneVertexBuffer, mVulkanSceneToBuild->mSceneIndexBuffer, mVulkanSceneToBuild->mSceneUniformBuffer};
 	std::array sceneBufferAccessMasks = {VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,     VK_ACCESS_INDEX_READ_BIT,               VK_ACCESS_UNIFORM_READ_BIT};
 
 	//TODO: multithread this!
@@ -393,7 +395,7 @@ void Vulkan::RenderableSceneBuilder::AllocateBuffersMemory()
 	SafeDestroyObject(vkFreeMemory, mVulkanSceneToBuild->mDeviceRef, mVulkanSceneToBuild->mBufferHostVisibleMemory);
 
 
-	std::vector deviceLocalBuffers = {mVulkanSceneToBuild->mSceneVertexBuffer, mVulkanSceneToBuild->mSceneIndexBuffer, mVulkanSceneToBuild->mSceneStaticUniformBuffer};
+	std::vector deviceLocalBuffers = {mVulkanSceneToBuild->mSceneVertexBuffer, mVulkanSceneToBuild->mSceneIndexBuffer, mVulkanSceneToBuild->mSceneUniformBuffer};
 
 	std::vector<VkDeviceSize> deviceLocalBufferOffsets;
 	mVulkanSceneToBuild->mBufferMemory = mMemoryAllocator->AllocateBuffersMemory(mVulkanSceneToBuild->mDeviceRef, deviceLocalBuffers, MemoryManager::BufferAllocationType::DEVICE_LOCAL, deviceLocalBufferOffsets);
@@ -412,7 +414,7 @@ void Vulkan::RenderableSceneBuilder::AllocateBuffersMemory()
 	ThrowIfFailed(vkBindBufferMemory2(mVulkanSceneToBuild->mDeviceRef, (uint32_t)(bindBufferMemoryInfos.size()), bindBufferMemoryInfos.data()));
 
 
-	std::vector hostVisibleBuffers = {mVulkanSceneToBuild->mSceneDynamicUniformBuffer};
+	std::vector hostVisibleBuffers = {mVulkanSceneToBuild->mSceneUploadBuffer};
 
 	std::vector<VkDeviceSize> hostVisibleBufferOffsets;
 	mVulkanSceneToBuild->mBufferHostVisibleMemory = mMemoryAllocator->AllocateBuffersMemory(mVulkanSceneToBuild->mDeviceRef, hostVisibleBuffers, MemoryManager::BufferAllocationType::HOST_VISIBLE, hostVisibleBufferOffsets);

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "RenderableSceneDescription.hpp"
+#include "../../../Core/DataStructures/Span.hpp"
 #include <span>
 #include <string_view>
 
@@ -13,6 +14,14 @@ class BaseRenderableSceneBuilder
 	{
 		std::string_view        MeshName;
 		RenderableSceneMeshData MeshData;
+	};
+
+	struct InstanceSpanSpans
+	{
+		Span<uint32_t> StaticUniqueSpan;
+		Span<uint32_t> StaticInstancedSpan;
+		Span<uint32_t> RigidUniqueSpan;
+		Span<uint32_t> RigidInstancedSpan;
 	};
 
 public:
@@ -36,11 +45,11 @@ private:
 
 	//Step 3 of filling in scene data structures
 	//Sorts the instance spans as (static meshes, static instanced meshes, rigid meshes)
-	void SortInstanceSpans(std::vector<std::span<const NamedSceneMeshData>>& inoutInstanceSpans);
+	void SortInstanceSpans(std::vector<std::span<const NamedSceneMeshData>>& inoutInstanceSpans, InstanceSpanSpans* outSpanSpans);
 
 	//Step 4 of filling in scene data structures
 	//Allocates the memory for scene mesh and submesh data in the same order as sortedInstanceSpans
-	void FillMeshLists(const std::vector<std::span<const NamedSceneMeshData>>& sortedInstanceSpans);
+	void FillMeshLists(const std::vector<std::span<const NamedSceneMeshData>>& sortedInstanceSpans, const InstanceSpanSpans& spanSpans);
 
 	//Step 5 of filling in scene data structures
 	//Loads vertex and index buffer data from geometries and initializes initial positional data
@@ -72,6 +81,8 @@ protected:
 	std::vector<RenderableSceneMaterial> mMaterialData;
 	std::vector<std::wstring>            mTexturesToLoad;
 
-	std::vector<SceneObjectLocation> mInitialStaticInstancedObjectData;
-	std::vector<SceneObjectLocation> mInitialRigidObjectData;
+	std::vector<SceneObjectLocation> mInitialObjectData;
+
+	uint32_t mStaticInstancedObjectCount;
+	uint32_t mRigidObjectCount;
 };

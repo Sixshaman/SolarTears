@@ -20,9 +20,18 @@ namespace D3D12
 		UINT64 ComputeFenceSignal();
 		UINT64 CopyFenceSignal();
 
-		void GraphicsQueueCpuWait(UINT64 fenceValue);
-		void ComputeQueueCpuWait(UINT64 fenceValue);
-		void CopyQueueCpuWait(UINT64 fenceValue);
+		void GraphicsQueueCpuWait(UINT64 fenceValue) const;
+		void ComputeQueueCpuWait(UINT64 fenceValue)  const;
+		void CopyQueueCpuWait(UINT64 fenceValue)     const;
+
+		void GraphicsQueueWaitForCopyQueue(UINT64 fenceValue) const;
+		void CopyQueueWaitForGraphicsQueue(UINT64 fenceValue) const;
+
+		void GraphicsQueueWaitForComputeQueue(UINT64 fenceValue) const;
+		void ComputeQueueWaitForGraphicsQueue(UINT64 fenceValue) const;
+
+		void ComputeQueueWaitForCopyQueue(UINT64 fenceValue) const;
+		void CopyQueueWaitForComputeQueue(UINT64 fenceValue) const;
 
 	private:
 		void CreateQueueObjects(ID3D12Device* device);

@@ -165,7 +165,7 @@ void Vulkan::ShaderDatabase::CreateMatchingPipelineLayout(std::span<std::string_
 	}
 }
 
-std::span<VkDescriptorSet> Vulkan::ShaderDatabase::AssignPassSets(uint32_t passIndex, uint32_t frame, std::span<const std::string_view> shaderGroupSequence, std::span<DescriptorSetBindRange> outBindRangesPerGroup)
+std::span<VkDescriptorSet> Vulkan::ShaderDatabase::AssignPassSets(uint32_t passIndex, std::span<const std::string_view> shaderGroupSequence, std::span<DescriptorSetBindRange> outBindRangesPerGroup)
 {
 	assert(shaderGroupSequence.size() == outBindRangesPerGroup.size());
 	uint32_t oldLayoutIndexCount = (uint32_t)mSetLayoutIndicesForGroupSequences.size();
@@ -205,7 +205,6 @@ std::span<VkDescriptorSet> Vulkan::ShaderDatabase::AssignPassSets(uint32_t passI
 	mSetSpanMetadatasPerGroupSequences.push_back(DescriptorSetSpanMetadata
 	{
 		.PassId             = passIndex,
-		.FrameResourceIndex = frame,
 		.SetLayoutNodeSpan  = Span<uint32_t>
 		{
 			.Begin = oldLayoutIndexCount,
@@ -252,7 +251,7 @@ void Vulkan::ShaderDatabase::FlushDescriptorSetData(SharedDescriptorDatabaseBuil
 			auto sharedLayoutRecordIt = sharedLayoutFlushedRecords.find(layoutRecordIndex);
 			if(sharedLayoutRecordIt != sharedLayoutFlushedRecords.end())
 			{
-				sharedDatabaseBuilder->AddSharedSetInfo(sharedLayoutRecordIt->second, setSpanMetadata.FrameResourceIndex);
+				sharedDatabaseBuilder->AddSharedSetInfo(sharedLayoutRecordIt->second);
 			}
 			else
 			{

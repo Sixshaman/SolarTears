@@ -22,10 +22,10 @@ namespace D3D12
 		~RenderableSceneBuilder();
 
 	protected:
-		void CreateVertexBufferInfo(size_t vertexDataSize)            override final;
-		void CreateIndexBufferInfo(size_t indexDataSize)              override final;
-		void CreateStaticConstantBufferInfo(size_t constantDataSize)  override final;
-		void CreateDynamicConstantBufferInfo(size_t constantDataSize) override final;
+		void CreateVertexBufferInfo(size_t vertexDataSize)     override final;
+		void CreateIndexBufferInfo(size_t indexDataSize)       override final;
+		void CreateConstantBufferInfo(size_t constantDataSize) override final;
+		void CreateUploadBufferInfo(size_t uploadDataSize)     override final;
 
 		void AllocateTextureMetadataArrays(size_t textureCount)                                                                                                              override final;
 		void LoadTextureFromFile(const std::wstring& textureFilename, uint64_t currentIntermediateBufferOffset, size_t textureIndex, std::vector<std::byte>& outTextureData) override final;
@@ -33,7 +33,7 @@ namespace D3D12
 		virtual void FinishBufferCreation()  override final;
 		virtual void FinishTextureCreation() override final;
 
-		virtual std::byte* MapDynamicConstantBuffer() override final;
+		virtual std::byte* MapUploadBuffer() override final;
 
 		virtual void       CreateIntermediateBuffer()      override final;
 		virtual std::byte* MapIntermediateBuffer()   const override final;
@@ -45,7 +45,6 @@ namespace D3D12
 
 	private:
 		void AllocateBuffersHeap();
-		void AllocateTexturesHeap();
 
 		void CreateBufferObjects();
 		void CreateBufferViews();
@@ -61,8 +60,8 @@ namespace D3D12
 
 		D3D12_RESOURCE_DESC1 mVertexBufferDesc;
 		D3D12_RESOURCE_DESC1 mIndexBufferDesc;
-		D3D12_RESOURCE_DESC1 mStaticConstantBufferDesc;
-		D3D12_RESOURCE_DESC1 mDynamicConstantBufferDesc;
+		D3D12_RESOURCE_DESC1 mConstantBufferDesc;
+		D3D12_RESOURCE_DESC1 mUploadBufferDesc;
 
 		std::vector<D3D12_RESOURCE_DESC1>               mSceneTextureDescs;
 		std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> mSceneTextureSubresourceFootprints;

@@ -33,7 +33,7 @@ namespace D3D12
 		GBufferPass(const FrameGraphBuilder* frameGraphBuilder, uint32_t passIndex);
 		~GBufferPass();
 
-		void RecordExecution(ID3D12GraphicsCommandList6* commandList, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig, uint32_t frameResourceIndex) const override;
+		void RecordExecution(ID3D12GraphicsCommandList6* commandList, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig) const override;
 
 		ID3D12PipelineState* FirstPipeline() const override;
 
@@ -53,8 +53,7 @@ namespace D3D12
 
 		D3D12_GPU_DESCRIPTOR_HANDLE mSceneTexturesTable;
 		D3D12_GPU_DESCRIPTOR_HANDLE mSceneMaterialsTable;
-		D3D12_GPU_DESCRIPTOR_HANDLE mSceneStaticObjectsTable;
-		D3D12_GPU_DESCRIPTOR_HANDLE mSceneRigidObjectsTable[Utils::InFlightFrameCount];
+		D3D12_GPU_DESCRIPTOR_HANDLE mSceneObjectsTable;
 
 		D3D12_VIEWPORT mViewport;
 		D3D12_RECT     mScissorRect;

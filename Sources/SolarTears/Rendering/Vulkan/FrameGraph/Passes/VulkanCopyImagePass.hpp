@@ -23,7 +23,7 @@ namespace Vulkan
 		CopyImagePass(const FrameGraphBuilder* frameGraphBuilder, uint32_t frameGraphPassIndex);
 		~CopyImagePass();
 
-		void RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig, uint32_t frameResourceIndex) const override;
+		void RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig) const override;
 
 		void ValidateDescriptorSetSpans(DescriptorDatabase* descriptorDatabase, const VkDescriptorSet* originalSetStartPoint) override;
 

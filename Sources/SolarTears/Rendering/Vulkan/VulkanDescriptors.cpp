@@ -23,14 +23,7 @@ void Vulkan::DescriptorDatabase::ClearDatabase()
 	SafeDestroyObject(vkDestroyDescriptorPool, mDeviceRef, mSharedDescriptorPool);
 	for(size_t entryIndex = 0; entryIndex < mSharedSetCreateMetadatas.size(); entryIndex++)
 	{
-		if(mSharedSetCreateMetadatas[entryIndex].SetFrameIndex == 0)
-		{
-			SafeDestroyObject(vkDestroyDescriptorSetLayout, mDeviceRef, mSharedSetCreateMetadatas[entryIndex].SetLayout);
-		}
-		else
-		{
-			mSharedSetCreateMetadatas[entryIndex].SetLayout = VK_NULL_HANDLE;
-		}
+		SafeDestroyObject(vkDestroyDescriptorSetLayout, mDeviceRef, mSharedSetCreateMetadatas[entryIndex].SetLayout);
 	}
 
 	mSharedSetCreateMetadatas.clear();

@@ -3,18 +3,15 @@
 
 D3D12::DescriptorCreator::DescriptorCreator(FrameGraph* frameGraph, RenderableScene* renderableScene): mFrameGraphToCreateDescriptors(frameGraph), mSceneToMakeDescriptors(renderableScene)
 {
-	mTextureTableRequestState           = DescriptorRequestState::NotRequested;
-	mStaticObjectDataTableRequestState  = DescriptorRequestState::NotRequested;
-	mDynamicObjectDataTableRequestState = DescriptorRequestState::NotRequested;
-	mFrameDataTableRequestState         = DescriptorRequestState::NotRequested;
-	mMaterialDataTableRequestState      = DescriptorRequestState::NotRequested;
+	mTextureTableRequestState      = DescriptorRequestState::NotRequested;
+	mMaterialDataTableRequestState = DescriptorRequestState::NotRequested;
+	mFrameDataTableRequestState    = DescriptorRequestState::NotRequested;
+	mObjectDataTableRequestState   = DescriptorRequestState::NotRequested;
 
-	mTextureDescriptorTableStart          = {.ptr = (UINT64)(-1)};
-	mMaterialDataDescriptorTableStart     = {.ptr = (UINT64)(-1)};
-	mStaticObjectDataDescriptorTableStart = {.ptr = (UINT64)(-1)};
-
-	std::fill(std::begin(mFrameDataDescriptorTableStart),         std::end(mFrameDataDescriptorTableStart),         D3D12_GPU_DESCRIPTOR_HANDLE{.ptr = (UINT64)(-1)});
-	std::fill(std::begin(mDynamicObjectDataDescriptorTableStart), std::end(mDynamicObjectDataDescriptorTableStart), D3D12_GPU_DESCRIPTOR_HANDLE{.ptr = (UINT64)(-1)});
+	mTextureDescriptorTableStart      = {.ptr = (UINT64)(-1)};
+	mMaterialDataDescriptorTableStart = {.ptr = (UINT64)(-1)};
+	mFrameDataDescriptorTableStart    = {.ptr = (UINT64)(-1)};
+	mObjectDataDescriptorTableStart   = {.ptr = (UINT64)(-1)};
 
 	mSceneDescriptorsCount = 5; //Minimum 1 for each type
 	mPassDescriptorsCount  = 0;
@@ -68,22 +65,18 @@ void D3D12::DescriptorCreator::RequestDescriptors()
 
 	if(mMaterialDataTableRequestState != DescriptorRequestState::NotRequested)
 	{
-		mSceneDescriptorsCount += std::max((UINT)mSceneToMakeDescriptors->mMaterialDataSize / mSceneToMakeDescriptors->mMaterialChunkDataSize, 1u);
-	}
-
-	if(mStaticObjectDataTableRequestState != DescriptorRequestState::NotRequested)
-	{
-		mSceneDescriptorsCount += std::max((UINT)mSceneToMakeDescriptors->mStaticObjectDataSize / mSceneToMakeDescriptors->mObjectChunkDataSize, 1u);
+		mSceneDescriptorsCount += std::max(mSceneToMakeDescriptors->GetMaterialCount(), 1u);
 	}
 
 	if(mFrameDataTableRequestState != DescriptorRequestState::NotRequested)
 	{
-		mSceneDescriptorsCount += Utils::InFlightFrameCount;
+		mSceneDescriptorsCount += 1;
 	}
 
-	if(mDynamicObjectDataTableRequestState != DescriptorRequestState::NotRequested)
+	if(mObjectDataTableRequestState != DescriptorRequestState::NotRequested)
 	{
-		mSceneDescriptorsCount += std::max((UINT)mSceneToMakeDescriptors->mCurrFrameDataToUpdate.size(), 1u) * Utils::InFlightFrameCount;
+		uint32_t objectCount = mSceneToMakeDescriptors->GetStaticObjectCount() + mSceneToMakeDescriptors->GetRigidObjectCount();
+		mSceneDescriptorsCount += std::max(objectCount, 1u);
 	}
 
 	mSceneDescriptorsCount = std::max(mSceneDescriptorsCount, 1u);
@@ -138,7 +131,7 @@ void D3D12::DescriptorCreator::RecreateSceneDescriptors(ID3D12Device* device, D3
 
 	if(mMaterialDataTableRequestState == DescriptorRequestState::NotYetCreated)
 	{
-		uint32_t materialCount = (uint32_t)(mSceneToMakeDescriptors->mMaterialDataSize / mSceneToMakeDescriptors->mMaterialChunkDataSize);
+		uint32_t materialCount = mSceneToMakeDescriptors->GetMaterialCount();
 
 		mMaterialDataDescriptorTableStart = gpuDescriptorAddress;
 		if(materialCount == 0)
@@ -153,7 +146,7 @@ void D3D12::DescriptorCreator::RecreateSceneDescriptors(ID3D12Device* device, D3
 			for(uint32_t materialIndex = 0; materialIndex < materialCount; materialIndex++)
 			{
 				D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc;
-				cbvDesc.BufferLocation = mSceneToMakeDescriptors->mSceneStaticConstantBuffer->GetGPUVirtualAddress() + mSceneToMakeDescriptors->CalculateMaterialDataOffset(materialIndex);
+				cbvDesc.BufferLocation = mSceneToMakeDescriptors->GetMaterialDataStart(materialIndex);
 				cbvDesc.SizeInBytes    = mSceneToMakeDescriptors->mMaterialChunkDataSize;
 		
 				device->CreateConstantBufferView(&cbvDesc, cpuDescriptorAddress);
@@ -166,12 +159,28 @@ void D3D12::DescriptorCreator::RecreateSceneDescriptors(ID3D12Device* device, D3
 		mMaterialDataTableRequestState = DescriptorRequestState::Ready;
 	}
 
-	if(mStaticObjectDataTableRequestState == DescriptorRequestState::NotYetCreated)
+	if(mFrameDataTableRequestState == DescriptorRequestState::NotYetCreated)
 	{
-		uint32_t staticObjectCount = (uint32_t)(mSceneToMakeDescriptors->mStaticObjectDataSize / mSceneToMakeDescriptors->mObjectChunkDataSize);
+		mFrameDataDescriptorTableStart = gpuDescriptorAddress;
 
-		mStaticObjectDataDescriptorTableStart = gpuDescriptorAddress;
-		if(staticObjectCount == 0)
+		D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc;
+		cbvDesc.BufferLocation = mSceneToMakeDescriptors->GetFrameDataStart();
+		cbvDesc.SizeInBytes    = mSceneToMakeDescriptors->mFrameChunkDataSize;
+		
+		device->CreateConstantBufferView(&cbvDesc, cpuDescriptorAddress);
+
+		cpuDescriptorAddress.ptr += descriptorSize;
+		gpuDescriptorAddress.ptr += descriptorSize;
+
+		mFrameDataTableRequestState = DescriptorRequestState::Ready;
+	}
+
+	if(mObjectDataTableRequestState == DescriptorRequestState::NotYetCreated)
+	{
+		uint32_t objectCount = mSceneToMakeDescriptors->GetStaticObjectCount() + mSceneToMakeDescriptors->GetRigidObjectCount();
+
+		mObjectDataDescriptorTableStart = gpuDescriptorAddress;
+		if(objectCount == 0)
 		{
 			device->CreateConstantBufferView(nullptr, cpuDescriptorAddress);
 
@@ -180,10 +189,10 @@ void D3D12::DescriptorCreator::RecreateSceneDescriptors(ID3D12Device* device, D3
 		}
 		else
 		{
-			for(uint32_t objectDataIndex = 0; objectDataIndex < staticObjectCount; objectDataIndex++)
+			for(uint32_t objectDataIndex = 0; objectDataIndex < objectCount; objectDataIndex++)
 			{
 				D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc;
-				cbvDesc.BufferLocation = mSceneToMakeDescriptors->mSceneStaticConstantBuffer->GetGPUVirtualAddress() + mSceneToMakeDescriptors->CalculateStaticObjectDataOffset(objectDataIndex);
+				cbvDesc.BufferLocation = mSceneToMakeDescriptors->GetObjectDataStart(objectDataIndex);
 				cbvDesc.SizeInBytes    = mSceneToMakeDescriptors->mObjectChunkDataSize;
 		
 				device->CreateConstantBufferView(&cbvDesc, cpuDescriptorAddress);
@@ -193,57 +202,7 @@ void D3D12::DescriptorCreator::RecreateSceneDescriptors(ID3D12Device* device, D3
 			}
 		}
 
-		mStaticObjectDataTableRequestState = DescriptorRequestState::Ready;
-	}
-
-	if(mFrameDataTableRequestState == DescriptorRequestState::NotYetCreated)
-	{
-		for(uint32_t frameIndex = 0; frameIndex < Utils::InFlightFrameCount; frameIndex++)
-		{
-			mFrameDataDescriptorTableStart[frameIndex] = gpuDescriptorAddress;
-
-			D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc;
-			cbvDesc.BufferLocation = mSceneToMakeDescriptors->mSceneDynamicConstantBuffer->GetGPUVirtualAddress() + mSceneToMakeDescriptors->CalculateFrameDataOffset(frameIndex);
-			cbvDesc.SizeInBytes    = mSceneToMakeDescriptors->mFrameChunkDataSize;
-		
-			device->CreateConstantBufferView(&cbvDesc, cpuDescriptorAddress);
-
-			cpuDescriptorAddress.ptr += descriptorSize;
-			gpuDescriptorAddress.ptr += descriptorSize;
-		}
-
-		mFrameDataTableRequestState = DescriptorRequestState::Ready;
-	}
-
-	if(mDynamicObjectDataTableRequestState == DescriptorRequestState::NotYetCreated)
-	{
-		for(uint32_t frameIndex = 0; frameIndex < Utils::InFlightFrameCount; frameIndex++)
-		{
-			mDynamicObjectDataDescriptorTableStart[frameIndex] = gpuDescriptorAddress;
-			if(mSceneToMakeDescriptors->mCurrFrameDataToUpdate.size() == 0)
-			{
-				device->CreateConstantBufferView(nullptr, cpuDescriptorAddress);
-
-				cpuDescriptorAddress.ptr += descriptorSize;
-				gpuDescriptorAddress.ptr += descriptorSize;
-			}
-			else
-			{
-				for(uint32_t objectDataIndex = 0; objectDataIndex < mSceneToMakeDescriptors->mCurrFrameDataToUpdate.size(); objectDataIndex++)
-				{
-					D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc;
-					cbvDesc.BufferLocation = mSceneToMakeDescriptors->mSceneDynamicConstantBuffer->GetGPUVirtualAddress() + mSceneToMakeDescriptors->CalculateRigidObjectDataOffset(frameIndex, objectDataIndex);
-					cbvDesc.SizeInBytes    = mSceneToMakeDescriptors->mObjectChunkDataSize;
-
-					device->CreateConstantBufferView(&cbvDesc, cpuDescriptorAddress);
-
-					cpuDescriptorAddress.ptr += descriptorSize;
-					gpuDescriptorAddress.ptr += descriptorSize;
-				}
-			}
-		}
-
-		mDynamicObjectDataTableRequestState = DescriptorRequestState::Ready;
+		mObjectDataTableRequestState = DescriptorRequestState::Ready;
 	}
 }
 
@@ -270,14 +229,9 @@ void D3D12::DescriptorCreator::RequestTexturesDescriptorTable()
 	mTextureTableRequestState = DescriptorRequestState::NotYetCreated;
 }
 
-void D3D12::DescriptorCreator::RequestStaticObjectDataDescriptorTable()
+void D3D12::DescriptorCreator::RequestMaterialDataDescriptorTable()
 {
-	mStaticObjectDataTableRequestState = DescriptorRequestState::NotYetCreated;
-}
-
-void D3D12::DescriptorCreator::RequestDynamicObjectDataDescriptorTable()
-{
-	mDynamicObjectDataTableRequestState = DescriptorRequestState::NotYetCreated;
+	mMaterialDataTableRequestState = DescriptorRequestState::NotYetCreated;
 }
 
 void D3D12::DescriptorCreator::RequestFrameDataDescriptorTable()
@@ -285,9 +239,9 @@ void D3D12::DescriptorCreator::RequestFrameDataDescriptorTable()
 	mFrameDataTableRequestState = DescriptorRequestState::NotYetCreated;
 }
 
-void D3D12::DescriptorCreator::RequestMaterialDataDescriptorTable()
+void D3D12::DescriptorCreator::RequestObjectDataDescriptorTable()
 {
-	mMaterialDataTableRequestState = DescriptorRequestState::NotYetCreated;
+	mObjectDataTableRequestState = DescriptorRequestState::NotYetCreated;
 }
 
 D3D12_GPU_DESCRIPTOR_HANDLE D3D12::DescriptorCreator::GetTextureDescriptorTableStart() const
@@ -302,22 +256,14 @@ D3D12_GPU_DESCRIPTOR_HANDLE D3D12::DescriptorCreator::GetMaterialDataDescriptorT
 	return mMaterialDataDescriptorTableStart;
 }
 
-D3D12_GPU_DESCRIPTOR_HANDLE D3D12::DescriptorCreator::GetStaticObjectDataDescriptorTableStart() const
-{
-	assert(mStaticObjectDataTableRequestState == DescriptorRequestState::Ready);
-	return mStaticObjectDataDescriptorTableStart;
-}
-
-D3D12_GPU_DESCRIPTOR_HANDLE D3D12::DescriptorCreator::GetFrameDataDescriptorTableStart(uint32_t frameIndex) const
+D3D12_GPU_DESCRIPTOR_HANDLE D3D12::DescriptorCreator::GetFrameDataDescriptorTableStart() const
 {
 	assert(mFrameDataTableRequestState == DescriptorRequestState::Ready);
-	assert(frameIndex < Utils::InFlightFrameCount);
-	return mFrameDataDescriptorTableStart[frameIndex];
+	return mFrameDataDescriptorTableStart;
 }
 
-D3D12_GPU_DESCRIPTOR_HANDLE D3D12::DescriptorCreator::GetDynamicObjectDataDescriptorTableStart(uint32_t frameIndex) const
+D3D12_GPU_DESCRIPTOR_HANDLE D3D12::DescriptorCreator::GetObjectDataDescriptorTableStart() const
 {
-	assert(mDynamicObjectDataTableRequestState == DescriptorRequestState::Ready);
-	assert(frameIndex < Utils::InFlightFrameCount);
-	return mDynamicObjectDataDescriptorTableStart[frameIndex];
+	assert(mObjectDataTableRequestState == DescriptorRequestState::Ready);
+	return mObjectDataDescriptorTableStart;
 }

@@ -104,6 +104,9 @@ void D3D12::FrameGraph::Traverse(ThreadPool* threadPool, const RenderableScene* 
 
 		mFrameRecordedGraphicsCommandLists[mGraphicsPassSpansPerDependencyLevel.size() - 1] = mainGraphicsCommandList;
 
+
+		mDeviceQueuesRef->GraphicsQueueWaitForCopyQueue(scene->GetUploadFenceValue(currentFrameResourceIndex));
+
 		ID3D12CommandQueue* graphicsQueue = mDeviceQueuesRef->GraphicsQueueHandle();
 		graphicsQueue->ExecuteCommandLists((UINT)mGraphicsPassSpansPerDependencyLevel.size(), mFrameRecordedGraphicsCommandLists.data());
 	}
@@ -138,7 +141,7 @@ void D3D12::FrameGraph::RecordGraphicsPasses(ID3D12GraphicsCommandList6* command
 			commandList->ResourceBarrier(beforePassBarrierCount, barrierPointer);
 		}
 
-		mRenderPasses[passIndex]->RecordExecution(commandList, scene, mFrameGraphConfig, frameIndex % Utils::InFlightFrameCount);
+		mRenderPasses[passIndex]->RecordExecution(commandList, scene, mFrameGraphConfig);
 
 		if(afterPassBarrierCount != 0)
 		{

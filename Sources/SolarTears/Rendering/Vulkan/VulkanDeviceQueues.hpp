@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
+#include <span>
 
 namespace Vulkan
 {
@@ -31,21 +32,21 @@ namespace Vulkan
 		void ComputeQueueSubmit(VkCommandBuffer  commandBuffer, VkSemaphore waitSemaphore, VkPipelineStageFlags waitStageFlags) const;
 		void TransferQueueSubmit(VkCommandBuffer commandBuffer, VkSemaphore waitSemaphore, VkPipelineStageFlags waitStageFlags) const;
 
-		void GraphicsQueueSubmit(VkCommandBuffer* commandBuffers, size_t commandBufferCount) const;
-		void ComputeQueueSubmit(VkCommandBuffer* commandBuffers,  size_t commandBufferCount) const;
-		void TransferQueueSubmit(VkCommandBuffer* commandBuffers, size_t commandBufferCount) const;
+		void GraphicsQueueSubmit(std::span<VkCommandBuffer> commandBuffers) const;
+		void ComputeQueueSubmit(std::span<VkCommandBuffer>  commandBuffers) const;
+		void TransferQueueSubmit(std::span<VkCommandBuffer> commandBuffers) const;
 
-		void GraphicsQueueSubmit(VkCommandBuffer* commandBuffers, size_t commandBufferCount, VkPipelineStageFlags waitStageFlags, VkSemaphore waitSemaphore, VkSemaphore signalSemaphore, VkFence signalFence) const;
-		void ComputeQueueSubmit(VkCommandBuffer*  commandBuffers, size_t commandBufferCount, VkPipelineStageFlags waitStageFlags, VkSemaphore waitSemaphore, VkSemaphore signalSemaphore, VkFence signalFence) const;
-		void TransferQueueSubmit(VkCommandBuffer* commandBuffers, size_t commandBufferCount, VkPipelineStageFlags waitStageFlags, VkSemaphore waitSemaphore, VkSemaphore signalSemaphore, VkFence signalFence) const;
+		void GraphicsQueueSubmit(std::span<VkCommandBuffer> commandBuffers, std::span<VkPipelineStageFlags> waitStageFlags, std::span<VkSemaphore> waitSemaphores, VkSemaphore signalSemaphore, VkFence signalFence) const;
+		void ComputeQueueSubmit(std::span<VkCommandBuffer> commandBuffers,  std::span<VkPipelineStageFlags> waitStageFlags, std::span<VkSemaphore> waitSemaphores, VkSemaphore signalSemaphore, VkFence signalFence) const;
+		void TransferQueueSubmit(std::span<VkCommandBuffer> commandBuffers, std::span<VkPipelineStageFlags> waitStageFlags, std::span<VkSemaphore> waitSemaphores, VkSemaphore signalSemaphore, VkFence signalFence) const;
 
 	private:
 		void FindDeviceQueueIndices(VkPhysicalDevice physicalDevice);
 
-		void QueueSubmit(VkQueue queue, VkCommandBuffer* commandBuffers, uint32_t commandBufferCount)                                                                                                                    const;
-		void QueueSubmit(VkQueue queue, VkCommandBuffer* commandBuffers, uint32_t commandBufferCount,                                                                 VkSemaphore signalSemaphore, VkFence signalFence)  const;
-		void QueueSubmit(VkQueue queue, VkCommandBuffer* commandBuffers, uint32_t commandBufferCount, VkPipelineStageFlags waitStageFlags, VkSemaphore waitSemaphore,                              VkFence signalFence)  const;
-		void QueueSubmit(VkQueue queue, VkCommandBuffer* commandBuffers, uint32_t commandBufferCount, VkPipelineStageFlags waitStageFlags, VkSemaphore waitSemaphore, VkSemaphore signalSemaphore, VkFence signalFence)  const;
+		void QueueSubmit(VkQueue queue, std::span<VkCommandBuffer> commandBuffers)                                                                                                                                          const;
+		void QueueSubmit(VkQueue queue, std::span<VkCommandBuffer> commandBuffers,                                                                                        VkSemaphore signalSemaphore, VkFence signalFence) const;
+		void QueueSubmit(VkQueue queue, std::span<VkCommandBuffer> commandBuffers, std::span<VkPipelineStageFlags> waitStageFlags, std::span<VkSemaphore> waitSemaphores,                              VkFence signalFence) const;
+		void QueueSubmit(VkQueue queue, std::span<VkCommandBuffer> commandBuffers, std::span<VkPipelineStageFlags> waitStageFlags, std::span<VkSemaphore> waitSemaphores, VkSemaphore signalSemaphore, VkFence signalFence) const;
 
 	private:
 		uint32_t mGraphicsQueueFamilyIndex;

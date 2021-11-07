@@ -14,9 +14,8 @@ Vulkan::GBufferPass::GBufferPass(const FrameGraphBuilder* frameGraphBuilder, uin
 	mStaticPipelineLayout = VK_NULL_HANDLE;
 	mRigidPipelineLayout  = VK_NULL_HANDLE;
 
-	mStaticPipeline          = VK_NULL_HANDLE;
-	mStaticInstancedPipeline = VK_NULL_HANDLE;
-	mRigidPipeline           = VK_NULL_HANDLE;
+	mStaticPipeline = VK_NULL_HANDLE;
+	mRigidPipeline  = VK_NULL_HANDLE;
 
 	//TODO: subpasses (AND SECONDARY COMMAND BUFFERS)
 	CreateRenderPass(frameGraphBuilder,  frameGraphPassId, frameGraphBuilder->GetDeviceParameters());
@@ -32,7 +31,6 @@ Vulkan::GBufferPass::GBufferPass(const FrameGraphBuilder* frameGraphBuilder, uin
 Vulkan::GBufferPass::~GBufferPass()
 {
 	SafeDestroyObject(vkDestroyPipeline, mDeviceRef, mStaticPipeline);
-	SafeDestroyObject(vkDestroyPipeline, mDeviceRef, mStaticInstancedPipeline);
 	SafeDestroyObject(vkDestroyPipeline, mDeviceRef, mRigidPipeline);
 
 	SafeDestroyObject(vkDestroyPipelineLayout, mDeviceRef, mStaticPipelineLayout);
@@ -42,7 +40,7 @@ Vulkan::GBufferPass::~GBufferPass()
 	SafeDestroyObject(vkDestroyFramebuffer, mDeviceRef, mFramebuffer);
 }
 
-void Vulkan::GBufferPass::RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig, uint32_t frameResourceIndex) const
+void Vulkan::GBufferPass::RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig) const
 {
 	constexpr uint32_t WriteAttachmentCount = 1;
 
@@ -87,57 +85,42 @@ void Vulkan::GBufferPass::RecordExecution(VkCommandBuffer commandBuffer, const R
 	};
 
 	//Prepare to first drawing
-	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, currentPipelineLayout, mStaticDrawSetBindOffset, mStaticDrawChangedSetSpan.End - mStaticDrawChangedSetSpan.Begin, mDescriptorSets[frameResourceIndex].data() + mStaticDrawChangedSetSpan.Begin, 0, nullptr);
+	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, currentPipelineLayout, mStaticDrawSetBindOffset, mStaticDrawChangedSetSpan.End - mStaticDrawChangedSetSpan.Begin, mDescriptorSets.data() + mStaticDrawChangedSetSpan.Begin, 0, nullptr);
 	scene->PrepareDrawBuffers(commandBuffer);
 	
 	//Draw static meshes
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mStaticPipeline);
 	scene->DrawStaticObjects(commandBuffer, submeshCallback);
 
-	//Draw static instanced meshes
-	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, mStaticInstancedPipeline);
-	scene->DrawStaticInstancedObjects(commandBuffer, meshCallback, submeshCallback);
-
 	//Change pipeline layout and descriptor bindings
 	currentPipelineLayout = mRigidPipelineLayout;
 
 	//Draw rigid meshes
-	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, currentPipelineLayout, mRigidDrawSetBindOffset, mRigidDrawChangedSetSpan.End - mRigidDrawChangedSetSpan.Begin, mDescriptorSets[frameResourceIndex].data() + mRigidDrawChangedSetSpan.Begin, 0, nullptr);
-	scene->DrawRigidObjects(commandBuffer, meshCallback, submeshCallback);
+	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, currentPipelineLayout, mRigidDrawSetBindOffset, mRigidDrawChangedSetSpan.End - mRigidDrawChangedSetSpan.Begin, mDescriptorSets.data() + mRigidDrawChangedSetSpan.Begin, 0, nullptr);
+	scene->DrawNonStaticObjects(commandBuffer, meshCallback, submeshCallback);
 
 	vkCmdEndRenderPass(commandBuffer);
 }
 
 void Vulkan::GBufferPass::ValidateDescriptorSetSpans(DescriptorDatabase* descriptorDatabase, const VkDescriptorSet* originalSpanStartPoint)
 {
-	for(uint32_t frameResourceIndex = 0; frameResourceIndex < Utils::InFlightFrameCount; frameResourceIndex++)
-	{
-		mDescriptorSets[frameResourceIndex] = descriptorDatabase->ValidateSetSpan(mDescriptorSets[frameResourceIndex], originalSpanStartPoint);
-	}
+	mDescriptorSets = descriptorDatabase->ValidateSetSpan(mDescriptorSets, originalSpanStartPoint);
 }
 
 void Vulkan::GBufferPass::ObtainDescriptorData(ShaderDatabase* shaderDatabase, uint32_t passIndex)
 {
 	//The pipelines will be bound in this order
-	constexpr uint32_t staticGroupIndex          = 0;
-	constexpr uint32_t staticInstancedGroupIndex = 1;
-	constexpr uint32_t rigidGroupIndex           = 2;
+	constexpr uint32_t staticGroupIndex = 0;
+	constexpr uint32_t rigidGroupIndex  = 1;
 
-	std::array<std::string_view, 3> shaderGroupPipelineOrder;
-	shaderGroupPipelineOrder[staticGroupIndex]          = StaticShaderGroup;
-	shaderGroupPipelineOrder[staticInstancedGroupIndex] = StaticInstancedShaderGroup;
-	shaderGroupPipelineOrder[rigidGroupIndex]           = RigidShaderGroup;
+	std::array<std::string_view, 2> shaderGroupPipelineOrder;
+	shaderGroupPipelineOrder[staticGroupIndex] = StaticShaderGroup;
+	shaderGroupPipelineOrder[rigidGroupIndex]  = RigidShaderGroup;
 	
 	std::array<DescriptorSetBindRange, shaderGroupPipelineOrder.size()> setBindRangesPerShaderGroup;
-	for(uint32_t frameResourceIndex = 0; frameResourceIndex < Utils::InFlightFrameCount; frameResourceIndex++)
-	{
-		mDescriptorSets[frameResourceIndex] = shaderDatabase->AssignPassSets(passIndex, frameResourceIndex, shaderGroupPipelineOrder, setBindRangesPerShaderGroup);
-	}
+	mDescriptorSets = shaderDatabase->AssignPassSets(passIndex, shaderGroupPipelineOrder, setBindRangesPerShaderGroup);
 
-	//Static and static instanced sets should match
-	assert(setBindRangesPerShaderGroup[staticInstancedGroupIndex].BindPoint == setBindRangesPerShaderGroup[staticInstancedGroupIndex].Begin);
-
-	mStaticDrawChangedSetSpan = Span<uint32_t>{.Begin = setBindRangesPerShaderGroup[staticGroupIndex].Begin, .End = setBindRangesPerShaderGroup[staticInstancedGroupIndex].End};
+	mStaticDrawChangedSetSpan = Span<uint32_t>{.Begin = setBindRangesPerShaderGroup[staticGroupIndex].Begin, .End = setBindRangesPerShaderGroup[staticGroupIndex].End};
 	mRigidDrawChangedSetSpan  = Span<uint32_t>{.Begin = setBindRangesPerShaderGroup[rigidGroupIndex].Begin,  .End = setBindRangesPerShaderGroup[rigidGroupIndex].End};
 
 	mStaticDrawSetBindOffset = setBindRangesPerShaderGroup[staticGroupIndex].BindPoint;
@@ -241,9 +224,9 @@ void Vulkan::GBufferPass::CreateFramebuffer(const FrameGraphBuilder* frameGraphB
 
 void Vulkan::GBufferPass::CreatePipelineLayouts(const ShaderDatabase* shaderDatabase)
 {
-	std::array staticGroupNames = {StaticShaderGroup, StaticInstancedShaderGroup};
+	std::array staticGroupNames = {StaticShaderGroup};
 	std::array rigidGroupNames  = {RigidShaderGroup};
-	std::array allGroupNames    = {StaticShaderGroup, StaticInstancedShaderGroup, RigidShaderGroup};
+	std::array allGroupNames    = {StaticShaderGroup, RigidShaderGroup};
 
 	shaderDatabase->CreateMatchingPipelineLayout(staticGroupNames, allGroupNames, &mStaticPipelineLayout);
 	shaderDatabase->CreateMatchingPipelineLayout(rigidGroupNames,  allGroupNames, &mRigidPipelineLayout);
@@ -260,10 +243,6 @@ void Vulkan::GBufferPass::CreatePipelines(const ShaderDatabase* shaderDatabase, 
 	uint32_t        staticVertexShaderSize = 0;
 	shaderDatabase->GetRegisteredShaderInfo(shaderFolder + L"GBufferDrawStatic.vert.spv", &staticVertexShaderCode, &staticVertexShaderSize);
 
-	const uint32_t* staticInstancedVertexShaderCode = nullptr;
-	uint32_t        staticInstancedVertexShaderSize = 0;
-	shaderDatabase->GetRegisteredShaderInfo(shaderFolder + L"GBufferDrawStaticInstanced.vert.spv", &staticInstancedVertexShaderCode, &staticInstancedVertexShaderSize);
-
 	const uint32_t* rigidVertexShaderCode = nullptr;
 	uint32_t        rigidVertexShaderSize = 0;
 	shaderDatabase->GetRegisteredShaderInfo(shaderFolder + L"GBufferDrawRigid.vert.spv", &rigidVertexShaderCode, &rigidVertexShaderSize);
@@ -273,9 +252,8 @@ void Vulkan::GBufferPass::CreatePipelines(const ShaderDatabase* shaderDatabase, 
 	shaderDatabase->GetRegisteredShaderInfo(shaderFolder + L"GBufferDraw.frag.spv", &fragmentShaderCode, &fragmentShaderSize);
 
 	//Create pipelines
-	CreateGBufferPipeline(staticVertexShaderCode,          staticVertexShaderSize,          fragmentShaderCode, fragmentShaderSize, mStaticPipelineLayout, frameGraphConfig, &mStaticPipeline);
-	CreateGBufferPipeline(staticInstancedVertexShaderCode, staticInstancedVertexShaderSize, fragmentShaderCode, fragmentShaderSize, mStaticPipelineLayout, frameGraphConfig, &mStaticInstancedPipeline);
-	CreateGBufferPipeline(rigidVertexShaderCode,           rigidVertexShaderSize,           fragmentShaderCode, fragmentShaderSize, mRigidPipelineLayout,  frameGraphConfig, &mRigidPipeline);
+	CreateGBufferPipeline(staticVertexShaderCode, staticVertexShaderSize, fragmentShaderCode, fragmentShaderSize, mStaticPipelineLayout, frameGraphConfig, &mStaticPipeline);
+	CreateGBufferPipeline(rigidVertexShaderCode,  rigidVertexShaderSize,  fragmentShaderCode, fragmentShaderSize, mRigidPipelineLayout,  frameGraphConfig, &mRigidPipeline);
 }
 
 void Vulkan::GBufferPass::CreateGBufferPipeline(const uint32_t* vertexShaderModule, uint32_t vertexShaderModuleSize, const uint32_t* fragmentShaderModule, uint32_t fragmetShaderModuleSize, VkPipelineLayout pipelineLayout, const FrameGraphConfig* frameGraphConfig, VkPipeline* outPipeline)

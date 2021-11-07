@@ -17,9 +17,8 @@ namespace Vulkan
 
 	class GBufferPass: public RenderPass, public GBufferPassBase
 	{
-		constexpr static std::string_view StaticShaderGroup          = "GBufferStaticShaders";
-		constexpr static std::string_view StaticInstancedShaderGroup = "GBufferStaticInstancedShaders";
-		constexpr static std::string_view RigidShaderGroup           = "GBufferRigidShaders";
+		constexpr static std::string_view StaticShaderGroup = "GBufferStaticShaders";
+		constexpr static std::string_view RigidShaderGroup  = "GBufferRigidShaders";
 
 	public:
 		inline static void             RegisterSubresources(std::span<SubresourceMetadataPayload> inoutMetadataPayloads);
@@ -31,7 +30,7 @@ namespace Vulkan
 		GBufferPass(const FrameGraphBuilder* frameGraphBuilder, uint32_t frameGraphPassIndex);
 		~GBufferPass();
 
-		void RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* renderableScene, const FrameGraphConfig& frameGraphConfig, uint32_t frameResourceIndex) const override;
+		void RecordExecution(VkCommandBuffer commandBuffer, const RenderableScene* renderableScene, const FrameGraphConfig& frameGraphConfig) const override;
 
 		void ValidateDescriptorSetSpans(DescriptorDatabase* descriptorDatabase, const VkDescriptorSet* originalSetStartPoint) override;
 
@@ -48,18 +47,17 @@ namespace Vulkan
 		VkRenderPass  mRenderPass;
 		VkFramebuffer mFramebuffer;
 
-		VkPipelineLayout mStaticPipelineLayout; //Should match static instanced
+		VkPipelineLayout mStaticPipelineLayout;
 		VkPipelineLayout mRigidPipelineLayout;
 
 		VkPipeline mStaticPipeline;
-		VkPipeline mStaticInstancedPipeline;
 		VkPipeline mRigidPipeline;
 
-		std::span<VkDescriptorSet> mDescriptorSets[Utils::InFlightFrameCount]; //All descriptor sets needed for pass (per frame resource)
-		Span<uint32_t>             mStaticDrawChangedSetSpan;                  //The span in mDescriptorSets to bind for static mesh draw
-		Span<uint32_t>             mRigidDrawChangedSetSpan;                   //The span in mDescriptorSets to bind for rigid mesh draw
-		uint32_t                   mStaticDrawSetBindOffset;                   //The firstSet parameter for static mesh draw 
-		uint32_t                   mRigidDrawSetBindOffset;                    //The firstSet parameter for rigid mesh draw 
+		std::span<VkDescriptorSet> mDescriptorSets;           //All descriptor sets needed for the pass
+		Span<uint32_t>             mStaticDrawChangedSetSpan; //The span in mDescriptorSets to bind for static meshes draw
+		Span<uint32_t>             mRigidDrawChangedSetSpan;  //The span in mDescriptorSets to bind for rigid meshes draw
+		uint32_t                   mStaticDrawSetBindOffset;  //The firstSet parameter for static meshes draw 
+		uint32_t                   mRigidDrawSetBindOffset;   //The firstSet parameter for rigid meshes draw 
 
 		uint32_t           mMaterialIndexPushConstantOffset;
 		VkShaderStageFlags mMaterialIndexPushConstantStages;

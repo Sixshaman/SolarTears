@@ -15,10 +15,10 @@ protected:
 	void Bake() override;
 
 protected:
-	virtual void CreateVertexBufferInfo(size_t vertexDataSize)            = 0; //Prepare the necessary data for vertex buffer creation
-	virtual void CreateIndexBufferInfo(size_t indexDataSize)              = 0; //Prepare the necessary data for index buffer creation
-	virtual void CreateStaticConstantBufferInfo(size_t constantDataSize)  = 0; //Prepare the necessary data for static constant buffer creation (static meshes, materials)
-	virtual void CreateDynamicConstantBufferInfo(size_t constantDataSize) = 0; //Prepare the necessary data for dynamic constant buffer creation creation (rigid moving meshes)
+	virtual void CreateVertexBufferInfo(size_t vertexDataSize)     = 0; //Prepare the necessary data for vertex buffer creation
+	virtual void CreateIndexBufferInfo(size_t indexDataSize)       = 0; //Prepare the necessary data for index buffer creation
+	virtual void CreateConstantBufferInfo(size_t constantDataSize) = 0; //Prepare the necessary data for constant buffer creation
+	virtual void CreateUploadBufferInfo(size_t constantDataSize)   = 0; //Prepare the necessary data for upload buffer creation (intermediate buffer for dynamic constant data)
 
 	virtual void AllocateTextureMetadataArrays(size_t textureCount)                                                                                                              = 0;
 	virtual void LoadTextureFromFile(const std::wstring& textureFilename, uint64_t currentIntermediateBufferOffset, size_t textureIndex, std::vector<std::byte>& outTextureData) = 0;
@@ -26,7 +26,7 @@ protected:
 	virtual void FinishBufferCreation()  = 0;
 	virtual void FinishTextureCreation() = 0;
 
-	virtual std::byte* MapDynamicConstantBuffer() = 0;
+	virtual std::byte* MapUploadBuffer() = 0;
 
 	virtual void       CreateIntermediateBuffer()      = 0;
 	virtual std::byte* MapIntermediateBuffer()   const = 0;
@@ -65,8 +65,8 @@ protected:
 
 	uint64_t mVertexBufferGpuMemoryOffset;
 	uint64_t mIndexBufferGpuMemoryOffset;
-	uint64_t mStaticConstantBufferGpuMemoryOffset;
-	uint64_t mDynamicConstantBufferGpuMemoryOffset;
+	uint64_t mConstantBufferGpuMemoryOffset;
+	uint64_t mUploadBufferMemoryOffset;
 
 	uint64_t mIntermediateBufferVertexDataOffset;
 	uint64_t mIntermediateBufferIndexDataOffset;

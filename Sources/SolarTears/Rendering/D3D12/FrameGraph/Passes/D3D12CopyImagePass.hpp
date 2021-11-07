@@ -23,7 +23,7 @@ namespace D3D12
 
 		ID3D12PipelineState* FirstPipeline() const override;
 
-		void RecordExecution(ID3D12GraphicsCommandList6* commandList, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig, uint32_t frameResourceIndex) const override;
+		void RecordExecution(ID3D12GraphicsCommandList6* commandList, const RenderableScene* scene, const FrameGraphConfig& frameGraphConfig) const override;
 
 		virtual UINT GetPassDescriptorCountNeeded()                                                                               override;
 		virtual void ValidatePassDescriptors(D3D12_GPU_DESCRIPTOR_HANDLE prevHeapStart, D3D12_GPU_DESCRIPTOR_HANDLE newHeapStart) override;

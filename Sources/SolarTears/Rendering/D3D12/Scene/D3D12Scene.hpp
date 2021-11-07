@@ -11,6 +11,8 @@
 namespace D3D12
 {
 	class ShaderManager;
+	class WorkerCommandLists;
+	class DeviceQueues;
 
 	class RenderableScene: public ModernRenderableScene
 	{
@@ -22,19 +24,23 @@ namespace D3D12
 		~RenderableScene();
 
 	public:
+		void   CopyUploadedSceneObjects(WorkerCommandLists* commandLists, DeviceQueues* deviceQueues, uint32_t frameResourceIndex);
+		UINT64 GetUploadFenceValue(uint32_t frameResourceIndex) const;
+
 		void PrepareDrawBuffers(ID3D12GraphicsCommandList* cmdList) const;
 
 		template<typename SubmeshCallback>
 		inline void DrawStaticObjects(ID3D12GraphicsCommandList* cmdList, SubmeshCallback submeshCallback) const;
 
 		template<typename MeshCallback, typename SubmeshCallback>
-		inline void DrawStaticInstancedObjects(ID3D12GraphicsCommandList* cmdList, MeshCallback meshCallback, SubmeshCallback submeshCallback) const;
+		inline void DrawNonStaticObjects(ID3D12GraphicsCommandList* cmdList, MeshCallback meshCallback, SubmeshCallback submeshCallback) const;
 
-		template<typename MeshCallback, typename SubmeshCallback>
-		inline void DrawRigidObjects(ID3D12GraphicsCommandList* cmdList, MeshCallback meshCallback, SubmeshCallback submeshCallback) const;
+		D3D12_GPU_VIRTUAL_ADDRESS GetMaterialDataStart() const;
+		D3D12_GPU_VIRTUAL_ADDRESS GetFrameDataStart()    const;
+		D3D12_GPU_VIRTUAL_ADDRESS GetObjectDataStart()   const;
 
-		D3D12_GPU_VIRTUAL_ADDRESS GetFrameData(uint32_t frameResourceIndex)  const;
-		D3D12_GPU_VIRTUAL_ADDRESS GetObjectData(uint32_t frameResourceIndex) const;
+		D3D12_GPU_VIRTUAL_ADDRESS GetMaterialDataStart(uint32_t materialIndex) const;
+		D3D12_GPU_VIRTUAL_ADDRESS GetObjectDataStart(uint32_t objectIndex)     const;
 
 	private:
 		wil::com_ptr_nothrow<ID3D12Resource> mSceneVertexBuffer;
@@ -43,14 +49,16 @@ namespace D3D12
 		D3D12_VERTEX_BUFFER_VIEW mSceneVertexBufferView;
 		D3D12_INDEX_BUFFER_VIEW  mSceneIndexBufferView;
 
-		wil::com_ptr_nothrow<ID3D12Resource> mSceneStaticConstantBuffer;  //Common buffer for all static constant buffer data (GPU-local)
-		wil::com_ptr_nothrow<ID3D12Resource> mSceneDynamicConstantBuffer; //Common buffer for all dynamic constant buffer data (CPU-visible)
+		wil::com_ptr_nothrow<ID3D12Resource> mSceneConstantBuffer; //Common buffer for all constant buffer data (GPU-local)
+		wil::com_ptr_nothrow<ID3D12Resource> mSceneUploadBuffer;   //Common buffer for all dynamic upload data (CPU-visible)
 
 		std::vector<wil::com_ptr_nothrow<ID3D12Resource2>> mSceneTextures;
 
 		wil::com_ptr_nothrow<ID3D12Heap> mHeapForGpuBuffers;
 		wil::com_ptr_nothrow<ID3D12Heap> mHeapForCpuVisibleBuffers;
 		wil::com_ptr_nothrow<ID3D12Heap> mHeapForTextures;
+
+		UINT64 mUploadCopyFenceValues[Utils::InFlightFrameCount];
 	};
 
 	#include "D3D12Scene.inl"

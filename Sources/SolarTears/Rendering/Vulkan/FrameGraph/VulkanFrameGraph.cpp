@@ -161,12 +161,17 @@ void Vulkan::FrameGraph::Traverse(ThreadPool* threadPool, RenderableScene* scene
 			graphicsFenceToSignal = traverseFence;
 		}
 
+		std::array graphicsWaitStages     = {(VkPipelineStageFlags)VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, (VkPipelineStageFlags)VK_PIPELINE_STAGE_TRANSFER_BIT};
+		std::array graphicsWaitSemaphores = {lastTraverseSemaphore, scene->GetUploadSemaphore(currentFrameResourceIndex)};
+
 		VkSemaphore graphicsSemaphore = mGraphicsSemaphores[currentFrameResourceIndex];
 		mFrameRecordedGraphicsCommandBuffers[mGraphicsPassSpansPerDependencyLevel.size() - 1] = mainGraphicsCommandBuffer;
-		mDeviceQueuesRef->GraphicsQueueSubmit(mFrameRecordedGraphicsCommandBuffers.data(), mGraphicsPassSpansPerDependencyLevel.size(), VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, lastTraverseSemaphore, graphicsSemaphore, graphicsFenceToSignal);
 
-		lastTraverseSemaphore = graphicsSemaphore;
-	}
+		std::span commandBuffers = {mFrameRecordedGraphicsCommandBuffers.begin(), mFrameRecordedGraphicsCommandBuffers.end()};
+		mDeviceQueuesRef->GraphicsQueueSubmit(commandBuffers, graphicsWaitStages, graphicsWaitSemaphores, graphicsSemaphore, graphicsFenceToSignal);
+
+		lastTraverseSemaphore = mGraphicsSemaphores[currentFrameResourceIndex];
+	}	
 
 	if(hasPresentPass) //Swapchain present barrier exists
 	{
@@ -251,7 +256,7 @@ void Vulkan::FrameGraph::RecordGraphicsPasses(VkCommandBuffer graphicsCommandBuf
 			vkCmdPipelineBarrier(graphicsCommandBuffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, memoryBarrierPointer, 0, bufferBarrierPointer, beforePassBarrierCount, imageBarrierPointer);
 		}
 
-		mRenderPasses[passIndex]->RecordExecution(graphicsCommandBuffer, scene, mFrameGraphConfig, frameIndex % Utils::InFlightFrameCount);
+		mRenderPasses[passIndex]->RecordExecution(graphicsCommandBuffer, scene, mFrameGraphConfig);
 
 		if(afterPassBarrierCount != 0)
 		{

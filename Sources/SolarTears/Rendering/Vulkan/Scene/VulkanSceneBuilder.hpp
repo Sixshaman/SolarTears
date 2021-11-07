@@ -25,10 +25,10 @@ namespace Vulkan
 		~RenderableSceneBuilder();
 
 	protected:
-		void CreateVertexBufferInfo(size_t vertexDataSize)            override final;
-		void CreateIndexBufferInfo(size_t indexDataSize)              override final;
-		void CreateStaticConstantBufferInfo(size_t constantDataSize)  override final;
-		void CreateDynamicConstantBufferInfo(size_t constantDataSize) override final;
+		void CreateVertexBufferInfo(size_t vertexDataSize)     override final;
+		void CreateIndexBufferInfo(size_t indexDataSize)       override final;
+		void CreateConstantBufferInfo(size_t constantDataSize) override final;
+		void CreateUploadBufferInfo(size_t uploadDataSize)     override final;
 
 		void AllocateTextureMetadataArrays(size_t textureCount)                                                                                                              override final;
 		void LoadTextureFromFile(const std::wstring& textureFilename, uint64_t currentIntermediateBufferOffset, size_t textureIndex, std::vector<std::byte>& outTextureData) override final;
@@ -36,7 +36,7 @@ namespace Vulkan
 		virtual void FinishBufferCreation()  override final;
 		virtual void FinishTextureCreation() override final;
 
-		virtual std::byte* MapDynamicConstantBuffer() override final;
+		virtual std::byte* MapUploadBuffer() override final;
 
 		virtual void       CreateIntermediateBuffer()      override final;
 		virtual std::byte* MapIntermediateBuffer()   const override final;

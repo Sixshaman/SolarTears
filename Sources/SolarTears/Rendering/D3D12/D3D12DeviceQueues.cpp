@@ -68,7 +68,7 @@ UINT64 D3D12::DeviceQueues::CopyFenceSignal()
 	return mCopyFenceValue;
 }
 
-void D3D12::DeviceQueues::GraphicsQueueCpuWait(UINT64 fenceValue)
+void D3D12::DeviceQueues::GraphicsQueueCpuWait(UINT64 fenceValue) const
 {
 	if(mGraphicsFence->GetCompletedValue() < fenceValue)
 	{
@@ -77,7 +77,7 @@ void D3D12::DeviceQueues::GraphicsQueueCpuWait(UINT64 fenceValue)
 	}
 }
 
-void D3D12::DeviceQueues::ComputeQueueCpuWait(UINT64 fenceValue)
+void D3D12::DeviceQueues::ComputeQueueCpuWait(UINT64 fenceValue) const
 {
 	if(mComputeFence->GetCompletedValue() < fenceValue)
 	{
@@ -86,13 +86,43 @@ void D3D12::DeviceQueues::ComputeQueueCpuWait(UINT64 fenceValue)
 	}
 }
 
-void D3D12::DeviceQueues::CopyQueueCpuWait(UINT64 fenceValue)
+void D3D12::DeviceQueues::CopyQueueCpuWait(UINT64 fenceValue) const
 {
 	if(mCopyFence->GetCompletedValue() < fenceValue)
 	{
 		THROW_IF_FAILED(mCopyFence->SetEventOnCompletion(fenceValue, mCopyFenceCompletionEvent.get()));
 		WaitForSingleObject(mCopyFenceCompletionEvent.get(), INFINITE);
 	}
+}
+
+void D3D12::DeviceQueues::GraphicsQueueWaitForCopyQueue(UINT64 fenceValue) const
+{
+	THROW_IF_FAILED(mGraphicsQueue->Wait(mCopyFence.get(), fenceValue));
+}
+
+void D3D12::DeviceQueues::CopyQueueWaitForGraphicsQueue(UINT64 fenceValue) const
+{
+	THROW_IF_FAILED(mCopyQueue->Wait(mGraphicsFence.get(), fenceValue));
+}
+
+void D3D12::DeviceQueues::GraphicsQueueWaitForComputeQueue(UINT64 fenceValue) const
+{
+	THROW_IF_FAILED(mGraphicsQueue->Wait(mComputeFence.get(), fenceValue));
+}
+
+void D3D12::DeviceQueues::ComputeQueueWaitForGraphicsQueue(UINT64 fenceValue) const
+{
+	THROW_IF_FAILED(mComputeQueue->Wait(mGraphicsFence.get(), fenceValue));
+}
+
+void D3D12::DeviceQueues::ComputeQueueWaitForCopyQueue(UINT64 fenceValue) const
+{
+	THROW_IF_FAILED(mComputeQueue->Wait(mCopyFence.get(), fenceValue));
+}
+
+void D3D12::DeviceQueues::CopyQueueWaitForComputeQueue(UINT64 fenceValue) const
+{
+	THROW_IF_FAILED(mCopyQueue->Wait(mComputeFence.get(), fenceValue));
 }
 
 void D3D12::DeviceQueues::CreateQueueObjects(ID3D12Device* device)

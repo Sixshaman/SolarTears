@@ -4,7 +4,7 @@
 
 ModernRenderableScene::ModernRenderableScene(uint64_t constantDataAlignment)
 {
-	mSceneConstantDataBufferPointer = nullptr;
+	mSceneUploadDataBufferPointer = nullptr;
 
 	mMaterialDataSize     = 0;
 	mStaticObjectDataSize = 0;
@@ -25,8 +25,8 @@ void ModernRenderableScene::UpdateFrameData(const FrameDataUpdateInfo& frameUpda
 	DirectX::XMMATRIX projMatrix = DirectX::XMLoadFloat4x4(&frameUpdate.ProjMatrix);
 	PerFrameData perFrameData = PackFrameData(frameUpdate.CameraLocation, projMatrix);
 
-	uint64_t frameDataOffset = CalculateFrameDataOffset(frameResourceIndex);
-	memcpy((std::byte*)mSceneConstantDataBufferPointer + frameDataOffset, &perFrameData, sizeof(PerFrameData));
+	uint64_t frameDataOffset = GetUploadFrameDataOffset(frameResourceIndex);
+	memcpy((std::byte*)mSceneUploadDataBufferPointer + frameDataOffset, &perFrameData, sizeof(PerFrameData));
 }
 
 void ModernRenderableScene::UpdateRigidSceneObjects(const std::span<ObjectDataUpdateInfo> rigidObjectUpdates, uint64_t frameNumber)
@@ -40,10 +40,10 @@ void ModernRenderableScene::UpdateRigidSceneObjects(const std::span<ObjectDataUp
 	//Merge mPrevFrameMeshUpdates and rigidObjectUpdates into updates for the next frame and leftovers, keeping the result sorted
 	while(mPrevFrameRigidMeshUpdates[prevFrameUpdateIndex].MeshHandleIndex != (uint32_t)(-1) || objectUpdateIndex < rigidObjectUpdates.size())
 	{
-		assert(rigidObjectUpdates[objectUpdateIndex].ObjectId.ObjectType() == SceneObjectType::Rigid);
+		assert(rigidObjectUpdates[objectUpdateIndex].ObjectId > GetStaticObjectCount());
 
 		uint32_t updatedObjectPrevFrameIndex = mPrevFrameRigidMeshUpdates[prevFrameUpdateIndex].MeshHandleIndex;
-		uint32_t updatedObjectToMergeIndex   = rigidObjectUpdates[objectUpdateIndex].ObjectId.ObjectBufferIndex();
+		uint32_t updatedObjectToMergeIndex   = rigidObjectUpdates[objectUpdateIndex].ObjectId;
 
 		if(updatedObjectPrevFrameIndex < updatedObjectToMergeIndex)
 		{
@@ -109,62 +109,80 @@ void ModernRenderableScene::UpdateRigidSceneObjects(const std::span<ObjectDataUp
 	mNextFrameRigidMeshUpdates[nextFrameUpdateIndex] = {.MeshHandleIndex = (uint32_t)(-1), .ObjectDataIndex = (uint32_t)(-1)};
 	std::swap(mPrevFrameRigidMeshUpdates, mNextFrameRigidMeshUpdates);
 
-	const uint32_t currFrameUpdateCount = currFrameUpdateIndex;
+	mCurrFrameUpdatedObjectCount = currFrameUpdateIndex;
 
 	uint32_t frameResourceIndex = frameNumber % Utils::InFlightFrameCount;
-	for(uint32_t updateIndex = 0; updateIndex < currFrameUpdateCount; updateIndex++)
+	for(uint32_t updateIndex = 0; updateIndex < mCurrFrameUpdatedObjectCount; updateIndex++)
 	{
 		uint32_t meshIndex = mCurrFrameRigidMeshUpdateIndices[updateIndex];
 
-		uint64_t objectDataOffset = CalculateRigidObjectDataOffset(frameResourceIndex, meshIndex);
-		memcpy((std::byte*)mSceneConstantDataBufferPointer + objectDataOffset, &mCurrFrameDataToUpdate[updateIndex], sizeof(PerObjectData));
+		uint64_t objectDataOffset = GetUploadRigidObjectDataOffset(frameResourceIndex, meshIndex) - GetStaticObjectCount();
+		memcpy((std::byte*)mSceneUploadDataBufferPointer + objectDataOffset, &mCurrFrameDataToUpdate[updateIndex], sizeof(PerObjectData));
 	}
 
 	std::swap(mPrevFrameDataToUpdate, mCurrFrameDataToUpdate);
 }
 
-uint64_t ModernRenderableScene::CalculateRigidObjectDataOffset(uint32_t currentFrameResourceIndex, uint32_t objectIndex) const
-{
-	return GetBaseRigidObjectDataOffset(currentFrameResourceIndex) + (uint64_t)objectIndex * mObjectChunkDataSize;
-}
-
-uint64_t ModernRenderableScene::CalculateFrameDataOffset(uint32_t currentFrameResourceIndex) const
-{
-	return GetBaseFrameDataOffset(currentFrameResourceIndex);
-}
-
-uint64_t ModernRenderableScene::CalculateMaterialDataOffset(uint32_t materialIndex) const
+uint64_t ModernRenderableScene::GetMaterialDataOffset(uint32_t materialIndex) const
 {
 	return GetBaseMaterialDataOffset() + (uint64_t)materialIndex * mMaterialChunkDataSize;
 }
 
-uint64_t ModernRenderableScene::CalculateStaticObjectDataOffset(uint32_t staticObjectIndex) const
+uint64_t ModernRenderableScene::GetObjectDataOffset(uint32_t objectIndex) const
 {
-	return GetBaseStaticObjectDataOffset() + (uint64_t)staticObjectIndex * mObjectChunkDataSize;
+	//All object data starts at GetBaseStaticObjectDataOffset()
+	return GetBaseStaticObjectDataOffset() + (uint64_t)objectIndex * mObjectChunkDataSize;
 }
 
 uint64_t ModernRenderableScene::GetBaseMaterialDataOffset() const
 {
-	//Materials are at the beginning of the static buffer
+	//Material data is stored at the beginning of the static buffer
 	return 0;
+}
+
+uint64_t ModernRenderableScene::GetBaseFrameDataOffset() const
+{
+	//Frame data is stored right after material data
+	return GetBaseMaterialDataOffset() + mMaterialDataSize;
 }
 
 uint64_t ModernRenderableScene::GetBaseStaticObjectDataOffset() const
 {
-	//Static objects are right after materials in the static buffer
-	return GetBaseMaterialDataOffset() + mMaterialDataSize;
+	//Object data is stored right after frame data
+	return GetBaseFrameDataOffset() + mFrameDataSize;
 }
 
-uint64_t ModernRenderableScene::GetBaseRigidObjectDataOffset(uint32_t currentFrameResourceIndex) const
+uint64_t ModernRenderableScene::GetBaseRigidObjectDataOffset() const
+{
+	//Rigid object data is stored right after static object data
+	return GetBaseStaticObjectDataOffset() + mStaticObjectDataSize;
+}
+
+uint64_t ModernRenderableScene::GetUploadFrameDataOffset(uint32_t frameResourceIndex) const
+{
+	//For each frame the frame data is stored in the beginning of this frame part of the dynamic buffer
+	uint64_t wholeFrameResourceSize = (uint64_t)GetRigidObjectCount() * mObjectChunkDataSize + mFrameChunkDataSize;
+	return frameResourceIndex * wholeFrameResourceSize;
+}
+
+uint64_t ModernRenderableScene::GetUploadRigidObjectDataOffset(uint32_t frameResourceIndex, uint32_t rigidObjectDataIndex) const
 {
 	//For each frame the object data starts immediately after the frame data
-	return CalculateFrameDataOffset(currentFrameResourceIndex) + mFrameChunkDataSize;
+	return GetUploadFrameDataOffset(frameResourceIndex) + mFrameChunkDataSize + (uint64_t)rigidObjectDataIndex * mObjectChunkDataSize;
 }
 
-uint64_t ModernRenderableScene::GetBaseFrameDataOffset(uint32_t currentFrameResourceIndex) const
+uint32_t ModernRenderableScene::GetMaterialCount() const
 {
-	//For each frame the frame data is in the beginning of the dynamic buffer
+	return (uint32_t)(mMaterialDataSize / mMaterialChunkDataSize);
+}
+
+uint32_t ModernRenderableScene::GetStaticObjectCount() const
+{
+	return (uint32_t)(mStaticObjectDataSize / mObjectChunkDataSize);
+}
+
+uint32_t ModernRenderableScene::GetRigidObjectCount() const
+{
 	//Since mCurrFrameRigidMeshUpdates is allocated once and never shrinks, its size is equal to the total rigid object count
-	uint64_t wholeFrameResourceSize = (uint64_t)mCurrFrameRigidMeshUpdateIndices.size() * mObjectChunkDataSize + mFrameChunkDataSize;
-	return currentFrameResourceIndex * wholeFrameResourceSize;
+	return (uint32_t)mCurrFrameRigidMeshUpdateIndices.size();
 }

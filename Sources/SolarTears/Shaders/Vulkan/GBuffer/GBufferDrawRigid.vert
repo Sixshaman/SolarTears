@@ -20,7 +20,7 @@ layout(set = 3, binding = 0) uniform FrameConstants
 layout(set = 3, binding = 1) uniform ObjectConstants
 {
 	mat4 ModelMatrix;
-} SceneDynamicObjectDatas[];
+} SceneObjectDatas[];
 
 layout(push_constant) uniform ObjectPushConstants
 {
@@ -33,7 +33,7 @@ void main()
 {
 	outTexCoord = inTexCoord;
 
-	mat4 modelMatrix = SceneDynamicObjectDatas[PushConstants.ObjectIndex].ModelMatrix;
+	mat4 modelMatrix = SceneObjectDatas[PushConstants.ObjectIndex].ModelMatrix;
 	gl_Position = SceneFrameData.ViewProjMatrix * modelMatrix * vec4(inPosition, 1.0f);
 
 	//The --invert-y option doesn't actually flip the coordinate system, it only flips the viewport

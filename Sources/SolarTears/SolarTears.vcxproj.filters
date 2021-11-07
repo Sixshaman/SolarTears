@@ -381,9 +381,6 @@
     <ClInclude Include="Rendering\Common\Scene\RenderableSceneDescriptionMisc.hpp">
       <Filter>Rendering\Common\Scene</Filter>
     </ClInclude>
-    <ClInclude Include="Rendering\Common\Scene\RenderableSceneObjectHandle.hpp">
-      <Filter>Rendering\Common\Scene</Filter>
-    </ClInclude>
     <ClInclude Include="Rendering\Common\Scene\BaseRenderableSceneBuilder.hpp">
       <Filter>Rendering\Common\Scene</Filter>
     </ClInclude>
@@ -716,9 +713,6 @@
     </CustomBuild>
     <CustomBuild Include="Shaders\D3D12\GBuffer\GBufferDrawStaticVS.hlsl">
       <Filter>Shaders\D3D12\GBuffer</Filter>
-    </CustomBuild>
-    <CustomBuild Include="Shaders\Vulkan\GBuffer\GBufferDrawStaticInstanced.vert">
-      <Filter>Shaders\Vulkan\GBuffer</Filter>
     </CustomBuild>
   </ItemGroup>
 </Project>
