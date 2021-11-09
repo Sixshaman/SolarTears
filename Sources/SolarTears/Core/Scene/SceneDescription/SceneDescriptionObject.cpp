@@ -1,6 +1,6 @@
 #include "SceneDescriptionObject.hpp"
 
-SceneDescriptionObject::SceneDescriptionObject(uint64_t entityId): mEntityId(entityId)
+SceneDescriptionObject::SceneDescriptionObject()
 {
 	mLocation = SceneObjectLocation
 	{
@@ -12,11 +12,6 @@ SceneDescriptionObject::SceneDescriptionObject(uint64_t entityId): mEntityId(ent
 
 SceneDescriptionObject::~SceneDescriptionObject()
 {
-}
-
-uint64_t SceneDescriptionObject::GetEntityId() const
-{
-	return mEntityId;
 }
 
 void SceneDescriptionObject::SetLocation(const SceneObjectLocation& location)

@@ -6,8 +6,7 @@ SceneDescription::SceneDescription()
 	mSceneObjects.reserve((uint32_t)Scene::SpecialSceneObjects::Count);	
 	for(uint32_t specialObjectIndex = 0; specialObjectIndex < (uint32_t)Scene::SpecialSceneObjects::Count; specialObjectIndex++)
 	{
-		uint64_t id = mSceneObjects.size();
-		mSceneObjects.emplace_back(SceneDescriptionObject(id));
+		mSceneObjects.push_back(SceneDescriptionObject());
 	}
 	
 	mSceneCameraComponent = SceneCameraComponent
@@ -25,7 +24,7 @@ SceneDescription::~SceneDescription()
 
 SceneDescriptionObject& SceneDescription::CreateEmptySceneObject()
 {
-	mSceneObjects.emplace_back(SceneDescriptionObject(mSceneObjects.size()));
+	mSceneObjects.push_back(SceneDescriptionObject());
 	return mSceneObjects.back();
 }
 
@@ -61,7 +60,7 @@ void SceneDescription::BuildScene(Scene* scene, BaseRenderableScene* renderableC
 
 		scene->mSceneObjects.emplace_back(SceneObject
 		{
-			.Id       = mSceneObjects[i].GetEntityId(),
+			.Id       = (uint64_t)i,
 			.Location = mSceneObjects[i].GetLocation(),
 
 			.RenderableHandle = renderableHandle,
