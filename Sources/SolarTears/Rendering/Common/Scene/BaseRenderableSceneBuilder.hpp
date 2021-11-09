@@ -16,12 +16,12 @@ class BaseRenderableSceneBuilder
 		RenderableSceneMeshData MeshData;
 	};
 
-	struct InstanceSpanSpans
+	struct InstanceSpanBuckets
 	{
-		Span<uint32_t> StaticUniqueSpan;
-		Span<uint32_t> StaticInstancedSpan;
-		Span<uint32_t> RigidUniqueSpan;
-		Span<uint32_t> RigidInstancedSpan;
+		Span<uint32_t> StaticUniqueBucket;
+		Span<uint32_t> StaticInstancedBucket;
+		Span<uint32_t> RigidUniqueBucket;
+		Span<uint32_t> RigidInstancedBucket;
 	};
 
 public:
@@ -44,12 +44,12 @@ private:
 	void DetectInstanceSpans(const std::vector<NamedSceneMeshData>& sceneMeshes, std::vector<std::span<const NamedSceneMeshData>>& outInstanceSpans) const;
 
 	//Step 3 of filling in scene data structures
-	//Sorts the instance spans as (static meshes, static instanced meshes, rigid meshes)
-	void SortInstanceSpans(std::vector<std::span<const NamedSceneMeshData>>& inoutInstanceSpans, InstanceSpanSpans* outSpanSpans);
+	//Sorts the instance spans as (static meshes, static instanced meshes, rigid meshes, rigid instancedMeshes)
+	void SortInstanceSpans(std::vector<std::span<const NamedSceneMeshData>>& inoutInstanceSpans, InstanceSpanBuckets* outSpanBuckets);
 
 	//Step 4 of filling in scene data structures
-	//Allocates the memory for scene mesh and submesh data in the same order as sortedInstanceSpans
-	void FillMeshLists(const std::vector<std::span<const NamedSceneMeshData>>& sortedInstanceSpans, const InstanceSpanSpans& spanSpans);
+	//Allocates the memory for scene mesh and submesh data
+	void FillMeshLists(const std::vector<std::span<const NamedSceneMeshData>>& sortedInstanceSpans, const InstanceSpanBuckets& spanBuckets);
 
 	//Step 5 of filling in scene data structures
 	//Loads vertex and index buffer data from geometries and initializes initial positional data
