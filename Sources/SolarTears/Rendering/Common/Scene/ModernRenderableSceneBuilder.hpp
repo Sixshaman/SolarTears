@@ -49,8 +49,8 @@ private:
 	//Upload the static data to the intermediate buffer
 	void UploadIntermediateData();
 	
-	//Upload the dynamic data to CPU-visible buffer
-	void InitializeDynamicConstantData();
+	//Initialize the CPU-visible buffer for dynamic data
+	void InitializeUploadBuffer();
 
 	//Send the upload commands to GPU and wait
 	void HandleUploadCommands();

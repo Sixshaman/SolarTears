@@ -136,7 +136,7 @@ void ModernRenderableSceneBuilder::UploadIntermediateData()
 	UnmapIntermediateBuffer();
 }
 
-void ModernRenderableSceneBuilder::InitializeDynamicConstantData()
+void ModernRenderableSceneBuilder::InitializeUploadBuffer()
 {
 	mModernSceneToBuild->mSceneUploadDataBufferPointer = MapUploadBuffer();
 
