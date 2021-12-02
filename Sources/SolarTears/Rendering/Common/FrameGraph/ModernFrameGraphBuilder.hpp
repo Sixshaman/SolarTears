@@ -117,8 +117,10 @@ private:
 	//Helper function to add several multiple copies of a single pass to mTotalPassMetadatas
 	void FindFrameCountAndSwapType(const std::vector<TextureRemapInfo>& resourceRemapInfos, std::span<const SubresourceMetadataNode> oldPassSubresourceMetadataSpan, uint32_t* outFrameCount, RenderPassFrameSwapType* outSwapType);
 
+	//Calculates PrevPassNodeIndex for the subresource metadata node in amplified list
 	uint32_t CalcAmplifiedPrevSubresourceIndex(uint32_t currPassFrameSpanIndex, uint32_t prevPassFrameSpanIndex, uint32_t currPassFrameIndex, uint32_t prevPassSubresourceId);
 
+	//Calculates NextPassNodeIndex for the subresource metadata node in amplified list
 	uint32_t CalcAmplifiedNextSubresourceIndex(uint32_t currPassFrameSpanIndex, uint32_t nextPassFrameSpanIndex, uint32_t currPassFrameIndex, uint32_t nextPassSubresourceId);
 
 	//Validates PrevPassMetadata and NextPassMetadata links in each subresource info
