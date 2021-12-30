@@ -31,7 +31,7 @@ void ModernRenderableSceneBuilder::Bake()
 	UploadIntermediateData();
 
 	//Fill dynamic buffer data
-	InitializeDynamicConstantData();
+	InitializeUploadBuffer();
 
 	//Send the upload commands to GPU and wait
 	HandleUploadCommands();
