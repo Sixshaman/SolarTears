@@ -116,6 +116,7 @@ void ModernFrameGraphBuilder::InitSubresourceList(const std::vector<SubresourceN
 		passSubresourceSpansPerName[passMetadata.Name] = passMetadata.SubresourceMetadataSpan;
 	}
 
+	//Record the per-pass subresource indices for all subresources passed in the description
 	std::unordered_map<std::string_view, uint_fast16_t> passSubresourceIndices;
 	for(RenderPassType passType: uniquePassTypes)
 	{
