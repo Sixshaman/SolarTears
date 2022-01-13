@@ -383,14 +383,14 @@ void ModernFrameGraphBuilder::SortRenderPassesByTopology(const std::vector<std::
 
 void ModernFrameGraphBuilder::TopologicalSortNode(uint32_t passIndex, const std::vector<std::span<uint32_t>>& unsortedPassAdjacencyList, std::vector<uint8_t>& inoutTraversalMarkFlags, std::vector<uint32_t>& inoutPassIndexRemap)
 {
-	constexpr uint8_t VisitedFlag = 0x01;
-	constexpr uint8_t OnStackFlag = 0x02;
+	constexpr uint8_t AlreadyVisitedFlag     = 0x01;
+	constexpr uint8_t CurrentlyProcessedFlag = 0x02;
 
-	bool isVisited = inoutTraversalMarkFlags[passIndex] & VisitedFlag;
+	bool isVisited = inoutTraversalMarkFlags[passIndex] & AlreadyVisitedFlag;
 
 #if defined(DEBUG) || defined(_DEBUG)
-	bool isOnStack = inoutTraversalMarkFlags[passIndex] & OnStackFlag;
-	assert(!isVisited || !isOnStack); //Detect circular dependency
+	bool isCurrentlyProcessed = inoutTraversalMarkFlags[passIndex] & CurrentlyProcessedFlag;
+	assert(!isVisited || !isCurrentlyProcessed); //Detect circular dependency
 #endif
 
 	if(isVisited)
@@ -398,7 +398,7 @@ void ModernFrameGraphBuilder::TopologicalSortNode(uint32_t passIndex, const std:
 		return;
 	}
 
-	inoutTraversalMarkFlags[passIndex] = (VisitedFlag | OnStackFlag);
+	inoutTraversalMarkFlags[passIndex] = (AlreadyVisitedFlag | CurrentlyProcessedFlag);
 
 	std::span<uint32_t> passAdjacencyIndices = unsortedPassAdjacencyList[passIndex];
 	for(uint32_t adjacentPassIndex: passAdjacencyIndices)
@@ -406,7 +406,7 @@ void ModernFrameGraphBuilder::TopologicalSortNode(uint32_t passIndex, const std:
 		TopologicalSortNode(adjacentPassIndex, unsortedPassAdjacencyList, inoutTraversalMarkFlags, inoutPassIndexRemap);
 	}
 
-	inoutTraversalMarkFlags[passIndex] &= (~OnStackFlag);
+	inoutTraversalMarkFlags[passIndex] &= (~CurrentlyProcessedFlag);
 	inoutPassIndexRemap.push_back(passIndex);
 }
 
