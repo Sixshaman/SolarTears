@@ -121,6 +121,9 @@
     <Filter Include="Core\Scene\SceneDescription\SpecialObjects">
       <UniqueIdentifier>{68f506e9-f58d-43b3-9b50-cecc714059ff}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Core\Utils">
+      <UniqueIdentifier>{f74fdfce-8460-4a38-92d2-57e0c6cdefba}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Platform\Win32\Win32Application.hpp">
@@ -425,6 +428,9 @@
     </ClInclude>
     <ClInclude Include="Rendering\Common\FrameGraph\RenderPassTraits.h">
       <Filter>Rendering\Common\FrameGraph</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Utils\MockSpan.hpp">
+      <Filter>Core\Utils</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

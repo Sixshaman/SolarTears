@@ -42,6 +42,7 @@
     <ClInclude Include="Core\ThreadPool.hpp" />
     <ClInclude Include="Core\Timer.hpp" />
     <ClInclude Include="Core\Util.hpp" />
+    <ClInclude Include="Core\Utils\MockSpan.hpp" />
     <ClInclude Include="Core\Window.hpp" />
     <ClInclude Include="Input\ControlCodes.hpp" />
     <ClInclude Include="Input\ControlState.hpp" />

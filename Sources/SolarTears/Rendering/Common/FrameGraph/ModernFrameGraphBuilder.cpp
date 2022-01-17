@@ -1,6 +1,7 @@
 #include "ModernFrameGraphBuilder.hpp"
 #include "ModernFrameGraph.hpp"
 #include "RenderPassDispatchFuncs.hpp"
+#include "../../../Core/Utils/MockSpan.hpp"
 #include <algorithm>
 #include <cassert>
 #include <array>
@@ -203,9 +204,7 @@ void ModernFrameGraphBuilder::BuildReadWriteSubresourceSpans(std::vector<std::sp
 	outReadIndexSpans.clear();
 	outWriteIndexSpans.clear();
 
-	//We can't make up real spans until outIndicesFlat stops changing. Create mock spans, storing offsets from NULL instead of outIndicesFlat.data()
-	uint32_t* dataMarkerBegin = nullptr;
-	std::vector<uint_fast16_t> tempSubresourceIds;
+	std::vector<uint_fast16_t> tempSubresourceIds; //The temporary buffer to write the pass subresource ids to
 	for(uint32_t passMetadataIndex = mRenderPassMetadataSpan.Begin; passMetadataIndex < mRenderPassMetadataSpan.End; passMetadataIndex++)
 	{
 		const PassMetadata& renderPassMetadata = mTotalPassMetadatas[passMetadataIndex];
@@ -220,9 +219,9 @@ void ModernFrameGraphBuilder::BuildReadWriteSubresourceSpans(std::vector<std::sp
 		uint32_t writeBeginOffset = readSubresourceCount;
 		uint32_t writeEndOffset   = readSubresourceCount + writeSubresourceCount;
 
-		uint32_t* currDataMarker = dataMarkerBegin + outIndicesFlat.size();
-		std::span<uint32_t> readMockSpan  = {currDataMarker + readBeginOffset,  currDataMarker + readEndOffset};
-		std::span<uint32_t> writeMockSpan = {currDataMarker + writeBeginOffset, currDataMarker + writeEndOffset};
+		//We can't store any references to outIndicesFlat right now, because it can reallocate at any moment and invalidate all references. Use mock spans for now
+		std::span readSpan  = Utils::CreateMockSpan<uint32_t>(readBeginOffset,  readEndOffset);
+		std::span writeSpan = Utils::CreateMockSpan<uint32_t>(writeBeginOffset, writeEndOffset);
 
 		std::span<uint_fast16_t> readSubresources = {tempSubresourceIds.begin() + readBeginOffset, tempSubresourceIds.begin() + readEndOffset};
 		FillPassReadSubresourceIds(renderPassMetadata.Type, readSubresources);
@@ -240,33 +239,21 @@ void ModernFrameGraphBuilder::BuildReadWriteSubresourceSpans(std::vector<std::sp
 			outIndicesFlat.push_back(mSubresourceMetadataNodesFlat[subresourceMetadataIndex].ResourceMetadataIndex);
 		}
 
-		outReadIndexSpans.push_back(readMockSpan);
-		outWriteIndexSpans.push_back(writeMockSpan);
+		outReadIndexSpans.push_back(readSpan);
+		outWriteIndexSpans.push_back(writeSpan);
 	}
 
-	//Invalidate and sort spans, outIndicesFlat won't change anymore
+	//Validate and sort spans, outIndicesFlat won't change anymore
 	for(uint32_t readSpanIndex = 0; readSpanIndex < outReadIndexSpans.size(); readSpanIndex++)
 	{
-		const std::span<uint32_t> mockReadSpan = outReadIndexSpans[readSpanIndex];
-
-		ptrdiff_t spanDataOffset = mockReadSpan.data() - dataMarkerBegin;
-		size_t    spanSize       = mockReadSpan.size();
-		std::span<uint32_t> realReadSpan = {outIndicesFlat.begin() + spanDataOffset, outIndicesFlat.begin() + spanDataOffset + spanSize};
-
-		std::sort(realReadSpan.begin(), realReadSpan.end());
-		outReadIndexSpans[readSpanIndex] = realReadSpan;
+		outReadIndexSpans[readSpanIndex] = Utils::ValidateMockSpan(outReadIndexSpans[readSpanIndex], outIndicesFlat.begin());
+		std::sort(outReadIndexSpans[readSpanIndex].begin(), outReadIndexSpans[readSpanIndex].end());
 	}
 
 	for(uint32_t writeSpanIndex = 0; writeSpanIndex < outWriteIndexSpans.size(); writeSpanIndex++)
 	{
-		const std::span<uint32_t> mockWriteSpan = outWriteIndexSpans[writeSpanIndex];
-
-		ptrdiff_t spanDataOffset = mockWriteSpan.data() - dataMarkerBegin;
-		size_t    spanSize       = mockWriteSpan.size();
-		std::span<uint32_t> realWriteSpan = {outIndicesFlat.begin() + spanDataOffset, outIndicesFlat.begin() + spanDataOffset + spanSize};
-
-		std::sort(realWriteSpan.begin(), realWriteSpan.end());
-		outWriteIndexSpans[writeSpanIndex] = realWriteSpan;
+		outWriteIndexSpans[writeSpanIndex] = Utils::ValidateMockSpan(outWriteIndexSpans[writeSpanIndex], outIndicesFlat.begin());
+		std::sort(outWriteIndexSpans[writeSpanIndex].begin(), outWriteIndexSpans[writeSpanIndex].end());
 	}
 }
 
