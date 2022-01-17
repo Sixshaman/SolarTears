@@ -262,12 +262,11 @@ void ModernFrameGraphBuilder::BuildAdjacencyList(const std::vector<std::span<uin
 	outAdjacencyList.resize(mRenderPassMetadataSpan.End - mRenderPassMetadataSpan.Begin);
 	outAdjacentPassIndicesFlat.clear();
 
-	uint32_t* dataMarkerBegin = nullptr;
 	for(uint32_t writePassIndex = 0; writePassIndex < sortedwriteNameSpansPerPass.size(); writePassIndex++)
 	{
 		std::span<uint32_t> writtenResourceIndices = sortedwriteNameSpansPerPass[writePassIndex];
 
-		auto mockSpanStart = dataMarkerBegin + outAdjacentPassIndicesFlat.size();
+		size_t oldSize = outAdjacentPassIndicesFlat.size();
 		for(uint32_t readPassIndex = 0; readPassIndex < sortedReadNameSpansPerPass.size(); readPassIndex++)
 		{
 			if(readPassIndex == writePassIndex)
@@ -282,17 +281,14 @@ void ModernFrameGraphBuilder::BuildAdjacencyList(const std::vector<std::span<uin
 			}
 		}
 
-		auto mockSpanEnd = dataMarkerBegin + outAdjacentPassIndicesFlat.size();
-		outAdjacencyList[writePassIndex] = {mockSpanStart, mockSpanEnd};
+		size_t newSize = outAdjacentPassIndicesFlat.size();
+		outAdjacencyList[writePassIndex] = Utils::CreateMockSpan<uint_fast16_t>(oldSize, newSize); //We have to use mock spans here too, for the same reasons as in BuildReadWriteSubresourceSpans
 	}
 
+	//Validate mock spans
 	for(uint32_t passIndex = 0; passIndex < outAdjacencyList.size(); passIndex++)
 	{
-		const std::span mockSpan = outAdjacencyList[passIndex];
-
-		ptrdiff_t spanDataOffset = mockSpan.data() - dataMarkerBegin;
-		size_t    spanSize       = mockSpan.size();
-		outAdjacencyList[passIndex] = {outAdjacentPassIndicesFlat.begin() + spanDataOffset, outAdjacentPassIndicesFlat.begin() + spanDataOffset + spanSize};
+		outAdjacencyList[passIndex] = Utils::ValidateMockSpan(outAdjacencyList[passIndex], outAdjacentPassIndicesFlat.begin());
 	}
 }
 
