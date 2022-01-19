@@ -418,7 +418,7 @@ void ModernFrameGraphBuilder::InitAugmentedData()
 
 void ModernFrameGraphBuilder::AdjustPassClasses()
 {
-	//The loop will wrap around 0
+	//The loop wraps around 0
 	uint32_t renderPassIndex = mRenderPassMetadataSpan.End - 1;
 	while(renderPassIndex >= mRenderPassMetadataSpan.Begin && renderPassIndex < mRenderPassMetadataSpan.End)
 	{
