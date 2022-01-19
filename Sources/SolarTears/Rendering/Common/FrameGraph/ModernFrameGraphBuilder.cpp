@@ -922,52 +922,37 @@ uint32_t ModernFrameGraphBuilder::CalcAmplifiedNextSubresourceIndex(uint32_t cur
 
 void ModernFrameGraphBuilder::ValidateSubresourceLinks()
 {
-	//Connect previous passes, storing the last subresource index for the resource in HeadNodeIndex (it will be rewritten later in AmplifyResourcesAndPasses())
+	std::vector<uint32_t> lastSubresourceNodeIndices(mResourceMetadatas.size(), (uint32_t)(-1));
 	for(const PassMetadata& passMetadata: mTotalPassMetadatas)
 	{
 		for(uint32_t metadataIndex = passMetadata.SubresourceMetadataSpan.Begin; metadataIndex < passMetadata.SubresourceMetadataSpan.End; metadataIndex++)
 		{
 			SubresourceMetadataNode& metadataNode = mSubresourceMetadataNodesFlat[metadataIndex];
-			ResourceMetadata& resourceMetadata = mResourceMetadatas[metadataNode.ResourceMetadataIndex];
 
-			if(resourceMetadata.HeadNodeIndex != (uint32_t)(-1))
+			uint32_t lastSubresourceIndex = lastSubresourceNodeIndices[metadataNode.ResourceMetadataIndex];
+			if(lastSubresourceIndex != (uint32_t)(-1))
 			{
-				SubresourceMetadataNode& prevSubresourceNode = mSubresourceMetadataNodesFlat[resourceMetadata.HeadNodeIndex];
+				SubresourceMetadataNode& prevSubresourceNode = mSubresourceMetadataNodesFlat[lastSubresourceIndex];
 
 				prevSubresourceNode.NextPassNodeIndex = metadataIndex;
-				metadataNode.PrevPassNodeIndex        = resourceMetadata.HeadNodeIndex;
-			}
-			else
-			{
-				resourceMetadata.HeadNodeIndex = metadataIndex;
+				metadataNode.PrevPassNodeIndex        = lastSubresourceIndex;
 			}
 
-			resourceMetadata.HeadNodeIndex = metadataIndex;
+			lastSubresourceNodeIndices[metadataNode.ResourceMetadataIndex] = metadataIndex;
 		}
 	}
 
-	//Validate cyclic links (so first pass knows what state to barrier from, and the last pass knows what state to barrier to)
+	//Validate cyclic links (last <-> first nodes)
 	for(uint32_t metadataIndex = 0; metadataIndex < mSubresourceMetadataNodesFlat.size(); metadataIndex++)
 	{
 		SubresourceMetadataNode& subresourceNode = mSubresourceMetadataNodesFlat[metadataIndex];
-		ResourceMetadata& resourceMetadata = mResourceMetadatas[subresourceNode.ResourceMetadataIndex];
-
-		if(subresourceNode.NextPassNodeIndex == (uint32_t)(-1))
-		{
-			uint32_t nextNodeIndex = resourceMetadata.HeadNodeIndex;
-			SubresourceMetadataNode& nextSubresourceMetadata = mSubresourceMetadataNodesFlat[nextNodeIndex];
-
-			subresourceNode.NextPassNodeIndex         = nextNodeIndex;
-			nextSubresourceMetadata.PrevPassNodeIndex = metadataIndex;
-		}
-
 		if(subresourceNode.PrevPassNodeIndex == (uint32_t)(-1))
 		{
-			uint32_t prevNodeIndex = resourceMetadata.HeadNodeIndex;
-			SubresourceMetadataNode& prevSubresourceNode = mSubresourceMetadataNodesFlat[prevNodeIndex];
+			uint32_t lastNodeIndex = lastSubresourceNodeIndices[subresourceNode.ResourceMetadataIndex];
+			SubresourceMetadataNode& lastSubresourceNode = mSubresourceMetadataNodesFlat[lastNodeIndex];
 
-			subresourceNode.PrevPassNodeIndex     = prevNodeIndex;
-			prevSubresourceNode.NextPassNodeIndex = metadataIndex;
+			subresourceNode.PrevPassNodeIndex     = lastNodeIndex;
+			lastSubresourceNode.NextPassNodeIndex = metadataIndex;
 		}
 	}
 }
