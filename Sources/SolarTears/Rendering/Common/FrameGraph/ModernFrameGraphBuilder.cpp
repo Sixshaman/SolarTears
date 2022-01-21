@@ -453,18 +453,21 @@ void ModernFrameGraphBuilder::BuildPassSpans()
 
 void ModernFrameGraphBuilder::AmplifyResourcesAndPasses()
 {
-	std::vector<TextureRemapInfo> resourceRemapInfos(mResourceMetadatas.size(), {.BaseTextureIndex = (uint32_t)(-1), .FrameCount = 1});
+	std::vector<Span<uint32_t>> amplifiedResourceSpans(mResourceMetadatas.size(), {.Begin = 0, .End = 1});
 	for(uint32_t passIndex = mRenderPassMetadataSpan.Begin; passIndex < mRenderPassMetadataSpan.End; passIndex++)
 	{
 		const PassMetadata& passMetadata = mTotalPassMetadatas[passIndex];
 		for(uint32_t subresourceIndex = passMetadata.SubresourceMetadataSpan.Begin; subresourceIndex < passMetadata.SubresourceMetadataSpan.End; subresourceIndex++)
 		{
-			uint32_t resourceFrameCount = 1;
-
 			uint32_t resourceIndex = mSubresourceMetadataNodesFlat[subresourceIndex].ResourceMetadataIndex;
-			assert(resourceRemapInfos[resourceIndex].FrameCount == 1 || resourceFrameCount == 1); //Do not allow M -> N connections between passes
 
-			resourceRemapInfos[resourceIndex].FrameCount = std::lcm(resourceRemapInfos[resourceIndex].FrameCount, resourceFrameCount);
+			uint32_t resourceFrameCount = 1;
+			uint32_t recordedFrameCount = amplifiedResourceSpans[resourceIndex].End - amplifiedResourceSpans[resourceIndex].Begin;
+
+			assert(recordedFrameCount == 1 || resourceFrameCount == 1); //Do not allow M -> N connections between passes
+			
+			uint32_t newFrameCount = std::lcm(recordedFrameCount, resourceFrameCount);
+			amplifiedResourceSpans[resourceIndex].End = amplifiedResourceSpans[resourceIndex].Begin + newFrameCount;
 		}
 	}
 
@@ -474,12 +477,15 @@ void ModernFrameGraphBuilder::AmplifyResourcesAndPasses()
 		const PassMetadata& passMetadata = mTotalPassMetadatas[passIndex];
 		for(uint32_t subresourceIndex = passMetadata.SubresourceMetadataSpan.Begin; subresourceIndex < passMetadata.SubresourceMetadataSpan.End; subresourceIndex++)
 		{
-			uint32_t resourceFrameCount = GetSwapchainImageCount();
-
 			uint32_t swapchainResourceIndex = mSubresourceMetadataNodesFlat[subresourceIndex].ResourceMetadataIndex;
-			assert(resourceRemapInfos[swapchainResourceIndex].FrameCount == 1 || resourceFrameCount == 1); //Do not allow M -> N connections between passes
 
-			resourceRemapInfos[swapchainResourceIndex].FrameCount = std::lcm(resourceRemapInfos[swapchainResourceIndex].FrameCount, resourceFrameCount);
+			uint32_t swapchainResourceFrameCount = GetSwapchainImageCount();
+			uint32_t swapchainRecordedFrameCount = amplifiedResourceSpans[swapchainResourceIndex].End - amplifiedResourceSpans[swapchainResourceIndex].Begin;
+
+			assert(swapchainResourceFrameCount == 1 || swapchainRecordedFrameCount == 1); //Do not allow M -> N connections between passes
+
+			uint32_t newSwapchainFrameCount = std::lcm(swapchainResourceFrameCount, swapchainRecordedFrameCount);
+			amplifiedResourceSpans[swapchainResourceIndex].End = amplifiedResourceSpans[swapchainResourceIndex].Begin + newSwapchainFrameCount;
 		}
 	}
 
@@ -496,8 +502,13 @@ void ModernFrameGraphBuilder::AmplifyResourcesAndPasses()
 	//Amplify resources
 	for(uint32_t resourceIndex = 0; resourceIndex < oldResourceMetadatas.size(); resourceIndex++)
 	{
-		resourceRemapInfos[resourceIndex].BaseTextureIndex = (uint32_t)mResourceMetadatas.size();
-		if(resourceRemapInfos[resourceIndex].FrameCount == 1)
+		//Extract the frame count from the span
+		uint32_t frameCount = amplifiedResourceSpans[resourceIndex].End - amplifiedResourceSpans[resourceIndex].Begin;
+
+		amplifiedResourceSpans[resourceIndex].Begin = (uint32_t)mResourceMetadatas.size();
+		amplifiedResourceSpans[resourceIndex].End   = amplifiedResourceSpans[resourceIndex].Begin + frameCount;
+
+		if(frameCount == 1)
 		{
 			mResourceMetadatas.push_back(ResourceMetadata
 			{
@@ -508,7 +519,7 @@ void ModernFrameGraphBuilder::AmplifyResourcesAndPasses()
 		}
 		else
 		{
-			for(uint32_t frameIndex = 0; frameIndex < resourceRemapInfos[resourceIndex].FrameCount; frameIndex++)
+			for(uint32_t frameIndex = 0; frameIndex < frameCount; frameIndex++)
 			{
 				mResourceMetadatas.push_back(ResourceMetadata
 				{
@@ -529,7 +540,7 @@ void ModernFrameGraphBuilder::AmplifyResourcesAndPasses()
 
 		uint32_t                passFrameCount = 0;
 		RenderPassFrameSwapType passSwapType   = RenderPassFrameSwapType::Constant;
-		FindFrameCountAndSwapType(resourceRemapInfos, oldSubresourceMetadataSpan, &passFrameCount, &passSwapType);
+		FindFrameCountAndSwapType(amplifiedResourceSpans, oldSubresourceMetadataSpan, &passFrameCount, &passSwapType);
 
 		mGraphToBuild->mFrameSpansPerRenderPass.push_back
 		({
@@ -566,7 +577,7 @@ void ModernFrameGraphBuilder::AmplifyResourcesAndPasses()
 
 		uint32_t                passFrameCount = 0;
 		RenderPassFrameSwapType passSwapType   = RenderPassFrameSwapType::Constant;
-		FindFrameCountAndSwapType(resourceRemapInfos, oldSubresourceMetadataSpan, &passFrameCount, &passSwapType);
+		FindFrameCountAndSwapType(amplifiedResourceSpans, oldSubresourceMetadataSpan, &passFrameCount, &passSwapType);
 
 		mGraphToBuild->mFrameSpansPerRenderPass.push_back
 		({
@@ -655,8 +666,9 @@ void ModernFrameGraphBuilder::AmplifyResourcesAndPasses()
 			{
 				uint32_t oldSubresourceIndex = oldPassMetadata.SubresourceMetadataSpan.Begin + subresourceId;
 
-				uint32_t oldResourceIndex = oldSubresourceMetadatas[oldSubresourceIndex].ResourceMetadataIndex;
-				uint32_t newResourceIndex = resourceRemapInfos[oldResourceIndex].BaseTextureIndex + passFrameIndex % resourceRemapInfos[oldResourceIndex].FrameCount;
+				uint32_t oldResourceIndex   = oldSubresourceMetadatas[oldSubresourceIndex].ResourceMetadataIndex;
+				uint32_t resourceFrameCount = amplifiedResourceSpans[oldResourceIndex].End - amplifiedResourceSpans[oldResourceIndex].Begin;
+				uint32_t newResourceIndex   = amplifiedResourceSpans[oldResourceIndex].Begin + passFrameIndex % resourceFrameCount;
 
 				uint32_t newSubresourceIndex = newPassMetadata.SubresourceMetadataSpan.Begin + subresourceId;
 				mSubresourceMetadataNodesFlat[newSubresourceIndex].ResourceMetadataIndex = newResourceIndex;
@@ -693,7 +705,7 @@ void ModernFrameGraphBuilder::AmplifyResourcesAndPasses()
 	}
 }
 
-void ModernFrameGraphBuilder::FindFrameCountAndSwapType(const std::vector<TextureRemapInfo>& resourceRemapInfos, std::span<const SubresourceMetadataNode> oldPassSubresourceMetadataSpan, uint32_t* outFrameCount, RenderPassFrameSwapType* outSwapType)
+void ModernFrameGraphBuilder::FindFrameCountAndSwapType(const std::vector<Span<uint32_t>>& resourceRemapInfos, std::span<const SubresourceMetadataNode> oldPassSubresourceMetadataSpan, uint32_t* outFrameCount, RenderPassFrameSwapType* outSwapType)
 {
 	assert(outFrameCount != nullptr);
 	assert(outSwapType   != nullptr);
@@ -703,13 +715,15 @@ void ModernFrameGraphBuilder::FindFrameCountAndSwapType(const std::vector<Textur
 	uint32_t passFrameCount = 1;
 	for(const SubresourceMetadataNode& subresourceMetadataNode: oldPassSubresourceMetadataSpan)
 	{
-		uint32_t resourceIndex = subresourceMetadataNode.ResourceMetadataIndex;
-		passFrameCount = std::lcm(resourceRemapInfos[resourceIndex].FrameCount, passFrameCount);
+		uint32_t resourceIndex      = subresourceMetadataNode.ResourceMetadataIndex;
+		uint32_t resourceFrameCount = resourceRemapInfos[resourceIndex].End - resourceRemapInfos[resourceIndex].Begin;
+
+		passFrameCount = std::lcm(resourceFrameCount, passFrameCount);
 
 		RenderPassFrameSwapType resourceSwapType = RenderPassFrameSwapType::Constant;
-		if(resourceRemapInfos[resourceIndex].FrameCount > 1)
+		if(resourceFrameCount > 1)
 		{
-			if(mResourceMetadatas[resourceRemapInfos[resourceIndex].BaseTextureIndex].SourceType == TextureSourceType::Backbuffer)
+			if(mResourceMetadatas[resourceRemapInfos[resourceIndex].Begin].SourceType == TextureSourceType::Backbuffer)
 			{
 				resourceSwapType = RenderPassFrameSwapType::PerBackbufferImage;
 			}

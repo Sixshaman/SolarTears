@@ -14,13 +14,6 @@ class FrameGraphConfig;
 
 class ModernFrameGraphBuilder
 {
-private:
-	struct TextureRemapInfo
-	{
-		uint32_t BaseTextureIndex;
-		uint32_t FrameCount;
-	};
-
 protected:
 	//Describes a single render pass
 	struct PassMetadata
@@ -114,8 +107,8 @@ private:
 	//Creates multiple copies of passes and resources, one for each separate frame
 	void AmplifyResourcesAndPasses();
 
-	//Helper function to add several multiple copies of a single pass to mTotalPassMetadatas
-	void FindFrameCountAndSwapType(const std::vector<TextureRemapInfo>& resourceRemapInfos, std::span<const SubresourceMetadataNode> oldPassSubresourceMetadataSpan, uint32_t* outFrameCount, RenderPassFrameSwapType* outSwapType);
+	//Helper function to add several per-frame copies of a single pass to mTotalPassMetadatas
+	void FindFrameCountAndSwapType(const std::vector<Span<uint32_t>>& resourceFrameSpans, std::span<const SubresourceMetadataNode> oldPassSubresourceMetadataSpan, uint32_t* outFrameCount, RenderPassFrameSwapType* outSwapType);
 
 	//Calculates PrevPassNodeIndex for the subresource metadata node in amplified list
 	uint32_t CalcAmplifiedPrevSubresourceIndex(uint32_t currPassFrameSpanIndex, uint32_t prevPassFrameSpanIndex, uint32_t currPassFrameIndex, uint32_t prevPassSubresourceId);
