@@ -95,14 +95,17 @@ private:
 	//Sorts frame graph passes (already sorted topologically) by dependency level
 	void SortRenderPassesByDependency();
 
-	//Fills in augmented render pass data (pass classes, spans, pass periods)
-	void InitAugmentedData();
+	//Initializes additional pass data (pass classes, pass frame spans)
+	void InitAugmentedPassData();
 
 	//Changes pass classes according to async compute/transfer use
 	void AdjustPassClasses();
 
 	//Builds pass spans for each dependency level
 	void BuildPassSpans();
+
+	//Validates PrevPassMetadata and NextPassMetadata links in each subresource info
+	void ValidateSubresourceLinkedLists();
 
 	//Creates multiple copies of passes and resources, one for each separate frame
 	void AmplifyResourcesAndPasses();
@@ -111,13 +114,13 @@ private:
 	void FindFrameCountAndSwapType(const std::vector<Span<uint32_t>>& resourceFrameSpans, std::span<const SubresourceMetadataNode> oldPassSubresourceMetadataSpan, uint32_t* outFrameCount, RenderPassFrameSwapType* outSwapType);
 
 	//Calculates PrevPassNodeIndex for the subresource metadata node in amplified list
-	uint32_t CalcAmplifiedPrevSubresourceIndex(uint32_t currPassFrameSpanIndex, uint32_t prevPassFrameSpanIndex, uint32_t currPassFrameIndex, uint32_t prevPassSubresourceId);
+	uint32_t CalcAmplifiedPrevSubresourceIndex(uint32_t currPassNonAmplifiedIndex, uint32_t prevPassNonAmplifiedIndex, uint32_t currPassFrameIndex, uint_fast16_t prevPassSubresourceId);
 
 	//Calculates NextPassNodeIndex for the subresource metadata node in amplified list
-	uint32_t CalcAmplifiedNextSubresourceIndex(uint32_t currPassFrameSpanIndex, uint32_t nextPassFrameSpanIndex, uint32_t currPassFrameIndex, uint32_t nextPassSubresourceId);
+	uint32_t CalcAmplifiedNextSubresourceIndex(uint32_t currPassNonAmplifiedIndex, uint32_t nextPassNonAmplifiedIndex, uint32_t currPassFrameIndex, uint_fast16_t nextPassSubresourceId);
 
-	//Validates PrevPassMetadata and NextPassMetadata links in each subresource info
-	void ValidateSubresourceLinks();
+	//Initializes additional resource and subresource data (subresource head nodes, subresource payloads)
+	void InitAugmentedResourceData();
 
 	//Initializes HeadNodeIndex of resources
 	void InitializeHeadNodes();

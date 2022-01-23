@@ -19,7 +19,13 @@ void ModernFrameGraphBuilder::Build(FrameGraphDescription&& frameGraphDescriptio
 {
 	RegisterPasses(frameGraphDescription.mRenderPassTypes, frameGraphDescription.mSubresourceNames, frameGraphDescription.mBackbufferName);
 	SortPasses();
-	InitAugmentedData();
+
+	InitAugmentedPassData();
+
+	ValidateSubresourceLinkedLists();
+	AmplifyResourcesAndPasses();
+
+	InitAugmentedResourceData();
 
 	BuildResources();
 	BuildPassObjects();
@@ -401,19 +407,10 @@ void ModernFrameGraphBuilder::SortRenderPassesByDependency()
 	});
 }
 
-void ModernFrameGraphBuilder::InitAugmentedData()
+void ModernFrameGraphBuilder::InitAugmentedPassData()
 {
 	AdjustPassClasses();
 	BuildPassSpans();
-
-	ValidateSubresourceLinks();
-
-	AmplifyResourcesAndPasses();
-	InitializeHeadNodes();
-
-	InitMetadataPayloads();
-
-	PropagateSubresourcePayloadData();
 }
 
 void ModernFrameGraphBuilder::AdjustPassClasses()
@@ -450,6 +447,44 @@ void ModernFrameGraphBuilder::BuildPassSpans()
 		}
 	}
 }
+
+void ModernFrameGraphBuilder::ValidateSubresourceLinkedLists()
+{
+	std::vector<uint32_t> lastSubresourceNodeIndices(mResourceMetadatas.size(), (uint32_t)(-1));
+	for(const PassMetadata& passMetadata: mTotalPassMetadatas)
+	{
+		for(uint32_t metadataIndex = passMetadata.SubresourceMetadataSpan.Begin; metadataIndex < passMetadata.SubresourceMetadataSpan.End; metadataIndex++)
+		{
+			SubresourceMetadataNode& metadataNode = mSubresourceMetadataNodesFlat[metadataIndex];
+
+			uint32_t lastSubresourceIndex = lastSubresourceNodeIndices[metadataNode.ResourceMetadataIndex];
+			if(lastSubresourceIndex != (uint32_t)(-1))
+			{
+				SubresourceMetadataNode& prevSubresourceNode = mSubresourceMetadataNodesFlat[lastSubresourceIndex];
+
+				prevSubresourceNode.NextPassNodeIndex = metadataIndex;
+				metadataNode.PrevPassNodeIndex        = lastSubresourceIndex;
+			}
+
+			lastSubresourceNodeIndices[metadataNode.ResourceMetadataIndex] = metadataIndex;
+		}
+	}
+
+	//Validate cyclic links (last <-> first nodes)
+	for(uint32_t metadataIndex = 0; metadataIndex < mSubresourceMetadataNodesFlat.size(); metadataIndex++)
+	{
+		SubresourceMetadataNode& subresourceNode = mSubresourceMetadataNodesFlat[metadataIndex];
+		if(subresourceNode.PrevPassNodeIndex == (uint32_t)(-1))
+		{
+			uint32_t lastNodeIndex = lastSubresourceNodeIndices[subresourceNode.ResourceMetadataIndex];
+			SubresourceMetadataNode& lastSubresourceNode = mSubresourceMetadataNodesFlat[lastNodeIndex];
+
+			subresourceNode.PrevPassNodeIndex     = lastNodeIndex;
+			lastSubresourceNode.NextPassNodeIndex = metadataIndex;
+		}
+	}
+}
+
 
 void ModernFrameGraphBuilder::AmplifyResourcesAndPasses()
 {
@@ -532,6 +567,7 @@ void ModernFrameGraphBuilder::AmplifyResourcesAndPasses()
 	}
 
 
+	//Amplify render passes
 	Span<uint32_t> amplifiedRenderPassMetadataSpan = {.Begin = (uint32_t)mTotalPassMetadatas.size(), .End = (uint32_t)mTotalPassMetadatas.size()};
 	for(uint32_t passIndex = mRenderPassMetadataSpan.Begin; passIndex < mRenderPassMetadataSpan.End; passIndex++)
 	{
@@ -607,7 +643,7 @@ void ModernFrameGraphBuilder::AmplifyResourcesAndPasses()
 	mPresentPassMetadataSpan = amplifiedPresentPassMetadataSpan;
 	
 
-	//Amplify subresources
+	//Amplify subresources: allocate the subresource node spans for amplified passes
 	for(uint32_t oldPassIndex = 0; oldPassIndex < oldPassMetadatas.size(); oldPassIndex++)
 	{
 		const PassMetadata& oldPassMetadata = oldPassMetadatas[oldPassIndex];
@@ -651,6 +687,8 @@ void ModernFrameGraphBuilder::AmplifyResourcesAndPasses()
 	mPrimarySubresourceNodeSpan.End   = (uint32_t)mSubresourceMetadataNodesFlat.size();
 
 	mHelperNodeSpansPerPassSubresource.resize(mPrimarySubresourceNodeSpan.End - mPrimarySubresourceNodeSpan.Begin, Span<uint32_t>{.Begin = mPrimarySubresourceNodeSpan.End, .End = mPrimarySubresourceNodeSpan.End});
+
+	//Amplify subresources: initialize each new subresource node
 	for(uint32_t nonAmplifiedPassIndex = 0; nonAmplifiedPassIndex < mGraphToBuild->mFrameSpansPerRenderPass.size(); nonAmplifiedPassIndex++)
 	{
 		const PassMetadata& oldPassMetadata                  = oldPassMetadatas[nonAmplifiedPassIndex];
@@ -664,9 +702,9 @@ void ModernFrameGraphBuilder::AmplifyResourcesAndPasses()
 
 			for(uint32_t subresourceId = 0; subresourceId < passSubresourceCount; subresourceId++)
 			{
-				uint32_t oldSubresourceIndex = oldPassMetadata.SubresourceMetadataSpan.Begin + subresourceId;
+				const SubresourceMetadataNode& oldSubresourceMetadata = oldSubresourceMetadatas[oldPassMetadata.SubresourceMetadataSpan.Begin + subresourceId];
 
-				uint32_t oldResourceIndex   = oldSubresourceMetadatas[oldSubresourceIndex].ResourceMetadataIndex;
+				uint32_t oldResourceIndex   = oldSubresourceMetadata.ResourceMetadataIndex;
 				uint32_t resourceFrameCount = amplifiedResourceSpans[oldResourceIndex].End - amplifiedResourceSpans[oldResourceIndex].Begin;
 				uint32_t newResourceIndex   = amplifiedResourceSpans[oldResourceIndex].Begin + passFrameIndex % resourceFrameCount;
 
@@ -675,19 +713,17 @@ void ModernFrameGraphBuilder::AmplifyResourcesAndPasses()
 
 				if(mSubresourceMetadataNodesFlat[newSubresourceIndex].PrevPassNodeIndex == (uint32_t)(-1))
 				{
-					const SubresourceMetadataNode& oldSubresourceMetadata = oldSubresourceMetadatas[oldSubresourceIndex];
 					uint32_t oldPrevPassIndex = oldPassIndicesPerSubresource[oldSubresourceMetadata.PrevPassNodeIndex];
 
 					uint32_t prevPassSubresourceId   = oldSubresourceMetadata.PrevPassNodeIndex - oldPassMetadatas[oldPrevPassIndex].SubresourceMetadataSpan.Begin;
 					uint32_t newPrevSubresourceIndex = CalcAmplifiedPrevSubresourceIndex(nonAmplifiedPassIndex, oldPrevPassIndex, passFrameIndex, prevPassSubresourceId);
 
-					mSubresourceMetadataNodesFlat[newSubresourceIndex].PrevPassNodeIndex = newPrevSubresourceIndex;
+					mSubresourceMetadataNodesFlat[newSubresourceIndex].PrevPassNodeIndex     = newPrevSubresourceIndex;
 					mSubresourceMetadataNodesFlat[newPrevSubresourceIndex].NextPassNodeIndex = newSubresourceIndex;
 				}
 
 				if(mSubresourceMetadataNodesFlat[newSubresourceIndex].NextPassNodeIndex == (uint32_t)(-1))
 				{
-					const SubresourceMetadataNode& oldSubresourceMetadata = oldSubresourceMetadatas[oldSubresourceIndex];
 					uint32_t oldNextPassIndex = oldPassIndicesPerSubresource[oldSubresourceMetadata.NextPassNodeIndex];
 
 					uint32_t nextPassSubresourceId = oldSubresourceMetadata.NextPassNodeIndex - oldPassMetadatas[oldNextPassIndex].SubresourceMetadataSpan.Begin;
@@ -742,10 +778,10 @@ void ModernFrameGraphBuilder::FindFrameCountAndSwapType(const std::vector<Span<u
 	*outFrameCount = passFrameCount;
 }
 
-uint32_t ModernFrameGraphBuilder::CalcAmplifiedPrevSubresourceIndex(uint32_t currPassFrameSpanIndex, uint32_t prevPassFrameSpanIndex, uint32_t currPassFrameIndex, uint32_t prevPassSubresourceId)
+uint32_t ModernFrameGraphBuilder::CalcAmplifiedPrevSubresourceIndex(uint32_t currPassNonAmplifiedIndex, uint32_t prevPassNonAmplifiedIndex, uint32_t currPassFrameIndex, uint_fast16_t prevPassSubresourceId)
 {
 	/*
-	*    1. Curr pass frames == prev pass frames:  Prev frame index is the same as curr frame index
+	*    1. Curr pass frames == prev pass frames: Prev frame index is the same as curr frame index
 	*
     *    2. Prev pass was in the same frame, curr pass frames == 1, prev pass frames == N:                         Prev frame index is the first one in the prev frame span
     *    3. Prev pass was in the same frame, curr pass frames == N, prev pass frames == 1, curr frame index == 0:  Prev frame index is the only one in the prev frame span
@@ -756,8 +792,8 @@ uint32_t ModernFrameGraphBuilder::CalcAmplifiedPrevSubresourceIndex(uint32_t cur
     *    7. Prev pass was in the prev frame, curr pass frames == N, prev frames == 1, curr frame index != 1:  Choose a helper prev node with the same index as (curr frame index + N - 1) % N
 	*/
 
-	const ModernFrameGraph::PassFrameSpan& currPassFrameSpan = mGraphToBuild->mFrameSpansPerRenderPass[currPassFrameSpanIndex];
-	const ModernFrameGraph::PassFrameSpan& prevPassFrameSpan = mGraphToBuild->mFrameSpansPerRenderPass[prevPassFrameSpanIndex];
+	const ModernFrameGraph::PassFrameSpan& currPassFrameSpan = mGraphToBuild->mFrameSpansPerRenderPass[currPassNonAmplifiedIndex];
+	const ModernFrameGraph::PassFrameSpan& prevPassFrameSpan = mGraphToBuild->mFrameSpansPerRenderPass[prevPassNonAmplifiedIndex];
 
 	uint32_t currPassFrameCount = currPassFrameSpan.End - currPassFrameSpan.Begin;
 	uint32_t prevPassFrameCount = prevPassFrameSpan.End - prevPassFrameSpan.Begin;
@@ -767,7 +803,7 @@ uint32_t ModernFrameGraphBuilder::CalcAmplifiedPrevSubresourceIndex(uint32_t cur
 		const PassMetadata& prevPassMetadata = mTotalPassMetadatas[(size_t)prevPassFrameSpan.Begin + currPassFrameIndex];
 		return prevPassMetadata.SubresourceMetadataSpan.Begin + prevPassSubresourceId;
 	}
-	else if(prevPassFrameSpanIndex <= currPassFrameSpanIndex) //Rules 2, 3, 4
+	else if(prevPassNonAmplifiedIndex <= currPassNonAmplifiedIndex) //Rules 2, 3, 4
 	{
 		const PassMetadata& prevPassMetadata = mTotalPassMetadatas[(size_t)prevPassFrameSpan.Begin];
 		if(currPassFrameIndex == 0) //Rules 2, 3
@@ -837,10 +873,10 @@ uint32_t ModernFrameGraphBuilder::CalcAmplifiedPrevSubresourceIndex(uint32_t cur
 	}
 }
 
-uint32_t ModernFrameGraphBuilder::CalcAmplifiedNextSubresourceIndex(uint32_t currPassFrameSpanIndex, uint32_t nextPassFrameSpanIndex, uint32_t currPassFrameIndex, uint32_t nextPassSubresourceId)
+uint32_t ModernFrameGraphBuilder::CalcAmplifiedNextSubresourceIndex(uint32_t currPassNonAmplifiedIndex, uint32_t nextPassNonAmplifiedIndex, uint32_t currPassFrameIndex, uint_fast16_t nextPassSubresourceId)
 {
 	/*
-	*    1. Curr pass frames == next pass frames:  Next pass index is the same as curr pass index
+	*    1. Curr pass frames == next pass frames: Next pass index is the same as curr pass index
 	*
 	*    2. Next pass is in the same frame, curr pass frames == 1, next pass frames == N:                         Prev frame index is the first one in the next frame span
     *    3. Next pass is in the same frame, curr pass frames == N, next pass frames == 1, curr frame index == 0:  Next frame index is the only one in the next frame span
@@ -851,8 +887,8 @@ uint32_t ModernFrameGraphBuilder::CalcAmplifiedNextSubresourceIndex(uint32_t cur
     *    7. Next pass is in the next frame, curr pass frames == N, next pass frames == 1, curr frame index != N - 1:  Choose a helper next node with the same index as (curr frame index + 1) % N
 	*/
 
-	const ModernFrameGraph::PassFrameSpan& currPassFrameSpan = mGraphToBuild->mFrameSpansPerRenderPass[currPassFrameSpanIndex];
-	const ModernFrameGraph::PassFrameSpan& nextPassFrameSpan = mGraphToBuild->mFrameSpansPerRenderPass[nextPassFrameSpanIndex];
+	const ModernFrameGraph::PassFrameSpan& currPassFrameSpan = mGraphToBuild->mFrameSpansPerRenderPass[currPassNonAmplifiedIndex];
+	const ModernFrameGraph::PassFrameSpan& nextPassFrameSpan = mGraphToBuild->mFrameSpansPerRenderPass[nextPassNonAmplifiedIndex];
 
 	uint32_t currPassFrameCount = currPassFrameSpan.End - currPassFrameSpan.Begin;
 	uint32_t nextPassFrameCount = nextPassFrameSpan.End - nextPassFrameSpan.Begin;
@@ -862,7 +898,7 @@ uint32_t ModernFrameGraphBuilder::CalcAmplifiedNextSubresourceIndex(uint32_t cur
 		const PassMetadata& nextPassMetadata = mTotalPassMetadatas[(size_t)nextPassFrameSpan.Begin + currPassFrameIndex];
 		return nextPassMetadata.SubresourceMetadataSpan.Begin + nextPassSubresourceId;
 	}
-	else if(nextPassFrameSpanIndex >= currPassFrameSpanIndex) //Rules 2, 3, 4
+	else if(nextPassNonAmplifiedIndex >= currPassNonAmplifiedIndex) //Rules 2, 3, 4
 	{
 		const PassMetadata& nextPassMetadata = mTotalPassMetadatas[(size_t)nextPassFrameSpan.Begin];
 		if(currPassFrameIndex == 0) //Rules 2, 3
@@ -934,41 +970,13 @@ uint32_t ModernFrameGraphBuilder::CalcAmplifiedNextSubresourceIndex(uint32_t cur
 	}
 }
 
-void ModernFrameGraphBuilder::ValidateSubresourceLinks()
+void ModernFrameGraphBuilder::InitAugmentedResourceData()
 {
-	std::vector<uint32_t> lastSubresourceNodeIndices(mResourceMetadatas.size(), (uint32_t)(-1));
-	for(const PassMetadata& passMetadata: mTotalPassMetadatas)
-	{
-		for(uint32_t metadataIndex = passMetadata.SubresourceMetadataSpan.Begin; metadataIndex < passMetadata.SubresourceMetadataSpan.End; metadataIndex++)
-		{
-			SubresourceMetadataNode& metadataNode = mSubresourceMetadataNodesFlat[metadataIndex];
+	InitializeHeadNodes();
 
-			uint32_t lastSubresourceIndex = lastSubresourceNodeIndices[metadataNode.ResourceMetadataIndex];
-			if(lastSubresourceIndex != (uint32_t)(-1))
-			{
-				SubresourceMetadataNode& prevSubresourceNode = mSubresourceMetadataNodesFlat[lastSubresourceIndex];
+	InitMetadataPayloads();
 
-				prevSubresourceNode.NextPassNodeIndex = metadataIndex;
-				metadataNode.PrevPassNodeIndex        = lastSubresourceIndex;
-			}
-
-			lastSubresourceNodeIndices[metadataNode.ResourceMetadataIndex] = metadataIndex;
-		}
-	}
-
-	//Validate cyclic links (last <-> first nodes)
-	for(uint32_t metadataIndex = 0; metadataIndex < mSubresourceMetadataNodesFlat.size(); metadataIndex++)
-	{
-		SubresourceMetadataNode& subresourceNode = mSubresourceMetadataNodesFlat[metadataIndex];
-		if(subresourceNode.PrevPassNodeIndex == (uint32_t)(-1))
-		{
-			uint32_t lastNodeIndex = lastSubresourceNodeIndices[subresourceNode.ResourceMetadataIndex];
-			SubresourceMetadataNode& lastSubresourceNode = mSubresourceMetadataNodesFlat[lastNodeIndex];
-
-			subresourceNode.PrevPassNodeIndex     = lastNodeIndex;
-			lastSubresourceNode.NextPassNodeIndex = metadataIndex;
-		}
-	}
+	PropagateSubresourcePayloadData();
 }
 
 void ModernFrameGraphBuilder::InitializeHeadNodes()
