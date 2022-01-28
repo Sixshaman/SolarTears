@@ -110,14 +110,17 @@ private:
 	//Creates multiple copies of passes and resources, one for each separate frame
 	void AmplifyResourcesAndPasses();
 
-	//Helper function to add several per-frame copies of a single pass to mTotalPassMetadatas
+	//Helper function to find how many per-frame copies of pass needed, and what is a swap behaviour for the copies
 	void FindFrameCountAndSwapType(const std::vector<Span<uint32_t>>& resourceFrameSpans, std::span<const SubresourceMetadataNode> oldPassSubresourceMetadataSpan, uint32_t* outFrameCount, RenderPassFrameSwapType* outSwapType);
 
-	//Calculates PrevPassNodeIndex for the subresource metadata node in amplified list
-	uint32_t CalcAmplifiedPrevSubresourceIndex(uint32_t currPassNonAmplifiedIndex, uint32_t prevPassNonAmplifiedIndex, uint32_t currPassFrameIndex, uint_fast16_t prevPassSubresourceId);
+	//Helper function to find the correct amplified index of the previous pass
+	uint32_t CalculatePrevPassFrameIndex(uint32_t prevPassNonAmplifiedIndex, uint32_t currPassNonAmplifiedIndex, uint32_t currPassFrameIndex);
 
-	//Calculates NextPassNodeIndex for the subresource metadata node in amplified list
-	uint32_t CalcAmplifiedNextSubresourceIndex(uint32_t currPassNonAmplifiedIndex, uint32_t nextPassNonAmplifiedIndex, uint32_t currPassFrameIndex, uint_fast16_t nextPassSubresourceId);
+	//Helper function to find the correct amplified index of the next pass
+	uint32_t CalculateNextPassFrameIndex(uint32_t nextPassNonAmplifiedIndex, uint32_t currPassNonAmplifiedIndex, uint32_t currPassFrameIndex);
+
+	//Allocates a span of helper subresource nodes
+	Span<uint32_t> AllocateHelperSubresourceSpan(uint32_t templateSubresourceIndex, uint32_t helperNodesNeeded);
 
 	//Initializes additional resource and subresource data (subresource head nodes, subresource payloads)
 	void InitAugmentedResourceData();
