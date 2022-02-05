@@ -44,8 +44,7 @@ protected:
 		uint32_t NextPassNodeIndex;     //The index of the same resources metadata used in the next pass
 		uint32_t ResourceMetadataIndex; //The index of ResourceMetadata associated with the subresource
 
-		uint32_t        ImageViewHandle; //The id of the subresource in the frame graph texture view list
-		RenderPassClass PassClass;       //The pass class (Graphics/Compute/Copy) that uses the node
+		RenderPassClass PassClass; //The pass class (Graphics/Compute/Copy) that uses the node
 
 #if defined(DEBUG) || defined(_DEBUG)
 		std::string_view PassName;
@@ -156,11 +155,11 @@ protected:
 	//Creates render pass objects
 	virtual void BuildPassObjects() = 0;
 
-	//Add barriers to execute before a pass
-	virtual void AddBeforePassBarriers(const PassMetadata& passMetadata, uint32_t barrierSpanIndex) = 0;
+	//Create barriers to execute before a pass
+	virtual void CreateBeforePassBarriers(const PassMetadata& passMetadata, uint32_t barrierSpanIndex) = 0;
 
-	//Add barriers to execute before a pass
-	virtual void AddAfterPassBarriers(const PassMetadata& passMetadata, uint32_t barrierSpanIndex) = 0;
+	//Create barriers to execute after a pass
+	virtual void CreateAfterPassBarriers(const PassMetadata& passMetadata, uint32_t barrierSpanIndex) = 0;
 
 	//Initializes command buffer, job info, etc. for the frame graph
 	virtual void InitializeTraverseData() const = 0;

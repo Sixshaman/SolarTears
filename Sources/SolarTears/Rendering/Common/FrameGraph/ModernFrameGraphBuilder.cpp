@@ -74,8 +74,7 @@ void ModernFrameGraphBuilder::InitPassList(const std::unordered_map<RenderPassNa
 			.NextPassNodeIndex     = (uint32_t)(-1),
 			.ResourceMetadataIndex = (uint32_t)(-1),
 
-			.ImageViewHandle = (uint32_t)(-1),
-			.PassClass       = mTotalPassMetadatas.back().Class,
+			.PassClass = mTotalPassMetadatas.back().Class,
 		});
 	}
 
@@ -106,8 +105,7 @@ void ModernFrameGraphBuilder::InitPassList(const std::unordered_map<RenderPassNa
 		.NextPassNodeIndex     = (uint32_t)(-1),
 		.ResourceMetadataIndex = (uint32_t)(-1),
 
-		.ImageViewHandle = (uint32_t)(-1),
-		.PassClass       = RenderPassClass::Present,
+		.PassClass = RenderPassClass::Present,
 	});
 }
 
@@ -663,8 +661,8 @@ void ModernFrameGraphBuilder::AmplifyResourcesAndPasses()
 				.PrevPassNodeIndex     = (uint32_t)(-1),
 				.NextPassNodeIndex     = (uint32_t)(-1),
 				.ResourceMetadataIndex = (uint32_t)(-1),
-			    .ImageViewHandle       = (uint32_t)(-1),
-				.PassClass             = perFramePassMetadata.Class,
+
+				.PassClass = perFramePassMetadata.Class,
 
 #if defined(DEBUG) || defined(_DEBUG)
 				.PassName     = perFramePassMetadata.Name,
@@ -701,6 +699,7 @@ void ModernFrameGraphBuilder::AmplifyResourcesAndPasses()
 
 		for(uint32_t subresourceId = 0; subresourceId < passSubresourceCount; subresourceId++)
 		{
+			//Find the resource this subresource belongs to
 			const SubresourceMetadataNode& nonAmplifiedSubresourceMetadata = nonAmplifiedSubresourceMetadatas[nonAmplifiedPassMetadata.SubresourceMetadataSpan.Begin + subresourceId];
 			Span<uint32_t>                 amplifiedResourceSpan           = amplifiedResourceSpans[nonAmplifiedSubresourceMetadata.ResourceMetadataIndex];
 
@@ -962,7 +961,7 @@ void ModernFrameGraphBuilder::BuildBarriers()
 	{
 		const PassMetadata& passMetadata = mTotalPassMetadatas[passIndex];
 
-		AddBeforePassBarriers(passMetadata, passIndex);
-		AddAfterPassBarriers(passMetadata,  passIndex);
+		CreateBeforePassBarriers(passMetadata, passIndex);
+		CreateAfterPassBarriers(passMetadata,  passIndex);
 	}
 }

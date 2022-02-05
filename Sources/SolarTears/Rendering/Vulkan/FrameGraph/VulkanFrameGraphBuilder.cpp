@@ -58,14 +58,14 @@ VkImageView Vulkan::FrameGraphBuilder::GetRegisteredSubresource(uint32_t passInd
 {
 	Span<uint32_t> metadataSpan = mTotalPassMetadatas[passIndex].SubresourceMetadataSpan;
 
-	const SubresourceMetadataNode& metadataNode = mSubresourceMetadataNodesFlat[metadataSpan.Begin + subresourceIndex];
-	if(metadataNode.ImageViewHandle == (uint32_t)(-1))
+	const SubresourceMetadataPayload& metadataPayload = mSubresourceMetadataPayloads[metadataSpan.Begin + subresourceIndex];
+	if(metadataPayload.ImageViewIndex == (uint32_t)(-1))
 	{
 		return VK_NULL_HANDLE;
 	}
 	else
 	{
-		return mVulkanGraphToBuild->mImageViews[metadataNode.ImageViewHandle];
+		return mVulkanGraphToBuild->mImageViews[metadataPayload.ImageViewIndex];
 	}
 }
 
@@ -218,13 +218,14 @@ void Vulkan::FrameGraphBuilder::InitMetadataPayloads()
 		const PassMetadata& passMetadata = mTotalPassMetadatas[presentPassIndex];
 
 		uint32_t backbufferPayloadIndex = passMetadata.SubresourceMetadataSpan.Begin + (uint32_t)PresentPassSubresourceId::Backbuffer;
-		mSubresourceMetadataPayloads[backbufferPayloadIndex].Format = mSwapChain->GetBackbufferFormat();
-		mSubresourceMetadataPayloads[backbufferPayloadIndex].Aspect = VK_IMAGE_ASPECT_COLOR_BIT;
-		mSubresourceMetadataPayloads[backbufferPayloadIndex].Layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-		mSubresourceMetadataPayloads[backbufferPayloadIndex].Usage  = 0;
-		mSubresourceMetadataPayloads[backbufferPayloadIndex].Stage  = VK_PIPELINE_STAGE_NONE_KHR;
-		mSubresourceMetadataPayloads[backbufferPayloadIndex].Access = 0;
-		mSubresourceMetadataPayloads[backbufferPayloadIndex].Flags  = 0;
+		mSubresourceMetadataPayloads[backbufferPayloadIndex].Format         = mSwapChain->GetBackbufferFormat();
+		mSubresourceMetadataPayloads[backbufferPayloadIndex].Aspect         = VK_IMAGE_ASPECT_COLOR_BIT;
+		mSubresourceMetadataPayloads[backbufferPayloadIndex].Layout         = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		mSubresourceMetadataPayloads[backbufferPayloadIndex].Usage          = 0;
+		mSubresourceMetadataPayloads[backbufferPayloadIndex].Stage          = VK_PIPELINE_STAGE_NONE_KHR;
+		mSubresourceMetadataPayloads[backbufferPayloadIndex].Access         = 0;
+		mSubresourceMetadataPayloads[backbufferPayloadIndex].ImageViewIndex = (uint32_t)(-1);
+		mSubresourceMetadataPayloads[backbufferPayloadIndex].Flags          = 0;
 	}
 
 	for(uint32_t primarySubresourceSpanIndex = mPrimarySubresourceNodeSpan.Begin; primarySubresourceSpanIndex < mPrimarySubresourceNodeSpan.End; primarySubresourceSpanIndex++)
@@ -252,14 +253,14 @@ bool Vulkan::FrameGraphBuilder::PropagateSubresourcePayloadDataVertically(const 
 		SubresourceMetadataPayload& currSubresourcePayload = mSubresourceMetadataPayloads[currNodeIndex];
 		SubresourceMetadataPayload& nextSubresourcePayload = mSubresourceMetadataPayloads[subresourceNode.NextPassNodeIndex];
 
-		//Aspect gets propagated from the previous pass to the current pass
+		//Aspect gets propagated from the current pass to the next pass
 		if(nextSubresourcePayload.Aspect == 0 && currSubresourcePayload.Aspect != 0)
 		{
 			nextSubresourcePayload.Aspect = currSubresourcePayload.Aspect;
 			propagationHappened = true;
 		}
 
-		//Format gets propagated from the previous pass to the current pass
+		//Format gets propagated from the current pass to the next pass
 		if(nextSubresourcePayload.Format == VK_FORMAT_UNDEFINED && currSubresourcePayload.Format != VK_FORMAT_UNDEFINED)
 		{
 			nextSubresourcePayload.Format = currSubresourcePayload.Format;
@@ -473,8 +474,8 @@ void Vulkan::FrameGraphBuilder::CreateTextureViews()
 		uint32_t currNodeIndex = headNodeIndex;
 		do
 		{
-			SubresourceMetadataNode&          subresourceMetadata        = mSubresourceMetadataNodesFlat[currNodeIndex];
-			const SubresourceMetadataPayload& subresourceMetadataPayload = mSubresourceMetadataPayloads[currNodeIndex];
+			const SubresourceMetadataNode& subresourceMetadata     = mSubresourceMetadataNodesFlat[currNodeIndex];
+			SubresourceMetadataPayload& subresourceMetadataPayload = mSubresourceMetadataPayloads[currNodeIndex];
 
 			if(currNodeIndex < mPrimarySubresourceNodeSpan.Begin || currNodeIndex >= mPrimarySubresourceNodeSpan.End)
 			{
@@ -494,7 +495,7 @@ void Vulkan::FrameGraphBuilder::CreateTextureViews()
 				auto imageViewIt = imageViewIndicesForViewInfos.find(viewInfoKey);
 				if(imageViewIt != imageViewIndicesForViewInfos.end())
 				{
-					subresourceMetadata.ImageViewHandle = imageViewIt->second;
+					subresourceMetadataPayload.ImageViewIndex = imageViewIt->second;
 				}
 				else
 				{
@@ -503,7 +504,7 @@ void Vulkan::FrameGraphBuilder::CreateTextureViews()
 					VkImage image = mVulkanGraphToBuild->mImages[resourceMetadataIndex];
 					mVulkanGraphToBuild->mImageViews.push_back(CreateImageView(image, subresourceMetadataPayload.Format, subresourceMetadataPayload.Aspect));
 
-					subresourceMetadata.ImageViewHandle       = newImageViewIndex;
+					subresourceMetadataPayload.ImageViewIndex = newImageViewIndex;
 					imageViewIndicesForViewInfos[viewInfoKey] = newImageViewIndex;
 				}
 			}
@@ -523,7 +524,7 @@ void Vulkan::FrameGraphBuilder::BuildPassObjects()
 	}
 }
 
-void Vulkan::FrameGraphBuilder::AddBeforePassBarriers(const PassMetadata& passMetadata, uint32_t barrierSpanIndex)
+void Vulkan::FrameGraphBuilder::CreateBeforePassBarriers(const PassMetadata& passMetadata, uint32_t barrierSpanIndex)
 {
 	mVulkanGraphToBuild->mRenderPassBarriers[barrierSpanIndex].BeforePassBegin = (uint32_t)mVulkanGraphToBuild->mImageBarriers.size();
 
@@ -589,7 +590,7 @@ void Vulkan::FrameGraphBuilder::AddBeforePassBarriers(const PassMetadata& passMe
 	mVulkanGraphToBuild->mRenderPassBarriers[barrierSpanIndex].BeforePassEnd = (uint32_t)mVulkanGraphToBuild->mImageBarriers.size();
 }
 
-void Vulkan::FrameGraphBuilder::AddAfterPassBarriers(const PassMetadata& passMetadata, uint32_t barrierSpanIndex)
+void Vulkan::FrameGraphBuilder::CreateAfterPassBarriers(const PassMetadata& passMetadata, uint32_t barrierSpanIndex)
 {
 	mVulkanGraphToBuild->mRenderPassBarriers[barrierSpanIndex].AfterPassBegin = (uint32_t)mVulkanGraphToBuild->mImageBarriers.size();
 
@@ -610,8 +611,8 @@ void Vulkan::FrameGraphBuilder::AddAfterPassBarriers(const PassMetadata& passMet
 			*
 			*    4. Queue family changed, layout unchanged: Need a release barrier with old access mask
 			*    5. Queue family changed, layout changed:   Need a release + layout change barrier
-			*    6. Queue family changed, to present:       Need a release barrier with old access mask
-			*    7. Queue family changed, from present:     Need a release barrier with source and destination access masks 0
+			*    6. Queue family changed, from present:     Need a release barrier with source and destination access masks 0
+			*    7. Queue family changed, to present:       Need a release barrier with old access mask
 			*/
 
 			bool barrierNeeded = false;

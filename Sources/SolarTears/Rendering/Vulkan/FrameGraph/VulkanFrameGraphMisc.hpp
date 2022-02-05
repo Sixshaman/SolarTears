@@ -10,13 +10,14 @@ namespace Vulkan
 	{
 		SubresourceMetadataPayload()
 		{
-			Format = VK_FORMAT_UNDEFINED;
-			Aspect = 0;
-			Layout = VK_IMAGE_LAYOUT_UNDEFINED;
-			Usage  = 0;
-			Stage  = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-			Access = 0;
-			Flags  = 0;
+			Format         = VK_FORMAT_UNDEFINED;
+			Aspect         = 0;
+			Layout         = VK_IMAGE_LAYOUT_UNDEFINED;
+			Usage          = 0;
+			Stage          = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+			Access         = 0;
+			ImageViewIndex = 0;
+			Flags          = 0;
 		}
 
 		VkFormat           Format;
@@ -27,6 +28,7 @@ namespace Vulkan
 		VkPipelineStageFlags Stage;
 		VkAccessFlags        Access;
 
+		uint32_t ImageViewIndex;
 		uint32_t Flags;
 	};
 

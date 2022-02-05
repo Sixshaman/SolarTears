@@ -11,13 +11,15 @@ namespace D3D12
 	{
 		SubresourceMetadataPayload()
 		{
-			Format = DXGI_FORMAT_UNKNOWN;
-			State  = D3D12_RESOURCE_STATE_COMMON;
-			Flags  = 0;
+			Format              = DXGI_FORMAT_UNKNOWN;
+			State               = D3D12_RESOURCE_STATE_COMMON;
+			DescriptorHeapIndex = (UINT32)(-1);
+			Flags               = 0;
 		}
 
 		DXGI_FORMAT           Format;
 		D3D12_RESOURCE_STATES State;
+		UINT32                DescriptorHeapIndex;
 		UINT32                Flags;
 	};
 }

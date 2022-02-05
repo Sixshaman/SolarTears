@@ -100,10 +100,10 @@ namespace Vulkan
 		void BuildPassObjects() override final;
 
 		//Adds subresource barriers to execute before a pass
-		void AddBeforePassBarriers(const PassMetadata& passMetadata, uint32_t barrierSpanIndex) override final;
+		void CreateBeforePassBarriers(const PassMetadata& passMetadata, uint32_t barrierSpanIndex) override final;
 
-		//Adds subresource barriers to execute before a pass
-		void AddAfterPassBarriers(const PassMetadata& passMetadata, uint32_t barrierSpanIndex) override final;
+		//Adds subresource barriers to execute after a pass
+		void CreateAfterPassBarriers(const PassMetadata& passMetadata, uint32_t barrierSpanIndex) override final;
 
 		//Initializes per-traverse command buffer info
 		void InitializeTraverseData() const override final;
