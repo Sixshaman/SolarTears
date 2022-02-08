@@ -522,6 +522,9 @@ void Vulkan::FrameGraphBuilder::BuildPassObjects()
 	{
 		mVulkanGraphToBuild->mRenderPasses.emplace_back(MakeUniquePass(mTotalPassMetadatas[passIndex].Type, this, passIndex));
 	}
+
+	//Allocate a separate storage for each per-thread command buffer
+	mVulkanGraphToBuild->mFrameRecordedGraphicsCommandBuffers.resize(mVulkanGraphToBuild->mGraphicsPassSpansPerDependencyLevel.size());
 }
 
 void Vulkan::FrameGraphBuilder::CreateBeforePassBarriers(const PassMetadata& passMetadata, uint32_t barrierSpanIndex)
@@ -653,11 +656,6 @@ void Vulkan::FrameGraphBuilder::CreateAfterPassBarriers(const PassMetadata& pass
 	}
 
 	mVulkanGraphToBuild->mRenderPassBarriers[barrierSpanIndex].AfterPassEnd = (uint32_t)mVulkanGraphToBuild->mImageBarriers.size();
-}
-
-void Vulkan::FrameGraphBuilder::InitializeTraverseData() const
-{
-	mVulkanGraphToBuild->mFrameRecordedGraphicsCommandBuffers.resize(mVulkanGraphToBuild->mGraphicsPassSpansPerDependencyLevel.size());
 }
 
 uint32_t Vulkan::FrameGraphBuilder::GetSwapchainImageCount() const

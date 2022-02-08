@@ -105,9 +105,6 @@ namespace Vulkan
 		//Adds subresource barriers to execute after a pass
 		void CreateAfterPassBarriers(const PassMetadata& passMetadata, uint32_t barrierSpanIndex) override final;
 
-		//Initializes per-traverse command buffer info
-		void InitializeTraverseData() const override final;
-
 		//Get the number of swapchain images
 		uint32_t GetSwapchainImageCount() const override final;
 

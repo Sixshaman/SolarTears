@@ -161,9 +161,6 @@ protected:
 	//Create barriers to execute after a pass
 	virtual void CreateAfterPassBarriers(const PassMetadata& passMetadata, uint32_t barrierSpanIndex) = 0;
 
-	//Initializes command buffer, job info, etc. for the frame graph
-	virtual void InitializeTraverseData() const = 0;
-
 	//Get the number of swapchain images
 	virtual uint32_t GetSwapchainImageCount() const = 0;
 

@@ -651,6 +651,9 @@ void D3D12::FrameGraphBuilder::BuildPassObjects()
 	{
 		mD3d12GraphToBuild->mRenderPasses.emplace_back(MakeUniquePass(mTotalPassMetadatas[passIndex].Type, this, passIndex));
 	}
+
+	//Allocate a separate storage for each per-thread command list
+	mD3d12GraphToBuild->mFrameRecordedGraphicsCommandLists.resize(mD3d12GraphToBuild->mGraphicsPassSpansPerDependencyLevel.size());
 }
 
 void D3D12::FrameGraphBuilder::CreateBeforePassBarriers(const PassMetadata& passMetadata, uint32_t barrierSpanIndex)
@@ -852,11 +855,6 @@ void D3D12::FrameGraphBuilder::CreateAfterPassBarriers(const PassMetadata& passM
 	}
 
 	mD3d12GraphToBuild->mRenderPassBarriers[barrierSpanIndex].AfterPassEnd = (uint32_t)mD3d12GraphToBuild->mResourceBarriers.size();
-}
-
-void D3D12::FrameGraphBuilder::InitializeTraverseData() const
-{
-	mD3d12GraphToBuild->mFrameRecordedGraphicsCommandLists.resize(mD3d12GraphToBuild->mGraphicsPassSpansPerDependencyLevel.size());
 }
 
 uint32_t D3D12::FrameGraphBuilder::GetSwapchainImageCount() const

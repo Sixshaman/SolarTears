@@ -30,8 +30,6 @@ void ModernFrameGraphBuilder::Build(FrameGraphDescription&& frameGraphDescriptio
 	BuildResources();
 	BuildPassObjects();
 	BuildBarriers();
-
-	InitializeTraverseData();
 }
 
 const FrameGraphConfig* ModernFrameGraphBuilder::GetConfig() const
