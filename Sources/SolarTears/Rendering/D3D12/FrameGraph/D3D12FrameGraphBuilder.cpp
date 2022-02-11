@@ -674,7 +674,7 @@ void D3D12::FrameGraphBuilder::CreateBeforePassBarriers(const PassMetadata& pass
 		*    8.  Graphics -> Compute, state changed other cases:                  No barrier needed, handled by the previous state's barrier
 		* 
 		*    9.  Compute -> Graphics, state automatically promoted:                       No barrier needed, state will be promoted again
-		* 	 10. Compute -> Graphics, state non-promoted, was promoted read-only:         Need a barrier COMMON -> New state   
+		*    10. Compute -> Graphics, state non-promoted, was promoted read-only:         Need a barrier COMMON -> New state   
 		*    11. Compute -> Graphics, state changed Compute/graphics -> Compute/Graphics: No barrier needed, handled by the previous state's barrier
 		*    12. Compute -> Graphics, state changed Compute/Graphics -> Graphics:         Need a barrier Old state -> New state
 		*    13. Compute -> Graphics, state unchanged:                                    No barrier needed
